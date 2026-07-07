@@ -28,6 +28,12 @@ Tải về → **upload → enable** là dùng được ngay, không cần build
 
 > "Custom icon + format number": dùng **Icon Kit** là đủ (gộp icon + conditional format). Hai plugin *Custom Icons* / *Conditional Format* là bản tách riêng trước đó, giữ lại để tham khảo.
 
+## Theme ERPNext (`theme/`)
+
+`nocobase-erpnext-theme-token-driven.css` — CSS toàn cục style NocoBase theo phong cách **ERPNext/Frappe** (tối giản, font Inter, viền mảnh, phẳng). Bản **token-driven**: bám theo token màu của hệ thống, nên đổi `colorPrimary` ở Theme editor là giao diện ăn theo.
+
+**Cách dùng (no-code):** vào **Settings → Theme editor**, dán toàn bộ nội dung file vào ô **"Global style" (Custom CSS)** → Save. Không cần cài plugin.
+
 ## Extras (`extras/`)
 
 - `NOCOBASE-PLUGIN-BUILD-GUIDE.md` — hướng dẫn tự build plugin NocoBase từ source (dev).

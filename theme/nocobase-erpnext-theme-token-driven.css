@@ -1,0 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================================
+   NocoBase — ERPNext style (BAN "TOKEN CAM TRICH")
+   Nut / switch / link / tabs / checkbox / focus / menu-chon... -> TU an
+   colorPrimary trong Theme editor (Settings -> Theme editor -> Edit -> token).
+   File nay chi giu CAU TRUC (font, header, bang, bo goc, khoang cach) + pill menu.
+   => Doi mau chinh: chi can sua colorPrimary (va colorError = danger) ben Theme editor.
+   ============================================================ */
+
+:root{
+  --erp-primary-soft:#eaf4fe;   /* fallback cho pill neu trinh duyet cu khong ho tro color-mix */
+  --erp-bg:#f4f5f6;
+  --erp-surface:#ffffff;
+  --erp-border:#e3e6ea;
+  --erp-border-soft:#eef0f2;
+  --erp-text:#1f272e;
+  --erp-muted:#737b83;
+  --erp-head:#f7f8fa;
+  --erp-radius:6px;
+  --erp-radius-lg:8px;
+}
+
+/* ---- Font Inter (app + menu/dropdown/popup portal) ---- */
+.ant-app, .ant-app *,
+.ant-dropdown, .ant-dropdown *,
+.ant-popover, .ant-popover *,
+.ant-tooltip, .ant-tooltip *,
+.ant-select-dropdown, .ant-select-dropdown *,
+.ant-picker-dropdown, .ant-picker-dropdown *,
+.ant-menu-submenu-popup, .ant-menu-submenu-popup *,
+.ant-modal-root, .ant-modal-root *,
+.ant-drawer, .ant-drawer *,
+.ant-notification, .ant-notification *,
+.ant-message, .ant-message *,
+.ant-cascader-dropdown, .ant-cascader-dropdown *{
+  font-family:'Inter','Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif !important;
+}
+body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+.monaco-editor, .monaco-editor *, .cm-editor, .cm-editor *{
+  font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace !important;
+}
+
+/* ---- Nen sang ---- */
+body, .ant-app, .ant-layout, .ant-layout-content{ background:var(--erp-bg) !important; color:var(--erp-text); }
+
+/* ---- Header trang + logo dao mau ---- */
+.ant-layout-header{ background:var(--erp-surface) !important; border-bottom:1px solid var(--erp-border) !important; box-shadow:none !important; }
+.ant-layout-header .anticon,
+.ant-layout-header a,
+.ant-layout-header .ant-menu-submenu-title{ color:#4c5a67 !important; }
+/* chu menu ngang: CHUA chon = xam; DA chon = de native to (colorPrimary) */
+.ant-layout-header .ant-pro-base-menu-horizontal-menu-item:not(.ant-menu-item-selected) .ant-pro-base-menu-horizontal-item-text{ color:#4c5a67 !important; }
+.ant-layout-header > *:first-child img,
+.ant-layout-header a[href="/"] img,
+.ant-layout-header a[href^="/admin"] img{ filter:brightness(0) !important; }
+
+/* ---- Toolbar phai: bo o/vien, khong xam khi hover; nut UI-editor icon trang ---- */
+.ant-layout-header .ant-btn-default{ background:transparent !important; box-shadow:none !important; }
+.ant-pro-global-header-header-actions-item .ant-btn-default{ background:transparent !important; border-color:transparent !important; box-shadow:none !important; }
+.ant-pro-global-header-header-actions-item.ant-pro-global-header-header-actions-hover:hover,
+.ant-pro-global-header-header-actions-item:hover{ background:transparent !important; }
+.ant-pro-global-header-header-actions-item .ant-btn:hover,
+.ant-pro-global-header-header-actions-item .ant-btn-default:hover{ background:transparent !important; border-color:transparent !important; }
+[data-testid="ui-editor-button"].ant-btn .anticon,
+[data-testid="ui-editor-button"].ant-btn .anticon svg{ color:#fff !important; fill:#fff !important; }
+
+/* ---- Menu header: item active thanh pill nho; MAU THEO colorPrimary (qua currentColor) ---- */
+.ant-pro-base-menu-horizontal-menu-item{ padding:0 4px !important; }
+.ant-pro-base-menu-horizontal-menu-item::after,
+.ant-menu-horizontal .ant-menu-item::after{ display:none !important; }
+.ant-pro-base-menu-horizontal-menu-item.ant-menu-item-selected{ background:transparent !important; }
+.ant-pro-base-menu-horizontal-menu-item.ant-menu-item-selected > .ant-menu-title-content{
+  display:inline-flex; align-items:center; padding:4px 12px; line-height:1.2; border-radius:var(--erp-radius);
+  background:var(--erp-primary-soft);
+  background:color-mix(in srgb, currentColor 12%, transparent);
+}
+.ant-pro-base-menu-horizontal-menu-item.ant-menu-item-selected .ant-pro-base-menu-horizontal-item-icon,
+.ant-pro-base-menu-horizontal-menu-item.ant-menu-item-selected .ant-pro-base-menu-horizontal-item-icon svg{
+  color:inherit !important; stroke:currentColor !important;
+}
+
+/* ---- Menu trai: chi bo goc (mau selected de native lo) ---- */
+.ant-menu{ border-inline-end:none !important; }
+.ant-menu-item, .ant-menu-submenu-title{ border-radius:var(--erp-radius) !important; }
+
+/* ---- Card / block ---- */
+.ant-card, .nb-card-item, .ant-pro-card{
+  border-radius:var(--erp-radius-lg) !important;
+  border:1px solid var(--erp-border) !important;
+  box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
+}
+.ant-card-head{ border-bottom:1px solid var(--erp-border) !important; min-height:44px; font-weight:500; }
+
+/* ---- Bang ---- */
+.ant-table{ font-size:13px; background:transparent; }
+.ant-table-thead>tr>th{
+  background:var(--erp-head) !important; color:var(--erp-muted) !important;
+  font-weight:500 !important; border-bottom:1px solid var(--erp-border) !important;
+}
+.ant-table-thead>tr>th::before{ display:none !important; }
+.ant-table-tbody>tr:not(.ant-table-measure-row)>td{
+  border-bottom:1px solid var(--erp-border-soft) !important;
+  padding-top:11px !important; padding-bottom:11px !important;
+}
+.ant-table-measure-row>td{ padding:0 !important; height:0 !important; border:0 !important; }
+.ant-table-tbody>tr:hover>td{ background:#f7f9fc !important; }
+.ant-table-cell-fix-left, .ant-table-cell-fix-right{ background:var(--erp-surface) !important; }
+
+/* ---- Nut: chi STRUCTURE (mau primary/danger do Theme editor lo) ---- */
+.ant-btn{ border-radius:var(--erp-radius) !important; box-shadow:none !important; font-weight:500; transition:all .15s ease; }
+.ant-btn-default{ background:#f0f4f7 !important; border-color:transparent !important; color:var(--erp-text) !important; }
+.ant-btn-default:hover{ background:#e7edf2 !important; color:var(--erp-text) !important; border-color:transparent !important; }
+
+/* ---- Input / Select / Picker: chi bo goc + vien (focus do AntD lo theo colorPrimary) ---- */
+.ant-input, .ant-input-affix-wrapper, .ant-input-number,
+.ant-select-selector, .ant-picker{ border-radius:var(--erp-radius) !important; border-color:var(--erp-border) !important; }
+.ant-input:hover, .ant-select-selector:hover, .ant-picker:hover, .ant-input-affix-wrapper:hover{ border-color:#c7cdd4 !important; }
+
+/* ---- Tag / Dropdown / Pagination / Modal / Drawer: chi STRUCTURE ---- */
+.ant-tag{ border-radius:10px !important; border:none !important; font-weight:500; }
+.ant-dropdown-menu, .ant-select-dropdown{
+  border-radius:var(--erp-radius-lg) !important;
+  box-shadow:0 6px 20px rgba(16,24,40,.10) !important; border:1px solid var(--erp-border);
+}
+.ant-pagination-item{ border-radius:var(--erp-radius) !important; }
+.ant-modal-content, .ant-drawer-content{ border-radius:10px !important; }
+.ant-modal-content{ box-shadow:0 12px 40px rgba(16,24,40,.14) !important; }
+.ant-modal-header{ border-bottom:1px solid var(--erp-border); }
+
+/* ---- Scrollbar ---- */
+*{ scrollbar-width:thin; scrollbar-color:rgba(115,123,131,.35) transparent; }
+::-webkit-scrollbar{ width:9px; height:9px; }
+::-webkit-scrollbar-thumb{ background:rgba(115,123,131,.3); border-radius:8px; border:2px solid transparent; background-clip:content-box; }
+::-webkit-scrollbar-thumb:hover{ background:rgba(115,123,131,.55); background-clip:content-box; }
+::-webkit-scrollbar-track{ background:transparent; }
+
+/* ============================================================
+   HEADER TOI (tuy chon) — mo khoi duoi (xoa /* va */) va xoa khoi HEADER TRANG o tren
+   ============================================================ */
+/*
+.ant-layout-header{ background:#001529 !important; border-bottom:none !important; }
+.ant-layout-header .anticon, .ant-layout-header a,
+.ant-layout-header .ant-pro-base-menu-horizontal-item-text{ color:#fff !important; }
+.ant-layout-header > *:first-child img{ filter:none !important; }
+*/
