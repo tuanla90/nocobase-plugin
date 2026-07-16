@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Select, DatePicker, Space } from 'antd';
+import { Select, DatePicker, Space, Input } from 'antd';
+import { Filter as FilterIcon, Calendar as CalendarIcon, ChevronDown as ChevronIcon } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { SettingsGrid, rx } from '@ptdl/shared';
+import { SettingsGrid, rx, SegmentedGroup } from '@ptdl/shared';
 import { debounce } from 'lodash';
 import { NS, t } from './i18n';
 
@@ -18,6 +19,29 @@ import { NS, t } from './i18n';
  */
 const FILTER_KEY = 'ptdlFilter';
 const WIDTH_PX: Record<string, number> = { narrow: 150, normal: 180, wide: 240 };
+
+/** Relative date presets, KEYED so a default can store the key (e.g. 'thisMonth') and the range is recomputed
+ *  each load (always the current period). Built fresh each call so "today" stays current. */
+function datePresetDefs(): Array<{ key: string; label: string; range: () => [any, any] }> {
+  return [
+    { key: 'today', label: t('Today'), range: () => [dayjs().startOf('day'), dayjs().endOf('day')] },
+    { key: 'yesterday', label: t('Yesterday'), range: () => [dayjs().add(-1, 'day').startOf('day'), dayjs().add(-1, 'day').endOf('day')] },
+    { key: 'last7', label: t('Last 7 days'), range: () => [dayjs().add(-6, 'day').startOf('day'), dayjs().endOf('day')] },
+    { key: 'last30', label: t('Last 30 days'), range: () => [dayjs().add(-29, 'day').startOf('day'), dayjs().endOf('day')] },
+    { key: 'thisMonth', label: t('This month'), range: () => [dayjs().startOf('month'), dayjs().endOf('month')] },
+    { key: 'lastMonth', label: t('Last month'), range: () => [dayjs().add(-1, 'month').startOf('month'), dayjs().add(-1, 'month').endOf('month')] },
+    { key: 'thisYear', label: t('This year'), range: () => [dayjs().startOf('year'), dayjs().endOf('year')] },
+  ];
+}
+/** {label, value:[dayjs,dayjs]} list for the antd RangePicker `presets` prop. */
+function buildDatePresets(): Array<{ label: string; value: [any, any] }> {
+  return datePresetDefs().map((d) => ({ label: d.label, value: d.range() }));
+}
+/** Resolve a preset key → a concrete [start,end] dayjs range (or null). */
+function presetRange(key: string): [any, any] | null {
+  const d = datePresetDefs().find((x) => x.key === key);
+  return d ? d.range() : null;
+}
 
 const ENUM_IFACES = ['select', 'multipleSelect', 'radioGroup', 'checkboxGroup'];
 const REL_IFACES = ['m2o', 'o2o', 'oho', 'obo', 'm2m', 'o2m'];
@@ -98,12 +122,18 @@ async function fetchFields(api: any, coll: string, dsKey: string): Promise<any[]
   return (res && res.data && res.data.data) || [];
 }
 
-/** Best display field for a relation target: the collection's titleField, else a common name, else id. */
+/** Best display field for a relation target: the collection's titleField, else a common display field, else id.
+ *  Preference list covers NocoBase's usual display fields (nickname/username for `users`, name/title, VN
+ *  ten/ma/ho_ten…) so we don't fall through to an arbitrary first string like `appLang`. */
+const LABEL_PREF = [
+  'nickname', 'username', 'name', 'title', 'fullName', 'full_name', 'displayName', 'display_name', 'label',
+  'text', 'ten', 'ho_ten', 'hoTen', 'ten_day_du', 'ma', 'code', 'so_hop_dong', 'email', 'phone',
+];
 function pickLabelField(records: any[], preferred?: string): string {
   if (preferred) return preferred;
   const r = (records && records[0]) || {};
   const keys = Object.keys(r).filter((k) => !/^(id|createdAt|updatedAt|createdById|updatedById|sort|__)/.test(k));
-  for (const p of ['name', 'title', 'ten', 'label', 'ma', 'fullName', 'full_name', 'code']) if (keys.includes(p)) return p;
+  for (const p of LABEL_PREF) if (keys.includes(p)) return p;
   const strKey = keys.find((k) => typeof r[k] === 'string');
   return strKey || 'id';
 }
@@ -176,6 +206,30 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
         });
         setMeta(map);
         actionModel.__ptdlFilterMeta = map; // so the debounced apply reads fresh meta
+        // Seed configured DEFAULT values ONCE (first meta load) → the filter is pre-applied when the table
+        // opens. Date defaults are a preset KEY (recomputed to the current period); enum/relation are value
+        // arrays. Only fill fields the user hasn't already touched (`vals[name] == null`).
+        if (!actionModel.__ptdlDefaultsApplied) {
+          actionModel.__ptdlDefaultsApplied = true;
+          const defaults = (props && props.ptdlDefaults) || {};
+          const vals0 = actionModel.__ptdlFilterVals || (actionModel.__ptdlFilterVals = {});
+          let seeded = false;
+          names.forEach((name) => {
+            const dm = map[name];
+            if (!dm || defaults[name] == null || vals0[name] != null) return;
+            if (dm.kind === 'date' && typeof defaults[name] === 'string') {
+              const r = presetRange(defaults[name]);
+              if (r) {
+                vals0[name] = [r[0].startOf('day').toISOString(), r[1].endOf('day').toISOString()];
+                seeded = true;
+              }
+            } else if (Array.isArray(defaults[name]) && defaults[name].length) {
+              vals0[name] = defaults[name];
+              seeded = true;
+            }
+          });
+          if (seeded) applyFilter(actionModel);
+        }
         const cm = cmOfModel(actionModel);
         Object.values(map)
           .filter((m) => m.kind === 'relation')
@@ -192,6 +246,7 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
   }, [actionModel, key]);
 
   const w = WIDTH_PX[props.ptdlControlWidth] || 180;
+  const phMap: Record<string, string> = (props && props.ptdlPlaceholders) || {};
   const vals = actionModel.__ptdlFilterVals || (actionModel.__ptdlFilterVals = {});
   const setVal = (name: string, v: any) => {
     if (v == null || (Array.isArray(v) && !v.length)) delete vals[name];
@@ -200,11 +255,40 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
     force((n) => n + 1);
   };
 
+  // Not configured yet → show a VISIBLE dashed placeholder. Otherwise the action renders an empty <Space> =
+  // invisible, so you can't even hover it to reach its ⚙ to pick columns (unlike the search bar, which always
+  // shows its input). This guides the user to configure.
+  if (!names.length) {
+    return (
+      <span
+        onClick={(e: any) => e.stopPropagation()}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          height: 32,
+          padding: '0 12px',
+          border: '1px dashed var(--colorBorder, #d9d9d9)',
+          borderRadius: 8,
+          color: 'var(--colorTextTertiary, #8c8c8c)',
+          fontSize: 13,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <FilterIcon size={15} />
+        {t('Filter bar')}
+        <span style={{ opacity: 0.75, fontSize: 12 }}>· {t('Choose dropdown / date columns')}</span>
+      </span>
+    );
+  }
+
   return (
     <Space wrap size={8} onClick={(e: any) => e.stopPropagation()}>
       {names.map((name) => {
         const m = meta[name];
-        if (!m) return null;
+        // meta still loading → a disabled placeholder so the control is visible immediately (not blank).
+        if (!m) return <Select key={name} disabled placeholder={name} style={{ minWidth: w }} />;
+        const ph = phMap[name] || m.title;
         if (m.kind === 'date') {
           const s = vals[name];
           const value: any = Array.isArray(s) && s[0] && s[1] ? [dayjs(s[0]), dayjs(s[1])] : null;
@@ -213,7 +297,9 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
               key={name}
               value={value}
               allowClear
-              placeholder={[m.title, '']}
+              suffixIcon={<CalendarIcon size={15} />}
+              presets={buildDatePresets()}
+              placeholder={[ph, t('End')]}
               style={{ width: w + 90 }}
               onChange={(d: any) =>
                 setVal(name, d && d[0] && d[1] ? [d[0].startOf('day').toISOString(), d[1].endOf('day').toISOString()] : null)
@@ -230,7 +316,8 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
             showSearch
             optionFilterProp="label"
             maxTagCount="responsive"
-            placeholder={m.title}
+            suffixIcon={<ChevronIcon size={15} />}
+            placeholder={ph}
             style={{ minWidth: w, maxWidth: w + 140 }}
             value={vals[name] || []}
             options={options}
@@ -259,9 +346,17 @@ function FilterFieldPicker(p: any) {
     fetchFields(api, collName, dsKeyOfModel(model))
       .then((fields) =>
         setOptions(
+          // `title` (plain string) drives search; `label` is JSX with a Lucide kind icon (date → Calendar,
+          // dropdown → ChevronDown) so both the option list AND the selected tags show the icon, not an emoji.
           classifyFields(fields).map((c) => ({
-            label: `${c.title}  ${c.kind === 'date' ? '📅' : '▾'}`,
             value: c.name,
+            title: c.title,
+            label: (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {c.title}
+                {c.kind === 'date' ? <CalendarIcon size={13} /> : <ChevronIcon size={13} />}
+              </span>
+            ),
           })),
         ),
       )
@@ -272,7 +367,7 @@ function FilterFieldPicker(p: any) {
       mode="multiple"
       allowClear
       showSearch
-      optionFilterProp="label"
+      filterOption={(input: string, option: any) => String(option?.title || '').toLowerCase().includes(input.toLowerCase())}
       maxTagCount="responsive"
       value={p.value || []}
       onChange={(v: any) => p.onChange && p.onChange(v)}
@@ -282,6 +377,154 @@ function FilterFieldPicker(p: any) {
     />
   );
 }
+
+/** Per-column custom placeholder editor — one Input per picked column (default = the column title). Reactive to
+ *  the field picker above it; value is stored as a `{ fieldName: placeholder }` map. */
+const FilterPlaceholderEditor: any = observer((p: any) => {
+  const form: any = useForm();
+  const names: string[] = Array.isArray(form?.values?.ptdlFilterFields) ? form.values.ptdlFilterFields : [];
+  let model: any = null;
+  try {
+    model = (useFlowSettingsContext() as any)?.model || null;
+  } catch (_) {
+    /* ignore */
+  }
+  const [titles, setTitles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const api = apiOfModel(model);
+    const coll = collectionOfModel(model);
+    const collName = coll && coll.name;
+    if (!api || !collName) return;
+    fetchFields(api, collName, dsKeyOfModel(model))
+      .then((fields) => {
+        const map: Record<string, string> = {};
+        classifyFields(fields).forEach((c) => (map[c.name] = c.title));
+        setTitles(map);
+      })
+      .catch(() => {});
+  }, [model]);
+  const value: Record<string, string> = p.value || {};
+  if (!names.length) return <span style={{ color: '#999', fontSize: 12 }}>{t('Pick columns first')}</span>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {names.map((name) => (
+        <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{ width: 130, flex: 'none', color: 'var(--colorTextTertiary, #8c8c8c)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {titles[name] || name}
+          </span>
+          <Input
+            size="small"
+            value={value[name] || ''}
+            placeholder={titles[name] || name}
+            onChange={(e: any) => {
+              const next = { ...value };
+              if (e.target.value) next[name] = e.target.value;
+              else delete next[name];
+              p.onChange && p.onChange(next);
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+});
+
+/** Per-column DEFAULT value editor — one control per picked column, matching its kind: enum/relation → the
+ *  same multi-Select; date → a preset dropdown (stores a KEY like 'thisMonth', recomputed on load). Value is a
+ *  `{ fieldName: default }` map. Reactive to the field picker above. */
+const FilterDefaultsEditor: any = observer((p: any) => {
+  const form: any = useForm();
+  const names: string[] = Array.isArray(form?.values?.ptdlFilterFields) ? form.values.ptdlFilterFields : [];
+  let model: any = null;
+  try {
+    model = (useFlowSettingsContext() as any)?.model || null;
+  } catch (_) {
+    /* ignore */
+  }
+  const [meta, setMeta] = useState<Record<string, FieldMeta>>({});
+  const [relOpts, setRelOpts] = useState<Record<string, Array<{ label: string; value: any }>>>({});
+  useEffect(() => {
+    const api = apiOfModel(model);
+    const coll = collectionOfModel(model);
+    const collName = coll && coll.name;
+    if (!api || !collName) return;
+    fetchFields(api, collName, dsKeyOfModel(model))
+      .then((fields) => {
+        const map: Record<string, FieldMeta> = {};
+        classifyFields(fields).forEach((c) => (map[c.name] = c));
+        setMeta(map);
+        const cm = cmOfModel(model);
+        Object.values(map)
+          .filter((m) => m.kind === 'relation')
+          .forEach((m) => {
+            fetchRelationOptions(api, m, dsKeyOfModel(model), cm)
+              .then((opts) => setRelOpts((x) => ({ ...x, [m.name]: opts })))
+              .catch(() => {});
+          });
+      })
+      .catch(() => {});
+  }, [model]);
+  const value: Record<string, any> = p.value || {};
+  const set = (name: string, v: any) => {
+    const next = { ...value };
+    if (v == null || (Array.isArray(v) && !v.length)) delete next[name];
+    else next[name] = v;
+    p.onChange && p.onChange(next);
+  };
+  if (!names.length) return <span style={{ color: '#999', fontSize: 12 }}>{t('Pick columns first')}</span>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {names.map((name) => {
+        const m = meta[name];
+        let control: React.ReactNode;
+        if (!m) {
+          control = <Input size="small" disabled placeholder="…" />;
+        } else if (m.kind === 'date') {
+          control = (
+            <Select
+              size="small"
+              allowClear
+              placeholder={t('No default')}
+              style={{ width: '100%' }}
+              value={value[name] || undefined}
+              options={datePresetDefs().map((d) => ({ label: d.label, value: d.key }))}
+              onChange={(v: any) => set(name, v || null)}
+            />
+          );
+        } else {
+          const options = m.kind === 'enum' ? m.enumOptions || [] : relOpts[name] || [];
+          control = (
+            <Select
+              size="small"
+              mode="multiple"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              maxTagCount="responsive"
+              placeholder={t('No default')}
+              style={{ width: '100%' }}
+              value={value[name] || []}
+              options={options}
+              onChange={(v: any) => set(name, v && v.length ? v : null)}
+            />
+          );
+        }
+        return (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{ width: 130, flex: 'none', color: 'var(--colorTextTertiary, #8c8c8c)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {(m && m.title) || name}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>{control}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+});
 
 /** Live preview — reactive disabled controls mirroring the picked columns (fetches meta for the kind labels). */
 const FilterBarPreview: any = observer(() => {
@@ -401,18 +644,20 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
                   'x-component': 'PtdlFilterPreview',
                 },
                 ptdlFilterFields: cell('Filter columns', FilterFieldPicker, { type: 'array' }),
+                ptdlDefaults: cell('Default values', FilterDefaultsEditor, { type: 'object' }),
+                ptdlPlaceholders: cell('Custom placeholders', FilterPlaceholderEditor, { type: 'object' }),
                 row: {
                   type: 'void',
                   'x-component': 'PtdlFilterGrid',
                   properties: {
-                    ptdlControlWidth: cell('Width', 'Segmented', {
+                    ptdlControlWidth: cell('Width', SegmentedGroup, {
                       props: seg([
                         { value: 'narrow', label: te('Narrow') },
                         { value: 'normal', label: te('Normal') },
                         { value: 'wide', label: te('Wide') },
                       ]),
                     }),
-                    position: cell('Position', 'Segmented', {
+                    position: cell('Position', SegmentedGroup, {
                       props: seg([
                         { value: 'left', label: te('Left') },
                         { value: 'right', label: te('Right') },
@@ -426,6 +671,8 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
               const p = (ctx.model && ctx.model.props) || {};
               return {
                 ptdlFilterFields: Array.isArray(p.ptdlFilterFields) ? p.ptdlFilterFields : [],
+                ptdlDefaults: p.ptdlDefaults && typeof p.ptdlDefaults === 'object' ? p.ptdlDefaults : {},
+                ptdlPlaceholders: p.ptdlPlaceholders && typeof p.ptdlPlaceholders === 'object' ? p.ptdlPlaceholders : {},
                 ptdlControlWidth: p.ptdlControlWidth || 'normal',
                 position: p.position || 'left',
               };
@@ -434,9 +681,17 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
               const p = params || {};
               ctx.model.setProps({
                 ptdlFilterFields: Array.isArray(p.ptdlFilterFields) ? p.ptdlFilterFields : [],
+                ptdlDefaults: p.ptdlDefaults && typeof p.ptdlDefaults === 'object' ? p.ptdlDefaults : {},
+                ptdlPlaceholders: p.ptdlPlaceholders && typeof p.ptdlPlaceholders === 'object' ? p.ptdlPlaceholders : {},
                 ptdlControlWidth: p.ptdlControlWidth || 'normal',
                 position: p.position || 'left',
               });
+              // Let freshly-saved defaults re-seed on next open (the live bar's once-flag is per model instance).
+              try {
+                ctx.model.__ptdlDefaultsApplied = false;
+              } catch (_) {
+                /* best effort */
+              }
             },
           },
         },

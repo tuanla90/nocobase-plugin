@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Input, Cascader, Segmented } from 'antd';
+import { Input, Cascader } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
 import { css } from '@emotion/css';
-import { ColorField, SettingsGrid, buildFieldCascaderOptions, rx } from '@ptdl/shared';
+import { ColorField, SettingsGrid, buildFieldCascaderOptions, rx, SegmentedGroup } from '@ptdl/shared';
 import { debounce } from 'lodash';
 import { NS, t } from './i18n';
 
@@ -325,7 +325,7 @@ export function registerSearchAction(deps: { flowEngine: any; tExpr: (s: string,
                 ...(extra.reactions ? { 'x-reactions': extra.reactions } : {}),
               });
               const segCell = (title: string, options: any[]) =>
-                cell(title, Segmented, { props: { size: 'middle', block: true, options } });
+                cell(title, SegmentedGroup, { props: { size: 'middle', block: true, options } });
               const grid = (properties: any) => ({ type: 'void', 'x-component': 'PtdlSearchGrid', properties });
               return {
                 preview: {
