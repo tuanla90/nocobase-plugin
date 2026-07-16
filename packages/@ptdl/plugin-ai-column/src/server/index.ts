@@ -1850,6 +1850,20 @@ export class PluginAiColumnServer extends Plugin {
         const [qv] = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), [query], creds.baseURL, embedDimsOf(cached));
         if (qv?.length) scored = cached.map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { tk: String(r.recordId), sim: cosineSim(qv, r.vector || []) }; }).sort((a, b) => b.sim - a.sim).slice(0, topK);
       }
+      // HYBRID recall boost: vector similarity can miss the TRUE candidate when the query omits a
+      // distinguishing word (e.g. "Lego khủng long" doesn't say "plastic" → the plastic-variant HS code
+      // ranks just below the cutoff). Union in the top keyword hits (lexScore over the SAME cached texts
+      // — no extra DB/embedding cost) so lexically-close siblings still reach the LLM scorer.
+      if (scored.length) {
+        const qTokens = tokenize(query);
+        const lex = cached
+          .map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { tk: String(r.recordId), sim: lexScore(qTokens, tokenize(r.text || '')) }; })
+          .filter((x) => x.sim > 0)
+          .sort((a, b) => b.sim - a.sim)
+          .slice(0, Math.max(4, Math.ceil(topK / 2)));
+        const have = new Set(scored.map((s) => s.tk));
+        for (const l of lex) { if (!have.has(l.tk)) { scored.push({ tk: l.tk, sim: l.sim }); have.add(l.tk); } }
+      }
     }
     if (!scored.length) {
       method = 'keyword';

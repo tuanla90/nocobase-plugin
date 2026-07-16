@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
-import { Alert, Button, Checkbox, Input, Modal, Tag, Tooltip, message } from 'antd';
-import { observer } from '@formily/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Checkbox, Input, Modal, Select, Tag, Tooltip, message } from 'antd';
+import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
+import { getFields, ColumnSelect } from '@ptdl/shared';
 import { SparklesIcon, collectValues } from './aiColumn';
 import { NS, t } from './i18n';
 
@@ -82,6 +83,45 @@ export const PtdlDeepRubricRows: React.FC<any> = observer((props: any) => {
   );
 });
 
+const ROLE_OPTS = () => [
+  { value: 'title', label: t('Tiêu đề (đậm)') },
+  { value: 'path', label: t('Đường dẫn (breadcrumb)') },
+  { value: 'text', label: t('Văn bản') },
+  { value: 'tag', label: t('Nhãn (chip)') },
+];
+
+/** Role-aware display config: rows of {field, role}. The user DECLARES how each master column shows on
+ *  the candidate card (title / breadcrumb / plain text / tag) so the card renders by role instead of
+ *  guessing — a generic tool can't know which column is the primary label vs a tag. */
+export const PtdlDeepDisplayFields: React.FC<any> = observer((props: any) => {
+  const form = useForm();
+  const master = form?.values?.aiMaster || {};
+  const [opts, setOpts] = useState<any[]>([]);
+  useEffect(() => {
+    let alive = true;
+    if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f: any) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')' }))));
+    else setOpts([]);
+    return () => { alive = false; };
+  }, [master.collection]);
+  const rows: any[] = (Array.isArray(props.value) ? props.value : []).map((x: any) => (typeof x === 'string' ? { field: x, role: 'tag' } : x));
+  const update = (i: number, patch: any) => { const n = rows.slice(); n[i] = { ...n[i], ...patch }; props.onChange?.(n); };
+  const add = () => props.onChange?.([...rows, { field: undefined, role: 'tag' }]);
+  const rm = (i: number) => props.onChange?.(rows.filter((_: any, idx: number) => idx !== i));
+  return (
+    <div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+          <ColumnSelect style={{ flex: 1 }} options={opts} value={r.field} onChange={(v: any) => update(i, { field: v })} placeholder={master.collection ? t('Chọn cột') : t('Chọn bảng master trước')} />
+          <Select style={{ width: 175 }} options={ROLE_OPTS()} value={r.role || 'tag'} onChange={(v) => update(i, { role: v })} />
+          <Button danger type="text" onClick={() => rm(i)}>✕</Button>
+        </div>
+      ))}
+      <Button type="dashed" onClick={add} style={{ width: '100%' }}>{t('+ Thêm cột hiển thị')}</Button>
+      {!rows.length ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('Khai từng cột + vai trò để thẻ ứng viên hiển thị đúng ý (không đoán tự động).')}</div> : null}
+    </div>
+  );
+});
+
 export const PtdlDeepRubric: React.FC<any> = observer((props: any) => (
   <Input.TextArea autoSize={{ minRows: 2, maxRows: 8 }} value={props.value} placeholder={t('Tiêu chí chấm điểm (vd: chức năng chính 40đ, vật liệu 20đ, mục đích dùng 20đ, hàng nguyên chiếc 20đ)')} onChange={(e) => props.onChange?.(e.target.value)} />
 ));
@@ -120,7 +160,7 @@ function aiClassifyDeepStepUiSchema(t: (s: string) => any, relationMode?: boolea
               'x-component': 'PtdlGrid',
               properties: rowWrite,
             },
-            aiDisplayFields: { type: 'array', title: t('Cột hiển thị trên thẻ ứng viên (chỉ để xem)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('CHỈ để hiển thị cho bạn so sánh khi chọn — KHÔNG ảnh hưởng việc khớp. Vd: đường dẫn, chương, thuế, chính sách. Cột dạng “A › B › C” tự thành breadcrumb.') }, 'x-component': 'PtdlMasterColMulti' },
+            aiDisplayFields: { type: 'array', title: t('Cột hiển thị trên thẻ ứng viên + vai trò'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Khai từng cột và VAI TRÒ hiển thị: Tiêu đề (đậm) / Đường dẫn (breadcrumb) / Văn bản / Nhãn (chip). Chỉ để xem khi so sánh — KHÔNG ảnh hưởng việc khớp.') }, 'x-component': 'PtdlDeepDisplayFields' },
             rowLLM: {
               type: 'void',
               'x-component': 'PtdlGrid',
@@ -157,7 +197,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
         title: te('AI phân loại chuyên sâu'),
         uiMode: { type: 'dialog', props: { width: 820 } },
         uiSchema: aiClassifyDeepStepUiSchema(te, relationMode),
-        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 15, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiRubricItems: [], aiFeedback: true },
+        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 20, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiRubricItems: [], aiFeedback: true },
         handler(ctx: any, params: any) {
           ctx.model.setProps('aiService', params?.aiService || '');
           ctx.model.setProps('aiModel', params?.aiModel || '');
@@ -165,7 +205,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
           ctx.model.setProps('aiQueryFields', Array.isArray(params?.aiQueryFields) ? params.aiQueryFields : []);
           ctx.model.setProps('aiWriteField', params?.aiWriteField || '');
           ctx.model.setProps('aiDisplayFields', Array.isArray(params?.aiDisplayFields) ? params.aiDisplayFields : []);
-          ctx.model.setProps('aiTopK', params?.aiTopK || 15);
+          ctx.model.setProps('aiTopK', params?.aiTopK || 20);
           ctx.model.setProps('aiRoleHint', params?.aiRoleHint || '');
           ctx.model.setProps('aiAttributes', Array.isArray(params?.aiAttributes) ? params.aiAttributes : []);
           ctx.model.setProps('aiRubric', params?.aiRubric || '');
@@ -227,13 +267,19 @@ const ScoreBar: React.FC<{ items: any[] }> = ({ items }) => {
 
 /** One candidate = structured card: rank + code chip + score pill + confidence dot + Pick, then
  *  composed score bar, breadcrumb path, other display fields, reasoning, criteria tags, verify/policy. */
-const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayFields, writeField, fieldTitles, onPick }) => {
+const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayRoles, writeField, fieldTitles, onPick }) => {
   const st = scoreStyle(c.score || 0);
   const rec = c.record || {};
-  const code = c.write || rec[writeField] || '';
-  const others: string[] = (displayFields || []).filter((f: string) => f !== writeField);
-  const pathField = others.find((f) => typeof rec[f] === 'string' && rec[f].includes('›'));
-  const chips = others.filter((f) => f !== pathField && rec[f] != null && String(rec[f]).trim() !== '' && !String(rec[f]).includes('›'));
+  const roles: Record<string, string> = displayRoles || {};
+  // Render strictly by the USER-DECLARED role of each column — no guessing which is title/path/tag.
+  const has = (f: string) => rec[f] != null && String(rec[f]).trim() !== '';
+  const byRole = (role: string) => Object.keys(roles).filter((f) => f !== writeField && roles[f] === role && has(f));
+  const titleFields = byRole('title');
+  const pathFields = byRole('path');
+  const textFields = byRole('text');
+  const tagFields = byRole('tag');
+  const code = c.write || rec[writeField] || (titleFields[0] ? String(rec[titleFields[0]]) : '') || String(c.tk);
+  const label = (f: string) => (fieldTitles?.[f] ? fieldTitles[f] + ': ' : '');
   const [openReason, setOpenReason] = useState(true);
   return (
     <div style={{ border: `1px solid ${isTop ? '#b39ddb' : '#ececec'}`, background: isTop ? '#faf7ff' : '#fff', borderRadius: 10, padding: '12px 14px', marginBottom: 10, boxShadow: isTop ? '0 1px 6px rgba(124,58,237,0.12)' : 'none' }}>
@@ -254,10 +300,12 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayFields, writeFiel
         <Button type="primary" size="small" style={{ background: '#7c3aed', borderColor: '#7c3aed' }} onClick={() => onPick(c)}>{t('Chọn')}</Button>
       </div>
       <ScoreBar items={c.criteriaScores} />
-      {pathField ? <div style={{ margin: '8px 0 2px', fontSize: 13 }}><Breadcrumb path={rec[pathField]} /></div> : null}
-      {chips.length ? (
+      {titleFields.map((f) => <div key={f} style={{ margin: '8px 0 2px', fontSize: 14, fontWeight: 600, color: '#1f1f1f' }}>{String(rec[f])}</div>)}
+      {pathFields.map((f) => <div key={f} style={{ margin: '8px 0 2px', fontSize: 13 }}><Breadcrumb path={String(rec[f])} /></div>)}
+      {textFields.map((f) => <div key={f} style={{ margin: '4px 0', fontSize: 13, color: '#555', lineHeight: 1.5 }}><span style={{ color: '#999' }}>{label(f)}</span>{String(rec[f])}</div>)}
+      {tagFields.length ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
-          {chips.map((f) => <span key={f} style={{ fontSize: 12, color: '#595959', background: '#f5f5f5', border: '1px solid #eee', borderRadius: 4, padding: '1px 7px' }}>{fieldTitles?.[f] ? <span style={{ color: '#999' }}>{fieldTitles[f]}: </span> : null}{String(rec[f])}</span>)}
+          {tagFields.map((f) => <span key={f} style={{ fontSize: 12, color: '#595959', background: '#f5f5f5', border: '1px solid #eee', borderRadius: 4, padding: '1px 7px' }}><span style={{ color: '#999' }}>{label(f)}</span>{String(rec[f])}</span>)}
         </div>
       ) : null}
       {c.reasoning ? (
@@ -309,17 +357,21 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
       const values = collectValues(model);
       const query = (Array.isArray(p.aiQueryFields) ? p.aiQueryFields : []).map((f: string) => values?.[f]).filter((v: any) => v != null && String(v).trim() !== '').map((v: any) => String(v)).join(' ').trim();
       if (!query) { message.info(t('Nội dung đối chiếu đang trống (kiểm tra cột nguồn).')); return; }
+      // Normalize display config: rows of {field, role} (back-compat: old string[] → role 'tag').
+      const dfRows = (Array.isArray(p.aiDisplayFields) ? p.aiDisplayFields : []).map((x: any) => (typeof x === 'string' ? { field: x, role: 'tag' } : x)).filter((x: any) => x?.field);
+      const displayFieldNames = dfRows.map((x: any) => x.field);
+      const displayRoles: Record<string, string> = Object.fromEntries(dfRows.map((x: any) => [x.field, x.role || 'tag']));
       const writeTemplate = relationMode ? undefined : (p.aiWriteField ? `{{${p.aiWriteField}}}` : undefined);
-      const labelTemplate = Array.isArray(p.aiDisplayFields) && p.aiDisplayFields.length ? p.aiDisplayFields.map((c: string) => `{{${c}}}`).join(' - ') : undefined;
+      const labelTemplate = displayFieldNames.length ? displayFieldNames.map((c: string) => `{{${c}}}`).join(' - ') : undefined;
       const res = await API.request({
         url: 'ptdlAiColumn:classifyDeep',
         method: 'post',
         data: {
           query, masterCollection: masterColl, dataSourceKey: masterDsk,
-          topK: p.aiTopK || 15, roleHint: p.aiRoleHint || undefined, rubric: p.aiRubric || undefined,
+          topK: p.aiTopK || 20, roleHint: p.aiRoleHint || undefined, rubric: p.aiRubric || undefined,
           rubricItems: Array.isArray(p.aiRubricItems) ? p.aiRubricItems.filter((r: any) => r?.criterion) : undefined,
           attributes: Array.isArray(p.aiAttributes) ? p.aiAttributes.filter((a: any) => a?.name) : undefined,
-          displayFields: Array.isArray(p.aiDisplayFields) && p.aiDisplayFields.length ? p.aiDisplayFields : undefined,
+          displayFields: displayFieldNames.length ? displayFieldNames : undefined,
           labelTemplate, writeTemplate, llmService: p.aiService || undefined, model: p.aiModel || undefined,
         },
       });
@@ -334,7 +386,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
       // Map each extracted attribute key back to its Vietnamese label (the configured description).
       const attrLabels: Record<string, string> = {};
       (Array.isArray(p.aiAttributes) ? p.aiAttributes : []).forEach((a: any) => { if (a?.name) attrLabels[a.name] = a.description || a.name; });
-      setResult({ ...d, query, fieldTitles, attrLabels });
+      setResult({ ...d, query, fieldTitles, attrLabels, displayRoles });
       setOpen(true);
     } catch (e: any) {
       message.error('AI: ' + (e?.response?.data?.errors?.[0]?.message || e?.response?.data?.message || e?.message || t('thất bại')));
@@ -408,7 +460,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
         {result?.overallRecommendation ? <Alert type="info" showIcon style={{ marginBottom: 10 }} message={t('Tư vấn')} description={result.overallRecommendation} /> : null}
         {(result?.missingInfo || []).length ? <Alert type="warning" showIcon style={{ marginBottom: 10 }} message={t('Thiếu thông tin để chắc chắn')} description={<ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{(result.missingInfo || []).map((m: string, i: number) => <li key={i}>{m}</li>)}</ul>} /> : null}
         {cands.map((c: any, i: number) => (
-          <CandidateCard key={c.tk ?? i} c={c} rank={i + 1} isTop={i === 0} displayFields={p.aiDisplayFields} writeField={p.aiWriteField} fieldTitles={result?.fieldTitles} onPick={pick} />
+          <CandidateCard key={c.tk ?? i} c={c} rank={i + 1} isTop={i === 0} displayRoles={result?.displayRoles} writeField={p.aiWriteField} fieldTitles={result?.fieldTitles} onPick={pick} />
         ))}
         {result?.method === 'keyword' ? <div style={{ fontSize: 12, color: '#aaa', textAlign: 'center', marginTop: 4 }}>{t('Đối chiếu bằng từ khoá (master chưa embed) — kết quả kém chính xác hơn.')}</div> : null}
       </Modal>
@@ -422,7 +474,7 @@ export function registerAiClassifyDeep({ flowEngine, variants, EditableItemModel
   const te = (s: string) => (tExpr ? tExpr(s, { ns: NS }) : s);
 
   try {
-    flowEngine.flowSettings?.registerComponents?.({ PtdlDeepAttributes, PtdlDeepRubric, PtdlDeepRubricRows, PtdlDeepRoleHint, PtdlDeepFeedback, FormTab, 'FormTab.TabPane': FormTab.TabPane });
+    flowEngine.flowSettings?.registerComponents?.({ PtdlDeepAttributes, PtdlDeepRubric, PtdlDeepRubricRows, PtdlDeepDisplayFields, PtdlDeepRoleHint, PtdlDeepFeedback, FormTab, 'FormTab.TabPane': FormTab.TabPane });
   } catch (e) {
     console.warn('[ai-column] classifyDeep: registerComponents failed', e);
   }

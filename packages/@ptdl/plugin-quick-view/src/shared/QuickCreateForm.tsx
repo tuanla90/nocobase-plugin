@@ -4,7 +4,7 @@
  * by each lane (client / client-v2), so this file imports nothing from @nocobase/client* .
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Input, Select, Space, Typography, message } from 'antd';
+import { Alert, Button, Input, Select, Space, Spin, Typography, message } from 'antd';
 import { ColumnSelect } from '@ptdl/shared';
 import { createQuickPage, clientPrefix } from './quickView';
 
@@ -70,10 +70,19 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
   const [icon, setIcon] = useState<string>('TableOutlined');
   const [parentId, setParentId] = useState<number | undefined>(undefined);
   const [creating, setCreating] = useState(false);
+  // Collections + menu groups load async; show a spinner on their selects meanwhile so an in-flight
+  // fetch never looks like an empty dropdown (the group list resolving after the drawer opens was
+  // being mistaken for "no options").
+  const [collectionsLoading, setCollectionsLoading] = useState(true);
+  const [groupsLoading, setGroupsLoading] = useState(true);
 
   useEffect(() => {
-    fetchCollections(api).then(setCollections);
-    fetchGroups(api).then(setGroups);
+    let alive = true;
+    setCollectionsLoading(true);
+    fetchCollections(api).then((c) => { if (alive) { setCollections(c); setCollectionsLoading(false); } });
+    setGroupsLoading(true);
+    fetchGroups(api).then((g) => { if (alive) { setGroups(g); setGroupsLoading(false); } });
+    return () => { alive = false; };
   }, [api]);
 
   const collTitle = useMemo(() => collections.find((c) => c.name === collectionName)?.title || '', [collections, collectionName]);
@@ -122,6 +131,7 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
         <label style={labelStyle}>{t('Collection')}</label>
         <Select
           showSearch
+          loading={collectionsLoading}
           value={collectionName || undefined}
           placeholder={t('Choose a collection')}
           optionFilterProp="label"
@@ -171,10 +181,16 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
           <label style={labelStyle}>{t('Place under menu group')}</label>
           <Select
             allowClear
+            loading={groupsLoading}
             value={parentId}
             placeholder={t('Top level')}
             options={groups.map((g) => ({ value: g.id, label: g.title }))}
             onChange={(v) => setParentId(v)}
+            notFoundContent={
+              groupsLoading
+                ? <span style={{ color: '#999' }}><Spin size="small" /> {t('Loading…')}</span>
+                : <span style={{ color: '#999' }}>{t('No menu groups yet — leave blank for top level')}</span>
+            }
             style={{ width: '100%' }}
           />
         </div>

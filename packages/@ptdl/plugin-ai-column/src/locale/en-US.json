@@ -507,5 +507,15 @@
   " (nên = 100)": " (should be 100)",
   "Bỏ trống = AI tự chấm tổng quát. Khai báo tiêu chí + trọng số → điểm hiện thành thanh nhiều màu theo cấu phần.": "Empty = the AI scores generally. Declare criteria + weights → the score renders as a multi-segment bar by component.",
   "② Tiêu chí CHẤM ĐIỂM ứng viên (tiêu chí + trọng số)": "② Criteria to SCORE candidates (criterion + weight)",
-  "Mỗi dòng: một tiêu chí + điểm tối đa. AI chấm điểm ĐẠT của từng tiêu chí → điểm tổng hiện thành thanh nhiều màu theo cấu phần. Đây là bước CHẤM (khác Attributes = bước HIỂU). Bỏ trống = AI tự chấm tổng quát.": "Each row: one criterion + its max points. The AI scores each criterion → the total renders as a multi-segment bar by component. This is the SCORE step (vs Attributes = the UNDERSTAND step). Empty = the AI scores generally."
+  "Mỗi dòng: một tiêu chí + điểm tối đa. AI chấm điểm ĐẠT của từng tiêu chí → điểm tổng hiện thành thanh nhiều màu theo cấu phần. Đây là bước CHẤM (khác Attributes = bước HIỂU). Bỏ trống = AI tự chấm tổng quát.": "Each row: one criterion + its max points. The AI scores each criterion → the total renders as a multi-segment bar by component. This is the SCORE step (vs Attributes = the UNDERSTAND step). Empty = the AI scores generally.",
+  "Tiêu đề (đậm)": "Title (bold)",
+  "Đường dẫn (breadcrumb)": "Path (breadcrumb)",
+  "Văn bản": "Text",
+  "Nhãn (chip)": "Tag (chip)",
+  "Chọn cột": "Pick a column",
+  "Chọn bảng master trước": "Pick the master collection first",
+  "+ Thêm cột hiển thị": "+ Add display column",
+  "Khai từng cột + vai trò để thẻ ứng viên hiển thị đúng ý (không đoán tự động).": "Declare each column + its role so candidate cards render exactly as intended (no auto-guessing).",
+  "Cột hiển thị trên thẻ ứng viên + vai trò": "Columns shown on candidate cards + role",
+  "Khai từng cột và VAI TRÒ hiển thị: Tiêu đề (đậm) / Đường dẫn (breadcrumb) / Văn bản / Nhãn (chip). Chỉ để xem khi so sánh — KHÔNG ảnh hưởng việc khớp.": "Declare each column and its display ROLE: Title (bold) / Path (breadcrumb) / Text / Tag (chip). For comparison only — does NOT affect matching."
 }

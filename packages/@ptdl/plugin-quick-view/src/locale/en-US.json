@@ -11,6 +11,8 @@
   "Icon": "Icon",
   "Place under menu group": "Place under menu group",
   "Top level": "Top level",
+  "No menu groups yet — leave blank for top level": "No menu groups yet — leave blank for top level",
+  "Loading…": "Loading…",
   "Create page": "Create page",
   "Pick a collection and the columns you want. One click builds a menu page with a table and View / Edit / Add buttons.": "Pick a collection and the columns you want. One click builds a menu page with a table and View / Edit / Add buttons.",
   "Page \"{{title}}\" created": "Page \"{{title}}\" created",
