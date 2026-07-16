@@ -1,0 +1,18 @@
+{
+  "PWA": "PWA",
+  "Configure the app when installing as a PWA (desktop/mobile). Reload the page after saving to update.": "Cấu hình app khi cài PWA (desktop/mobile). Lưu xong tải lại trang để cập nhật.",
+  "App name": "Tên ứng dụng",
+  "Short name (home screen)": "Tên ngắn (màn hình chính)",
+  "Theme color": "Màu chủ đạo",
+  "Background color": "Màu nền",
+  "Icon": "Biểu tượng",
+  "no icon": "chưa có biểu tượng",
+  "Change image": "Đổi ảnh",
+  "Choose image": "Chọn ảnh",
+  "Remove": "Xoá",
+  "No image → the first letter of the app name on the theme color.": "Không có ảnh → dùng chữ cái đầu của tên ứng dụng trên nền màu chủ đạo.",
+  "Save": "Lưu",
+  "Cannot read this image": "Không đọc được ảnh này",
+  "Saved. Reload (Ctrl+Shift+R) to update the installed app.": "Đã lưu. Tải lại trang (Ctrl+Shift+R) để cập nhật app đã cài.",
+  "Save failed": "Lưu thất bại"
+}

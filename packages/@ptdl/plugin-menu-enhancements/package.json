@@ -1,0 +1,25 @@
+{
+  "name": "@ptdl/plugin-menu-enhancements",
+  "displayName": "Menu Enhancements (Sections + Badge)",
+  "displayName.vi-VN": "Menu nâng cao (Nhóm + Badge)",
+  "description": "Sidebar-menu enhancements: turn a menu item into a group title or divider, and show a live count badge on a menu item. Client-only; config stored on the route options (survives). Classic + /v/. (Merges menu-sections + menu-badge.)",
+  "version": "0.4.15",
+  "license": "AGPL-3.0",
+  "main": "dist/server/index.js",
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "2.x"
+  },
+  "devDependencies": {
+    "@ptdl/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "2.x",
+    "react": "18.x",
+    "antd": "5.x"
+  },
+  "keywords": ["Menu"]
+}

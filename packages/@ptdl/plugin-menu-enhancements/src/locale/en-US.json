@@ -1,0 +1,23 @@
+{
+  "Appearance": "Appearance",
+  "Display as": "Display as",
+  "Preview": "Preview",
+  "Menu item": "Menu item",
+  "Convert to section": "Convert to section",
+  "Turn this menu item into a non-clickable heading and/or divider line.": "Turn this menu item into a non-clickable heading and/or divider line.",
+  "Label (optional)": "Label (optional)",
+  "e.g. COMMUNICATION": "e.g. COMMUNICATION",
+  "Section text. Leave empty for a plain line — or, with the line off, the menu item name.": "Section text. Leave empty for a plain line — or, with the line off, the menu item name.",
+  "Text position": "Text position",
+  "Above": "Above",
+  "On line": "On line",
+  "Below": "Below",
+  "Align": "Align",
+  "Left": "Left",
+  "Center": "Center",
+  "Right": "Right",
+  "Show line": "Show line",
+  "Line thickness (px)": "Line thickness (px)",
+  "Color": "Color",
+  "Font size (px)": "Font size (px)"
+}

@@ -1,0 +1,12 @@
+{
+  "Reorder fields": "Reorder fields",
+  "Save": "Save",
+  "Cancel": "Cancel",
+  "Move up": "Move up",
+  "Move down": "Move down",
+  "Field order updated": "Field order updated",
+  "Failed to update field order": "Failed to update field order",
+  "Failed to load fields": "Failed to load fields",
+  "No reorderable fields": "No reorderable fields",
+  "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.": "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout."
+}

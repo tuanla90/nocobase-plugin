@@ -1,0 +1,19 @@
+{
+  "Detail Panel": "Detail Panel",
+  "Side panel": "Side panel",
+  "Panel bên": "Side panel",
+  "Panel chi tiết (bấm dòng)": "Detail panel (row click)",
+  "Panel chi tiết cạnh bên": "Side detail panel",
+  "Bấm dòng để mở panel chi tiết bên phải": "Click a row to open a detail panel on the right",
+  "Nội dung panel": "Panel content",
+  "Popup đã cấu hình (đầy đủ, sửa được)": "Configured popup (full, editable)",
+  "Xem nhanh (chỉ đọc)": "Quick view (read-only)",
+  "Độ rộng panel": "Panel width",
+  "Hẹp (30%)": "Narrow (30%)",
+  "Vừa (40%)": "Medium (40%)",
+  "Rộng (50%)": "Wide (50%)",
+  "Trường hiển thị (để trống = tất cả)": "Fields to show (empty = all)",
+  "Tất cả trường": "All fields",
+  "Bản ghi": "Record",
+  "Không có trường nào để hiển thị": "No fields to display"
+}

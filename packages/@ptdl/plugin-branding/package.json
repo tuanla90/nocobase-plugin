@@ -1,0 +1,25 @@
+{
+  "name": "@ptdl/plugin-branding",
+  "displayName": "Branding & Theme",
+  "displayName.vi-VN": "Thương hiệu & Giao diện",
+  "description": "Branding & Theme: admin skin builder (gradient sidebar/header/cards, presets) plus header tweaks — hide the top menu and make the logo clickable. All applied app-wide via injected global CSS / server-backed config.",
+  "version": "0.4.4",
+  "license": "AGPL-3.0",
+  "main": "dist/server/index.js",
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/actions": "2.x"
+  },
+  "devDependencies": {
+    "@ptdl/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/actions": "2.x",
+    "react": "18.x",
+    "antd": "5.x"
+  },
+  "keywords": ["UI"]
+}

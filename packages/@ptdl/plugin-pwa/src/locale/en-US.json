@@ -1,0 +1,18 @@
+{
+  "PWA": "PWA",
+  "Configure the app when installing as a PWA (desktop/mobile). Reload the page after saving to update.": "Configure the app when installing as a PWA (desktop/mobile). Reload the page after saving to update.",
+  "App name": "App name",
+  "Short name (home screen)": "Short name (home screen)",
+  "Theme color": "Theme color",
+  "Background color": "Background color",
+  "Icon": "Icon",
+  "no icon": "no icon",
+  "Change image": "Change image",
+  "Choose image": "Choose image",
+  "Remove": "Remove",
+  "No image → the first letter of the app name on the theme color.": "No image → the first letter of the app name on the theme color.",
+  "Save": "Save",
+  "Cannot read this image": "Cannot read this image",
+  "Saved. Reload (Ctrl+Shift+R) to update the installed app.": "Saved. Reload (Ctrl+Shift+R) to update the installed app.",
+  "Save failed": "Save failed"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@ptdl/plugin-number-input",
+  "displayName": "Number Input (formatted)",
+  "displayName.zh-CN": "数字输入（格式化）",
+  "displayName.vi-VN": "Ô số có định dạng",
+  "description": "Number field whose form input shows a live thousands separator while typing, with configurable separator style, decimals, prefix and suffix.",
+  "description.zh-CN": "表单输入时实时显示千位分隔符的数字字段，可配置分隔风格、小数位、前缀与后缀。",
+  "description.vi-VN": "Trường số hiển thị dấu ngăn cách hàng nghìn ngay khi gõ trong form; cấu hình kiểu ngăn cách, số thập phân, tiền tố/hậu tố.",
+  "version": "0.1.0",
+  "license": "AGPL-3.0",
+  "main": "./dist/server/index.js",
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  },
+  "devDependencies": {
+    "@formily/react": "2.x",
+    "@formily/shared": "2.x",
+    "antd": "5.x",
+    "react": "18.x"
+  },
+  "keywords": [
+    "Fields"
+  ]
+}

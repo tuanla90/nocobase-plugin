@@ -1,0 +1,21 @@
+{
+    "name": "@ptdl/plugin-layout-containers",
+    "displayName": "Layout Containers (Tabs / Collapse)",
+    "displayName.vi-VN": "Khối bố cục (Tabs / Collapse)",
+    "description": "Layout container blocks: a Tabs block AND a Collapse/Sections block (both infinitely nestable, in-form variants), plus custom styling for the built-in page/popup/view tabs. Persists in the flowModels tree; server-stored per-theme app-wide tab style.",
+    "version": "0.4.1",
+    "license": "AGPL-3.0",
+    "main": "dist/server/index.js",
+    "peerDependencies": {
+        "@nocobase/client": "2.x",
+        "@nocobase/client-v2": "2.x",
+        "@nocobase/flow-engine": "2.x",
+        "@nocobase/server": "2.x"
+    },
+    "devDependencies": {
+        "@ptdl/shared": "*"
+    },
+    "keywords": [
+        "Blocks"
+    ]
+}

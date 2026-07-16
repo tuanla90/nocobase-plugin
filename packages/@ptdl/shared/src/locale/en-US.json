@@ -1,0 +1,53 @@
+{
+  "＋ Chèn cột": "＋ Insert column",
+  "(không có field)": "(no fields)",
+  "＋ Thêm quan hệ ▾": "＋ Add relation ▾",
+
+  "chứa": "contains",
+  "không chứa": "does not contain",
+  "là một trong": "is one of",
+  "không thuộc": "is not one of",
+  "rỗng": "is empty",
+  "khác rỗng": "is not empty",
+  "vào ngày": "on date",
+  "trước ngày": "before date",
+  "sau ngày": "after date",
+
+  "Ngày cụ thể": "Specific date",
+  "Hôm nay": "Today",
+  "Hôm qua": "Yesterday",
+  "7 ngày qua": "Last 7 days",
+  "30 ngày qua": "Last 30 days",
+  "Tháng này": "This month",
+  "Năm nay": "This year",
+
+  "giá trị": "value",
+  "Có": "Yes",
+  "Không": "No",
+  "số": "number",
+  "Nhập giá trị": "Enter value",
+
+  "AI viết hộ": "Let AI write it",
+  "Để AI viết hộ từ mô tả": "Let AI write it from a description",
+  "Sinh code": "Generate",
+  "Viết lại": "Rewrite",
+  "Chèn": "Insert",
+  "Đóng": "Close",
+  "Đã kiểm: hợp lệ": "Checked: valid",
+  "Đã kiểm: hợp lệ (sau {{n}} lần)": "Checked: valid (after {{n}} tries)",
+  "Chưa chạy đúng sau {{n}} lần — bạn có thể sửa tay rồi Chèn": "Still not valid after {{n}} tries — you can edit it manually then Insert",
+  "Bạn có thể chỉnh tay trước khi Chèn.": "You can edit it manually before inserting.",
+  "AI không trả về code": "AI returned no code",
+  "Hãy mô tả bạn muốn gì": "Please describe what you want",
+  "Mô tả bạn muốn (vd: biểu đồ, thẻ KPI, mẫu in, công thức…)": "Describe what you want (e.g. a chart, KPI card, print template, formula…)",
+
+  "Mô tả khối bạn muốn (vd: thẻ KPI tổng doanh thu + số đơn hàng)": "Describe the block you want (e.g. KPI cards: total revenue + order count)",
+  "Mô tả mẫu in bạn muốn (vd: hoá đơn có bảng dòng hàng + tổng tiền bằng chữ)": "Describe the print template you want (e.g. an invoice with a line-items table + total in words)",
+  "Mô tả bạn muốn tính (vd: tổng tiền = số lượng × đơn giá, có định dạng tiền)": "Describe what to compute (e.g. total = quantity × unit price, money-formatted)",
+
+  "Không có kết nối API": "No API connection",
+  "AI không phản hồi": "AI did not respond",
+  "Thiếu bảng hoặc kết nối API": "Missing collection or API connection",
+  "AI không trả về công thức": "AI returned no formula",
+  "chạy thử OK": "test passed"
+}

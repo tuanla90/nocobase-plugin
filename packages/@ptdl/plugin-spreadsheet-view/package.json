@@ -1,0 +1,28 @@
+{
+  "name": "@ptdl/plugin-spreadsheet-view",
+  "displayName": "Spreadsheet view",
+  "displayName.zh-CN": "电子表格视图",
+  "description": "Excel-like data-entry block on top of an existing collection: AG Grid shell with NocoBase field editors inside cells (reuses the EditableItemModel binding registry, so @ptdl field widgets work in cells too). Commits per row via the collection resource API.",
+  "version": "0.2.1",
+  "main": "dist/server/index.js",
+  "dependencies": {
+    "ag-grid-community": "36.0.0",
+    "ag-grid-react": "36.0.0"
+  },
+  "devDependencies": {
+    "@ptdl/shared": "*",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x",
+    "@formily/react": "2.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x"
+  },
+  "keywords": [
+    "Blocks"
+  ]
+}

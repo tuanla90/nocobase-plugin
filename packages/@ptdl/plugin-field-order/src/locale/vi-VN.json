@@ -1,0 +1,12 @@
+{
+  "Reorder fields": "Sắp xếp trường",
+  "Save": "Lưu",
+  "Cancel": "Hủy",
+  "Move up": "Lên",
+  "Move down": "Xuống",
+  "Field order updated": "Đã cập nhật thứ tự trường",
+  "Failed to update field order": "Lỗi khi cập nhật thứ tự trường",
+  "Failed to load fields": "Lỗi khi tải danh sách trường",
+  "No reorderable fields": "Không có trường nào để sắp xếp",
+  "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.": "Kéo để đổi thứ tự rồi bấm Lưu. Áp dụng cho màn này và block/biểu mẫu tạo MỚI; block đã tạo giữ nguyên bố cục."
+}

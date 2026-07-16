@@ -1,0 +1,31 @@
+{
+  "name": "@ptdl/plugin-login-lite",
+  "displayName": "Custom Login",
+  "displayName.vi-VN": "Trang đăng nhập tùy biến",
+  "description": "Custom login page theme, colors, layout, form position and input icons.",
+  "description.vi-VN": "Tùy biến giao diện, màu sắc, bố cục, vị trí form và icon input của trang đăng nhập.",
+  "version": "2.2.0",
+  "main": "dist/server/index.js",
+  "dependencies": {
+    "markdown-it": "14.1.0"
+  },
+  "devDependencies": {
+    "@nocobase/client-v2": "2.x",
+    "@ptdl/shared": "*",
+    "@nocobase/plugin-auth": "1.x || 2.x",
+    "markdown-it": "14.1.0",
+    "react-router-dom": "6.28.1",
+    "react-router": "6.28.1"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/plugin-auth": "1.x || 2.x",
+    "@nocobase/server": "1.x || 2.x"
+  },
+  "keywords": [
+    "login",
+    "auth",
+    "theme"
+  ]
+}
