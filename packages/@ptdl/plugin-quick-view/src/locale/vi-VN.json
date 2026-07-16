@@ -1,0 +1,18 @@
+{
+  "Quick create page": "Tạo trang nhanh",
+  "Quick create a table page": "Tạo nhanh trang bảng",
+  "Quick page": "Trang nhanh",
+  "Collection": "Bộ sưu tập",
+  "Choose a collection": "Chọn bộ sưu tập",
+  "Columns": "Các cột",
+  "Pick the columns to show": "Chọn các cột cần hiển thị",
+  "These columns become the table columns and the fields inside View / Edit / Add.": "Các cột này trở thành cột của bảng và là các trường bên trong Xem / Sửa / Thêm.",
+  "Page title": "Tiêu đề trang",
+  "Icon": "Biểu tượng",
+  "Place under menu group": "Đặt trong nhóm menu",
+  "Top level": "Cấp cao nhất",
+  "Create page": "Tạo trang",
+  "Pick a collection and the columns you want. One click builds a menu page with a table and View / Edit / Add buttons.": "Chọn bộ sưu tập và các cột bạn muốn. Một cú nhấp tạo ra trang menu có bảng cùng nút Xem / Sửa / Thêm.",
+  "Page \"{{title}}\" created": "Đã tạo trang \"{{title}}\"",
+  "Create failed: {{msg}}": "Tạo thất bại: {{msg}}"
+}

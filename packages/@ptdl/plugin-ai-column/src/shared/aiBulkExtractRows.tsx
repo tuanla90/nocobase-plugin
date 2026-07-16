@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Select } from 'antd';
 import { observer } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { getFields } from '@ptdl/shared';
+import { getFields, ColumnSelect } from '@ptdl/shared';
 import { splitMapping } from './aiExtractRows';
 import { withRetry, runBulkPool, newBulkSummary, recordFailure, summaryMessage, isBulkAllOk, maybeWarnLargeBatch } from './bulkRunner';
 import { NS, t } from './i18n';
@@ -40,23 +39,18 @@ const PtdlBulkRowsSource: React.FC<any> = observer((props: any) => {
   }
   useEffect(() => {
     let alive = true;
-    if (coll) getFields(API, coll, dsk).then((fields) => alive && setOptions((fields || []).filter((f: any) => ATTACHMENT_INTERFACES.has(f?.interface)).map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name }))));
+    if (coll) getFields(API, coll, dsk).then((fields) => alive && setOptions((fields || []).filter((f: any) => ATTACHMENT_INTERFACES.has(f?.interface)).map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name, type: f.type, iface: f.interface }))));
     else setOptions([]);
     return () => {
       alive = false;
     };
   }, [coll, dsk]);
   return (
-    <Select
-      allowClear
-      style={{ width: '100%' }}
+    <ColumnSelect
       options={options}
       value={props.value || undefined}
       placeholder={t('(tùy chọn) đọc ảnh/PDF từ field đính kèm — để trống = dùng prompt text')}
-      showSearch
-      optionFilterProp="label"
       onChange={(v) => props.onChange?.(v)}
-      notFoundContent={coll ? t('(không có field attachment nào trong bảng này)') : t('(đặt action trong 1 block bảng để tải field)')}
     />
   );
 });

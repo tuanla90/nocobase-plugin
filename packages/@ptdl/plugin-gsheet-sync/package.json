@@ -6,6 +6,7 @@
   "version": "0.1.1",
   "main": "dist/server/index.js",
   "devDependencies": {
+    "@ptdl/shared": "*",
     "@nocobase/client": "2.x",
     "@nocobase/client-v2": "2.x",
     "@nocobase/flow-engine": "2.x",

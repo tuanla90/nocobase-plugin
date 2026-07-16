@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Select } from 'antd';
 import { observer } from '@formily/react';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { getFields } from '@ptdl/shared';
+import { getFields, ColumnSelect } from '@ptdl/shared';
 import { withRetry, runBulkPool, newBulkSummary, recordFailure, summaryMessage, isBulkAllOk, maybeWarnLargeBatch } from './bulkRunner';
 import { NS, t } from './i18n';
 
@@ -48,7 +47,7 @@ function makeTableFieldSelect(mode: 'source' | 'target'): React.FC<any> {
           if (!alive) return;
           const allow = mode === 'source' ? SCALAR_TYPES : TARGET_TYPES;
           // Exclude raw foreign-key columns (e.g. baoGiaId/sanPhamId) — never a sensible pick.
-          setOptions((fields || []).filter((f: any) => !f.isForeignKey && allow.has(f?.type)).map((f: any) => ({ value: f.name, label: (f.uiSchema?.title || f.name) + (f.type === 'belongsTo' || f.type === 'hasOne' ? ' 🔗' : '') })));
+          setOptions((fields || []).filter((f: any) => !f.isForeignKey && allow.has(f?.type)).map((f: any) => ({ value: f.name, label: (f.uiSchema?.title || f.name) + (f.type === 'belongsTo' || f.type === 'hasOne' ? ' 🔗' : ''), type: f.type, iface: f.interface })));
         });
       else setOptions([]);
       return () => {
@@ -56,15 +55,11 @@ function makeTableFieldSelect(mode: 'source' | 'target'): React.FC<any> {
       };
     }, [coll, dsk]);
     return (
-      <Select
-        style={{ width: '100%' }}
-        showSearch
-        optionFilterProp="label"
+      <ColumnSelect
         options={options}
         value={props.value || undefined}
         placeholder={mode === 'source' ? t('Field đem đối chiếu') : t('Field nhận kết quả (code hoặc 🔗 quan hệ)')}
         onChange={(v) => props.onChange?.(v)}
-        notFoundContent={coll ? undefined : t('(đặt action trong 1 block bảng để tải field)')}
       />
     );
   });

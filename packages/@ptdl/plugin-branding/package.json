@@ -3,7 +3,7 @@
   "displayName": "Branding & Theme",
   "displayName.vi-VN": "Thương hiệu & Giao diện",
   "description": "Branding & Theme: admin skin builder (gradient sidebar/header/cards, presets) plus header tweaks — hide the top menu and make the logo clickable. All applied app-wide via injected global CSS / server-backed config.",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "peerDependencies": {

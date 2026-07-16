@@ -1,7 +1,7 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Alert, Button, Input, InputNumber, Select, Slider, Space, Switch, Tabs, Typography, message } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ColorField, FieldPickerCascader, getCaretElement, insertAtCaret, SettingRow, ControlGrid, SaveBar, PreviewPane, SegmentedGroup } from '@ptdl/shared';
+import { ColorField, FieldPickerCascader, getCaretElement, insertAtCaret, SettingRow, ControlGrid, SaveBar, PreviewPane, SegmentedGroup, ColumnSelect } from '@ptdl/shared';
 import {
   DEFAULT_APPEARANCE,
   getAppearance,
@@ -420,16 +420,13 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                         t={t}
                       />
                     ) : (
-                      <Select
-                        showSearch
-                        allowClear
+                      <ColumnSelect
                         mode="multiple"
                         placeholder={t('Title field(s) — e.g. ID, name')}
                         style={{ flex: 1, maxWidth: 460 }}
                         options={titleFieldOptions(r.collection)}
                         value={r.titleFields}
                         onChange={(v) => setScopeRow(i, { titleFields: v })}
-                        filterOption={filterOpt}
                       />
                     )}
                   </SettingRow>

@@ -389,13 +389,32 @@ export class ScanManager {
     });
   }
 
+  /** Relations referenced by the rule's qty/cost FORMULAS (data.rel.field) → appends, so the JS eval can
+   *  read related data. Only genuine relation prefixes are appended (validated against the collection). */
+  private relationAppends(rule: ScanRule): string[] {
+    const forms: string[] = [];
+    if (rule.qtyMode === 'formula' && rule.qtyFormula) forms.push(rule.qtyFormula);
+    if (rule.costMode === 'formula' && rule.costFormula) forms.push(rule.costFormula);
+    if (!forms.length) return [];
+    let relNames: Set<string>;
+    try {
+      const coll = this.db.getCollection(rule.collectionName);
+      relNames = new Set([...(coll?.fields?.values?.() || [])].filter((f: any) => ['belongsTo', 'hasOne', 'hasMany', 'belongsToMany'].includes(f.type)).map((f: any) => f.name));
+    } catch { return []; }
+    const set = new Set<string>();
+    const re = /data\.([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)/g;
+    for (const f of forms) { let m: RegExpExecArray | null; while ((m = re.exec(f))) { const parts = m[1].split('.'); parts.pop(); if (parts.length && relNames.has(parts[0])) set.add(parts.join('.')); } }
+    return [...set];
+  }
+
   /** Load one partition ordered, run the allocation scan, write the mapped output columns per row. */
   async recomputePartition(rule: ScanRule, partVals: Record<string, any>) {
     const repo = this.db.getRepository(rule.collectionName);
     const filter: Record<string, any> = {};
     for (const c of rule.partitionBy) filter[c] = partVals[c] === undefined ? null : partVals[c];
     const sort = rule.orderBy.map((o) => (o.dir === 'desc' ? '-' : '') + o.field);
-    const rows = await repo.find({ filter, sort });
+    const appends = this.relationAppends(rule);
+    const rows = await repo.find({ filter, sort, appends: appends.length ? appends : undefined });
     if (!rows.length) return;
     const pk = repo.collection?.model?.primaryKeyAttribute || 'id';
     const P = rule.roundPrecision ?? 4;
@@ -468,7 +487,8 @@ export class ScanManager {
         const filter: Record<string, any> = {};
         for (const c of rule.partitionBy) filter[c] = pv[c] === undefined ? null : pv[c];
         if (opts.asOf && timeCol) filter[timeCol] = { $lte: opts.asOf };
-        const rows = await repo.find({ filter, sort });
+        const appends = this.relationAppends(rule);
+        const rows = await repo.find({ filter, sort, appends: appends.length ? appends : undefined });
         if (!rows.length) continue;
         const P = rule.roundPrecision ?? 4;
         const RM = rule.roundMode || 'half_up';

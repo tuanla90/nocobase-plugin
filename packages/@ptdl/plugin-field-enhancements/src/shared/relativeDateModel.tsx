@@ -1,8 +1,8 @@
 import React from 'react';
 import dayjs from 'dayjs';
-import { Select, Slider, Tooltip } from 'antd';
+import { Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
-import { SegmentedGroup, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx } from '@ptdl/shared';
+import { SegmentedGroup, ColumnSelect, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx } from '@ptdl/shared';
 
 /**
  * "Relative date" display widget (field-enhancements).
@@ -135,8 +135,7 @@ const RD_Seg = (props: any) => (
   <SegmentedGroup value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const RD_FieldSelect = (props: any) => (
-  <Select
-    allowClear showSearch optionFilterProp="label" style={{ width: '100%' }}
+  <ColumnSelect
     value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)} options={props.options || []}
     placeholder={props.placeholder}
   />
@@ -242,7 +241,7 @@ export function registerRelativeDateModel(deps: {
               const fields = coll?.getFields?.() || [];
               dateFieldOptions = fields
                 .filter((f: any) => f?.name && f.name !== selfName && DATE_IFACES.has(f.interface))
-                .map((f: any) => ({ label: f.title || f.name, value: f.name }));
+                .map((f: any) => ({ label: f.title || f.name, value: f.name, type: f.type, iface: f.interface }));
             } catch (_) { /* ignore */ }
             return {
               preview: {

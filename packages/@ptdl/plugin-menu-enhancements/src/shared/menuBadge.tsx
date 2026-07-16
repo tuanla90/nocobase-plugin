@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge, Button, Input, Select, Space, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
-import { ColorField, registerSettingsKit, rx, fi, ConditionRow, opNeedsNoValue, onLiveRefresh } from '@ptdl/shared';
+import { ColorField, registerSettingsKit, rx, fi, ConditionRow, opNeedsNoValue, onLiveRefresh, ColumnSelect } from '@ptdl/shared';
 import type { CondMeta } from '@ptdl/shared';
 import { Play, Plus, ArrowLeft, X } from 'lucide-react';
 
@@ -382,10 +382,7 @@ function PtdlNumericFieldSelect(props: any) {
         if (!active) return;
         const list = (res?.data?.data?.fields || [])
           .filter((f: any) => NUMERIC_TYPES.has(f.type))
-          .map((f: any) => {
-            const lbl = cleanLabel(f?.uiSchema?.title, f.name);
-            return { value: f.name, label: lbl !== f.name ? `${lbl} (${f.name})` : f.name };
-          });
+          .map((f: any) => ({ value: f.name, label: cleanLabel(f?.uiSchema?.title, f.name), type: f.type, iface: f.interface }));
         setOpts(list);
       })
       .catch(() => active && setOpts([]));
@@ -394,13 +391,9 @@ function PtdlNumericFieldSelect(props: any) {
     };
   }, [collection, dataSource]);
   return (
-    <Select
-      showSearch
-      allowClear
-      optionFilterProp="label"
+    <ColumnSelect
       placeholder={T('Select a number field')}
-      style={{ width: '100%' }}
-      value={value || undefined}
+      value={value}
       onChange={(v: any) => onChange?.(v ?? '')}
       options={opts}
       notFoundContent={collection ? T('No number fields') : T('Pick a collection first')}

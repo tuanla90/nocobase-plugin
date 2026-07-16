@@ -1,3 +1,6 @@
+// See client-v2 note: entry import so @formily/react (pulled by @ptdl/shared index) is
+// externalized rather than bundled.
+import '@formily/react';
 import { Plugin, useAPIClient } from '@nocobase/client';
 import { createConnectionManager, bootstrapOpenCollectionFields } from '../shared/ConnectionManager';
 import { NS, setRuntimeT } from '../shared/i18n';

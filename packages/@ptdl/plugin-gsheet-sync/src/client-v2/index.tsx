@@ -1,3 +1,7 @@
+// @ptdl/shared's index (via FieldPickerCascader/ColorField) imports @formily/react;
+// a direct entry import makes the bundler externalize it (NocoBase provides it at
+// runtime) instead of trying to bundle it. Same pattern as the Formily-based plugins.
+import '@formily/react';
 import { Plugin, useApp } from '@nocobase/client-v2';
 import { createConnectionManager } from '../shared/ConnectionManager';
 import { NS, setRuntimeT, t } from '../shared/i18n';

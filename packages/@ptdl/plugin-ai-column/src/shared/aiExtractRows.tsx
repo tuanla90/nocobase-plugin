@@ -5,7 +5,7 @@ import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues, syncAutorunRule, gateConfig } from './aiColumn';
 import { extractTypeTagLabel, type MapRow } from './aiExtract';
-import { getFields, fieldJsonMeta, SegmentedGroup } from '@ptdl/shared';
+import { getFields, fieldJsonMeta, SegmentedGroup, ColumnSelect } from '@ptdl/shared';
 import { NS, t } from './i18n';
 
 /**
@@ -177,7 +177,7 @@ const RelationRow: React.FC<{ row: MapRow; scalarMapped: any[]; childScalarOpts:
         {sourceMode === 'transient' && (row.minScore ?? 0) > 0 ? (
           <>
             <span style={{ color: '#888', flex: '0 0 auto' }}>{t('không khớp → lưu thô vào')}</span>
-            <Select allowClear style={{ width: 170 }} options={childScalarOpts} value={row.saveRawTo || undefined} placeholder={t('(không lưu)')} onChange={(v) => onPatch({ saveRawTo: v })} />
+            <ColumnSelect style={{ width: 170 }} options={childScalarOpts} value={row.saveRawTo || undefined} placeholder={t('(không lưu)')} onChange={(v) => onPatch({ saveRawTo: v })} />
           </>
         ) : null}
       </div>
@@ -228,7 +228,7 @@ export const PtdlChildFieldMapping: React.FC<any> = observer((props: any) => {
         setOptions(
           (fields || [])
             .filter((f: any) => !f.isForeignKey && (CHILD_SCALAR_TYPES.has(f?.type) || f?.type === 'belongsTo' || f?.type === 'hasOne'))
-            .map((f: any) => ({ value: f.name, label: (f.uiSchema?.title || f.name) + (f.type === 'belongsTo' || f.type === 'hasOne' ? ' 🔗' : '') })),
+            .map((f: any) => ({ value: f.name, label: (f.uiSchema?.title || f.name) + (f.type === 'belongsTo' || f.type === 'hasOne' ? ' 🔗' : ''), type: f.type, iface: f.interface })),
         );
       });
     } else {
@@ -263,7 +263,7 @@ export const PtdlChildFieldMapping: React.FC<any> = observer((props: any) => {
   // All scalar child columns = candidate targets to save the raw text into on a no-match.
   const childScalarOpts = Object.values(fieldsByName)
     .filter((f: any) => !f.isForeignKey && CHILD_SCALAR_TYPES.has(f?.type))
-    .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name }));
+    .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name, type: f.type, iface: f.interface }));
 
   if (!childColl) {
     return <div style={{ fontSize: 12, color: '#888' }}>{t('Chọn bảng con ở trên trước để hiện danh sách field.')}</div>;
@@ -276,13 +276,11 @@ export const PtdlChildFieldMapping: React.FC<any> = observer((props: any) => {
           <div key={i} style={{ border: '1px solid #eee', borderRadius: 6, padding: 8, marginBottom: 8 }}>
             {/* Line 1: field + type/🔗target(+index dot) + remove */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Select
+              <ColumnSelect
                 style={{ width: 190, flex: '0 0 auto' }}
                 options={options}
                 value={r.field || undefined}
                 placeholder={t('Field trong bảng con')}
-                showSearch
-                optionFilterProp="label"
                 onChange={(v) => pickField(i, v)}
               />
               {r.field ? (
@@ -369,17 +367,13 @@ export const PtdlChildFieldSelect: React.FC<any> = observer((props: any) => {
   fields.forEach((f) => f?.name && (byName[f.name] = f));
   const options =
     role === 'query'
-      ? mappedNames.map((n) => ({ value: n, label: byName[n]?.uiSchema?.title || n }))
+      ? mappedNames.map((n) => ({ value: n, label: byName[n]?.uiSchema?.title || n, type: byName[n]?.type, iface: byName[n]?.interface }))
       : fields
           .filter((f: any) => !f.isForeignKey && CHILD_TARGET_TYPES.has(f?.type))
-          .map((f: any) => ({ value: f.name, label: (f.uiSchema?.title || f.name) + (f.type === 'belongsTo' || f.type === 'hasOne' ? ' 🔗' : '') }));
+          .map((f: any) => ({ value: f.name, label: (f.uiSchema?.title || f.name) + (f.type === 'belongsTo' || f.type === 'hasOne' ? ' 🔗' : ''), type: f.type, iface: f.interface }));
 
   return (
-    <Select
-      style={{ width: '100%' }}
-      allowClear
-      showSearch
-      optionFilterProp="label"
+    <ColumnSelect
       placeholder={
         childColl
           ? role === 'query'

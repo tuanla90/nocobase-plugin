@@ -24,6 +24,10 @@ export function fieldTypeIcon(type?: string, iface?: string): React.ReactNode {
     return <TypeSvg d={<><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></>} />; // link
   if (t === 'json' || t === 'jsonb' || i === 'json')
     return <TypeSvg d={<path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />} />; // code
+  if (['multipleSelect', 'checkboxGroup', 'checkboxes'].includes(i))
+    return <TypeSvg d={<path d="M11 6h10M11 12h10M11 18h10M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17" />} />; // list-checks (multi-select)
+  if (['select', 'radioGroup', 'chinaRegion'].includes(i))
+    return <TypeSvg d={<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />} />; // list (single-select / options)
   return <TypeSvg d={<path d="M4 7V4h16v3M9 20h6M12 4v16" />} />; // text (default)
 }
 
@@ -40,7 +44,8 @@ export function fieldTypeIcon(type?: string, iface?: string): React.ReactNode {
  * antd-only — works in both the /v/ and /admin lanes.
  */
 
-function cleanLabel(title: any, fallback: string): string {
+/** Strip a NocoBase `{{t('…')}}` i18n template down to its readable key (used for titles that aren't compiled). */
+export function cleanLabel(title: any, fallback: string): string {
   if (title == null) return fallback;
   const l = String(title);
   const m = l.match(/\{\{\s*t\(\s*['"]([^'"]+)['"]/);
@@ -349,18 +354,38 @@ export const FieldTokenTextArea: React.FC<FieldTokenTextAreaProps> = ({
 // ─────────────────────────────────────────────────────────────────────────────
 export type ColumnOption = { value: string; label: string; type?: string; iface?: string };
 
-/** Map raw collection fields → {value,label,type} column options (belongsTo → its FK column; adds id + timestamps). */
-export function buildColumnOptions(fields: any[]): ColumnOption[] {
-  const opts: ColumnOption[] = (fields || [])
+/** Map raw collection fields → {value,label,type} column options. A belongsTo picks its FK column but is
+ *  LABELLED `field → <target collection>` (title via `opts.collTitle(target)`, else the target name). */
+export function buildColumnOptions(fields: any[], opts?: { collTitle?: (name?: string) => string | undefined }): ColumnOption[] {
+  const collTitle = opts?.collTitle;
+  const out: ColumnOption[] = (fields || [])
     .filter((f: any) => !['hasMany', 'belongsToMany', 'hasOne'].includes(f.type))
     .map((f: any) => {
-      const ti = f?.uiSchema?.title || f?.name;
-      const base = f?.type === 'belongsTo' && f?.foreignKey ? { value: f.foreignKey, label: `${ti} → ${f.foreignKey}` } : { value: f.name, label: ti };
+      const ti = fieldTitle(f); // clean the `{{t('…')}}` i18n templates (system collections) like the cascader does
+      const base = f?.type === 'belongsTo' && f?.foreignKey
+        ? { value: f.foreignKey, label: `${ti} → ${(collTitle && collTitle(f.target)) || f.target || f.foreignKey}` }
+        : { value: f.name, label: ti };
       return { ...base, type: f?.type, iface: f?.interface };
     });
   const extraType: Record<string, string> = { id: 'bigInt', createdAt: 'date', updatedAt: 'date' };
-  for (const extra of ['id', 'createdAt', 'updatedAt']) if (!opts.some((o) => o.value === extra)) opts.push({ value: extra, label: extra, type: extraType[extra] });
-  return opts;
+  for (const extra of ['id', 'createdAt', 'updatedAt']) if (!out.some((o) => o.value === extra)) out.push({ value: extra, label: extra, type: extraType[extra] });
+  return out;
+}
+
+const collTitleCache = new Map<string, Record<string, string>>();
+/** Fetch (cached) a { collectionName → cleaned title } map so a belongsTo can be labelled by its target. */
+export async function getCollectionTitles(api: any, dataSourceKey?: string): Promise<Record<string, string>> {
+  const ck = dataSourceKey || 'main';
+  if (collTitleCache.has(ck)) return collTitleCache.get(ck) as Record<string, string>;
+  try {
+    const headers = dataSourceKey && dataSourceKey !== 'main' ? { 'X-Data-Source': dataSourceKey } : undefined;
+    const res = await api.request({ url: 'collections:list', params: { paginate: false }, headers });
+    const arr = res?.data?.data;
+    const map: Record<string, string> = {};
+    for (const c of (Array.isArray(arr) ? arr : [])) map[c.name] = cleanLabel(c.title, c.name);
+    collTitleCache.set(ck, map);
+    return map;
+  } catch { return {}; }
 }
 
 /** THE standard two-line option: friendly title on top, raw name (monospace) underneath. Reused by both
@@ -390,30 +415,36 @@ export const columnDropdownProps = { showSearch: true as const, filterOption: co
 export type ColumnSelectProps = {
   value?: string | string[];
   onChange?: (v: any) => void;
-  /** Pre-built options, OR pass `api` + `collectionName` to auto-load the collection's columns. */
-  options?: ColumnOption[];
+  /** Pre-built options (can be GROUPED: [{label, options:[…]}]), OR pass `api` + `collectionName` to self-load. */
+  options?: any[];
   api?: any;
   collectionName?: string;
   dataSourceKey?: string;
+  /** self-load only: keep only fields matching this predicate (numeric/date/attachment restrictions, etc.). */
+  fieldFilter?: (field: any) => boolean;
   mode?: 'single' | 'multiple';
   placeholder?: string;
   allowClear?: boolean;
   disabled?: boolean;
   style?: React.CSSProperties;
+  /** Any other antd Select prop (getPopupContainer, notFoundContent, dropdownRender, open, …) passes straight through. */
+  [key: string]: any;
 };
 
-/** Column picker dropdown (title + raw name, dual-search). Give `options`, or (`api` + `collectionName`) to self-load. */
+/** Column picker dropdown (title + raw name + type icon, dual-search). Give `options` (flat or grouped), or
+ *  (`api` + `collectionName`) to self-load. Extra antd Select props pass through via `...rest`. */
 export const ColumnSelect: React.FC<ColumnSelectProps> = ({
-  value, onChange, options, api, collectionName, dataSourceKey, mode, placeholder, allowClear = true, disabled, style,
+  value, onChange, options, api, collectionName, dataSourceKey, fieldFilter, mode, placeholder, allowClear = true, disabled, style, ...rest
 }) => {
-  const [loaded, setLoaded] = useState<ColumnOption[] | null>(null);
+  const [loaded, setLoaded] = useState<any[] | null>(null);
   useEffect(() => {
     if (options || !api || !collectionName) return;
     let alive = true;
-    getFields(api, collectionName, dataSourceKey)
-      .then((fs) => { if (alive) setLoaded(buildColumnOptions(fs)); })
+    Promise.all([getFields(api, collectionName, dataSourceKey), getCollectionTitles(api, dataSourceKey)])
+      .then(([fs, titles]) => { if (alive) setLoaded(buildColumnOptions(fieldFilter ? (fs || []).filter(fieldFilter) : fs, { collTitle: (n) => titles[n || ''] })); })
       .catch(() => { if (alive) setLoaded([]); });
     return () => { alive = false; };
+    // fieldFilter intentionally out of deps (read at load time) — avoids a refetch loop on inline predicates.
   }, [api, collectionName, dataSourceKey, options]);
   const opts = options || loaded || [];
   const multiple = mode === 'multiple';
@@ -428,6 +459,7 @@ export const ColumnSelect: React.FC<ColumnSelectProps> = ({
       onChange={onChange}
       placeholder={placeholder}
       disabled={disabled}
+      {...rest}
     />
   );
 };

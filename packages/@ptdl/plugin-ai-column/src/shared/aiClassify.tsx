@@ -3,7 +3,7 @@ import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Tag, Tooltip
 import { observer, useForm } from '@formily/react';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues } from './aiColumn';
-import { FieldTokenTextArea, getFields } from '@ptdl/shared';
+import { FieldTokenTextArea, getFields, ColumnSelect } from '@ptdl/shared';
 import { NS, t } from './i18n';
 
 /**
@@ -169,13 +169,13 @@ export const PtdlQueryFieldsMulti: React.FC<any> = observer((props: any) => {
   const [opts, setOpts] = useState<any[]>([]);
   useEffect(() => {
     let alive = true;
-    if (coll) getFields(API, coll, dsk).then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: x.uiSchema?.title || x.name }))));
+    if (coll) getFields(API, coll, dsk).then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: x.uiSchema?.title || x.name, type: x.type, iface: x.interface }))));
     else setOpts([]);
     return () => {
       alive = false;
     };
   }, [coll, dsk]);
-  return <Select mode="multiple" style={{ width: '100%' }} showSearch optionFilterProp="label" options={opts} value={Array.isArray(props.value) ? props.value : []} onChange={(v) => props.onChange?.(v)} placeholder={t('Chọn cột trên bản ghi để đem đối chiếu (vd: tên, mô tả)')} />;
+  return <ColumnSelect mode="multiple" options={opts} value={Array.isArray(props.value) ? props.value : []} onChange={(v) => props.onChange?.(v)} placeholder={t('Chọn cột trên bản ghi để đem đối chiếu (vd: tên, mô tả)')} />;
 });
 
 /** Dropdown(s) of the MASTER's scalar columns. `mode='multiple'` → several columns joined for display. */
@@ -186,18 +186,14 @@ function makeMasterColSelect(multiple: boolean): React.FC<any> {
     const [opts, setOpts] = useState<any[]>([]);
     useEffect(() => {
       let alive = true;
-      if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')' }))));
+      if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')', type: x.type, iface: x.interface }))));
       else setOpts([]);
       return () => {
         alive = false;
       };
     }, [master.collection]);
     return (
-      <Select
-        style={{ width: '100%' }}
-        allowClear
-        showSearch
-        optionFilterProp="label"
+      <ColumnSelect
         mode={multiple ? 'multiple' : undefined}
         options={opts}
         value={multiple ? (Array.isArray(props.value) ? props.value : []) : props.value || undefined}

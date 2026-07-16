@@ -31,3 +31,7 @@ node "$NM/@nocobase/build/bin/nocobase-build.js" "$PKG" --tar --no-dts
 
 echo "=== TAR OUTPUT ==="
 find "$ROOT/storage/tar" -type f -name "*icon-kit*" 2>/dev/null || true
+
+# inject /v/ + /admin client-lane markers (client.js/client-v2.js) — NocoBase skips client bundles without them.
+__TGZ=$(find "$ROOT/storage/tar" -type f -name "$(basename "$PKG")-*.tgz" 2>/dev/null | sort -V | tail -1)
+if [ -n "$__TGZ" ]; then bash "$ROOT/recipes/add-markers.sh" "$__TGZ"; fi

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Table, Button, Modal, Select, Input, InputNumber, Space, message, Popconfirm, Tag, Tooltip, Tabs, Radio } from 'antd';
 import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CloseOutlined } from '@ant-design/icons';
-import { getFields, FieldPickerCascader, getCaretElement, insertAtCaret, columnDropdownProps, SegmentedGroup } from '@ptdl/shared';
+import { getFields, buildColumnOptions, getCollectionTitles, cleanLabel, FieldPickerCascader, getCaretElement, insertAtCaret, columnDropdownProps, SegmentedGroup } from '@ptdl/shared';
 import { excelToSql, isTranspileError } from './excelToSql';
 import { t } from './i18n';
 
@@ -69,7 +69,7 @@ const OUT_KEYS = OUT_GROUPS.flatMap((g) => g.fields);
 export function ScanCalcManager({ api }: { api: any }) {
   const [list, setList] = useState<Row[]>([]);
   const [collections, setCollections] = useState<{ value: string; label: string }[]>([]);
-  const [colsCache, setColsCache] = useState<Record<string, { value: string; label: string }[]>>({});
+  const [colsCache, setColsCache] = useState<Record<string, { value: string; label: string; type?: string; iface?: string }[]>>({});
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
@@ -116,21 +116,22 @@ export function ScanCalcManager({ api }: { api: any }) {
   };
   const loadCollections = async () => {
     try { const arr = unwrap(await api.request({ url: 'collections:list', method: 'get', params: { paginate: false } }));
-      setCollections((Array.isArray(arr) ? arr : []).map((c: any) => ({ value: c.name, label: c.title || c.name }))); } catch (e) { /* ignore */ }
+      setCollections((Array.isArray(arr) ? arr : []).map((c: any) => ({ value: c.name, label: cleanLabel(c.title, c.name) }))); } catch (e) { /* ignore */ }
   };
   useEffect(() => { load(); loadCollections(); }, []);
 
   const loadCols = async (coll?: string) => {
     if (!coll || colsCache[coll]) return;
     const fs = await getFields(api, coll);
-    const opts = (fs || []).filter((f: any) => !['hasMany', 'belongsToMany', 'hasOne'].includes(f.type))
-      .map((f: any) => { const ti = f.uiSchema?.title || f.name; return f.type === 'belongsTo' && f.foreignKey ? { value: f.foreignKey, label: `${ti} → ${f.foreignKey}` } : { value: f.name, label: ti }; });
-    for (const extra of ['id', 'createdAt', 'updatedAt']) if (!opts.some((o) => o.value === extra)) opts.push({ value: extra, label: extra });
+    // shared builder → each option carries {value,label,type,iface} so the dropdowns show the data-type icon.
+    // collTitle labels a belongsTo by its TARGET collection ("Nhóm rule → HH Đơn hàng") not the FK column.
+    const titles = await getCollectionTitles(api);
+    const opts = buildColumnOptions(fs, { collTitle: (n) => titles[n || ''] });
     setColsCache((p) => ({ ...p, [coll]: opts }));
   };
   useEffect(() => { if (modal?.collection) loadCols(modal.collection); }, [modal?.collection]);
   const cols = modal?.collection ? colsCache[modal.collection] || [] : [];
-  const pick = cols.map((o) => ({ value: o.value, label: o.label, isLeaf: true }));
+  const pick = cols.map((o) => ({ ...o, isLeaf: true }));
   const set = (patch: Partial<Row>) => setModal((p) => ({ ...(p as any), ...patch }));
 
   const recompute = async (r: Row) => {
@@ -314,7 +315,7 @@ export function ScanCalcManager({ api }: { api: any }) {
                       <div style={{ marginTop: 6 }}><ColSelect value={m.qtyField} options={cols} onChange={(v) => set({ qtyField: v })} placeholder={t('Cột lượng (luôn ≥ 0)')} /></div>
                       <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #999)', marginTop: 2 }}>{t('Dòng có cột phân loại = giá trị trên ⇒ VÀO (+); còn lại ⇒ RA (−).')}</div>
                     </>)}
-                    {qm === 'formula' && <FormulaInput value={m.qtyFormula} options={cols} onChange={(v) => set({ qtyFormula: v })} placeholder={'IF(data.type=="in", data.qty, -data.qty)'} />}
+                    {qm === 'formula' && <FormulaInput api={api} collectionName={m.collection} value={m.qtyFormula} onChange={(v) => set({ qtyFormula: v })} placeholder={'IF(data.type=="in", data.qty, -data.qty)'} />}
                   </F>
 
                   <F label={t('Đơn giá dòng nhập')} tip={t('Đơn giá của dòng NHẬP (dòng xuất bỏ trống — hệ thống tự suy giá vốn xuất). Nếu dòng nhập thiếu đơn giá, xử lý theo mục "Thiếu đơn giá" ở tab Nâng cao.')}>
@@ -322,7 +323,7 @@ export function ScanCalcManager({ api }: { api: any }) {
                       options={[{ label: t('Cột'), value: 'column' }, { label: t('Công thức'), value: 'formula' }]} />
                     {cm === 'column'
                       ? <ColSelect value={m.costField} options={cols} onChange={(v) => set({ costField: v })} placeholder={t('Chọn cột đơn giá…')} />
-                      : <FormulaInput value={m.costFormula} options={cols} onChange={(v) => set({ costFormula: v })} placeholder={'data.amount / data.qty'} />}
+                      : <FormulaInput api={api} collectionName={m.collection} value={m.costFormula} onChange={(v) => set({ costFormula: v })} placeholder={'data.amount / data.qty'} />}
                   </F>
 
                   {m.accumulator === 'fefo' && <F label={t('Cột hạn dùng (sắp lô theo hạn — FEFO)')} req tip={t('FEFO xuất lô có HẠN DÙNG sớm nhất trước. Chọn cột ngày hết hạn của lô.')}><ColSelect value={m.expiryField} options={cols} onChange={(v) => set({ expiryField: v })} placeholder={t('Chọn cột…')} /></F>}
@@ -425,17 +426,21 @@ const SqlPreview: React.FC<{ formula?: string; columns: any[] }> = ({ formula, c
   );
 };
 
-// Excel-style formula input (references columns as `data.<field>`, IF(), etc.) — used for qty / cost formulas.
-const FormulaInput: React.FC<{ value?: string; options: any[]; onChange: (v: string) => void; placeholder?: string }> = ({ value, options, onChange, placeholder }) => {
+// Excel-style formula input (references columns as `data.<field>`, IF(), etc.). When `api`+`collectionName`
+// are given it uses the LAZY cascader → drills relations and inserts the full `data.<rel>.<field>` path.
+const FormulaInput: React.FC<{ value?: string; options?: any[]; onChange: (v: string) => void; placeholder?: string; api?: any; collectionName?: string }> = ({ value, options, onChange, placeholder, api, collectionName }) => {
   const taRef = useRef<any>(null);
-  const insert = (path: string[]) => { const c = path[path.length - 1]; if (c) insertAtCaret(getCaretElement(taRef.current), 'data.' + c, value || '', onChange); };
+  const lazy = !!(api && collectionName);
+  const insert = (path: string[]) => { if (!path.length) return; const token = 'data.' + (lazy ? path.join('.') : path[path.length - 1]); insertAtCaret(getCaretElement(taRef.current), token, value || '', onChange); };
   return (
     <div>
       <Input.TextArea ref={taRef} value={value} onChange={(e) => onChange(e.target.value)} autoSize={{ minRows: 2, maxRows: 5 }}
         style={{ fontFamily: 'monospace', fontSize: 12.5 }} placeholder={placeholder} />
       <div style={{ marginTop: 4, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <FieldPickerCascader options={options} onPick={insert} label={t('＋ Chèn cột')} />
-        <span style={{ fontSize: 11.5, color: 'var(--colorTextTertiary, #999)' }}>{t('Công thức kiểu Excel: data.<cột>, IF(), v.v.')}</span>
+        {lazy
+          ? <FieldPickerCascader api={api} collectionName={collectionName} includeToMany maxDepth={4} onPick={insert} label={t('＋ Chèn cột / quan hệ')} />
+          : <FieldPickerCascader options={options} onPick={insert} label={t('＋ Chèn cột')} />}
+        <span style={{ fontSize: 11.5, color: 'var(--colorTextTertiary, #999)' }}>{lazy ? t('Excel: data.<cột>, data.<quan hệ>.<cột>, IF()…') : t('Công thức kiểu Excel: data.<cột>, IF(), v.v.')}</span>
       </div>
     </div>
   );

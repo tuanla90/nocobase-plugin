@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { InputNumber, Select, Switch, Slider, Input } from 'antd';
-import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { InputNumber, Switch, Slider, Input } from 'antd';
+import { SegmentedGroup, ColumnSelect, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -127,8 +127,7 @@ const N_Slider = (props: any) => {
   );
 };
 const N_FieldSelect = (props: any) => (
-  <Select
-    allowClear showSearch optionFilterProp="label" style={{ width: '100%' }}
+  <ColumnSelect
     value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)} options={props.options || []}
     placeholder="Chọn cột…"
   />
@@ -195,7 +194,7 @@ export function registerNumberFieldModel(deps: {
               const fields = coll?.getFields?.() || [];
               fieldOptions = fields
                 .filter((f: any) => f?.name && f.name !== selfName)
-                .map((f: any) => ({ label: f.title || f.name, value: f.name }));
+                .map((f: any) => ({ label: f.title || f.name, value: f.name, type: f.type, iface: f.interface }));
             } catch (_) { /* ignore */ }
             return {
               preview: {

@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { formatNumber, SettingsGrid, CollapsibleSection, ColorField, fi, rx, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
+import { formatNumber, SettingsGrid, CollapsibleSection, ColorField, fi, rx, SEG_PROPS, SegmentedGroup, ColumnSelect } from '@ptdl/shared';
 
 /** The theme primary color (real token, not the CSS-var fallback which may be missing → wrong blue). */
 function usePrimary(override?: string): string {
@@ -1035,6 +1035,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
         'FormTab.TabPane': FormTab.TabPane,
         PtdlColor: ColorField,
         PtdlInput: (p: any) => <Input {...p} value={p.value} onChange={(e: any) => p.onChange?.(e?.target?.value)} />,
+        ColumnSelect,
       });
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -1088,9 +1089,11 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
           // Column `title` from getColumns() is a wrapped React element, not a string → fall back showed the
           // raw field name. Resolve the display label from the collection field's uiSchema title instead.
           const fieldTitleMap: Record<string, string> = {};
+          const fieldTypeMap: Record<string, { type?: string; iface?: string }> = {};
           try {
             ((ctx?.model?.collection?.getFields?.() as any[]) || []).forEach((f) => {
               fieldTitleMap[f.name] = f?.uiSchema?.title || f?.title || f?.name;
+              fieldTypeMap[f.name] = { type: f?.type, iface: f?.interface };
             });
           } catch (e) {
             /* ignore */
@@ -1098,7 +1101,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
           const labelOf = (c: any) => fieldTitleMap[c.dataIndex] || (typeof c.title === 'string' ? c.title : String(c.dataIndex));
           const cols = ((ctx?.model?.getColumns?.() as any[]) || [])
             .filter((c) => c && c.dataIndex)
-            .map((c) => ({ label: labelOf(c), value: c.dataIndex }));
+            .map((c) => ({ label: labelOf(c), value: c.dataIndex, ...(fieldTypeMap[c.dataIndex] || {}) }));
           const relOptions = buildRelOptions(ctx?.model);
           const lookupFieldOptions = flattenLookupOptions(relOptions);
           const cardFieldOptions = [...cols, ...lookupFieldOptions];
@@ -1125,7 +1128,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
                         ],
                       },
                     }),
-                    qtyField: fi(t('Cột số lượng (+/−)'), 'Select', {
+                    qtyField: fi(t('Cột số lượng (+/−)'), 'ColumnSelect', {
                       componentProps: { options: [{ label: t('— Không —'), value: '' }, ...cols], allowClear: true, style: { width: '100%' } },
                     }),
                     stepperGrid: {
@@ -1184,7 +1187,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
                       'x-reactions': rx((v: any) => !!v.bridgeEnabled),
                       properties: {
                         bridgeChannel: fi(t('Tên kênh'), 'PtdlInput', { componentProps: { placeholder: 'cart' } }),
-                        bridgeTargetKey: fi(t('Cột/quan hệ khóa khớp (vd Sản phẩm)'), 'Select', { componentProps: { options: cols, allowClear: true, style: { width: '100%' } } }),
+                        bridgeTargetKey: fi(t('Cột/quan hệ khóa khớp (vd Sản phẩm)'), 'ColumnSelect', { componentProps: { options: cols, allowClear: true, style: { width: '100%' } } }),
                         bridgeSourceKey: fi(t('Khóa trên bản ghi nguồn'), 'PtdlInput', { componentProps: { placeholder: 'id' } }),
                       },
                     },

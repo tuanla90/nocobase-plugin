@@ -4,7 +4,7 @@ import { Select, Input, Button, Avatar, Switch } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { bindDisplayField } from './displayBinding';
-import { SegmentedGroup, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx } from '@ptdl/shared';
+import { SegmentedGroup, ColumnSelect, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx } from '@ptdl/shared';
 
 /**
  * No-code widget: field QUAN HỆ (m2o/o2o/oho/obo/o2m/m2m) → dropdown "rich".
@@ -137,8 +137,8 @@ const RS_Seg = (props: any) => (
   <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const RS_FieldSelect = (props: any) => (
-  <Select allowClear showSearch optionFilterProp="label" style={{ width: '100%' }}
-    value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} placeholder={props.placeholder || 'Field…'} />
+  <ColumnSelect value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)}
+    options={props.options || []} placeholder={props.placeholder || 'Field…'} />
 );
 const RS_Html = (props: any) => {
   const taRef = useRef<any>(null);
@@ -253,7 +253,7 @@ export function registerRichSelectModel(deps: {
             let fieldOptions: any[] = [];
             try {
               const fields = target?.getFields?.() || [];
-              fieldOptions = fields.filter((f: any) => f?.name).map((f: any) => ({ label: f.title || f.name, value: f.name }));
+              fieldOptions = fields.filter((f: any) => f?.name).map((f: any) => ({ label: f.title || f.name, value: f.name, type: f.type, iface: f.interface }));
             } catch (_) { /* ignore */ }
             // Load 1 record thật của bảng đích để preview (không bịa data).
             const loadSample = async () => {

@@ -3,6 +3,7 @@
 // modal and the "Print preview" block.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Empty, Select, Space, Spin, message } from 'antd';
+import { ColumnSelect } from '@ptdl/shared';
 import { attachmentFieldsOf, savePdfToField } from './pdfSave';
 import { buildPrintDocument } from './printDoc';
 import {
@@ -250,16 +251,17 @@ export const PrintConfigPanel: React.FC<PrintConfigPanelProps> = ({
         <span style={{ flex: 1 }} />
         {attFields.length > 0 && (
           <Space.Compact size="small">
-            <Select
+            <ColumnSelect
               size="small"
               style={{ minWidth: 180 }}
               placeholder={t('Field đính kèm...')}
-              allowClear
               value={targetField}
               onChange={(v) => setTargetField(v)}
               options={attFields.map((f: any) => ({
                 value: f.name,
                 label: cleanTitle(f?.uiSchema?.title ?? f?.options?.uiSchema?.title, f.name),
+                type: f.type ?? f?.options?.type,
+                iface: f.interface ?? f?.options?.interface,
               }))}
             />
             <Button

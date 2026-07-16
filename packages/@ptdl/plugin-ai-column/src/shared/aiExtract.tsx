@@ -3,7 +3,7 @@ import { Button, Input, Select, Tag, Tooltip, message } from 'antd';
 import { observer } from '@formily/react';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues, syncAutorunRule, gateConfig } from './aiColumn';
-import { buildFieldCascaderOptions, getFields, fieldJsonMeta } from '@ptdl/shared';
+import { buildFieldCascaderOptions, getFields, fieldJsonMeta, ColumnSelect } from '@ptdl/shared';
 import { NS, t } from './i18n';
 
 /**
@@ -145,15 +145,12 @@ export const PtdlExtractMapping: React.FC<any> = observer((props: any) => {
     <div>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-          <Select
+          <ColumnSelect
             style={{ width: 200, flex: '0 0 auto' }}
             options={options}
             value={r.field || undefined}
             placeholder={t('Field đích')}
-            showSearch
-            optionFilterProp="label"
             onChange={(v) => pickField(i, v)}
-            notFoundContent={coll ? undefined : t('(đang tải field...)')}
           />
           {r.field ? (
             <Tag style={{ flex: '0 0 auto', margin: 0 }} title={t('Kiểu dữ liệu tự nhận diện từ field đích')}>

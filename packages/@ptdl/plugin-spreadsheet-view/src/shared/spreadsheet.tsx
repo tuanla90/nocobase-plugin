@@ -17,7 +17,7 @@ import React from 'react';
 // Bare import GIỮ NGUYÊN: nocobase-build chỉ externalize package mà SOURCE plugin import trực tiếp.
 // ag-grid-react cần react-dom (createPortal); không có dòng này react-dom bị bundle thành stub rỗng.
 import 'react-dom';
-import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx, SegmentedGroup } from '@ptdl/shared';
+import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx, SegmentedGroup, ColumnSelect } from '@ptdl/shared';
 import {
   ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight,
   Copy, Download, ExternalLink, Eye, EyeOff, Flag, Pencil, Pin, Play, Plus, Send, SlidersHorizontal,
@@ -1191,10 +1191,10 @@ function PtdlColStylePanel({ model, fieldName }: any) {
     model.setColCfg(fieldName, patch);
   };
   // Cột số dùng được cho Ratio (tử/mẫu): field số thật + cột formula ảo.
-  const numCols: Array<{ value: string; label: string }> = [];
+  const numCols: Array<{ value: string; label: string; type?: string; iface?: string }> = [];
   for (const f of model.context.collection?.getFields?.() || []) {
     if (['integer', 'number', 'percent'].includes(f?.interface))
-      numCols.push({ value: f.name, label: (typeof f.title === 'string' && f.title) || f.name });
+      numCols.push({ value: f.name, label: (typeof f.title === 'string' && f.title) || f.name, type: f.type, iface: f.interface });
   }
   for (const fc of model.props.ptdlFormulas || [])
     if (fc?.key) numCols.push({ value: `__f_${fc.key}`, label: `ƒ ${fc.title || fc.key}` });
@@ -1409,9 +1409,7 @@ function PtdlColStylePanel({ model, fieldName }: any) {
       {cfg.summary === 'ratio' ? (
         <>
           <Row label={t('Tử số (A)')}>
-            <AntSelect
-              showSearch
-              optionFilterProp="label"
+            <ColumnSelect
               getPopupContainer={pop}
               style={{ width: 140 }}
               placeholder={t('chọn cột')}
@@ -1421,9 +1419,7 @@ function PtdlColStylePanel({ model, fieldName }: any) {
             />
           </Row>
           <Row label={t('Mẫu số (B)')}>
-            <AntSelect
-              showSearch
-              optionFilterProp="label"
+            <ColumnSelect
               getPopupContainer={pop}
               style={{ width: 140 }}
               placeholder={t('chọn cột')}
@@ -5097,6 +5093,8 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
             .map((f: any) => ({
               label: typeof f.title === 'string' && f.title ? `${f.title} (${f.name})` : f.name,
               value: f.name,
+              type: f.type,
+              iface: f.interface,
             }));
           // House style @ptdl: 4 section CollapsibleSection + SettingsGrid 2 cột; mô tả dài → tooltip ⓘ
           // trên nhãn (decorator) thay vì description chiếm chỗ. Tên field GIỮ NGUYÊN (void container không
@@ -5122,10 +5120,9 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
               fields: {
                 type: 'array',
                 title: te('Cột hiển thị'),
-                enum: options,
                 ...dec(te('Để trống = hiện mọi cột được hỗ trợ')),
-                'x-component': 'Select',
-                'x-component-props': { mode: 'multiple', allowClear: true, placeholder: te('Tất cả cột (mặc định)') },
+                'x-component': 'ColumnSelect',
+                'x-component-props': { mode: 'multiple', allowClear: true, placeholder: te('Tất cả cột (mặc định)'), options },
               },
               g1: grid({
                 height: {
@@ -5143,17 +5140,23 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
               groupBy: {
                 type: 'string',
                 title: te('Nhóm theo'),
-                enum: (ctx.collection?.getFields?.() || [])
-                  .filter((f: any) =>
-                    ['select', 'radioGroup', 'm2o', 'input', 'checkbox', 'boolean', 'email'].includes(f?.interface),
-                  )
-                  .map((f: any) => ({
-                    label: typeof f.title === 'string' && f.title ? f.title : f.name,
-                    value: f.name,
-                  })),
                 ...dec(te('Nhóm theo 1–3 field, THỨ TỰ CHỌN = cấp 1 → cấp N — bảng tự tải toàn bộ dòng (tới Group load limit)')),
-                'x-component': 'Select',
-                'x-component-props': { mode: 'multiple', allowClear: true, placeholder: te('Không nhóm') },
+                'x-component': 'ColumnSelect',
+                'x-component-props': {
+                  mode: 'multiple',
+                  allowClear: true,
+                  placeholder: te('Không nhóm'),
+                  options: (ctx.collection?.getFields?.() || [])
+                    .filter((f: any) =>
+                      ['select', 'radioGroup', 'm2o', 'input', 'checkbox', 'boolean', 'email'].includes(f?.interface),
+                    )
+                    .map((f: any) => ({
+                      label: typeof f.title === 'string' && f.title ? f.title : f.name,
+                      value: f.name,
+                      type: f.type,
+                      iface: f.interface,
+                    })),
+                },
               },
               g2: grid({
                 groupDisplay: {

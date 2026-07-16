@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Select } from 'antd';
 import { observer } from '@formily/react';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { getFields } from '@ptdl/shared';
+import { getFields, ColumnSelect } from '@ptdl/shared';
 import { PtdlBulkPromptInput } from './aiBulkGenerate';
 import { PtdlImageModelSelect, PtdlVoiceModelSelect, PtdlVoiceSelect, PtdlVoiceStyleInput, PtdlVoicePreview } from './aiImage';
 import { withRetry, runBulkPool, newBulkSummary, recordFailure, summaryMessage, isBulkAllOk, maybeWarnLargeBatch } from './bulkRunner';
@@ -70,7 +69,7 @@ const PtdlBulkTargetAttachment: React.FC<any> = observer((props: any) => {
         if (!alive) return;
         const opts = (fields || [])
           .filter((f: any) => ATTACHMENT_INTERFACES.has(f?.interface))
-          .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name }));
+          .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name, type: f.type, iface: f.interface }));
         setOptions(opts);
       });
     } else {
@@ -82,15 +81,11 @@ const PtdlBulkTargetAttachment: React.FC<any> = observer((props: any) => {
   }, [coll, dsk]);
 
   return (
-    <Select
-      style={{ width: '100%' }}
+    <ColumnSelect
       options={options}
       value={props.value || undefined}
       placeholder={t('Chọn field đích để ghi media (Attachment)')}
-      showSearch
-      optionFilterProp="label"
       onChange={(v) => props.onChange?.(v)}
-      notFoundContent={coll ? t('(không có field attachment nào trong bảng này)') : t('(đặt action trong 1 block bảng để tải field)')}
     />
   );
 });

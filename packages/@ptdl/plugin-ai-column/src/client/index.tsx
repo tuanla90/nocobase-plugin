@@ -10,6 +10,7 @@ import { registerAiColumn } from '../shared/aiColumn';
 import { registerAiExtract } from '../shared/aiExtract';
 import { registerAiExtractRows } from '../shared/aiExtractRows';
 import { registerAiClassify } from '../shared/aiClassify';
+import { registerAiClassifyDeep } from '../shared/aiClassifyDeep';
 import { registerAiImage, registerAiVoice } from '../shared/aiImage';
 import { registerBulkGenerate } from '../shared/aiBulkGenerate';
 import { registerBulkExtract } from '../shared/aiBulkExtract';
@@ -91,6 +92,13 @@ export class PluginAiColumnClient extends Plugin {
     registerAiClassify({
       flowEngine: fe,
       variants: [{ Base: InputFieldModel, modelName: 'AiClassifyFieldModel', interfaces: ['input'], label: te('AI phân loại') }],
+      EditableItemModel,
+      api,
+      tExpr,
+    });
+    registerAiClassifyDeep({
+      flowEngine: fe,
+      variants: [{ Base: InputFieldModel, modelName: 'AiClassifyDeepFieldModel', interfaces: ['input'], label: te('AI phân loại chuyên sâu') }],
       EditableItemModel,
       api,
       tExpr,

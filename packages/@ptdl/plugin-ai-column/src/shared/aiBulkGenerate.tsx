@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Select } from 'antd';
 import { observer } from '@formily/react';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { FieldTokenTextArea, buildFieldCascaderOptions, getFields, fieldJsonMeta } from '@ptdl/shared';
+import { FieldTokenTextArea, buildFieldCascaderOptions, getFields, fieldJsonMeta, ColumnSelect } from '@ptdl/shared';
 import { withRetry, runBulkPool, newBulkSummary, recordFailure, summaryMessage, isBulkAllOk, maybeWarnLargeBatch } from './bulkRunner';
 import { NS, t } from './i18n';
 
@@ -60,15 +59,11 @@ const PtdlBulkTargetField: React.FC<any> = observer((props: any) => {
   }, [coll, dsk]);
 
   return (
-    <Select
-      style={{ width: '100%' }}
+    <ColumnSelect
       options={options}
       value={props.value || undefined}
       placeholder={t('Chọn field để ghi kết quả')}
-      showSearch
-      optionFilterProp="label"
       onChange={(v) => props.onChange?.(v)}
-      notFoundContent={coll ? undefined : t('(đặt action trong 1 block bảng để tải field)')}
     />
   );
 });

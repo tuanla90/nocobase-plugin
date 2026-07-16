@@ -211,20 +211,21 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
         // arrays. Only fill fields the user hasn't already touched (`vals[name] == null`).
         if (!actionModel.__ptdlDefaultsApplied) {
           actionModel.__ptdlDefaultsApplied = true;
-          const defaults = (props && props.ptdlDefaults) || {};
+          const cols0 = (props && props.ptdlColumns) || {};
           const vals0 = actionModel.__ptdlFilterVals || (actionModel.__ptdlFilterVals = {});
           let seeded = false;
           names.forEach((name) => {
             const dm = map[name];
-            if (!dm || defaults[name] == null || vals0[name] != null) return;
-            if (dm.kind === 'date' && typeof defaults[name] === 'string') {
-              const r = presetRange(defaults[name]);
+            const dflt = cols0[name] && cols0[name].default;
+            if (!dm || dflt == null || vals0[name] != null) return;
+            if (dm.kind === 'date' && typeof dflt === 'string') {
+              const r = presetRange(dflt);
               if (r) {
                 vals0[name] = [r[0].startOf('day').toISOString(), r[1].endOf('day').toISOString()];
                 seeded = true;
               }
-            } else if (Array.isArray(defaults[name]) && defaults[name].length) {
-              vals0[name] = defaults[name];
+            } else if (Array.isArray(dflt) && dflt.length) {
+              vals0[name] = dflt;
               seeded = true;
             }
           });
@@ -246,7 +247,7 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
   }, [actionModel, key]);
 
   const w = WIDTH_PX[props.ptdlControlWidth] || 180;
-  const phMap: Record<string, string> = (props && props.ptdlPlaceholders) || {};
+  const cols: Record<string, { default?: any; placeholder?: string }> = (props && props.ptdlColumns) || {};
   const vals = actionModel.__ptdlFilterVals || (actionModel.__ptdlFilterVals = {});
   const setVal = (name: string, v: any) => {
     if (v == null || (Array.isArray(v) && !v.length)) delete vals[name];
@@ -288,7 +289,7 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
         const m = meta[name];
         // meta still loading → a disabled placeholder so the control is visible immediately (not blank).
         if (!m) return <Select key={name} disabled placeholder={name} style={{ minWidth: w }} />;
-        const ph = phMap[name] || m.title;
+        const ph = (cols[name] && cols[name].placeholder) || m.title;
         if (m.kind === 'date') {
           const s = vals[name];
           const value: any = Array.isArray(s) && s[0] && s[1] ? [dayjs(s[0]), dayjs(s[1])] : null;
@@ -378,63 +379,45 @@ function FilterFieldPicker(p: any) {
   );
 }
 
-/** Per-column custom placeholder editor — one Input per picked column (default = the column title). Reactive to
- *  the field picker above it; value is stored as a `{ fieldName: placeholder }` map. */
-const FilterPlaceholderEditor: any = observer((p: any) => {
-  const form: any = useForm();
-  const names: string[] = Array.isArray(form?.values?.ptdlFilterFields) ? form.values.ptdlFilterFields : [];
-  let model: any = null;
-  try {
-    model = (useFlowSettingsContext() as any)?.model || null;
-  } catch (_) {
-    /* ignore */
+/** The DEFAULT-value control for a column, matching its kind: enum/relation → multi-Select; date → a preset
+ *  dropdown (stores a KEY like 'thisMonth', recomputed to the current period on load). */
+function defaultControl(m: FieldMeta | undefined, value: any, onChange: (v: any) => void, relOpts?: any[]): React.ReactNode {
+  if (!m) return <Input size="small" disabled placeholder="…" />;
+  if (m.kind === 'date') {
+    return (
+      <Select
+        size="small"
+        allowClear
+        placeholder={t('No default')}
+        style={{ width: '100%' }}
+        value={value || undefined}
+        options={datePresetDefs().map((d) => ({ label: d.label, value: d.key }))}
+        onChange={(v: any) => onChange(v || null)}
+      />
+    );
   }
-  const [titles, setTitles] = useState<Record<string, string>>({});
-  useEffect(() => {
-    const api = apiOfModel(model);
-    const coll = collectionOfModel(model);
-    const collName = coll && coll.name;
-    if (!api || !collName) return;
-    fetchFields(api, collName, dsKeyOfModel(model))
-      .then((fields) => {
-        const map: Record<string, string> = {};
-        classifyFields(fields).forEach((c) => (map[c.name] = c.title));
-        setTitles(map);
-      })
-      .catch(() => {});
-  }, [model]);
-  const value: Record<string, string> = p.value || {};
-  if (!names.length) return <span style={{ color: '#999', fontSize: 12 }}>{t('Pick columns first')}</span>;
+  const options = m.kind === 'enum' ? m.enumOptions || [] : relOpts || [];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {names.map((name) => (
-        <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
-            style={{ width: 130, flex: 'none', color: 'var(--colorTextTertiary, #8c8c8c)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          >
-            {titles[name] || name}
-          </span>
-          <Input
-            size="small"
-            value={value[name] || ''}
-            placeholder={titles[name] || name}
-            onChange={(e: any) => {
-              const next = { ...value };
-              if (e.target.value) next[name] = e.target.value;
-              else delete next[name];
-              p.onChange && p.onChange(next);
-            }}
-          />
-        </div>
-      ))}
-    </div>
+    <Select
+      size="small"
+      mode="multiple"
+      allowClear
+      showSearch
+      optionFilterProp="label"
+      maxTagCount="responsive"
+      placeholder={t('No default')}
+      style={{ width: '100%' }}
+      value={value || []}
+      options={options}
+      onChange={(v: any) => onChange(v && v.length ? v : null)}
+    />
   );
-});
+}
 
-/** Per-column DEFAULT value editor — one control per picked column, matching its kind: enum/relation → the
- *  same multi-Select; date → a preset dropdown (stores a KEY like 'thisMonth', recomputed on load). Value is a
- *  `{ fieldName: default }` map. Reactive to the field picker above. */
-const FilterDefaultsEditor: any = observer((p: any) => {
+/** Combined per-column editor — ONE row per picked column with its DEFAULT value and its custom PLACEHOLDER
+ *  side by side, so both are configured in one place. Bound to the `ptdlColumns` map
+ *  `{ [field]: { default, placeholder } }`. Reactive to the field picker above. */
+const FilterColumnsEditor: any = observer((p: any) => {
   const form: any = useForm();
   const names: string[] = Array.isArray(form?.values?.ptdlFilterFields) ? form.values.ptdlFilterFields : [];
   let model: any = null;
@@ -466,59 +449,44 @@ const FilterDefaultsEditor: any = observer((p: any) => {
       })
       .catch(() => {});
   }, [model]);
-  const value: Record<string, any> = p.value || {};
-  const set = (name: string, v: any) => {
-    const next = { ...value };
-    if (v == null || (Array.isArray(v) && !v.length)) delete next[name];
-    else next[name] = v;
+  const cols: Record<string, { default?: any; placeholder?: string }> = p.value || {};
+  const patch = (name: string, key: 'default' | 'placeholder', val: any) => {
+    const next = { ...cols };
+    const entry: any = { ...(next[name] || {}) };
+    if (val == null || (Array.isArray(val) && !val.length) || val === '') delete entry[key];
+    else entry[key] = val;
+    if (Object.keys(entry).length) next[name] = entry;
+    else delete next[name];
     p.onChange && p.onChange(next);
   };
   if (!names.length) return <span style={{ color: '#999', fontSize: 12 }}>{t('Pick columns first')}</span>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--colorTextQuaternary, #aaa)' }}>
+        <span style={{ width: 116, flex: 'none' }} />
+        <span style={{ flex: 1 }}>{t('Default values')}</span>
+        <span style={{ flex: 1 }}>{t('Custom placeholders')}</span>
+      </div>
       {names.map((name) => {
         const m = meta[name];
-        let control: React.ReactNode;
-        if (!m) {
-          control = <Input size="small" disabled placeholder="…" />;
-        } else if (m.kind === 'date') {
-          control = (
-            <Select
-              size="small"
-              allowClear
-              placeholder={t('No default')}
-              style={{ width: '100%' }}
-              value={value[name] || undefined}
-              options={datePresetDefs().map((d) => ({ label: d.label, value: d.key }))}
-              onChange={(v: any) => set(name, v || null)}
-            />
-          );
-        } else {
-          const options = m.kind === 'enum' ? m.enumOptions || [] : relOpts[name] || [];
-          control = (
-            <Select
-              size="small"
-              mode="multiple"
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              maxTagCount="responsive"
-              placeholder={t('No default')}
-              style={{ width: '100%' }}
-              value={value[name] || []}
-              options={options}
-              onChange={(v: any) => set(name, v && v.length ? v : null)}
-            />
-          );
-        }
+        const entry = cols[name] || {};
         return (
           <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span
-              style={{ width: 130, flex: 'none', color: 'var(--colorTextTertiary, #8c8c8c)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={(m && m.title) || name}
+              style={{ width: 116, flex: 'none', color: 'var(--colorTextTertiary, #8c8c8c)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {(m && m.title) || name}
             </span>
-            <div style={{ flex: 1, minWidth: 0 }}>{control}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>{defaultControl(m, entry.default, (v) => patch(name, 'default', v), relOpts[name])}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Input
+                size="small"
+                value={entry.placeholder || ''}
+                placeholder={(m && m.title) || name}
+                onChange={(e: any) => patch(name, 'placeholder', e.target.value)}
+              />
+            </div>
           </div>
         );
       })}
@@ -624,7 +592,7 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
         steps: {
           settings: {
             title: te('Filter bar'),
-            uiMode: { type: 'dialog', props: { width: 520 } },
+            uiMode: { type: 'dialog', props: { width: 600 } },
             uiSchema() {
               const cell = (title: string, comp: any, extra: any = {}) => ({
                 'x-decorator': 'FormItem',
@@ -644,8 +612,7 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
                   'x-component': 'PtdlFilterPreview',
                 },
                 ptdlFilterFields: cell('Filter columns', FilterFieldPicker, { type: 'array' }),
-                ptdlDefaults: cell('Default values', FilterDefaultsEditor, { type: 'object' }),
-                ptdlPlaceholders: cell('Custom placeholders', FilterPlaceholderEditor, { type: 'object' }),
+                ptdlColumns: cell('Column defaults & placeholders', FilterColumnsEditor, { type: 'object' }),
                 row: {
                   type: 'void',
                   'x-component': 'PtdlFilterGrid',
@@ -671,8 +638,7 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
               const p = (ctx.model && ctx.model.props) || {};
               return {
                 ptdlFilterFields: Array.isArray(p.ptdlFilterFields) ? p.ptdlFilterFields : [],
-                ptdlDefaults: p.ptdlDefaults && typeof p.ptdlDefaults === 'object' ? p.ptdlDefaults : {},
-                ptdlPlaceholders: p.ptdlPlaceholders && typeof p.ptdlPlaceholders === 'object' ? p.ptdlPlaceholders : {},
+                ptdlColumns: p.ptdlColumns && typeof p.ptdlColumns === 'object' ? p.ptdlColumns : {},
                 ptdlControlWidth: p.ptdlControlWidth || 'normal',
                 position: p.position || 'left',
               };
@@ -681,8 +647,7 @@ export function registerFilterAction(deps: { flowEngine: any; tExpr: (s: string,
               const p = params || {};
               ctx.model.setProps({
                 ptdlFilterFields: Array.isArray(p.ptdlFilterFields) ? p.ptdlFilterFields : [],
-                ptdlDefaults: p.ptdlDefaults && typeof p.ptdlDefaults === 'object' ? p.ptdlDefaults : {},
-                ptdlPlaceholders: p.ptdlPlaceholders && typeof p.ptdlPlaceholders === 'object' ? p.ptdlPlaceholders : {},
+                ptdlColumns: p.ptdlColumns && typeof p.ptdlColumns === 'object' ? p.ptdlColumns : {},
                 ptdlControlWidth: p.ptdlControlWidth || 'normal',
                 position: p.position || 'left',
               });

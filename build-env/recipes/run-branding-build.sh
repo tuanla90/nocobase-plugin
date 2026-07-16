@@ -38,4 +38,10 @@ mkstub "@nocobase/actions" 2.1.19
 node "$NM/@nocobase/build/bin/nocobase-build.js" "$PKG" --tar --no-dts
 
 echo "=== TAR OUTPUT ==="
-find "$ROOT/storage/tar" -type f -name "*plugin-branding*" 2>/dev/null | sort | tail -1
+TGZ=$(find "$ROOT/storage/tar" -type f -name "*plugin-branding-*.tgz" 2>/dev/null | sort -V | tail -1)
+echo "$TGZ"
+# inject the /v/ + /admin client-lane markers (client.js / client-v2.js at tgz root) — without these
+# NocoBase skips the client bundles and the plugin errors on install. (Recipe was missing this step.)
+if [ -n "$TGZ" ]; then
+  bash "$ROOT/recipes/add-markers.sh" "$TGZ"
+fi

@@ -3,6 +3,7 @@ import { Button, Space, Tooltip } from 'antd';
 import { useForm, observer } from '@formily/react';
 import { ChevronRight, Info } from 'lucide-react';
 import { ColorField } from './colorField';
+import { ColumnSelect } from './fieldPicker';
 
 /**
  * Settings-dialog kit — canonical config-panel primitives, shared so plugins stop re-inventing them.
@@ -184,7 +185,9 @@ export const SEG_PROPS = { block: true, style: { border: '1px solid var(--colorB
  *  `registerComponents({ SettingsGrid, CollapsibleSection })` boilerplate). Merge extras via `extra`. */
 export function registerSettingsKit(flowSettings: any, extra?: Record<string, any>) {
   try {
-    flowSettings?.registerComponents?.({ SettingsGrid, CollapsibleSection, ...(extra || {}) });
+    // ColumnSelect is registered by default so any kit consumer can use `x-component: 'ColumnSelect'`
+    // in a Formily field schema (value/onChange bind automatically; pass options via x-component-props).
+    flowSettings?.registerComponents?.({ SettingsGrid, CollapsibleSection, ColumnSelect, ...(extra || {}) });
   } catch (_) {
     /* ignore */
   }

@@ -402,5 +402,7 @@
   "Thêm số liệu": "Add figure",
   "Suy diễn — sẽ tạo 1 cột \"Công thức tự tính\" = giá trị / lượng.": "Derived — creates a \"Computed formula\" column = value / quantity.",
   "Chọn cột kết quả": "Pick the result column",
-  "Tên hiển thị của cột kết quả (đặt/đổi tiêu đề cột được ghi vào).": "Display title of the result column (sets/renames the title of the column being written to)."
+  "Tên hiển thị của cột kết quả (đặt/đổi tiêu đề cột được ghi vào).": "Display title of the result column (sets/renames the title of the column being written to).",
+  "＋ Chèn cột / quan hệ": "＋ Insert column / relation",
+  "Excel: data.<cột>, data.<quan hệ>.<cột>, IF()…": "Excel: data.<column>, data.<relation>.<column>, IF()…"
 }

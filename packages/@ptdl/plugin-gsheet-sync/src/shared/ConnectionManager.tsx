@@ -20,6 +20,7 @@ import {
   message,
 } from 'antd';
 import { DatabaseOutlined, FileExcelOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { ColumnSelect } from '@ptdl/shared';
 import { t } from './i18n';
 
 // ---- jump to a synced collection's field-config in the data-source manager ----
@@ -554,14 +555,6 @@ export function createConnectionManager({ useApiClient }: { useApiClient: () => 
         }),
       [allCollections],
     );
-    const targetFieldOptions = useMemo(
-      () =>
-        usableTargetFields.map((f: any) => ({
-          label: `${f.uiSchema?.title || f.name} (${f.name}) · ${f.type}`,
-          value: f.name,
-        })),
-      [usableTargetFields],
-    );
     const targetFieldType = (name: string) => usableTargetFields.find((f: any) => f.name === name)?.type;
 
     // TYPE_OPTIONS/TYPE_LABEL hold Vietnamese labels that double as i18n keys; translate at render
@@ -593,16 +586,19 @@ export function createConnectionManager({ useApiClient }: { useApiClient: () => 
         key: 'field',
         render: (_: any, m: Mapping, i: number) =>
           edit.targetMode === 'existing' ? (
-            <Select
+            <ColumnSelect
               style={{ width: '100%' }}
               size="small"
-              showSearch
               disabled={m.include === false}
               value={m.field || undefined}
               onChange={(v) => updateMapping(i, { field: v })}
-              options={targetFieldOptions}
+              options={usableTargetFields.map((f: any) => ({
+                value: f.name,
+                label: f.uiSchema?.title || f.name,
+                type: f.type,
+                iface: f.interface,
+              }))}
               placeholder={t('Chọn field')}
-              optionFilterProp="label"
             />
           ) : (
             <Input

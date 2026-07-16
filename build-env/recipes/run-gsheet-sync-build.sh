@@ -15,7 +15,18 @@ cp "$SRC/package.json" "$DST/package.json"
 cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
-# No real deps to bundle — server is zero-dep (node crypto + fetch), client is antd-only.
+# Server is zero-dep (node crypto + fetch); client is antd-only. The only bundled
+# dependency is @ptdl/shared (ColumnSelect for the target-field picker).
+
+# @ptdl/shared is a workspace package npm prunes on every install — restore it from
+# packages/ so the build can resolve/bundle it.
+SHARED_SRC="$ROOT/../packages/@ptdl/shared"
+if [ ! -f "$NM/@ptdl/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@ptdl/shared/dist/index.js" ]; then
+  mkdir -p "$NM/@ptdl"
+  rm -rf "$NM/@ptdl/shared"
+  cp -r "$SHARED_SRC" "$NM/@ptdl/shared"
+  echo "restored  : @ptdl/shared"
+fi
 
 # Stub EXTERNAL framework deps at nb-local (2.1.19) versions so
 # writeExternalPackageVersion resolves and the tgz step is not aborted.

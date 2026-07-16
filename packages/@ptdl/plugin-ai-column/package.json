@@ -3,7 +3,7 @@
   "displayName": "AI Column",
   "displayName.zh-CN": "AI 字段",
   "description": "Airtable-style AI columns for NocoBase. Attach AI to a field (✨ button + optional auto-run): generate text/number/single-select from a {{field}} prompt; extract structured fields from image/PDF/DOC/audio (OCR, scoring, transcription/STT); AI Multi-row Extract (1 doc/text → N sub-table rows); AI Classify (vector-embedding match of a value to one row of a master collection, e.g. HS code / product code, with keyword fallback + scheduled re-embed); generate & EDIT images (img2img); text-to-speech (Google Gemini, ElevenLabs, Vbee). Table-wide bulk actions; server-side auto-run on create/update from automation/API/bulk; ready-made prompt templates. Cost control (result cache, run-when-empty/condition gate, throttle queue) + failure log. Unified AI Provider settings (voice credentials + embedding index management). Text via @nocobase/plugin-ai (multi-provider); image via Google (google-genai); voice via Google/ElevenLabs/Vbee.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button, Input, Select, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { getFields } from '@ptdl/shared';
+import { getFields, ColumnSelect } from '@ptdl/shared';
 import { SparklesIcon, collectValues, syncAutorunRule, extractDeps, triggerArray, gateConfig, PtdlAutorunGate } from './aiColumn';
 import { NS, t } from './i18n';
 
@@ -301,7 +301,7 @@ const PtdlImageSourceSelect: React.FC<any> = observer((props: any) => {
         setOptions(
           (fields || [])
             .filter((f: any) => f?.interface === 'attachment' || f?.interface === 'attachmentURL')
-            .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name })),
+            .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name, type: f.type, iface: f.interface })),
         );
       });
     } else {
@@ -312,16 +312,11 @@ const PtdlImageSourceSelect: React.FC<any> = observer((props: any) => {
     };
   }, [coll, dsk]);
   return (
-    <Select
-      allowClear
-      showSearch
-      optionFilterProp="label"
-      style={{ width: '100%' }}
+    <ColumnSelect
       options={options}
       value={props.value || undefined}
       placeholder={t('(để trống = sinh ảnh mới); chọn field ảnh để SỬA ảnh đó')}
       onChange={(v) => props.onChange?.(v)}
-      notFoundContent={coll ? t('(không có field ảnh nào)') : t('(mở trong field ở form để tải)')}
     />
   );
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Modal, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd';
+import { ColumnSelect, buildColumnOptions } from '@ptdl/shared';
 import { t, tr } from './changeLogClient';
 
 // Settings page: one row per collection that has change logging on. Editing a config lets the
@@ -278,13 +279,12 @@ const ConfigEditor: React.FC<{
               <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span>
             </Tooltip>
           </div>
-          <Select
+          <ColumnSelect
             mode="multiple"
-            style={{ width: '100%' }}
             placeholder={t('Optional companion fields to snapshot')}
             value={row.snapshotFields}
             onChange={(v) => setRow({ ...row, snapshotFields: v })}
-            options={(coll?.fields || []).map((f) => ({ label: fieldLabel(f), value: f.name }))}
+            options={buildColumnOptions(coll?.fields || [])}
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

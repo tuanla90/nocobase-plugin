@@ -1,4 +1,10 @@
 import React from 'react';
+// ColumnSelect (below) renders antd's Select. nocobase-build only externalizes packages that appear in the
+// plugin's OWN src imports; this plugin otherwise never imports antd, so without this line the shared barrel's
+// transitive `import 'antd'` (colorField) would try to bundle antd (build-env ships an entry-less stub) → fail.
+// This value-less side-effect import marks antd as an external → resolves to the host-provided antd at runtime.
+import 'antd';
+import { ColumnSelect } from '@ptdl/shared';
 
 /**
  * Detail Panel — AppSheet-style master–detail split view for NocoBase `/v/`, two complementary features that
@@ -347,6 +353,10 @@ export function registerRowClickPanel({ flowEngine }: { flowEngine: any }) {
   if (TableBlockModel.__ptdlRowClickPanel) return;
   TableBlockModel.__ptdlRowClickPanel = true;
 
+  // Register the shared column picker so `x-component: 'ColumnSelect'` resolves in the flow-settings dialog
+  // (this plugin doesn't use registerSettingsKit, so ColumnSelect must be registered explicitly).
+  try { flowEngine?.flowSettings?.registerComponents?.({ ColumnSelect }); } catch (e) { /* non-fatal */ }
+
   TableBlockModel.registerFlow({
     key: 'ptdlDetailPanel',
     title: t('Panel chi tiết (bấm dòng)'),
@@ -359,7 +369,7 @@ export function registerRowClickPanel({ flowEngine }: { flowEngine: any }) {
           const all: any[] = ctx?.model?.collection?.getFields?.() || [];
           const fieldOptions = all
             .filter((f) => f?.interface && !HIDDEN_INTERFACES.has(f.interface))
-            .map((f) => ({ label: f.title, value: f.name }));
+            .map((f) => ({ label: f.title, value: f.name, type: f.type, iface: f.interface }));
           return {
             dpEnabled: {
               type: 'boolean',
@@ -394,7 +404,7 @@ export function registerRowClickPanel({ flowEngine }: { flowEngine: any }) {
               type: 'array',
               title: t('Trường hiển thị (để trống = tất cả)'),
               'x-decorator': 'FormItem',
-              'x-component': 'Select',
+              'x-component': 'ColumnSelect',
               'x-component-props': {
                 mode: 'multiple',
                 allowClear: true,

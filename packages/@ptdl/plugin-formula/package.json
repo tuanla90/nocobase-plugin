@@ -3,7 +3,7 @@
   "displayName": "Formula",
   "displayName.zh-CN": "公式",
   "description": "Excel-style formulas (400+ functions via formulajs) for a display field/column and for computing form field default values. Renders HTML; aggregates to-many relations via auto-pluck. Bundles formulajs.",
-  "version": "0.1.52",
+  "version": "0.1.56",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

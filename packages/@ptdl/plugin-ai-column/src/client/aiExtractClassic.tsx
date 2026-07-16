@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Input, Select, Tag } from 'antd';
+import { Button, Input, Tag } from 'antd';
 import { observer, useField, useFieldSchema, useForm } from '@formily/react';
 import {
   SchemaSettings,
@@ -11,7 +11,7 @@ import {
 } from '@nocobase/client';
 import { AiExtractEditable, PtdlExtractTriggerSelect, extractTypeTagLabel, type MapRow } from '../shared/aiExtract';
 import { AI_SETTINGS_COMPONENTS } from '../shared/aiColumn';
-import { FieldTokenTextArea, buildFieldCascaderOptions, getFields, fieldJsonMeta } from '@ptdl/shared';
+import { FieldTokenTextArea, buildFieldCascaderOptions, getFields, fieldJsonMeta, ColumnSelect } from '@ptdl/shared';
 import { t } from '../shared/i18n';
 
 // Module-level apiClient — set once in registerAiExtractClassic(), read by the collection-context
@@ -111,13 +111,11 @@ const PtdlExtractMappingClassic: React.FC<any> = observer((props: any) => {
     <div>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-          <Select
+          <ColumnSelect
             style={{ width: 200, flex: '0 0 auto' }}
             options={options}
             value={r.field || undefined}
             placeholder={t('Field đích')}
-            showSearch
-            optionFilterProp="label"
             onChange={(v) => pickField(i, v)}
           />
           {r.field ? (

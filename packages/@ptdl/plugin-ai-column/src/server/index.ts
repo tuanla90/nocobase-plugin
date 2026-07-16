@@ -1094,6 +1094,16 @@ function lexScore(qTokens: string[], tTokens: string[]): number {
 }
 
 /** Stable short hash of the embed-text so re-embedding only happens when a master row's text changed. */
+/** Dimensionality of the cached vectors (from the first cache row), so a query embed can be requested
+ *  at the SAME `outputDimensionality` — otherwise a 768-dim cache vs a 3072-dim query vector can't be
+ *  cosine-compared. Returns undefined for an empty cache (→ query uses the model default). */
+function embedDimsOf(cached: any[]): number | undefined {
+  const r0: any = cached && cached[0];
+  if (!r0) return undefined;
+  const v = r0.toJSON ? r0.toJSON().vector : r0.vector;
+  return Array.isArray(v) && v.length ? v.length : undefined;
+}
+
 function textHash(s: string): string {
   let h = 5381;
   const str = String(s || '');
@@ -1110,15 +1120,20 @@ function normEmbedModel(m?: string): string {
 
 /** Batch-embed texts via Google's Generative Language REST API (`batchEmbedContents`), chunked to
  *  stay under the per-request cap. Returns one vector per input text, order preserved. */
-async function googleEmbed(apiKey: string, model: string, texts: string[], baseURL?: string): Promise<number[][]> {
+async function googleEmbed(apiKey: string, model: string, texts: string[], baseURL?: string, dims?: number): Promise<number[][]> {
   const base = baseURL && baseURL.trim() ? baseURL.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com/v1beta';
   const mdl = normEmbedModel(model);
   const url = `${base}/${mdl}:batchEmbedContents?key=${encodeURIComponent(apiKey)}`;
+  // Optionally truncate the embedding to a lower dimensionality (gemini-embedding-001 supports
+  // `outputDimensionality`). At 12k+ master rows the default 3072 dims blow up cache size (~39KB/row)
+  // and per-query cosine cost; 768 keeps ~99% of ranking quality at 1/4 the storage. Query-time embeds
+  // pass the SAME dims as the cached vectors (derived from cache) so cosine dimensions always match.
+  const outDim = dims && dims > 0 ? Math.floor(dims) : undefined;
   const out: number[][] = [];
   const CHUNK = 100; // Google batch cap
   for (let i = 0; i < texts.length; i += CHUNK) {
     const slice = texts.slice(i, i + CHUNK);
-    const body = { requests: slice.map((t) => ({ model: mdl, content: { parts: [{ text: String(t || '').slice(0, 8000) }] } })) };
+    const body = { requests: slice.map((t) => ({ model: mdl, content: { parts: [{ text: String(t || '').slice(0, 8000) }] }, ...(outDim ? { outputDimensionality: outDim } : {}) })) };
     // The embed endpoint intermittently drops the connection / 429s / 5xx under rapid calls (seen
     // live) — retry a few times with backoff so a transient blip isn't a hard classify failure. A 4xx
     // other than 429 (e.g. 404 unknown model) is a real config error → fail fast, no retry.
@@ -1250,7 +1265,7 @@ export class PluginAiColumnServer extends Plugin {
         // Fire-and-forget (self-caught) so one slow/failing master can't block the others or the tick.
         (async () => {
           try {
-            const out = await this.runEmbedMaster({ masterCollection: r.masterCollection, dataSourceKey: r.dataSourceKey, textTemplate: r.textTemplate, llmService: r.llmService || undefined, embedModel: r.model, force: false });
+            const out = await this.runEmbedMaster({ masterCollection: r.masterCollection, dataSourceKey: r.dataSourceKey, textTemplate: r.textTemplate, llmService: r.llmService || undefined, embedModel: r.model, embedDims: r.dims || undefined, force: false });
             await this.db.getRepository('ptdlClassifyConfig').update({ filterByTk: r.id, values: { lastRefreshAt: new Date() } });
             this.app.log?.info?.(`[ptdl-ai-column] scheduled re-embed ${r.masterCollection}: ${out.embedded}/${out.total}`);
           } catch (e: any) {
@@ -1475,11 +1490,21 @@ export class PluginAiColumnServer extends Plugin {
     embedModel?: string;
     force?: boolean;
     limit?: number;
-  }): Promise<{ total: number; embedded: number; model: string; capped?: number }> {
+    embedDims?: number;
+  }): Promise<{ total: number; embedded: number; model: string; capped?: number; dims?: number }> {
     const db = this.db;
     const dsk = params.dataSourceKey || 'main';
     const repo = db.getRepository(params.masterCollection);
     if (!repo) throw new Error(`Collection "${params.masterCollection}" không tồn tại.`);
+    // Concurrency guard: a client timeout does NOT abort this action (Koa keeps running), so a resume
+    // call fired while the first run is still embedding would read the same `existing` snapshot and
+    // `create` duplicate cache rows for the same records. An in-memory per-collection lock makes the
+    // overlapping call fail fast instead — the first run embeds everything (up to cap) uninterrupted.
+    const lockKey = `${dsk}:${params.masterCollection}`;
+    const locks: Set<string> = ((this as any)._embedLocks ||= new Set<string>());
+    if (locks.has(lockKey)) throw new Error(`Đang tạo embedding cho "${params.masterCollection}" — đợi lần chạy hiện tại xong rồi thử lại.`);
+    locks.add(lockKey);
+    try {
     const creds = await getServiceCredentials(db, params.llmService);
     if (!creds || creds.provider !== 'google-genai' || !creds.apiKey) {
       throw new Error('Tạo embedding cần một Google (google-genai) service có API key.');
@@ -1487,7 +1512,8 @@ export class PluginAiColumnServer extends Plugin {
     const model = normEmbedModel(params.embedModel);
     const coll: any = db.getCollection(params.masterCollection);
     const pk = coll?.model?.primaryKeyAttribute || 'id';
-    const cap = Math.min(Number(params.limit) || 5000, 20000);
+    const cap = Math.min(Number(params.limit) || 20000, 50000);
+    const embedDims = Number(params.embedDims) > 0 ? Math.floor(Number(params.embedDims)) : undefined;
     const rows = await repo.find({ limit: cap });
     const totalCount = await repo.count().catch(() => rows.length);
     const capped = totalCount > rows.length ? totalCount - rows.length : 0;
@@ -1514,10 +1540,17 @@ export class PluginAiColumnServer extends Plugin {
       if (!ex || ex.textHash !== hash) toEmbed.push({ recordId: tk, text, hash, exId: ex?.id });
     }
 
-    if (toEmbed.length) {
-      const vecs = await googleEmbed(creds.apiKey, model, toEmbed.map((x) => x.text), creds.baseURL);
-      for (let i = 0; i < toEmbed.length; i++) {
-        const item = toEmbed[i];
+    // Embed + PERSIST in chunks of 100 (one Google batch call each) rather than embedding all N then
+    // writing once at the end. At 12k rows the all-at-end path (a) holds one multi-minute HTTP request
+    // open — the client resets (ECONNRESET) and every vector is lost — and (b) can't resume. Persisting
+    // each chunk before the next means a dropped connection keeps completed chunks, and because the
+    // pre-pass skips rows whose textHash already matches, simply re-running resumes where it stopped.
+    const PERSIST_CHUNK = 100;
+    for (let base = 0; base < toEmbed.length; base += PERSIST_CHUNK) {
+      const group = toEmbed.slice(base, base + PERSIST_CHUNK);
+      const vecs = await googleEmbed(creds.apiKey, model, group.map((x) => x.text), creds.baseURL, embedDims);
+      for (let i = 0; i < group.length; i++) {
+        const item = group[i];
         const values = {
           collectionName: params.masterCollection,
           dataSourceKey: dsk,
@@ -1535,14 +1568,17 @@ export class PluginAiColumnServer extends Plugin {
     try {
       const cfgRepo = db.getRepository('ptdlClassifyConfig');
       const key = `${dsk}:${params.masterCollection}`;
-      const values = { key, masterCollection: params.masterCollection, dataSourceKey: dsk, textTemplate: params.textTemplate, model, llmService: params.llmService || '' };
+      const values = { key, masterCollection: params.masterCollection, dataSourceKey: dsk, textTemplate: params.textTemplate, model, llmService: params.llmService || '', dims: embedDims || null };
       const ex = await cfgRepo.findOne({ filter: { key } });
       if (ex) await cfgRepo.update({ filterByTk: ex.get('id'), values });
       else await cfgRepo.create({ values });
     } catch (e: any) {
       this.app.log?.warn?.('[ptdl-ai-column] classify config upsert failed: ' + (e?.message || e));
     }
-    return { total: rows.length, embedded: toEmbed.length, model, ...(capped ? { capped } : {}) };
+    return { total: rows.length, embedded: toEmbed.length, model, ...(capped ? { capped } : {}), ...(embedDims ? { dims: embedDims } : {}) };
+    } finally {
+      locks.delete(lockKey);
+    }
   }
 
   /** Block B — classify: embed the query, brute-force cosine over the cached master vectors for the
@@ -1574,7 +1610,7 @@ export class PluginAiColumnServer extends Plugin {
       const creds = await getServiceCredentials(db, params.llmService);
       if (creds && creds.provider === 'google-genai' && creds.apiKey) {
         try {
-          const [qv] = await googleEmbed(creds.apiKey, embModel, [String(params.query)], creds.baseURL);
+          const [qv] = await googleEmbed(creds.apiKey, embModel, [String(params.query)], creds.baseURL, embedDimsOf(cached));
           if (qv?.length) {
             scored = cached
               .map((c: any) => {
@@ -1715,7 +1751,7 @@ export class PluginAiColumnServer extends Plugin {
       if (cached.length) {
         const creds = await getServiceCredentials(db, params.llmService);
         if (creds && creds.provider === 'google-genai' && creds.apiKey) {
-          const qvecs = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), uniq, creds.baseURL); // ONE batch call
+          const qvecs = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), uniq, creds.baseURL, embedDimsOf(cached)); // ONE batch call
           const cachedVecs = cached.map((c: any) => {
             const r = c.toJSON ? c.toJSON() : c;
             return { tk: String(r.recordId), vec: r.vector || [] };
@@ -1809,7 +1845,7 @@ export class PluginAiColumnServer extends Plugin {
     if (cached.length) {
       const creds = await getServiceCredentials(db, params.llmService);
       if (creds && creds.provider === 'google-genai' && creds.apiKey) {
-        const [qv] = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), [query], creds.baseURL);
+        const [qv] = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), [query], creds.baseURL, embedDimsOf(cached));
         if (qv?.length) scored = cached.map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { tk: String(r.recordId), sim: cosineSim(qv, r.vector || []) }; }).sort((a, b) => b.sim - a.sim).slice(0, topK);
       }
     }
@@ -2130,6 +2166,7 @@ export class PluginAiColumnServer extends Plugin {
         { type: 'string', name: 'llmService' },
         { type: 'integer', name: 'refreshEveryMin' }, // 0/null = off; else auto re-embed every N minutes
         { type: 'date', name: 'lastRefreshAt' },
+        { type: 'integer', name: 'dims' }, // outputDimensionality used for this index (null = model default)
       ],
     });
     try {
@@ -2307,7 +2344,7 @@ export class PluginAiColumnServer extends Plugin {
           if (!cfg) ctx.throw(400, 'Master này chưa có cấu hình embedding — hãy embed lần đầu từ field settings.');
           const c = cfg.toJSON ? cfg.toJSON() : cfg;
           try {
-            ctx.body = await this.runEmbedMaster({ masterCollection: c.masterCollection, dataSourceKey: c.dataSourceKey, textTemplate: c.textTemplate, llmService: c.llmService || undefined, embedModel: c.model, force: !!v.force });
+            ctx.body = await this.runEmbedMaster({ masterCollection: c.masterCollection, dataSourceKey: c.dataSourceKey, textTemplate: c.textTemplate, llmService: c.llmService || undefined, embedModel: c.model, embedDims: c.dims || undefined, force: !!v.force });
           } catch (e: any) {
             ctx.throw(502, e?.message || 'reindex failed');
           }
