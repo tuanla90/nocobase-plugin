@@ -1217,6 +1217,7 @@ function buildDeepScoreSchema(): any {
             confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
             requires_verification: { type: 'array', items: { type: 'string' }, description: 'Người dùng cần tự kiểm tra gì để chốt.' },
             warnings: { type: 'string', description: 'Cảnh báo chính sách/rủi ro nếu có (rút từ dữ liệu ứng viên).' },
+            criteria_scores: { type: 'array', description: 'Điểm ĐẠT của TỪNG tiêu chí trong rubric (đúng tên tiêu chí đã cho); rỗng nếu không có rubric.', items: { type: 'object', properties: { criterion: { type: 'string' }, points: { type: 'number' } }, required: ['criterion', 'points'] } },
           },
           required: ['tk', 'score'],
         },
@@ -1825,6 +1826,7 @@ export class PluginAiColumnServer extends Plugin {
     topK?: number;
     attributes?: Array<{ name: string; description?: string }>;
     rubric?: string;
+    rubricItems?: Array<{ criterion: string; weight?: number }>;
     roleHint?: string;
     displayFields?: string[];
     labelTemplate?: string;
@@ -1889,7 +1891,14 @@ export class PluginAiColumnServer extends Plugin {
     // 3) Score EVERY candidate with domain criteria + rich judgment.
     const displayFields = Array.isArray(params.displayFields) && params.displayFields.length ? params.displayFields : null;
     const candJson = scored.map((s) => { const rec = recByTk[s.tk] || {}; const view = displayFields ? Object.fromEntries(displayFields.map((f) => [f, rec[f]])) : rec; return { tk: s.tk, ...view, vector_sim: Math.round(s.sim * 100) }; });
-    const sys = `Bạn là ${params.roleHint || 'chuyên gia phân loại'} nhiều năm kinh nghiệm. Cho một ITEM và danh sách ỨNG VIÊN (mỗi cái có mã tk + dữ liệu tham chiếu), chấm 0–100 mức khớp TỪNG ứng viên + giải trình; nêu confidence, requires_verification (người dùng cần tự kiểm gì để chốt), warnings (rút từ dữ liệu ứng viên). CHỈ dùng tk đã cho, không bịa.${params.rubric ? ' Tiêu chí chấm: ' + params.rubric : ''}`;
+    // Structured rubric (criterion + weight) → the AI scores EACH criterion (points ≤ weight) so the
+    // client can show a composed multi-segment score bar. Falls back to the free-text rubric.
+    const rubricItems = Array.isArray(params.rubricItems) ? params.rubricItems.filter((r) => r?.criterion) : [];
+    const rubricText = rubricItems.length ? rubricItems.map((r) => `${r.criterion} (tối đa ${Number(r.weight) || 0}đ)`).join('; ') : (params.rubric || '');
+    const rubricInstr = rubricItems.length
+      ? ` Tiêu chí chấm (chấm điểm ĐẠT cho TỪNG tiêu chí, không vượt điểm tối đa, tổng ≤100; trả về trong criteria_scores đúng TÊN tiêu chí): ${rubricText}.`
+      : (rubricText ? ' Tiêu chí chấm: ' + rubricText : '');
+    const sys = `Bạn là ${params.roleHint || 'chuyên gia phân loại'} nhiều năm kinh nghiệm. Cho một ITEM và danh sách ỨNG VIÊN (mỗi cái có mã tk + dữ liệu tham chiếu), chấm 0–100 mức khớp TỪNG ứng viên + giải trình; nêu confidence, requires_verification (người dùng cần tự kiểm gì để chốt), warnings (rút từ dữ liệu ứng viên). CHỈ dùng tk đã cho, không bịa.${rubricInstr}`;
     const human = `ITEM: ${query}\n${attrs ? 'Thuộc tính đã trích: ' + JSON.stringify(attrs) + '\n' : ''}${missingInfo.length ? 'Thiếu: ' + missingInfo.join('; ') + '\n' : ''}\nỨNG VIÊN:\n${JSON.stringify(candJson)}`;
     let ranked: any[] = [];
     let overall = '';
@@ -1904,13 +1913,25 @@ export class PluginAiColumnServer extends Plugin {
 
     const labelOf = (tk: string) => { const rec = recByTk[tk] || {}; return params.labelTemplate ? renderTemplate(params.labelTemplate, rec) : JSON.stringify(rec); };
     const writeOf = (tk: string) => { const rec = recByTk[tk] || {}; return params.writeTemplate ? renderTemplate(params.writeTemplate, rec) : labelOf(tk); };
+    // Attach the per-criterion max (from the rubric weights) so the client can draw a composed score
+    // bar. Match the AI's returned criterion name to a rubric item (case-insensitive), else by index.
+    const maxByCrit: Record<string, number> = {};
+    rubricItems.forEach((r) => { maxByCrit[String(r.criterion).trim().toLowerCase()] = Number(r.weight) || 0; });
+    const critScoresOf = (r: any) => {
+      const arr = Array.isArray(r.criteria_scores) ? r.criteria_scores : [];
+      return arr.map((c: any, i: number) => {
+        const crit = String(c?.criterion ?? rubricItems[i]?.criterion ?? '').trim();
+        const max = maxByCrit[crit.toLowerCase()] ?? (Number(rubricItems[i]?.weight) || 0);
+        return { criterion: crit, points: Math.max(0, Number(c?.points) || 0), max };
+      }).filter((c: any) => c.criterion);
+    };
     let out = ranked
       .filter((r) => ids.includes(String(r.tk)))
-      .map((r) => ({ tk: String(r.tk), score: Number(r.score) || 0, reasoning: r.reasoning || '', matchedCriteria: r.matched_criteria || [], unmatchedCriteria: r.unmatched_criteria || [], confidence: r.confidence || 'medium', requiresVerification: r.requires_verification || [], warnings: r.warnings || '', label: labelOf(String(r.tk)), write: writeOf(String(r.tk)), record: recByTk[String(r.tk)] }))
+      .map((r) => ({ tk: String(r.tk), score: Number(r.score) || 0, reasoning: r.reasoning || '', matchedCriteria: r.matched_criteria || [], unmatchedCriteria: r.unmatched_criteria || [], confidence: r.confidence || 'medium', requiresVerification: r.requires_verification || [], warnings: r.warnings || '', criteriaScores: critScoresOf(r), label: labelOf(String(r.tk)), write: writeOf(String(r.tk)), record: recByTk[String(r.tk)] }))
       .sort((a, b) => b.score - a.score);
-    if (!out.length) out = scored.slice(0, 5).map((s) => ({ tk: s.tk, score: Math.round(s.sim * 100), reasoning: '(theo tương đồng vector)', matchedCriteria: [], unmatchedCriteria: [], confidence: 'low', requiresVerification: [], warnings: '', label: labelOf(s.tk), write: writeOf(s.tk), record: recByTk[s.tk] }));
+    if (!out.length) out = scored.slice(0, 5).map((s) => ({ tk: s.tk, score: Math.round(s.sim * 100), reasoning: '(theo tương đồng vector)', matchedCriteria: [], unmatchedCriteria: [], confidence: 'low', requiresVerification: [], warnings: '', criteriaScores: [], label: labelOf(s.tk), write: writeOf(s.tk), record: recByTk[s.tk] }));
     const best = out[0] || null;
-    return { attributes: attrs, missingInfo, candidates: out.slice(0, Math.min(topK, 10)), best, overallRecommendation: overall, method, service: svc, model: mdl };
+    return { attributes: attrs, missingInfo, candidates: out.slice(0, Math.min(topK, 10)), best, overallRecommendation: overall, method, service: svc, model: mdl, rubricItems };
   }
 
   /** Shape a classify result for writing into a child field: if the field is a belongsTo/hasOne

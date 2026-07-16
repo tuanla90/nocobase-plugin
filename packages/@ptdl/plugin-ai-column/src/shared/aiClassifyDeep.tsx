@@ -22,10 +22,19 @@ type Deps = { flowEngine: any; variants: AiClassifyDeepVariant[]; EditableItemMo
 
 let API: any = null;
 
-/** Repeatable {name, description} rows — the attribute-extraction schema for THIS domain. */
+/** Slug a Vietnamese label into a valid JSON-schema key (the extraction schema property name), so the
+ *  user types ONE Vietnamese thing and we derive the machine key behind the scenes. */
+const slugKey = (s: string, i: number) => {
+  const base = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+  return base || `attr_${i + 1}`;
+};
+
+/** Repeatable attribute rows. The user types ONE Vietnamese label per row (e.g. "Chức năng chính");
+ *  we store {name: slug (machine key), description: the label} — name feeds the extraction schema,
+ *  description is what shows in the result's "AI understood" panel. No duplicate second input. */
 export const PtdlDeepAttributes: React.FC<any> = observer((props: any) => {
   const rows: any[] = Array.isArray(props.value) ? props.value : [];
-  const update = (i: number, patch: any) => { const n = rows.slice(); n[i] = { ...n[i], ...patch }; props.onChange?.(n); };
+  const update = (i: number, label: string) => { const n = rows.slice(); n[i] = { name: slugKey(label, i), description: label }; props.onChange?.(n); };
   const add = () => props.onChange?.([...rows, { name: '', description: '' }]);
   const rm = (i: number) => props.onChange?.(rows.filter((_: any, idx: number) => idx !== i));
   return (
@@ -33,13 +42,42 @@ export const PtdlDeepAttributes: React.FC<any> = observer((props: any) => {
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
           <span style={{ flex: '0 0 auto', width: 18, height: 18, borderRadius: 9, background: '#f0e9fb', color: '#7c3aed', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-          <Input style={{ width: 180 }} placeholder={t('tên thuộc tính (vd: vat_lieu)')} value={r.name} onChange={(e) => update(i, { name: e.target.value })} />
-          <Input style={{ flex: 1 }} placeholder={t('mô tả cho AI (vd: vật liệu chính, null nếu không có)')} value={r.description} onChange={(e) => update(i, { description: e.target.value })} />
+          <Input style={{ flex: 1 }} placeholder={t('Thuộc tính cần AI rút ra (vd: Chức năng chính, Vật liệu…)')} value={r.description} onChange={(e) => update(i, e.target.value)} />
           <Button danger type="text" onClick={() => rm(i)}>✕</Button>
         </div>
       ))}
       <Button type="dashed" onClick={add} style={{ width: '100%' }}>{t('+ Thêm thuộc tính')}</Button>
       {!rows.length ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('AI sẽ trích các thuộc tính này từ input để chấm chính xác hơn (bỏ trống nếu không cần).')}</div> : null}
+    </div>
+  );
+});
+
+/** Structured rubric: rows of {criterion (VN), weight (points)}. Feeds the AI's per-criterion scoring
+ *  AND the composed score bar in the result. Replaces the free-text rubric — clearer + machine-usable. */
+export const PtdlDeepRubricRows: React.FC<any> = observer((props: any) => {
+  const rows: any[] = Array.isArray(props.value) ? props.value : [];
+  const update = (i: number, patch: any) => { const n = rows.slice(); n[i] = { ...n[i], ...patch }; props.onChange?.(n); };
+  const add = () => props.onChange?.([...rows, { criterion: '', weight: 20 }]);
+  const rm = (i: number) => props.onChange?.(rows.filter((_: any, idx: number) => idx !== i));
+  const total = rows.reduce((s, r) => s + (Number(r.weight) || 0), 0);
+  return (
+    <div>
+      {rows.length ? (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 4, fontSize: 12, color: '#999' }}>
+          <span style={{ flex: 1 }}>{t('Tiêu chí')}</span>
+          <span style={{ width: 90 }}>{t('Điểm tối đa')}</span>
+          <span style={{ width: 24 }} />
+        </div>
+      ) : null}
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+          <Input style={{ flex: 1 }} placeholder={t('vd: Chức năng khớp')} value={r.criterion} onChange={(e) => update(i, { criterion: e.target.value })} />
+          <Input type="number" style={{ width: 90 }} value={r.weight} onChange={(e) => update(i, { weight: Number(e.target.value) || 0 })} />
+          <Button danger type="text" style={{ width: 24 }} onClick={() => rm(i)}>✕</Button>
+        </div>
+      ))}
+      <Button type="dashed" onClick={add} style={{ width: '100%' }}>{t('+ Thêm tiêu chí')}</Button>
+      {rows.length ? <div style={{ fontSize: 12, color: total === 100 ? '#52c41a' : '#d48806', marginTop: 4 }}>{t('Tổng điểm')}: {total}{total !== 100 ? t(' (nên = 100)') : ' ✓'}</div> : <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('Bỏ trống = AI tự chấm tổng quát. Khai báo tiêu chí + trọng số → điểm hiện thành thanh nhiều màu theo cấu phần.')}</div>}
     </div>
   );
 });
@@ -100,7 +138,7 @@ function aiClassifyDeepStepUiSchema(t: (s: string) => any, relationMode?: boolea
           properties: {
             aiRoleHint: { type: 'string', title: t('Vai chuyên gia'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('AI sẽ nhập vai này khi trích thuộc tính & chấm điểm — ảnh hưởng cách lý luận (vd chuyên gia hải quan, bác sĩ mã ICD).') }, 'x-component': 'PtdlDeepRoleHint' },
             aiAttributes: { type: 'array', title: t('① Thuộc tính AI trích để HIỂU input (hiện ở đầu kết quả)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('AI đọc nội dung đầu vào và rút ra các thuộc tính này (vd bản chất, chức năng…) TRƯỚC khi chấm. Chúng hiện ở panel “AI đã hiểu…” đầu modal kết quả, và giúp AI chấm sát hơn. Đây là bước HIỂU đề, khác với Rubric (bước CHẤM).') }, 'x-component': 'PtdlDeepAttributes' },
-            aiRubric: { type: 'string', title: t('② Tiêu chí CHẤM ĐIỂM ứng viên (rubric)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Cách + trọng số để AI cho điểm mỗi ứng viên (vd chức năng 40đ, vật liệu 20đ…). Đây là bước CHẤM. Điểm & tiêu chí khớp/lệch hiện trên từng thẻ ứng viên. Bỏ trống = AI tự chấm tổng quát.') }, 'x-component': 'PtdlDeepRubric' },
+            aiRubricItems: { type: 'array', title: t('② Tiêu chí CHẤM ĐIỂM ứng viên (tiêu chí + trọng số)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Mỗi dòng: một tiêu chí + điểm tối đa. AI chấm điểm ĐẠT của từng tiêu chí → điểm tổng hiện thành thanh nhiều màu theo cấu phần. Đây là bước CHẤM (khác Attributes = bước HIỂU). Bỏ trống = AI tự chấm tổng quát.') }, 'x-component': 'PtdlDeepRubricRows' },
             aiFeedback: { type: 'boolean', 'x-decorator': 'FormItem', 'x-component': 'PtdlDeepFeedback' },
           },
         },
@@ -119,7 +157,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
         title: te('AI phân loại chuyên sâu'),
         uiMode: { type: 'dialog', props: { width: 820 } },
         uiSchema: aiClassifyDeepStepUiSchema(te, relationMode),
-        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 15, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiFeedback: true },
+        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 15, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiRubricItems: [], aiFeedback: true },
         handler(ctx: any, params: any) {
           ctx.model.setProps('aiService', params?.aiService || '');
           ctx.model.setProps('aiModel', params?.aiModel || '');
@@ -131,6 +169,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
           ctx.model.setProps('aiRoleHint', params?.aiRoleHint || '');
           ctx.model.setProps('aiAttributes', Array.isArray(params?.aiAttributes) ? params.aiAttributes : []);
           ctx.model.setProps('aiRubric', params?.aiRubric || '');
+          ctx.model.setProps('aiRubricItems', Array.isArray(params?.aiRubricItems) ? params.aiRubricItems : []);
           ctx.model.setProps('aiFeedback', params?.aiFeedback !== false);
         },
       },
@@ -159,9 +198,36 @@ const Breadcrumb: React.FC<{ path: string }> = ({ path }) => {
   );
 };
 
+const SEG_PALETTE = ['#52c41a', '#1677ff', '#722ed1', '#fa8c16', '#13c2c2', '#eb2f96'];
+/** Composed score bar: one colored segment per rubric criterion (width ∝ points earned), the rest of
+ *  the track grey = points not earned. A legend below spells out criterion: points/max. */
+const ScoreBar: React.FC<{ items: any[] }> = ({ items }) => {
+  const list = (items || []).filter((c) => c && Number(c.max) > 0);
+  if (!list.length) return null;
+  const totalMax = list.reduce((s, c) => s + (Number(c.max) || 0), 0) || 100;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: '#f0f0f0' }}>
+        {list.map((c, i) => {
+          const w = (Math.max(0, Math.min(Number(c.points) || 0, c.max)) / totalMax) * 100;
+          return <Tooltip key={i} title={`${c.criterion}: ${c.points}/${c.max}`}><div style={{ width: w + '%', background: SEG_PALETTE[i % SEG_PALETTE.length] }} /></Tooltip>;
+        })}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 5 }}>
+        {list.map((c, i) => (
+          <span key={i} style={{ fontSize: 11, color: '#777', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <i style={{ width: 8, height: 8, borderRadius: 2, background: SEG_PALETTE[i % SEG_PALETTE.length], display: 'inline-block' }} />
+            {c.criterion}: <b style={{ color: '#333' }}>{c.points}</b><span style={{ color: '#bbb' }}>/{c.max}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 /** One candidate = structured card: rank + code chip + score pill + confidence dot + Pick, then
- *  breadcrumb path, other display fields, reasoning (collapsible), criteria tags, verify/policy. */
-const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayFields, writeField, onPick }) => {
+ *  composed score bar, breadcrumb path, other display fields, reasoning, criteria tags, verify/policy. */
+const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayFields, writeField, fieldTitles, onPick }) => {
   const st = scoreStyle(c.score || 0);
   const rec = c.record || {};
   const code = c.write || rec[writeField] || '';
@@ -187,10 +253,11 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayFields, writeFiel
         </Tooltip>
         <Button type="primary" size="small" style={{ background: '#7c3aed', borderColor: '#7c3aed' }} onClick={() => onPick(c)}>{t('Chọn')}</Button>
       </div>
+      <ScoreBar items={c.criteriaScores} />
       {pathField ? <div style={{ margin: '8px 0 2px', fontSize: 13 }}><Breadcrumb path={rec[pathField]} /></div> : null}
       {chips.length ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
-          {chips.map((f) => <span key={f} style={{ fontSize: 12, color: '#595959', background: '#f5f5f5', border: '1px solid #eee', borderRadius: 4, padding: '1px 7px' }}>{String(rec[f])}</span>)}
+          {chips.map((f) => <span key={f} style={{ fontSize: 12, color: '#595959', background: '#f5f5f5', border: '1px solid #eee', borderRadius: 4, padding: '1px 7px' }}>{fieldTitles?.[f] ? <span style={{ color: '#999' }}>{fieldTitles[f]}: </span> : null}{String(rec[f])}</span>)}
         </div>
       ) : null}
       {c.reasoning ? (
@@ -250,6 +317,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
         data: {
           query, masterCollection: masterColl, dataSourceKey: masterDsk,
           topK: p.aiTopK || 15, roleHint: p.aiRoleHint || undefined, rubric: p.aiRubric || undefined,
+          rubricItems: Array.isArray(p.aiRubricItems) ? p.aiRubricItems.filter((r: any) => r?.criterion) : undefined,
           attributes: Array.isArray(p.aiAttributes) ? p.aiAttributes.filter((a: any) => a?.name) : undefined,
           displayFields: Array.isArray(p.aiDisplayFields) && p.aiDisplayFields.length ? p.aiDisplayFields : undefined,
           labelTemplate, writeTemplate, llmService: p.aiService || undefined, model: p.aiModel || undefined,
@@ -257,7 +325,16 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
       });
       const d = res?.data?.data;
       if (!d?.candidates?.length) { message.info(t('Không tìm thấy ứng viên phù hợp.')); return; }
-      setResult({ ...d, query });
+      // Fetch the master field titles once so candidate-card chips read "Chương: 95" not a bare "95".
+      let fieldTitles: Record<string, string> = {};
+      try {
+        const fr = await API.request({ url: `collections/${masterColl}/fields:list`, method: 'get', params: { pageSize: 200 } });
+        (fr?.data?.data || []).forEach((f: any) => { fieldTitles[f.name] = f?.uiSchema?.title || f.name; });
+      } catch { /* titles are best-effort */ }
+      // Map each extracted attribute key back to its Vietnamese label (the configured description).
+      const attrLabels: Record<string, string> = {};
+      (Array.isArray(p.aiAttributes) ? p.aiAttributes : []).forEach((a: any) => { if (a?.name) attrLabels[a.name] = a.description || a.name; });
+      setResult({ ...d, query, fieldTitles, attrLabels });
       setOpen(true);
     } catch (e: any) {
       message.error('AI: ' + (e?.response?.data?.errors?.[0]?.message || e?.response?.data?.message || e?.message || t('thất bại')));
@@ -321,7 +398,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {entries.map(([k, v]) => (
                   <span key={k} style={{ fontSize: 12, background: '#fff', border: '1px solid #e6dffa', borderRadius: 4, padding: '1px 8px' }}>
-                    <span style={{ color: '#999' }}>{k}:</span> <span style={{ color: '#333' }}>{String(v)}</span>
+                    <span style={{ color: '#999' }}>{result.attrLabels?.[k] || k}:</span> <span style={{ color: '#333' }}>{String(v)}</span>
                   </span>
                 ))}
               </div>
@@ -331,7 +408,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
         {result?.overallRecommendation ? <Alert type="info" showIcon style={{ marginBottom: 10 }} message={t('Tư vấn')} description={result.overallRecommendation} /> : null}
         {(result?.missingInfo || []).length ? <Alert type="warning" showIcon style={{ marginBottom: 10 }} message={t('Thiếu thông tin để chắc chắn')} description={<ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{(result.missingInfo || []).map((m: string, i: number) => <li key={i}>{m}</li>)}</ul>} /> : null}
         {cands.map((c: any, i: number) => (
-          <CandidateCard key={c.tk ?? i} c={c} rank={i + 1} isTop={i === 0} displayFields={p.aiDisplayFields} writeField={p.aiWriteField} onPick={pick} />
+          <CandidateCard key={c.tk ?? i} c={c} rank={i + 1} isTop={i === 0} displayFields={p.aiDisplayFields} writeField={p.aiWriteField} fieldTitles={result?.fieldTitles} onPick={pick} />
         ))}
         {result?.method === 'keyword' ? <div style={{ fontSize: 12, color: '#aaa', textAlign: 'center', marginTop: 4 }}>{t('Đối chiếu bằng từ khoá (master chưa embed) — kết quả kém chính xác hơn.')}</div> : null}
       </Modal>
@@ -345,7 +422,7 @@ export function registerAiClassifyDeep({ flowEngine, variants, EditableItemModel
   const te = (s: string) => (tExpr ? tExpr(s, { ns: NS }) : s);
 
   try {
-    flowEngine.flowSettings?.registerComponents?.({ PtdlDeepAttributes, PtdlDeepRubric, PtdlDeepRoleHint, PtdlDeepFeedback, FormTab, 'FormTab.TabPane': FormTab.TabPane });
+    flowEngine.flowSettings?.registerComponents?.({ PtdlDeepAttributes, PtdlDeepRubric, PtdlDeepRubricRows, PtdlDeepRoleHint, PtdlDeepFeedback, FormTab, 'FormTab.TabPane': FormTab.TabPane });
   } catch (e) {
     console.warn('[ai-column] classifyDeep: registerComponents failed', e);
   }

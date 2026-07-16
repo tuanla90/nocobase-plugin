@@ -36,7 +36,7 @@ mkstub "@formily/react" 2.3.7
 node "$NM/@nocobase/build/bin/nocobase-build.js" "$PKG" --tar --no-dts
 
 echo "=== TAR OUTPUT ==="
-TGZ=$(find "$ROOT/storage/tar" -type f -name "*plugin-status-flow*" 2>/dev/null | head -1)
+TGZ=$(find "$ROOT/storage/tar" -type f -name "*plugin-status-flow*" 2>/dev/null | sort -V | tail -1)
 echo "$TGZ"
 if [ -n "$TGZ" ]; then
   # Markers were staged so they should already be in the tgz; add-markers.sh is idempotent insurance.

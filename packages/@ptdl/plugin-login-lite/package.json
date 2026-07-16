@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Trang đăng nhập tùy biến",
   "description": "Custom login page theme, colors, layout, form position and input icons.",
   "description.vi-VN": "Tùy biến giao diện, màu sắc, bố cục, vị trí form và icon input của trang đăng nhập.",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "main": "dist/server/index.js",
   "dependencies": {
     "markdown-it": "14.1.0"

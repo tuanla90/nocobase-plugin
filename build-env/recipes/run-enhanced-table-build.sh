@@ -42,7 +42,7 @@ mkstub "@nocobase/server" 2.1.19
 node "$NM/@nocobase/build/bin/nocobase-build.js" "$PKG" --tar --no-dts
 
 echo "=== TAR OUTPUT ==="
-TGZ=$(find "$ROOT/storage/tar" -type f -name "*plugin-enhanced-table-block*" 2>/dev/null | head -1)
+TGZ=$(find "$ROOT/storage/tar" -type f -name "*plugin-enhanced-table-block*" 2>/dev/null | sort -V | tail -1)
 echo "$TGZ"
 if [ -n "$TGZ" ]; then
   bash "$ROOT/recipes/add-markers.sh" "$TGZ"

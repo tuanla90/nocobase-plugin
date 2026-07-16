@@ -30,7 +30,9 @@ export class PluginChangeLogServer extends Plugin {
     this.app.resourcer.define({ name: 'ptdlChangeLogConfigs' });
     // Any signed-in user may read history; writing entries is done by the hooks, not the API.
     this.app.acl.allow('ptdlChangeLogs', ['list', 'get'], 'loggedIn');
-    this.app.acl.allow('ptdlChangeLogConfigs', ['list', 'get'], 'loggedIn');
+    // ptdlChangeLogConfigs is a system collection (dumpRules:'required') → NOT covered by the admin role's
+    // strategy, so the settings page's create/update/destroy were denied for non-root admins. Grant them.
+    this.app.acl.allow('ptdlChangeLogConfigs', ['list', 'get', 'create', 'update', 'updateOrCreate', 'destroy'], 'loggedIn');
 
     const reloadConfigs = async () => {
       try {

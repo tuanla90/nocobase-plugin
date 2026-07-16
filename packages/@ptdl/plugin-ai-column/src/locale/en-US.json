@@ -497,5 +497,15 @@
   "Nội dung cần đối chiếu (cột trên bản ghi)": "Content to match (column on the record)",
   "Số ứng viên xét (topK)": "Candidates to score (topK)",
   "Vai chuyên gia": "Expert role",
-  "Bảng master (tự lấy từ quan hệ — chọn nếu muốn cấu hình cột hiển thị)": "Master collection (auto-derived from the relation — pick one to configure display columns)"
+  "Bảng master (tự lấy từ quan hệ — chọn nếu muốn cấu hình cột hiển thị)": "Master collection (auto-derived from the relation — pick one to configure display columns)",
+  "Thuộc tính cần AI rút ra (vd: Chức năng chính, Vật liệu…)": "Attribute for the AI to extract (e.g. Main function, Material…)",
+  "Tiêu chí": "Criterion",
+  "Điểm tối đa": "Max points",
+  "vd: Chức năng khớp": "e.g. Function match",
+  "+ Thêm tiêu chí": "+ Add criterion",
+  "Tổng điểm": "Total points",
+  " (nên = 100)": " (should be 100)",
+  "Bỏ trống = AI tự chấm tổng quát. Khai báo tiêu chí + trọng số → điểm hiện thành thanh nhiều màu theo cấu phần.": "Empty = the AI scores generally. Declare criteria + weights → the score renders as a multi-segment bar by component.",
+  "② Tiêu chí CHẤM ĐIỂM ứng viên (tiêu chí + trọng số)": "② Criteria to SCORE candidates (criterion + weight)",
+  "Mỗi dòng: một tiêu chí + điểm tối đa. AI chấm điểm ĐẠT của từng tiêu chí → điểm tổng hiện thành thanh nhiều màu theo cấu phần. Đây là bước CHẤM (khác Attributes = bước HIỂU). Bỏ trống = AI tự chấm tổng quát.": "Each row: one criterion + its max points. The AI scores each criterion → the total renders as a multi-segment bar by component. This is the SCORE step (vs Attributes = the UNDERSTAND step). Empty = the AI scores generally."
 }

@@ -31,6 +31,9 @@ export class PluginLoginHtmlServer extends Plugin {
       only: ['list', 'get', 'create', 'update', 'destroy', 'getActiveConfig'],
     });
     this.app.acl.allow('login_configs', 'getActiveConfig', 'public');
+    // login_configs is a system collection (dumpRules/hidden) → NOT covered by the admin role's strategy,
+    // so its save (create/update) was denied for non-root admins. Grant the writes (settings UI is admin-only).
+    this.app.acl.allow('login_configs', ['create', 'update', 'updateOrCreate', 'destroy'], 'loggedIn');
   }
 
   async install() {}
