@@ -2,6 +2,12 @@
 
 Trạng thái công việc "gom thư viện dùng chung `@ptdl/shared`" + bối cảnh, để session khác follow được.
 
+## 0b. Git remote (đồng bộ đa máy)
+- Repo: **`https://github.com/tuanla90/nocobase-plugin`** (nhánh `main`, remote `origin`). Máy này đã có credential GitHub sẵn (push OK).
+- **Cài trên máy khác:** `git clone/pull` → upload `.tgz` từ `latest/@ptdl/` qua Plugin Manager UI (không cần build). Xem README §"Cài trên máy khác".
+- `.gitignore` loại: `node_modules/`, `build-env/{node_modules,packages,storage}/`, `packages/@ptdl/shared/dist/`, `_backup-localhost-*/` + `*.sqlite` (DB thật — KHÔNG commit), `archive/` (tgz cũ nặng). Remote còn giữ snapshot cũ `plugins/` + `theme/` + `extras/` (merge unrelated-histories, không xoá).
+- Sau khi build/promote plugin mới: `git add -A && git commit && git push` (kèm Co-Authored-By nếu Claude tạo).
+
 ## 0. Bản đồ tài liệu
 - **`SHARED-LIBS-PROPOSAL.md`** — thiết kế + **roadmap có checkbox** (nguồn sự thật cho tiến độ). ĐỌC MỤC 9.
 - **`PLUGIN-REGISTRY.md`** — 20 plugin @ptdl: tên chuẩn, mô tả, nhóm, kế hoạch gộp.
