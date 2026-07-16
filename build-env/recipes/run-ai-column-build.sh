@@ -40,6 +40,7 @@ mkstub "@nocobase/client-v2" 2.1.19
 mkstub "@nocobase/flow-engine" 2.1.19
 mkstub "@nocobase/server" 2.1.19
 mkstub "@formily/react" 2.3.7
+mkstub "@formily/antd-v5" 2.3.7
 mkstubsub "@nocobase/plugin-file-manager" 2.1.19 client-v2
 mkstubsub "@nocobase/plugin-field-attachment-url" 2.1.19 client-v2
 node "$NM/@nocobase/build/bin/nocobase-build.js" "$PKG" --tar --no-dts

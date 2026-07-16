@@ -10,7 +10,7 @@ Trạng thái công việc "gom thư viện dùng chung `@ptdl/shared`" + bối 
 
 ## 0. Bản đồ tài liệu
 - **`SHARED-LIBS-PROPOSAL.md`** — thiết kế + **roadmap có checkbox** (nguồn sự thật cho tiến độ). ĐỌC MỤC 9.
-- **`PLUGIN-REGISTRY.md`** — 20 plugin @ptdl: tên chuẩn, mô tả, nhóm, kế hoạch gộp.
+- **`PLUGIN-REGISTRY.md`** — 25 plugin @ptdl: tên chuẩn, mô tả, nhóm, kế hoạch gộp.
 - `build-env/BUILD.md` — cách build 1 plugin + **bắt buộc add-markers**.
 - `docs/` (nocobase-autobuild) — dự án riêng: sinh app NocoBase từ BRD (khác việc này).
 

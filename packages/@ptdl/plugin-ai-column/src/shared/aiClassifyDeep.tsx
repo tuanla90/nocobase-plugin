@@ -17,7 +17,7 @@ import { NS, t } from './i18n';
  * adds the deep-specific components (attributes list, rubric, role hint, feedback) + the rich modal.
  */
 
-export type AiClassifyDeepVariant = { Base: any; modelName: string; interfaces: string[]; label: string };
+export type AiClassifyDeepVariant = { Base: any; modelName: string; interfaces: string[]; label: string; relationMode?: boolean };
 type Deps = { flowEngine: any; variants: AiClassifyDeepVariant[]; EditableItemModel: any; api?: any; tExpr?: (s: string, opts?: any) => any };
 
 let API: any = null;
@@ -54,7 +54,16 @@ export const PtdlDeepFeedback: React.FC<any> = observer((props: any) => (
   <Checkbox checked={props.value !== false} onChange={(e) => props.onChange?.(e.target.checked)}>{t('Ghi lại quyết định (audit + cải thiện) khi người dùng chọn')}</Checkbox>
 ));
 
-function aiClassifyDeepStepUiSchema(t: (s: string) => any) {
+function aiClassifyDeepStepUiSchema(t: (s: string) => any, relationMode?: boolean) {
+  // In relationMode the field IS a belongsTo relation to the master → picking a candidate writes the
+  // real FK (via model.change), so there's NO "which column to write" question. Master is auto-derived
+  // from the relation at run time; the picker below is optional, only to enable the display-column list.
+  const rowWrite = relationMode
+    ? { aiTopK: { type: 'number', title: t('Số ứng viên xét (topK)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Số ứng viên gần nhất đem cho AI chấm. Nhiều hơn = kỹ hơn nhưng chậm/tốn token hơn (khuyên 10–15).') }, 'x-component': 'PtdlNumber' } }
+    : {
+        aiWriteField: { type: 'string', title: t('Chọn ứng viên xong → ghi cột nào vào ô?'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Sau khi bạn chọn 1 ứng viên, lấy giá trị cột này CỦA ỨNG VIÊN ghi vào ô đang cấu hình. Thường chọn cột mã (vd maHs) để ghi mã số.') }, 'x-component': 'PtdlMasterColSelect' },
+        aiTopK: { type: 'number', title: t('Số ứng viên xét (topK)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Số ứng viên gần nhất đem cho AI chấm. Nhiều hơn = kỹ hơn nhưng chậm/tốn token hơn (khuyên 10–15).') }, 'x-component': 'PtdlNumber' },
+      };
   return {
     tabs: {
       type: 'void',
@@ -65,16 +74,13 @@ function aiClassifyDeepStepUiSchema(t: (s: string) => any) {
           'x-component': 'FormTab.TabPane',
           'x-component-props': { tab: t('Đối chiếu & Hiển thị') },
           properties: {
-            aiMaster: { type: 'object', title: t('Bảng master (danh mục đối chiếu)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterCollectionSelect' },
+            aiMaster: { type: 'object', title: relationMode ? t('Bảng master (tự lấy từ quan hệ — chọn nếu muốn cấu hình cột hiển thị)') : t('Bảng master (danh mục đối chiếu)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterCollectionSelect' },
             aiIndexHint: { type: 'void', 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginTop: -12, marginBottom: 8 } }, 'x-component': 'PtdlMasterIndexHint' },
             aiQueryFields: { type: 'array', title: t('Nội dung cần đối chiếu (cột trên bản ghi)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Chọn 1 hoặc NHIỀU cột trên bản ghi hiện tại; giá trị được ghép lại thành nội dung đem so khớp với master.') }, 'x-component': 'PtdlQueryFieldsMulti' },
             rowWrite: {
               type: 'void',
               'x-component': 'PtdlGrid',
-              properties: {
-                aiWriteField: { type: 'string', title: t('Chọn ứng viên xong → ghi cột nào vào ô?'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Sau khi bạn chọn 1 ứng viên, lấy giá trị cột này CỦA ỨNG VIÊN ghi vào ô đang cấu hình. Thường chọn cột mã (vd maHs) để ghi mã số.') }, 'x-component': 'PtdlMasterColSelect' },
-                aiTopK: { type: 'number', title: t('Số ứng viên xét (topK)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Số ứng viên gần nhất đem cho AI chấm. Nhiều hơn = kỹ hơn nhưng chậm/tốn token hơn (khuyên 10–15).') }, 'x-component': 'PtdlNumber' },
-              },
+              properties: rowWrite,
             },
             aiDisplayFields: { type: 'array', title: t('Cột hiển thị trên thẻ ứng viên (chỉ để xem)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('CHỈ để hiển thị cho bạn so sánh khi chọn — KHÔNG ảnh hưởng việc khớp. Vd: đường dẫn, chương, thuế, chính sách. Cột dạng “A › B › C” tự thành breadcrumb.') }, 'x-component': 'PtdlMasterColMulti' },
             rowLLM: {
@@ -103,7 +109,7 @@ function aiClassifyDeepStepUiSchema(t: (s: string) => any) {
   };
 }
 
-function aiClassifyDeepFlowConfig(te: (s: string) => any) {
+function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean) {
   return {
     key: 'ptdlAiClassifyDeepSettings',
     sort: 554,
@@ -112,7 +118,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any) {
       ai: {
         title: te('AI phân loại chuyên sâu'),
         uiMode: { type: 'dialog', props: { width: 820 } },
-        uiSchema: aiClassifyDeepStepUiSchema(te),
+        uiSchema: aiClassifyDeepStepUiSchema(te, relationMode),
         defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 15, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiFeedback: true },
         handler(ctx: any, params: any) {
           ctx.model.setProps('aiService', params?.aiService || '');
@@ -206,14 +212,20 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayFields, writeFiel
 };
 
 /** Base render + ✨ + RICH candidate modal (cards with score/confidence/reasoning/verify/warnings). */
-export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => React.ReactNode }> = observer(({ model, baseRender }) => {
+export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => React.ReactNode; relationMode?: boolean }> = observer(({ model, baseRender, relationMode }) => {
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<any>(null);
   const p: any = model?.props || {};
   const master = p.aiMaster || {};
-  const canGen = !!master.collection && Array.isArray(p.aiQueryFields) && p.aiQueryFields.length > 0;
+  // relationMode: this field is a belongsTo relation → the master collection is the relation target,
+  // auto-derived from the field's collectionField (no need to configure it; a configured aiMaster still
+  // wins so the display-column picker can work). Picking a candidate writes the real FK via model.change.
+  const cf: any = relationMode ? (model?.collectionField || model?.context?.collectionField) : null;
+  const masterColl = master.collection || cf?.target || '';
+  const masterDsk = master.dataSourceKey || cf?.collection?.dataSourceKey || cf?.dataSourceKey || 'main';
+  const canGen = !!masterColl && Array.isArray(p.aiQueryFields) && p.aiQueryFields.length > 0;
 
   const writeValue = (val: any) => {
     if (val == null) return;
@@ -230,13 +242,13 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
       const values = collectValues(model);
       const query = (Array.isArray(p.aiQueryFields) ? p.aiQueryFields : []).map((f: string) => values?.[f]).filter((v: any) => v != null && String(v).trim() !== '').map((v: any) => String(v)).join(' ').trim();
       if (!query) { message.info(t('Nội dung đối chiếu đang trống (kiểm tra cột nguồn).')); return; }
-      const writeTemplate = p.aiWriteField ? `{{${p.aiWriteField}}}` : undefined;
+      const writeTemplate = relationMode ? undefined : (p.aiWriteField ? `{{${p.aiWriteField}}}` : undefined);
       const labelTemplate = Array.isArray(p.aiDisplayFields) && p.aiDisplayFields.length ? p.aiDisplayFields.map((c: string) => `{{${c}}}`).join(' - ') : undefined;
       const res = await API.request({
         url: 'ptdlAiColumn:classifyDeep',
         method: 'post',
         data: {
-          query, masterCollection: master.collection, dataSourceKey: master.dataSourceKey || 'main',
+          query, masterCollection: masterColl, dataSourceKey: masterDsk,
           topK: p.aiTopK || 15, roleHint: p.aiRoleHint || undefined, rubric: p.aiRubric || undefined,
           attributes: Array.isArray(p.aiAttributes) ? p.aiAttributes.filter((a: any) => a?.name) : undefined,
           displayFields: Array.isArray(p.aiDisplayFields) && p.aiDisplayFields.length ? p.aiDisplayFields : undefined,
@@ -258,14 +270,21 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
   genRef.current = onGen;
 
   const pick = async (c: any) => {
-    writeValue(c.write ?? c.label);
+    if (relationMode) {
+      // Write the real FK: RecordSelectFieldModel.change(record) links the associated master row (the
+      // full record makes the select display the label). Fall back to the code string if change fails.
+      try { (model as any).change?.(c.record || { [cf?.targetKey || 'id']: c.tk }); }
+      catch { writeValue(c.write ?? c.label); }
+    } else {
+      writeValue(c.write ?? c.label);
+    }
     setOpen(false);
     message.success(t('Đã chọn: {{label}}', { label: c.label }));
     if (p.aiFeedback !== false && result) {
       try {
         await API.request({
           url: 'ptdlAiColumn:classifyFeedback', method: 'post',
-          data: { masterCollection: master.collection, query: result.query, selectedTk: c.tk, aiTopTk: result.best?.tk, aiTopScore: result.best?.score, candidates: (result.candidates || []).map((x: any) => ({ tk: x.tk, score: x.score })) },
+          data: { masterCollection: masterColl, query: result.query, selectedTk: c.tk, aiTopTk: result.best?.tk, aiTopScore: result.best?.score, candidates: (result.candidates || []).map((x: any) => ({ tk: x.tk, score: x.score })) },
         });
       } catch { /* feedback best-effort */ }
     }
@@ -332,17 +351,17 @@ export function registerAiClassifyDeep({ flowEngine, variants, EditableItemModel
   }
 
   const registered: any[] = [];
-  for (const { Base, modelName, interfaces, label } of variants) {
+  for (const { Base, modelName, interfaces, label, relationMode } of variants) {
     if (!Base) continue;
     class AiClassifyDeepFieldModel extends Base {
       render() {
         const pp: any = (this as any).props || {};
         if (pp.pattern === 'readPretty' || pp.readOnly) return super.render();
-        return <AiClassifyDeepEditable model={this} baseRender={() => super.render()} />;
+        return <AiClassifyDeepEditable model={this} relationMode={!!relationMode} baseRender={() => super.render()} />;
       }
     }
     flowEngine.registerModels({ [modelName]: AiClassifyDeepFieldModel });
-    try { (AiClassifyDeepFieldModel as any).registerFlow(aiClassifyDeepFlowConfig(te)); } catch (e) { console.warn('[ai-column] classifyDeep: registerFlow failed', e); }
+    try { (AiClassifyDeepFieldModel as any).registerFlow(aiClassifyDeepFlowConfig(te, !!relationMode)); } catch (e) { console.warn('[ai-column] classifyDeep: registerFlow failed', e); }
     try { (AiClassifyDeepFieldModel as any).define?.({ label }); } catch { /* optional */ }
     try { EditableItemModel?.bindModelToInterface?.(modelName, interfaces, { isDefault: false }); } catch (e) { console.warn('[ai-column] classifyDeep: bind failed', e); }
     registered.push(AiClassifyDeepFieldModel);

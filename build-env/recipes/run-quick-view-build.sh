@@ -18,8 +18,13 @@ if [ -n "$VERSRC" ]; then
   echo "synced version -> $VERSRC"
 fi
 
-# Keep the bundled @ptdl/shared current (ColumnSelect / setSharedT live there).
+# Keep the bundled @ptdl/shared current (ColumnSelect / setSharedT live there). Restore the whole
+# package if it's absent (a stray `npm i` in build-env can prune it — it's not in package.json).
+if [ ! -f "$NM/@ptdl/shared/package.json" ] && [ -d "$ROOT/../packages/@ptdl/shared" ]; then
+  mkdir -p "$NM/@ptdl/shared"; cp -r "$ROOT/../packages/@ptdl/shared/package.json" "$ROOT/../packages/@ptdl/shared/dist" "$ROOT/../packages/@ptdl/shared/src" "$NM/@ptdl/shared/" 2>/dev/null || true
+fi
 if [ -d "$ROOT/../packages/@ptdl/shared/dist" ]; then
+  mkdir -p "$NM/@ptdl/shared/dist"
   cp -r "$ROOT/../packages/@ptdl/shared/dist/." "$NM/@ptdl/shared/dist/"; echo "synced @ptdl/shared dist"
 fi
 
@@ -38,15 +43,21 @@ mkstub react 18.3.1
 mkstub react-dom 18.3.1
 mkstub antd 5.24.2
 mkstub "@ant-design/icons" 5.6.1
-mkstub "@formily/react" 2.2.27
-mkstub "@formily/core" 2.2.27
 mkstub "@nocobase/client" 2.1.19
 mkstub "@nocobase/client-v2" 2.1.19
 mkstub "@nocobase/server" 2.1.19
 mkstub "@nocobase/flow-engine" 2.1.19
-# @ptdl/shared's settingsKit pulls @formily/react + lucide-react at module top-level; formily is an
-# external (app-provided) so a version stub is enough, lucide-react must be a REAL bundled dep.
-if [ ! -f "$NM/lucide-react/package.json" ]; then npm i lucide-react@0.469.0 --no-audit --no-fund --no-save >/dev/null 2>&1 || true; fi
+# NOTE: @ptdl/shared's settingsKit imports @formily/react + lucide-react at its module top level, so
+# rspack must RESOLVE them even though we only use ColumnSelect/i18n (formily code tree-shakes out).
+# These must be REAL packages in build-env node_modules (a name+version stub has no entry → "can't
+# resolve"). Do NOT `npm i` them here — npm prunes the hand-built stubs + @ptdl/shared. They are
+# already installed; fail loudly if a stray prune removed them.
+for real in "@formily/react" "@formily/core" "@formily/reactive" "lucide-react"; do
+  # real = package.json + actual code files; a bare stub has only package.json
+  if [ ! -f "$NM/$real/package.json" ] || [ -z "$(find "$NM/$real" -maxdepth 3 \( -name '*.js' -o -name '*.mjs' \) 2>/dev/null | head -1)" ]; then
+    echo "FATAL: real package '$real' missing from build-env node_modules. Run: (cd $ROOT && npm i $real --no-save) then restore @ptdl/shared."; exit 1
+  fi
+done
 
 node "$NM/@nocobase/build/bin/nocobase-build.js" "$PKG" --tar --no-dts
 

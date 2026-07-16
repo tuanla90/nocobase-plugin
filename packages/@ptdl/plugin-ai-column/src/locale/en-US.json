@@ -496,5 +496,6 @@
   "Cách + trọng số để AI cho điểm mỗi ứng viên (vd chức năng 40đ, vật liệu 20đ…). Đây là bước CHẤM. Điểm & tiêu chí khớp/lệch hiện trên từng thẻ ứng viên. Bỏ trống = AI tự chấm tổng quát.": "How + weights the AI scores each candidate (e.g. function 40pts, material 20pts…). This is the SCORE step. The score & matched/unmatched criteria show on each candidate card. Empty = the AI scores generally.",
   "Nội dung cần đối chiếu (cột trên bản ghi)": "Content to match (column on the record)",
   "Số ứng viên xét (topK)": "Candidates to score (topK)",
-  "Vai chuyên gia": "Expert role"
+  "Vai chuyên gia": "Expert role",
+  "Bảng master (tự lấy từ quan hệ — chọn nếu muốn cấu hình cột hiển thị)": "Master collection (auto-derived from the relation — pick one to configure display columns)"
 }

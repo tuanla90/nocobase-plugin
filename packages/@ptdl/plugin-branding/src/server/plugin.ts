@@ -11,8 +11,12 @@ export class PluginBrandingServer extends Plugin {
       actions: { getActive, save, setAccent, exportBundle, importBundle },
       only: ['list', 'get', 'create', 'update', 'destroy', 'getActive', 'save', 'setAccent', 'exportBundle', 'importBundle'],
     });
-    // Skin must apply for everyone (incl. before login) → public read. `save` stays admin-gated.
+    // Skin must apply for everyone (incl. before login) → public read.
     this.app.acl.allow('brandingConfigs', 'getActive', 'public');
+    // The write actions are custom (not standard CRUD), so the admin role's strategy doesn't cover them —
+    // without an explicit allow ONLY root (which bypasses ACL) could save. Grant to authenticated users
+    // (the settings page is admin-only in the UI); matches the @ptdl convention (see ai-column).
+    this.app.acl.allow('brandingConfigs', ['save', 'setAccent', 'exportBundle', 'importBundle'], 'loggedIn');
   }
 
   async install() {

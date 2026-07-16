@@ -1,4 +1,4 @@
-import { Plugin, InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, useApp } from '@nocobase/client-v2';
+import { Plugin, InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, useApp, RecordSelectFieldModel } from '@nocobase/client-v2';
 import { EditableItemModel, tExpr } from '@nocobase/flow-engine';
 import { UploadFieldModel } from '@nocobase/plugin-file-manager/client-v2';
 import { AttachmentURLFieldModel } from '@nocobase/plugin-field-attachment-url/client-v2';
@@ -100,9 +100,14 @@ export class PluginAiColumnClientV2 extends Plugin {
       tExpr,
     });
     // Deep/decision-support classify (attribute extract + domain scoring + rich candidate cards).
+    // Two variants: a TEXT field (writes the picked code string) and a RELATION field (m2o belongsTo →
+    // picking links the real FK via model.change, master auto-derived from the relation, no write-col).
     registerAiClassifyDeep({
       flowEngine: fe,
-      variants: [{ Base: InputFieldModel, modelName: 'AiClassifyDeepFieldModel', interfaces: ['input'], label: te('AI phân loại chuyên sâu') }],
+      variants: [
+        { Base: InputFieldModel, modelName: 'AiClassifyDeepFieldModel', interfaces: ['input'], label: te('AI phân loại chuyên sâu') },
+        { Base: RecordSelectFieldModel, modelName: 'AiClassifyDeepRelationFieldModel', interfaces: ['m2o', 'obo'], label: te('AI phân loại chuyên sâu'), relationMode: true },
+      ],
       EditableItemModel,
       api,
       tExpr,

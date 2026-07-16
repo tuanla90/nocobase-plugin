@@ -2,7 +2,7 @@ import { Plugin, useAPIClient } from '@nocobase/client';
 // The classic /admin app also hosts flow-engine and provides '@nocobase/client-v2' as a shared
 // runtime module to plugins — so we import the editable field bases here too and register our
 // AI field models into the classic app's flowEngine (works in /admin flow-engine blocks).
-import { InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum } from '@nocobase/client-v2';
+import { InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, RecordSelectFieldModel } from '@nocobase/client-v2';
 import { EditableItemModel, tExpr } from '@nocobase/flow-engine';
 import { UploadFieldModel } from '@nocobase/plugin-file-manager/client-v2';
 import { AttachmentURLFieldModel } from '@nocobase/plugin-field-attachment-url/client-v2';
@@ -98,7 +98,10 @@ export class PluginAiColumnClient extends Plugin {
     });
     registerAiClassifyDeep({
       flowEngine: fe,
-      variants: [{ Base: InputFieldModel, modelName: 'AiClassifyDeepFieldModel', interfaces: ['input'], label: te('AI phân loại chuyên sâu') }],
+      variants: [
+        { Base: InputFieldModel, modelName: 'AiClassifyDeepFieldModel', interfaces: ['input'], label: te('AI phân loại chuyên sâu') },
+        { Base: RecordSelectFieldModel, modelName: 'AiClassifyDeepRelationFieldModel', interfaces: ['m2o', 'obo'], label: te('AI phân loại chuyên sâu'), relationMode: true },
+      ],
       EditableItemModel,
       api,
       tExpr,
