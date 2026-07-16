@@ -1,48 +1,69 @@
-# nocobase-plugins
+# nocobase-plugins — workspace @ptdl
 
-Bộ plugin NocoBase của **@ptdl** — đã gom về 1 folder, chuẩn hoá **1 scope duy nhất `@ptdl`**.
+Bộ plugin NocoBase của **@ptdl** (1 scope duy nhất `@ptdl`) + toolchain build + tài liệu.
+Target **NocoBase 2.1.19**. Dev local: `nb-local` (sqlite, pm2). Prod: **Railway** (HTTPS sẵn).
 
-/ Cập nhật: 2026-07-08. NocoBase 2.1.19. Localhost dev: http://localhost:13000 (sqlite, pm2).
+> **Nguồn sự thật về danh sách plugin = [`PLUGIN-REGISTRY.md`](PLUGIN-REGISTRY.md)** (24 plugin, mô tả đầy đủ).
+> Kế hoạch/bối cảnh: [`PLAN.md`](PLAN.md) · [`HANDOFF.md`](HANDOFF.md) · [`docs/`](docs/) (các thiết kế chi tiết).
 
-> ⚠️ **Danh sách plugin bên dưới (8 cái) đã LỖI THỜI.** Nguồn sự thật hiện tại = **[`PLUGIN-REGISTRY.md`](PLUGIN-REGISTRY.md)**
-> (19 plugin `@ptdl`). Tiến độ/bối cảnh session: **[`HANDOFF.md`](HANDOFF.md)**, **[`docs/PLAN.md`](docs/PLAN.md)**,
-> **[`SHARED-LIBS-PROPOSAL.md`](SHARED-LIBS-PROPOSAL.md)**.
+---
+
+## Cài trên máy khác / server (KHÔNG cần build) ⭐
+
+Cách cài chuẩn = **upload file `.tgz` qua Plugin Manager UI** (chạy y hệt trên nb-local, Railway, Docker):
+
+1. `git clone https://github.com/tuanla90/nocobase-plugin.git` (hoặc `git pull` nếu đã clone).
+2. Mở NocoBase → **Plugin Manager (góc phải trên) → Add & Update → Upload plugin**.
+3. Chọn file trong **[`latest/@ptdl/`](latest/@ptdl/)** (bản `.tgz` MỚI NHẤT, mỗi plugin 1 file) → **Submit** → **Enable**.
+4. **Ctrl+Shift+R** (hard refresh). Plugin có settings riêng (PWA, Branding, Device Kit…) thì vào Settings tương ứng để chỉnh.
+
+**Lưu ý:**
+- Một số plugin phụ thuộc nhau — bật kèm: **custom-icons** (icon Lucide, nhiều plugin dùng), **file-manager** (native, cần cho **device-kit** camera).
+- Nếu upload báo **403** trên Railway/proxy: proxy nuốt header `X-Role: root` → xem [`docs/NOCOBASE-PLUGIN-BUILD-GUIDE.md`](docs/NOCOBASE-PLUGIN-BUILD-GUIDE.md) §2.
+- Cập nhật plugin: bản build sau **tăng `version`** trong `package.json` → NocoBase coi là update.
 
 ## Cấu trúc
+
 ```
 nocobase-plugins/
-├── packages/@ptdl/            # SOURCE code (8 plugin ĐANG DÙNG), scope @ptdl
-│   └── plugin-<name>/         #   src/, package.json, README...
-├── packages/_inactive/@ptdl/  # source plugin KHÔNG dùng nữa (giữ lại, không xoá)
-│   ├── plugin-icon-kit/       #   -> đã thay bằng custom-icons + conditional-format
-│   └── plugin-number-format/  #   -> SUPERSEDED: nhu cầu (dấu nghìn/thập phân/icon/đơn vị) đã có trong
-│   │                          #      field-enhancements "Number with unit" widget (đã build+cài)
-├── latest/@ptdl/              # .tgz MỚI NHẤT của 8 plugin active (bản để upload / khớp localhost)
-├── archive/@ptdl/             # MỌI version .tgz đã build (gồm cả icon-kit, number-format cũ)
-├── archive/_legacy-scope-cu/  # .tgz bản GỐC scope cũ (@nocobase/*, @taichuy/*) — lưu vết
-└── _backup-localhost-*/       # backup DB sqlite của localhost trước mỗi lần đồng bộ
+├── packages/@ptdl/            # SOURCE code từng plugin (src/, package.json, README)
+├── packages/@ptdl/shared/     # thư viện dùng chung (bundle thẳng vào từng plugin; dist/ được .gitignore)
+├── packages/_inactive/@ptdl/  # plugin không dùng nữa (giữ lại tham khảo)
+├── latest/@ptdl/              # ⭐ .tgz MỚI NHẤT — file để upload cài đặt (1 bản/plugin)
+├── build-env/                 # toolchain build (recipes/) — node_modules/storage/ được .gitignore
+│   ├── recipes/run-<name>-build.sh   # build 1 plugin
+│   └── BUILD.md
+├── docs/                      # thiết kế chi tiết (DEVICE-KIT, COMPUTED-FIELD, build-guide…)
+├── snippets/                  # RunJS snippet library
+├── plugins/ · theme/ · extras/   # snapshot CŨ (8 tgz 0.1.0 + ERPNext theme CSS + guide) — GIỮ tham khảo,
+│                                  #   bản dùng thật hiện tại nằm ở latest/@ptdl/
+├── PLUGIN-REGISTRY.md · PLAN.md · HANDOFF.md · SHARED-LIBS-PROPOSAL.md
 ```
 
-## 8 plugin đang chạy trên localhost (tất cả `@ptdl`, đã enable)
-| Plugin | Version |
-|---|---|
-| @ptdl/plugin-block-custom-html | 0.12.0 |
-| @ptdl/plugin-conditional-format | 0.2.0 |
-| @ptdl/plugin-custom-icons | 0.1.0 |
-| @ptdl/plugin-data-visualization-echarts-pro | 0.1.0 |
-| @ptdl/plugin-enhanced-table-block | 2.1.0-beta.13 |
-| @ptdl/plugin-global-search | 0.2.0 |
-| @ptdl/plugin-login-lite | 2.2.0 |
-| @ptdl/plugin-pwa | 0.3.0 |
+> **`.gitignore` loại:** `node_modules/`, `build-env/{node_modules,packages,storage}/`, `packages/@ptdl/shared/dist/`,
+> `_backup-localhost-*/` + `*.sqlite` (DB thật — không đẩy lên git), `archive/` (mọi version tgz cũ — nặng).
 
-## Ghi chú
-- Trước đây scope lẫn lộn `@nocobase/*`, `@taichuy/*`, `@ptdl/*`. Đã build lại tất cả về `@ptdl`
-  (đổi scope **bắt buộc build lại** vì tên package bị nướng cứng trong client bundle + đường dẫn static).
-- `plugin-icon-kit`: bỏ, chuyển sang dùng `custom-icons` + `conditional-format`.
-- `plugin-number-format` (+ `plugin-number-input`, kiến trúc classic v1 cũ hơn): **superseded**, không cần sửa build.
-  Chưa từng build (không có root stub/recipe) — vướng thật là kiến trúc: flow mới đăng ký trên `NumberFieldModel`
-  không hiện trong menu ⋮ settings của FORM (menu form chỉ render flow tên cố định, khác cột bảng). Nhu cầu gốc
-  (dấu nghìn/thập phân/icon/đơn vị) đã có lời giải khác + đã build+cài: `field-enhancements` widget **"Number
-  with unit"** (đăng ký FieldModel mới qua `bindModelToInterface` → hiện trong dropdown "Field component").
-- Build lại 1 plugin: đặt source `@ptdl` vào build-env có `@nocobase/build@2.1.19`, chạy
-  `nocobase-build.js @ptdl/plugin-<name> --tar --no-dts` (xem NOCOBASE-PLUGIN-BUILD-GUIDE.md ở dự án cũ).
+## Build lại từ source (dev)
+
+```bash
+cd build-env
+npm install @nocobase/build@2.1.19 --no-audit --no-fund   # 1 lần (toolchain không kèm trong git)
+bash recipes/run-shared-build.sh                          # khi sửa @ptdl/shared
+bash recipes/run-<plugin>-build.sh                        # build 1 plugin → storage/tar/@ptdl/*.tgz
+bash recipes/add-markers.sh storage/tar/@ptdl/<pkg>-<ver>.tgz   # BẮT BUỘC (marker client-v2 cho /v/)
+cp storage/tar/@ptdl/<pkg>-<ver>.tgz ../latest/@ptdl/     # promote bản mới để upload
+```
+Chi tiết: [`build-env/BUILD.md`](build-env/BUILD.md) · [`docs/NOCOBASE-PLUGIN-BUILD-GUIDE.md`](docs/NOCOBASE-PLUGIN-BUILD-GUIDE.md).
+
+## Đồng bộ git (giữa các máy)
+
+```bash
+git add -A && git commit -m "..."   # kèm Co-Authored-By nếu do Claude tạo
+git push                            # remote: origin = github.com/tuanla90/nocobase-plugin (nhánh main)
+# máy khác:
+git pull                            # lấy source + latest/@ptdl mới nhất → upload lại qua Plugin Manager
+```
+
+## License
+
+`@nocobase/*`: AGPL-3.0 · `@ptdl/*`: plugin nội bộ.
