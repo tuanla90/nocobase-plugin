@@ -35,8 +35,7 @@ nocobase-plugins/
 │   └── BUILD.md
 ├── docs/                      # thiết kế chi tiết (DEVICE-KIT, COMPUTED-FIELD, build-guide…)
 ├── snippets/                  # RunJS snippet library
-├── plugins/ · theme/ · extras/   # snapshot CŨ (8 tgz 0.1.0 + ERPNext theme CSS + guide) — GIỮ tham khảo,
-│                                  #   bản dùng thật hiện tại nằm ở latest/@ptdl/
+├── theme/                     # CSS ERPNext (dán vào Theme editor — no-code, không cần plugin)
 ├── PLUGIN-REGISTRY.md · PLAN.md · HANDOFF.md · SHARED-LIBS-PROPOSAL.md
 ```
 
