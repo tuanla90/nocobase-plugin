@@ -1,7 +1,7 @@
 import { SearchOutlined } from '@ant-design/icons';
-import { Alert, Button, Input, InputNumber, Segmented, Select, Slider, Space, Switch, Tabs, Typography, message } from 'antd';
+import { Alert, Button, Input, InputNumber, Select, Slider, Space, Switch, Tabs, Typography, message } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ColorField, FieldPickerCascader, getCaretElement, insertAtCaret, SettingRow, ControlGrid, SaveBar, PreviewPane } from '@ptdl/shared';
+import { ColorField, FieldPickerCascader, getCaretElement, insertAtCaret, SettingRow, ControlGrid, SaveBar, PreviewPane, SegmentedGroup } from '@ptdl/shared';
 import {
   DEFAULT_APPEARANCE,
   getAppearance,
@@ -318,7 +318,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
           <Alert type="info" showIcon style={{ marginBottom: 12 }} message={t('Loading collections…')} />
         )}
 
-        <Segmented
+        <SegmentedGroup
           value={scopeMode}
           onChange={(v) => setScopeMode(v as 'auto' | 'custom')}
           options={[
@@ -393,7 +393,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                     </div>
                   </SettingRow>
                   <SettingRow label={t('Show as')} labelWidth={84} style={{ gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-                    <Segmented
+                    <SegmentedGroup
                       value={r.titleMode}
                       onChange={(v) => setScopeRow(i, { titleMode: v as 'fields' | 'template' })}
                       options={[
@@ -480,7 +480,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                   </Button>
                 </SettingRow>
                 <SettingRow label={t('Open as')} labelWidth={84} style={{ gap: 10, marginBottom: r.mode === 'raw' ? 0 : 10 }}>
-                  <Segmented
+                  <SegmentedGroup
                     value={r.mode}
                     onChange={(v) => setLinkRow(i, { mode: v as Mode })}
                     options={[
@@ -609,7 +609,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
 
                   <ControlGrid>
                   <SettingRow label={t('Preset')} labelWidth={84} style={{ marginBottom: 16 }}>
-                    <Segmented
+                    <SegmentedGroup
                       value={
                         !appearance.label && !appearance.showShortcut
                           ? 'icon'
@@ -635,7 +635,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                   </SettingRow>
 
                   <SettingRow label={t('Position')} labelWidth={84} hint={t('Left & Center float over the header as an overlay — Left anchors just after the logo (best with the top menu hidden so it has room); Right (default) docks among the header actions and never overlaps.')} style={{ marginBottom: 16 }}>
-                    <Segmented
+                    <SegmentedGroup
                       value={appearance.align === 'left' ? 'left' : appearance.align === 'center' ? 'center' : 'right'}
                       onChange={(v) => setAppear({ align: v as Align })}
                       options={[

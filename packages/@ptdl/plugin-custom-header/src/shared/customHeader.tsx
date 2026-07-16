@@ -1,9 +1,10 @@
 import React from 'react';
-import { Segmented, Slider, Switch } from 'antd';
+import { Slider, Switch } from 'antd';
 import { observer, useForm } from '@formily/react';
 import {
   colorToString, ColorField, IconByKey, RegistryIconPicker, setIconRegistry,
   SettingsGrid, fi, rx, ResetButton, PreviewBox, CollapsibleSection, registerSettingsKit,
+  SegmentedGroup,
 } from '@ptdl/shared';
 
 /**
@@ -324,8 +325,7 @@ function registerSharedComponents(flowSettings: any) {
   // to match the compact settings dialog; onChange emits undefined on empty (shared default), as before.
   const ChColorPicker = (props: any) => React.createElement(ColorField, { size: 'small', ...props });
   const IconSide = (props: any) => (
-    <Segmented
-      size="small"
+    <SegmentedGroup
       value={props.value || 'left'}
       onChange={(v: any) => props.onChange?.(v)}
       options={[
@@ -346,8 +346,7 @@ function registerSharedComponents(flowSettings: any) {
   const BoolSwitch = (props: any) => <Switch size="small" checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
   // Column alignment (antd Table column `align`): Default = no override.
   const AlignField = (props: any) => (
-    <Segmented
-      size="small"
+    <SegmentedGroup
       value={props.value || 'default'}
       onChange={(v: any) => props.onChange?.(v === 'default' ? undefined : v)}
       options={[
@@ -360,8 +359,7 @@ function registerSharedComponents(flowSettings: any) {
   );
   // Gradient direction (only relevant when a 2nd background color is set). Arrow labels — no i18n needed.
   const BgDirField = (props: any) => (
-    <Segmented
-      size="small"
+    <SegmentedGroup
       value={props.value || 'to bottom'}
       onChange={(v: any) => props.onChange?.(v)}
       options={[

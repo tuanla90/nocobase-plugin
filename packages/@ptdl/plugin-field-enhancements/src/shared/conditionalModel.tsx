@@ -1,8 +1,8 @@
 import React from 'react';
-import { Button, Segmented, Switch, Slider, Space } from 'antd';
+import { Button, Switch, Slider, Space } from 'antd';
 import { ArrayTable } from '@formily/antd-v5';
 import { observer as fObserver, useForm, useField } from '@formily/react';
-import { colorToString, ColorField, setIconRegistry, IconByKey, RegistryIconPicker } from '@ptdl/shared';
+import { SegmentedGroup, colorToString, ColorField, setIconRegistry, IconByKey, RegistryIconPicker } from '@ptdl/shared';
 
 /**
  * "Value tag" field component (moved here from @ptdl/plugin-conditional-format 2026-07-13).
@@ -157,7 +157,7 @@ export function registerConditionalModel({
     // ColorField (shared) registered under the legacy name `ColorPicker` so existing uiSchemas keep working.
     // Old wrapper emitted colorToString(c) (undefined on empty) → shared default emptyValue (undefined) matches.
     const IconSide = (props: any) => (
-      <Segmented
+      <SegmentedGroup
         style={{ border: '1px solid var(--colorBorder, #d9d9d9)' }}
         value={props.value || 'left'}
         onChange={(v: any) => props.onChange?.(v)}

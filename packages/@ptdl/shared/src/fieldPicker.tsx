@@ -1,6 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Cascader, Input } from 'antd';
+import { Cascader, Input, Select } from 'antd';
 import { st } from './i18n';
+
+// Small leading DATA-TYPE icon for a field/column option — inline Lucide-style SVGs (currentColor) so
+// @ptdl/shared stays SELF-CONTAINED (no @ant-design/icons dependency forced on consumer plugin builds).
+const DATE_TYPES = new Set(['date', 'dateOnly', 'datetime', 'datetimeNoTz', 'datetimeTz', 'timestamp', 'time', 'unixTimestamp']);
+const NUM_TYPES = new Set(['integer', 'bigInt', 'float', 'double', 'decimal', 'real', 'number']);
+const REL_TYPES = new Set(['belongsTo', 'hasOne', 'hasMany', 'belongsToMany']);
+const TypeSvg: React.FC<{ d: React.ReactNode }> = ({ d }) => (
+  <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>{d}</svg>
+);
+export function fieldTypeIcon(type?: string, iface?: string): React.ReactNode {
+  const t = type || '';
+  const i = iface || '';
+  if (!t && !i) return null; // no type info (e.g. a plain non-field option) → no icon
+  if (DATE_TYPES.has(t) || ['datetime', 'date', 'createdAt', 'updatedAt', 'time', 'unixTimestamp'].includes(i))
+    return <TypeSvg d={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />; // calendar
+  if (NUM_TYPES.has(t) || ['number', 'percent', 'integer'].includes(i))
+    return <TypeSvg d={<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />} />; // hash
+  if (t === 'boolean' || i === 'checkbox')
+    return <TypeSvg d={<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="m9 12 2 2 4-4" /></>} />; // check-square
+  if (REL_TYPES.has(t))
+    return <TypeSvg d={<><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></>} />; // link
+  if (t === 'json' || t === 'jsonb' || i === 'json')
+    return <TypeSvg d={<path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />} />; // code
+  return <TypeSvg d={<path d="M4 7V4h16v3M9 20h6M12 4v16" />} />; // text (default)
+}
 
 /**
  * Reusable "insert a field token" picker — canonical shared version (was copy-pasted into 5 plugins;
@@ -27,6 +52,10 @@ function fieldLabel(f: any): string {
   const title = f?.uiSchema?.title || f?.title;
   const lbl = cleanLabel(title, f?.name);
   return lbl + (lbl !== f?.name ? ` (${f.name})` : '');
+}
+/** Just the clean display title (no "(name)" suffix) — used for the two-line option rendering. */
+function fieldTitle(f: any): string {
+  return cleanLabel(f?.uiSchema?.title || f?.title, f?.name);
 }
 
 const fieldsCache = new Map<string, any[]>();
@@ -86,10 +115,10 @@ export async function buildFieldCascaderOptions(
   const out: any[] = [];
   for (const f of fields) {
     if (isLeaf(f)) {
-      out.push({ value: f.name, label: fieldLabel(f), isLeaf: true });
+      out.push({ value: f.name, label: fieldLabel(f), title: fieldTitle(f), type: f.type, iface: f.interface, isLeaf: true });
     } else if (depth < maxDepth && relTypes.includes(f.type) && f.target) {
       const children = await buildFieldCascaderOptions(api, f.target, dataSourceKey, opts, depth + 1);
-      if (children.length) out.push({ value: f.name, label: `${fieldLabel(f)} →`, children });
+      if (children.length) out.push({ value: f.name, label: `${fieldLabel(f)} →`, title: fieldTitle(f), type: f.type, iface: f.interface, children });
     }
   }
   return out;
@@ -110,9 +139,9 @@ export async function buildLevelOptions(
   for (const f of fields) {
     const paths = [...parentPaths, f.name];
     if (isLeaf(f)) {
-      out.push({ value: f.name, label: fieldLabel(f), isLeaf: true, paths });
+      out.push({ value: f.name, label: fieldLabel(f), title: fieldTitle(f), type: f.type, iface: f.interface, isLeaf: true, paths });
     } else if (parentPaths.length < maxDepth && relTypes.includes(f.type) && f.target) {
-      out.push({ value: f.name, label: `${fieldLabel(f)} →`, isLeaf: false, target: f.target, paths });
+      out.push({ value: f.name, label: `${fieldLabel(f)} →`, title: fieldTitle(f), type: f.type, iface: f.interface, isLeaf: false, target: f.target, paths });
     }
   }
   return out;
@@ -221,6 +250,7 @@ export const FieldPickerCascader: React.FC<FieldPickerCascaderProps> = ({
       options={opts}
       disabled={off}
       value={sel as any}
+      optionRender={cascaderOptionRender as any}
       loadData={lazy ? (loadData as any) : undefined}
       onChange={(val: any, selectedOptions: any) => {
         const leaf = Array.isArray(selectedOptions) ? selectedOptions[selectedOptions.length - 1] : undefined;
@@ -308,5 +338,96 @@ export const FieldTokenTextArea: React.FC<FieldTokenTextAreaProps> = ({
       />
       {hint ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{hint}</div> : null}
     </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ColumnSelect — a normal antd dropdown for picking a COLUMN. The list shows the
+// friendly title on top + the raw column name (monospace) underneath, and search
+// matches EITHER. Spread `columnDropdownProps` into any <Select> to get the same
+// two-line behaviour on a custom select (e.g. one with a tagRender).
+// ─────────────────────────────────────────────────────────────────────────────
+export type ColumnOption = { value: string; label: string; type?: string; iface?: string };
+
+/** Map raw collection fields → {value,label,type} column options (belongsTo → its FK column; adds id + timestamps). */
+export function buildColumnOptions(fields: any[]): ColumnOption[] {
+  const opts: ColumnOption[] = (fields || [])
+    .filter((f: any) => !['hasMany', 'belongsToMany', 'hasOne'].includes(f.type))
+    .map((f: any) => {
+      const ti = f?.uiSchema?.title || f?.name;
+      const base = f?.type === 'belongsTo' && f?.foreignKey ? { value: f.foreignKey, label: `${ti} → ${f.foreignKey}` } : { value: f.name, label: ti };
+      return { ...base, type: f?.type, iface: f?.interface };
+    });
+  const extraType: Record<string, string> = { id: 'bigInt', createdAt: 'date', updatedAt: 'date' };
+  for (const extra of ['id', 'createdAt', 'updatedAt']) if (!opts.some((o) => o.value === extra)) opts.push({ value: extra, label: extra, type: extraType[extra] });
+  return opts;
+}
+
+/** THE standard two-line option: friendly title on top, raw name (monospace) underneath. Reused by both
+ *  the flat ColumnSelect and the multi-level FieldPickerCascader so every field picker looks identical. */
+export const TwoLineOption: React.FC<{ title: React.ReactNode; sub?: string; icon?: React.ReactNode }> = ({ title, sub, icon }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.25, padding: '1px 0' }}>
+    {icon != null && <span style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 13, flexShrink: 0, display: 'inline-flex' }}>{icon}</span>}
+    <div style={{ minWidth: 0 }}>
+      <div>{title}</div>
+      {sub != null && sub !== '' && String(title) !== String(sub) && (
+        <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #999)', fontFamily: 'monospace' }}>{sub}</div>
+      )}
+    </div>
+  </div>
+);
+// Select.optionRender receives {label,value,data}; Cascader.optionRender receives the raw option.
+const colOptionRender = (o: any) => <TwoLineOption title={o.data?.label} sub={o.value} icon={fieldTypeIcon(o.data?.type, o.data?.iface)} />;
+const cascaderOptionRender = (o: any) => <TwoLineOption title={o?.title || o?.label} sub={o?.value === '__empty' ? undefined : o?.value} icon={o?.value === '__empty' ? null : fieldTypeIcon(o?.type, o?.iface)} />;
+const colFilter = (input: string, opt: any) => {
+  const s = input.toLowerCase();
+  return String(opt?.label ?? '').toLowerCase().includes(s) || String(opt?.value ?? '').toLowerCase().includes(s);
+};
+
+/** Spread into any <Select options={columnOptions}> for the two-line title+name dropdown + dual (title/name) search. */
+export const columnDropdownProps = { showSearch: true as const, filterOption: colFilter, optionRender: colOptionRender };
+
+export type ColumnSelectProps = {
+  value?: string | string[];
+  onChange?: (v: any) => void;
+  /** Pre-built options, OR pass `api` + `collectionName` to auto-load the collection's columns. */
+  options?: ColumnOption[];
+  api?: any;
+  collectionName?: string;
+  dataSourceKey?: string;
+  mode?: 'single' | 'multiple';
+  placeholder?: string;
+  allowClear?: boolean;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+};
+
+/** Column picker dropdown (title + raw name, dual-search). Give `options`, or (`api` + `collectionName`) to self-load. */
+export const ColumnSelect: React.FC<ColumnSelectProps> = ({
+  value, onChange, options, api, collectionName, dataSourceKey, mode, placeholder, allowClear = true, disabled, style,
+}) => {
+  const [loaded, setLoaded] = useState<ColumnOption[] | null>(null);
+  useEffect(() => {
+    if (options || !api || !collectionName) return;
+    let alive = true;
+    getFields(api, collectionName, dataSourceKey)
+      .then((fs) => { if (alive) setLoaded(buildColumnOptions(fs)); })
+      .catch(() => { if (alive) setLoaded([]); });
+    return () => { alive = false; };
+  }, [api, collectionName, dataSourceKey, options]);
+  const opts = options || loaded || [];
+  const multiple = mode === 'multiple';
+  return (
+    <Select
+      {...columnDropdownProps}
+      style={{ width: '100%', ...style }}
+      mode={multiple ? 'multiple' : undefined}
+      allowClear={multiple ? false : allowClear}
+      value={(value as any) || (multiple ? [] : undefined)}
+      options={opts}
+      onChange={onChange}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
   );
 };

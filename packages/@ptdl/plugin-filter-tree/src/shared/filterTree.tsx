@@ -1,8 +1,8 @@
 import React from 'react';
-import { Badge, Button, Cascader, DatePicker, Empty, Input, InputNumber, Segmented, Select, Space, Spin, Switch, Tabs } from 'antd';
+import { Badge, Button, Cascader, DatePicker, Empty, Input, InputNumber, Select, Space, Spin, Switch, Tabs } from 'antd';
 import dayjs from 'dayjs';
 import { observer, useForm, RecursionField, useFieldSchema } from '@formily/react';
-import { ColorField, getFields, IconByKey, RegistryIconPicker, setIconRegistry, SettingsGrid, rx, onLiveRefresh } from '@ptdl/shared';
+import { ColorField, getFields, IconByKey, RegistryIconPicker, setIconRegistry, SettingsGrid, rx, onLiveRefresh, SegmentedGroup } from '@ptdl/shared';
 
 /**
  * @ptdl/plugin-filter-tree — AppSheet-style group-by filter BLOCKS (two skins, one engine).
@@ -1528,7 +1528,7 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
   if (cfg.barStyle === 'segmented') {
     control = (
       <div style={{ display: 'flex', justifyContent: justify, overflowX: 'auto' }}>
-        <Segmented size={size === 'large' ? 'large' : (size as any)} value={activeKey} onChange={(k: any) => onItemKey(String(k))} options={items.map((it) => ({ value: it.key, label: itemLabel(it) }))} />
+        <SegmentedGroup size={size === 'large' ? 'large' : (size as any)} value={activeKey} onChange={(k: any) => onItemKey(String(k))} options={items.map((it) => ({ value: it.key, label: itemLabel(it) }))} />
       </div>
     );
   } else if (cfg.barStyle === 'tab') {

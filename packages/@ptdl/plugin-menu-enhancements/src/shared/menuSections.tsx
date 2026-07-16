@@ -1,6 +1,5 @@
 import React from 'react';
-import { Segmented } from 'antd';
-import { ColorField, registerSettingsKit, rx, fi, livePreview, previewField, SEG_PROPS } from '@ptdl/shared';
+import { ColorField, registerSettingsKit, rx, fi, livePreview, previewField, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
 
 /**
  * @ptdl/plugin-menu-sections — turn any left-sidebar menu item into a NON-CLICKABLE
@@ -399,7 +398,7 @@ const SectionPreview = livePreview((v: any) => {
 function registerSectionComponents(flowSettings: any) {
   // registerSettingsKit also registers the shared layout primitives (SettingsGrid + CollapsibleSection).
   // PtdlSegmented = antd Segmented (block, bordered via SEG_PROPS) for the position / align pickers.
-  registerSettingsKit(flowSettings, { PtdlSectionColor, PtdlSectionPreview: SectionPreview, PtdlSegmented: Segmented });
+  registerSettingsKit(flowSettings, { PtdlSectionColor, PtdlSectionPreview: SectionPreview, PtdlSegmented: SegmentedGroup });
 }
 
 // Field-visibility predicates for the single "section" model (function-form reactions — the string

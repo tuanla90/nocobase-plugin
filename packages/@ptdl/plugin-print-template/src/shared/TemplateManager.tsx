@@ -2,13 +2,13 @@
 // injects its own api-client hook (v1 useAPIClient / v2 useApp().apiClient).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Button, Checkbox, Drawer, Input, InputNumber, Popconfirm, Segmented, Select, Slider, Space,
+  Button, Checkbox, Drawer, Input, InputNumber, Popconfirm, Select, Slider, Space,
   Modal, Table, Tabs, Tag, Tooltip, message,
 } from 'antd';
 import Handlebars from 'handlebars';
 import { GrapesBodyEditor, composeBody, splitStyleFromBody } from './GrapesBodyEditor';
 import { RegistryIcon } from './iconRegistry';
-import { ColorField, FieldPickerCascader, RelationAppendsPicker, getCaretElement, insertAtCaret, AiCodegenButton, st } from '@ptdl/shared';
+import { ColorField, FieldPickerCascader, RelationAppendsPicker, getCaretElement, insertAtCaret, AiCodegenButton, st, SegmentedGroup } from '@ptdl/shared';
 import { HelperDocs } from './HelperDocs';
 import { registerPtdlHelpers } from './helpers';
 import { buildPrintDocument } from './printDoc';
@@ -323,7 +323,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
     const [mode, setMode] = useState<'html' | 'visual'>('html');
     return (
       <div>
-        <Segmented
+        <SegmentedGroup
           style={{ marginBottom: 8 }}
           value={mode}
           onChange={(v: any) => setMode(v)}
@@ -618,7 +618,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
               label: tt('Nội dung'),
               children: (
                 <div>
-                  <Segmented
+                  <SegmentedGroup
                     style={{ marginBottom: 8 }}
                     value={bodyMode}
                     onChange={(v: any) => setBodyMode(v)}

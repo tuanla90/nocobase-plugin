@@ -26,10 +26,10 @@ import {
   tExpr,
 } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { Collapse, Segmented, Spin, Tabs } from 'antd';
+import { Collapse, Spin, Tabs } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import React from 'react';
-import { ColorField, CollapsibleSection, SEG_PROPS, visibleWhen } from '@ptdl/shared';
+import { ColorField, CollapsibleSection, SEG_PROPS, visibleWhen, SegmentedGroup } from '@ptdl/shared';
 
 export const NS = 'plugin-block-tabs'; // i18n namespace (labels fall back to English keys)
 
@@ -921,7 +921,7 @@ export function collapseStyleFlowStep() {
             title: tExpr('Default state', { ns: NS }),
             'x-decorator': 'FormItem',
             'x-decorator-props': { tooltip: tExpr('Whether the sections start expanded or collapsed when the page first opens.', { ns: NS }) },
-            'x-component': Segmented,
+            'x-component': SegmentedGroup,
             'x-component-props': {
               ...SEG_PROPS,
               options: [
@@ -935,7 +935,7 @@ export function collapseStyleFlowStep() {
             title: tExpr('Bold', { ns: NS }),
             'x-decorator': 'FormItem',
             'x-decorator-props': { tooltip: tExpr('Which section headers are bold. Default = keep the theme default.', { ns: NS }) },
-            'x-component': Segmented,
+            'x-component': SegmentedGroup,
             'x-component-props': {
               ...SEG_PROPS,
               options: [
@@ -950,7 +950,7 @@ export function collapseStyleFlowStep() {
             title: tExpr('Frame', { ns: NS }),
             'x-decorator': 'FormItem',
             'x-decorator-props': { tooltip: tExpr('Boxed = outer border + dividers. Borderless = no border, but headers keep their fill. Ghost = fully transparent & seamless (overrides the border).', { ns: NS }) },
-            'x-component': Segmented,
+            'x-component': SegmentedGroup,
             'x-component-props': {
               ...SEG_PROPS,
               options: [
@@ -976,7 +976,7 @@ export function collapseStyleFlowStep() {
                 type: 'string',
                 title: tExpr('Size', { ns: NS }),
                 'x-decorator': 'FormItem',
-                'x-component': Segmented,
+                'x-component': SegmentedGroup,
                 'x-component-props': {
                   ...SEG_PROPS,
                   options: [
@@ -990,7 +990,7 @@ export function collapseStyleFlowStep() {
                 type: 'string',
                 title: tExpr('Expand icon', { ns: NS }),
                 'x-decorator': 'FormItem',
-                'x-component': Segmented,
+                'x-component': SegmentedGroup,
                 'x-component-props': {
                   ...SEG_PROPS,
                   options: [

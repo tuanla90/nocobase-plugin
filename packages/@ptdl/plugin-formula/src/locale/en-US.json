@@ -3,7 +3,6 @@
   "Cột công thức": "Formula column",
   "Thiết lập công thức": "Formula settings",
   "Lỗi công thức": "Formula error",
-
   "Văn bản": "Text",
   "Số": "Number",
   "Ngày": "Date",
@@ -36,11 +35,9 @@
   "Auto giữ nguyên kết quả công thức. Số/Ngày định dạng lại giá trị số hoặc ngày.": "Auto keeps the formula output as-is. Number/Date reformats a numeric or date result.",
   "Định dạng số": "Number format",
   "Định dạng ngày": "Date format",
-
   "Khi tạo": "On create",
   "Khi sửa": "On update",
   "Khi nguồn thay đổi": "On source change",
-
   "sinh tự động từ công thức Excel; sửa qua ô \"Công thức\" (đừng sửa tay).": "auto-generated from an Excel formula; edit via the \"Formula\" field (do not edit by hand).",
   "giá trị các field trong form (vd": "the form field values (e.g.",
   ") — field đổi là tự tính lại.": ") — changing a field recomputes it.",
@@ -50,10 +47,8 @@
   "Tính giá trị bằng công thức Excel (~400 hàm formulajs). data = giá trị form/record; đổi field là tự tính lại.": "Compute a value with an Excel formula (~400 formulajs functions). data = form/record values; changing a field recomputes it.",
   "← sửa công thức Excel tại đây": "← edit the Excel formula here",
   "VD: IF(data.total>1000000,\"VIP\",\"Thường\") · UPPER(LEFT(data.name,3)) & \"-\" & YEAR(TODAY()) · SUM(data.items.amount)": "e.g. IF(data.total>1000000,\"VIP\",\"Standard\") · UPPER(LEFT(data.name,3)) & \"-\" & YEAR(TODAY()) · SUM(data.items.amount)",
-
   "Sửa công thức": "Edit formula",
   "Tiêu đề cột": "Column title",
-
   "Giá trị tự tính": "Computed value",
   "Giá trị tự tính (server)": "Computed value (server)",
   "bấm để sửa công thức": "click to edit the formula",
@@ -63,9 +58,7 @@
   "Lưu trên chính cột số thật này; server tự tính lại mỗi lần lưu VÀ khi dữ liệu liên quan thay đổi. Tham chiếu field bằng data.<field> (cùng dòng: data.subtotal - data.discount), gộp quan hệ to-many: SUM(data.items.line_amount), hoặc kéo qua to-one: data.product.unit_price. Phụ thuộc tự phát hiện từ công thức. Để trống để xoá.": "Stored on this real, numeric column; the server recomputes it on every save AND when related data changes. Reference fields as data.<field> (same row: data.subtotal - data.discount), aggregate a to-many: SUM(data.items.line_amount), or pull through a to-one: data.product.unit_price. Dependencies are auto-detected from the formula. Leave empty to remove.",
   "Tính lại khi": "Recompute on",
   "Tích bất kỳ: khi tạo, khi lưu dòng này, và khi nguồn thay đổi (con/cha/bảng-config = lan). Không tích = chỉ chạy thủ công. Giống trang cấu hình.": "Tick any of: on create, on this row's save, and on source change (child/parent/config-table = fan-out). None = manual only. Same as the settings page.",
-
   "Công thức tự tính": "Computed formulas",
-
   "Lọc theo bảng…": "Filter by table…",
   "cột computed": "computed columns",
   "gộp": "aggregate",
@@ -94,7 +87,7 @@
   "(không có cột)": "(no columns)",
   "Cần bảng + công thức": "Table + formula are required",
   "lỗi": "error",
-  "Bảng": "Table",
+  "Bảng": "Collection",
   "Cột đích": "Target column",
   "Phụ thuộc": "Dependencies",
   "Bật": "Enabled",
@@ -155,7 +148,6 @@
   "Không có bản ghi": "No records",
   "Chạy": "Run",
   "Kết quả": "Result",
-
   "Cùng dòng": "Same row",
   "Nhân đơn giá (kéo quan hệ)": "Multiply unit price (pull relation)",
   "Gộp quan hệ (roll-up)": "Aggregate relation (roll-up)",
@@ -174,7 +166,6 @@
   "Ngày đến hạn +1 tháng (date)": "Due date +1 month (date)",
   "Số ngày giữa 2 mốc": "Days between two dates",
   "Tra đơn giá theo KHOÁ QUAN HỆ (so id — thay cho nested)": "Look up unit price by RELATION KEY (compare id — instead of nested)",
-
   "Lọc/gộp có điều kiện (≈ SELECT/FILTER AppSheet)": "Conditional filter/aggregate (≈ AppSheet SELECT/FILTER)",
   "SUMIF · SUMIFS · COUNTIF · COUNTIFS · AVERAGEIF · AVERAGEIFS — vd SUMIFS(data.items.line_amount, data.items.status,\"active\")": "SUMIF · SUMIFS · COUNTIF · COUNTIFS · AVERAGEIF · AVERAGEIFS — e.g. SUMIFS(data.items.line_amount, data.items.status,\"active\")",
   "FILTER / SELECT — lọc DANH SÁCH theo điều kiện (bọc SUM/COUNT/INDEX…)": "FILTER / SELECT — filter a LIST by condition (wrap with SUM/COUNT/INDEX…)",
@@ -183,7 +174,6 @@
   "SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b) — bang_hs = tên collection config": "SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b) — bang_hs = the config collection name",
   "Lookup khác": "Other lookup",
   "INDEX · MATCH · CHOOSE · SWITCH · VLOOKUP (VLOOKUP cần mảng 2D trong 1 field JSON, không dùng cho bảng collection)": "INDEX · MATCH · CHOOSE · SWITCH · VLOOKUP (VLOOKUP needs a 2D array in one JSON field, not for a collection table)",
-
   "Rollup (tự động tổng hợp)": "Rollup (auto aggregate)",
   "Trường quan hệ (một-nhiều trên collection này)": "Relation field (one-to-many on this collection)",
   "Tên trường quan hệ has-many, vd order_items": "Name of the has-many relation field, e.g. order_items",
@@ -208,7 +198,6 @@
   "Tải danh sách thất bại": "Failed to load the list",
   "Đã tính lại": "Recomputed",
   "Tính lại thất bại": "Recompute failed",
-  "Tính lại": "Recompute",
   "Tính lại toàn bộ cột này": "Recompute this whole column",
   "Chọn bảng": "Pick a collection",
   "Chọn bảng sổ": "Pick the ledger collection",
@@ -221,7 +210,6 @@
   "Gỡ thất bại": "Remove failed",
   "Gỡ": "Remove",
   "Gỡ cột này khỏi sổ? (giữ nguyên dữ liệu trong cột)": "Unlink this column from the ledger? (the column's data is kept)",
-  "Bảng": "Collection",
   "Cột": "Column",
   "Thêm cột sổ": "Add ledger column",
   "Chưa có cột sổ nào. Bấm “Thêm cột sổ”, hoặc thêm field kiểu “Sổ/Lũy kế (window)” khi tạo trường.": "No ledger columns yet. Click \"Add ledger column\", or add a \"Ledger / running (window)\" field when creating a field.",
@@ -339,7 +327,6 @@
   "Chọn cột ở đây sẽ tạo 1 \"Công thức tự tính\" = tỉ số; scan chỉ ghi cột nguồn ở trên.": "Picking a column here creates a \"Computed formula\" = the ratio; the scan only writes the source columns above.",
   "Đơn giá bình quân cần cả số dư lượng + số dư giá trị": "Average unit cost needs both running qty + running value",
   "Đơn giá tiêu hao cần cả lượng tiêu hao + giá trị tiêu hao": "Consumed unit cost needs both consumed qty + consumed value",
-
   "Chiến lược tính": "Strategy",
   "Bạn muốn tính gì? Lựa chọn này quyết định các phần bên dưới.": "What do you want to compute? This choice drives the sections below.",
   "Đầu vào": "Input",
@@ -365,11 +352,9 @@
   "Làm tròn số và xử lý tình huống đặc biệt.": "Number rounding and edge-case handling.",
   "Làm tròn tới số chữ số thập phân": "Round to decimal places",
   "Công thức kiểu Excel: data.<cột>, IF(), v.v.": "Excel-style formula: data.<column>, IF(), etc.",
-  "Chọn cột lượng có dấu": "Pick the signed-amount column",
   "Chọn cột lượng VÀO / RA": "Pick the IN / OUT amount column(s)",
   "Chọn cột lượng + cột phân loại": "Pick the amount column + the category column",
   "Nhập công thức lượng": "Enter the amount formula",
-
   "① Chiến lược": "① Strategy",
   "② Đầu vào": "② Input",
   "③ Kết quả": "③ Output",
@@ -377,7 +362,6 @@
   "Bạn muốn tính gì? Lựa chọn này quyết định các bước sau.": "What do you want to compute? This choice drives the next steps.",
   "SQL (nâng cao)": "SQL (advanced)",
   "Công thức không hợp lệ: ": "Invalid formula: ",
-
   "① Tổng quan": "① Overview",
   "Đặt tên và chọn cách tính. Lựa chọn này quyết định các bước sau.": "Name it and choose how to compute. This choice drives the next steps.",
   "Tên gợi nhớ cho cấu hình này — chỉ để bạn dễ nhận ra, không ảnh hưởng tính toán.": "A memorable name for this config — just so you recognize it; it does not affect the calculation.",
@@ -409,5 +393,14 @@
   "Xuống (về số 0)": "Down (toward 0)",
   "Trần (→ +∞)": "Ceil (→ +∞)",
   "Sàn (→ −∞)": "Floor (→ −∞)",
-  "SQL sinh ra (xem trước):": "Generated SQL (preview):"
+  "SQL sinh ra (xem trước):": "Generated SQL (preview):",
+  "Tổng quan": "Overview",
+  "Bấm \"Thêm số liệu\" cho mỗi kết quả: chọn số liệu, rồi chọn cột để ghi vào.": "Click \"Add figure\" for each result: pick a figure, then pick the column to write it into.",
+  "Chọn cột số để ghi kết quả vào.": "Pick a number column to write the result into.",
+  "Chọn một cột SỐ có sẵn trong bảng để ghi giá trị lũy kế vào. Chưa có thì tạo cột số trước ở phần quản lý trường.": "Pick an existing NUMBER column in the table to write the running value into. If there isn't one, create a number field first in the field manager.",
+  "Chọn số liệu…": "Pick a figure…",
+  "Thêm số liệu": "Add figure",
+  "Suy diễn — sẽ tạo 1 cột \"Công thức tự tính\" = giá trị / lượng.": "Derived — creates a \"Computed formula\" column = value / quantity.",
+  "Chọn cột kết quả": "Pick the result column",
+  "Tên hiển thị của cột kết quả (đặt/đổi tiêu đề cột được ghi vào).": "Display title of the result column (sets/renames the title of the column being written to)."
 }

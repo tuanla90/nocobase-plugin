@@ -1,8 +1,8 @@
 import React from 'react';
-import { Segmented, Switch, Slider, message } from 'antd';
+import { Switch, Slider, message } from 'antd';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { colorToString, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { SegmentedGroup, colorToString, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
 
 /**
  * "Colour chip" display widget (field-enhancements) — for `color` fields.
@@ -85,7 +85,7 @@ function ColorView({ value, cfg }: { value: any; cfg: ClrCfg }) {
 }
 
 const CLR_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const CLR_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const CLR_Slider = (props: any) => {

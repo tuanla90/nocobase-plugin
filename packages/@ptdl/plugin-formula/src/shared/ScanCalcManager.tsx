@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Table, Button, Modal, Select, Input, InputNumber, Space, message, Popconfirm, Tag, Tooltip, Segmented, Tabs, Radio } from 'antd';
-import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { getFields, FieldPickerCascader, getCaretElement, insertAtCaret } from '@ptdl/shared';
+import { Table, Button, Modal, Select, Input, InputNumber, Space, message, Popconfirm, Tag, Tooltip, Tabs, Radio } from 'antd';
+import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CloseOutlined } from '@ant-design/icons';
+import { getFields, FieldPickerCascader, getCaretElement, insertAtCaret, columnDropdownProps, SegmentedGroup } from '@ptdl/shared';
 import { excelToSql, isTranspileError } from './excelToSql';
 import { t } from './i18n';
 
@@ -36,7 +36,9 @@ type Row = {
   negativePolicy?: 'allow' | 'error' | 'ignore'; missingCostPolicy?: 'zero' | 'error' | 'previous';
   // scan outputs:
   outRunningQty?: string; outRunningValue?: string; outConsumedQty?: string; outCogs?: string; outConsumedUnitCost?: string; outUnitCost?: string; outAvgCost?: string; outAllocations?: string;
+  _outputs?: OutputEntry[]; // UI-only: the metric→column mapping list being edited (converted to out* on save)
 };
+type OutputEntry = { metric?: string; column?: string };
 type ModalState = null | (Partial<Row> & { _mode: 'add' | 'edit' });
 
 const STATE_BASED = new Set(['fifo', 'lifo', 'fefo', 'weighted_avg']);
@@ -180,22 +182,30 @@ export function ScanCalcManager({ api }: { api: any }) {
         if (qm === 'enum' && (!m.qtyField || !m.directionField)) return message.warning(t('Chọn cột lượng + cột phân loại'));
         if (qm === 'formula' && !m.qtyFormula?.trim()) return message.warning(t('Nhập công thức lượng'));
         if (m.accumulator === 'fefo' && !m.expiryField) return message.warning(t('Chọn cột hạn dùng (FEFO)'));
+        // build the out* map from the metric→column cards (a metric with no column is ignored).
+        const outs: OutputEntry[] = m._outputs ?? OUT_KEYS.filter((f) => m[f.key]).map((f) => ({ metric: f.key as string, column: m[f.key] as string }));
+        const outMap: Record<string, string | undefined> = {};
+        for (const f of OUT_KEYS) outMap[f.key as string] = undefined;
+        for (const o of outs) if (o.metric && o.column) outMap[o.metric] = o.column;
         // derived ratios need their inputs mapped (they become computed columns = value / qty)
-        if (m.outAvgCost && (!m.outRunningQty || !m.outRunningValue)) return message.warning(t('Đơn giá bình quân cần cả số dư lượng + số dư giá trị'));
-        if (m.outConsumedUnitCost && (!m.outConsumedQty || !m.outCogs)) return message.warning(t('Đơn giá tiêu hao cần cả lượng tiêu hao + giá trị tiêu hao'));
+        if (outMap.outAvgCost && (!outMap.outRunningQty || !outMap.outRunningValue)) return message.warning(t('Đơn giá bình quân cần cả số dư lượng + số dư giá trị'));
+        if (outMap.outConsumedUnitCost && (!outMap.outConsumedQty || !outMap.outCogs)) return message.warning(t('Đơn giá tiêu hao cần cả lượng tiêu hao + giá trị tiêu hao'));
         const data = { title: m.title, collectionName: m.collection, partitionBy: m.partitionBy || [], orderBy: m.orderBy, method: m.accumulator,
           qtyMode: qm, qtyField: m.qtyField, inQtyField: m.inQtyField, outQtyField: m.outQtyField, directionField: m.directionField, inValue: m.inValue, qtyFormula: m.qtyFormula,
           costMode: m.costMode || 'column', costField: m.costField, costFormula: m.costFormula, expiryField: m.expiryField,
           roundPrecision: m.roundPrecision, roundMode: m.roundMode || 'half_up', negativePolicy: m.negativePolicy || 'allow', missingCostPolicy: m.missingCostPolicy || 'zero',
-          outRunningQty: m.outRunningQty, outRunningValue: m.outRunningValue, outConsumedQty: m.outConsumedQty, outCogs: m.outCogs,
-          outConsumedUnitCost: m.outConsumedUnitCost, outUnitCost: m.outUnitCost, outAvgCost: m.outAvgCost, outAllocations: m.outAllocations };
+          outRunningQty: outMap.outRunningQty ?? null, outRunningValue: outMap.outRunningValue ?? null, outConsumedQty: outMap.outConsumedQty ?? null, outCogs: outMap.outCogs ?? null,
+          outConsumedUnitCost: outMap.outConsumedUnitCost ?? null, outUnitCost: outMap.outUnitCost ?? null, outAvgCost: outMap.outAvgCost ?? null, outAllocations: outMap.outAllocations ?? null };
         if (m.id) await api.request({ url: 'ptdlScanRules:update', method: 'post', params: { filterByTk: m.id }, data });
         else await api.request({ url: 'ptdlScanRules:create', method: 'post', data });
-        // create/refresh the DERIVED computed columns (ratios); the scan writes primitives, these derive from them.
-        if (m.outAvgCost) await upsertComputed(m.collection, m.outAvgCost, `IF(data.${m.outRunningQty}==0, 0, data.${m.outRunningValue} / data.${m.outRunningQty})`);
-        if (m.outConsumedUnitCost) await upsertComputed(m.collection, m.outConsumedUnitCost, `IF(data.${m.outConsumedQty}==0, 0, data.${m.outCogs} / data.${m.outConsumedQty})`);
+        // the DERIVED ratio columns (avg, consumed unit cost) are computed rules; sync or drop them to match.
+        if (outMap.outAvgCost) await upsertComputed(m.collection, outMap.outAvgCost, `IF(data.${outMap.outRunningQty}==0, 0, data.${outMap.outRunningValue} / data.${outMap.outRunningQty})`);
+        else if (m.outAvgCost) await deleteComputed(m.collection, m.outAvgCost);
+        if (outMap.outConsumedUnitCost) await upsertComputed(m.collection, outMap.outConsumedUnitCost, `IF(data.${outMap.outConsumedQty}==0, 0, data.${outMap.outCogs} / data.${outMap.outConsumedQty})`);
+        else if (m.outConsumedUnitCost) await deleteComputed(m.collection, m.outConsumedUnitCost);
       } else {
         const mode = m.inputMode || 'column';
+        if (!m.field) return message.warning(t('Chọn cột kết quả'));
         if (!NO_INPUT.has(m.accumulator || '') && !m.input) return message.warning(t('Chọn cột đầu vào'));
         // Excel-formula input: transpile client-side first so the user sees a clear error before saving.
         if (mode === 'formula' && m.input) {
@@ -203,16 +213,11 @@ export function ScanCalcManager({ api }: { api: any }) {
           if (isTranspileError(r)) return message.warning(t('Công thức không hợp lệ: ') + r.error);
         }
         const cfg = { partitionBy: m.partitionBy || [], orderBy: m.orderBy, input: m.input || '', inputMode: mode, inputExpr: mode === 'sql', accumulator: m.accumulator || 'running_sum' };
-        if (m._mode === 'add') {
-          if (!m.field?.trim()) return message.warning(t('Nhập tên cột'));
-          await api.request({ url: `collections/${m.collection}/fields:create`, method: 'post', data: {
-            name: m.field.trim(), type: 'double', interface: 'number',
-            uiSchema: { type: 'number', title: m.title || m.field, 'x-component': 'InputNumber', 'x-component-props': { readOnly: true, stringMode: true }, 'x-read-pretty': true },
-            ptdlWindow: cfg,
-          } });
-        } else {
-          await api.request({ url: `collections/${m.collection}/fields:update`, method: 'post', params: { filterByTk: m.field }, data: { ptdlWindow: cfg } });
-        }
+        // window result = an EXISTING number column the running value is written into (attach the config to it).
+        // A Name renames the column's display title (fields:update MERGES uiSchema, so other schema keys survive).
+        const wdata: any = { ptdlWindow: cfg };
+        if (m.title?.trim()) wdata.uiSchema = { title: m.title.trim() };
+        await api.request({ url: `collections/${m.collection}/fields:update`, method: 'post', params: { filterByTk: m.field }, data: wdata });
         await api.request({ url: 'ptdlWindow:recompute', method: 'post', params: { collection: m.collection, field: m.field } }).catch(() => {});
       }
       message.success(t('Đã lưu (đang tính lại…)'));
@@ -261,12 +266,14 @@ export function ScanCalcManager({ api }: { api: any }) {
           const activeTab = tab === 'advanced' && !stateBased ? 'strategy' : tab;
           const hint = (s: string) => <div style={{ fontSize: 11.5, color: 'var(--colorTextTertiary, #999)', marginBottom: 2 }}>{s}</div>;
           const body = (children: React.ReactNode) => <Space direction="vertical" style={{ width: '100%' }} size={11}>{children}</Space>;
+          // scan output editing list: use the in-progress `_outputs` if present, else derive from the mapped out* fields.
+          const outputs: OutputEntry[] = m._outputs ?? OUT_KEYS.filter((f) => m[f.key]).map((f) => ({ metric: f.key as string, column: m[f.key] as string }));
           const items: any[] = [
             {
-              key: 'strategy', label: t('① Tổng quan'),
+              key: 'strategy', label: t('Tổng quan'),
               children: body(<>
                 {hint(t('Đặt tên và chọn cách tính. Lựa chọn này quyết định các bước sau.'))}
-                <F label={t('Tên')} tip={t('Tên gợi nhớ cho cấu hình này — chỉ để bạn dễ nhận ra, không ảnh hưởng tính toán.')}>
+                <F label={t('Tên')} tip={stateBased ? t('Tên gợi nhớ cho cấu hình này — chỉ để bạn dễ nhận ra, không ảnh hưởng tính toán.') : t('Tên hiển thị của cột kết quả (đặt/đổi tiêu đề cột được ghi vào).')}>
                   <Input value={m.title} onChange={(e) => set({ title: e.target.value })} placeholder={stateBased ? t('vd Giá vốn kho, Phân bổ thanh toán…') : t('vd Tồn sau (lũy kế)')} />
                 </F>
                 <F label={t('Kiểu tính')} req tip={t('Theo dòng = hàm lũy kế chạy trong DB (SUM/đếm/min/max/TB/số thứ tự). Theo trạng thái = khớp vào–ra để định giá phần tiêu hao (FIFO/LIFO/FEFO/bình quân).')}>
@@ -275,7 +282,7 @@ export function ScanCalcManager({ api }: { api: any }) {
               </>),
             },
             {
-              key: 'input', label: t('② Đầu vào'),
+              key: 'input', label: t('Đầu vào'),
               children: body(<>
                 {hint(t('Bảng dữ liệu, ánh xạ cột, phân vùng và thứ tự duyệt.'))}
                 <F label={t('Bảng (collection)')} req>
@@ -285,7 +292,7 @@ export function ScanCalcManager({ api }: { api: any }) {
 
                 {stateBased && (<>
                   <F label={t('Lượng nhập / xuất mỗi dòng')} req tip={t('Cách xác định mỗi dòng là NHẬP (+) hay XUẤT (−) và bao nhiêu — chọn theo cách sổ của bạn lưu.')}>
-                    <Segmented size="middle" style={{ marginBottom: 6 }} value={qm} onChange={(v) => set({ qtyMode: v as any })}
+                    <SegmentedGroup style={{ marginBottom: 6 }} value={qm} onChange={(v) => set({ qtyMode: v as any })}
                       options={[
                         { label: t('Cột có dấu'), value: 'signed' },
                         { label: t('2 cột (vào/ra)'), value: 'split' },
@@ -311,7 +318,7 @@ export function ScanCalcManager({ api }: { api: any }) {
                   </F>
 
                   <F label={t('Đơn giá dòng nhập')} tip={t('Đơn giá của dòng NHẬP (dòng xuất bỏ trống — hệ thống tự suy giá vốn xuất). Nếu dòng nhập thiếu đơn giá, xử lý theo mục "Thiếu đơn giá" ở tab Nâng cao.')}>
-                    <Segmented size="middle" style={{ marginBottom: 6 }} value={cm} onChange={(v) => set({ costMode: v as any })}
+                    <SegmentedGroup style={{ marginBottom: 6 }} value={cm} onChange={(v) => set({ costMode: v as any })}
                       options={[{ label: t('Cột'), value: 'column' }, { label: t('Công thức'), value: 'formula' }]} />
                     {cm === 'column'
                       ? <ColSelect value={m.costField} options={cols} onChange={(v) => set({ costField: v })} placeholder={t('Chọn cột đơn giá…')} />
@@ -323,7 +330,7 @@ export function ScanCalcManager({ api }: { api: any }) {
 
                 {!stateBased && !noInput && (
                   <F label={t('Cột đầu vào (cộng dồn)')} req tip={t('Giá trị mỗi dòng để cộng dồn. Công thức = viết như Excel, hệ thống tự dịch sang SQL (chỉ biểu thức 1 dòng, không dùng hàm gộp/quan hệ).')}>
-                    <Segmented size="middle" style={{ marginBottom: 6 }} value={im} onChange={(v) => set({ inputMode: v as any, input: '' })}
+                    <SegmentedGroup style={{ marginBottom: 6 }} value={im} onChange={(v) => set({ inputMode: v as any, input: '' })}
                       options={[{ label: t('Cột'), value: 'column' }, { label: t('Công thức'), value: 'formula' }, { label: t('SQL (nâng cao)'), value: 'sql' }]} />
                     {im === 'column' && <ColSelect value={m.input} options={cols} onChange={(v) => set({ input: v })} placeholder={t('Chọn cột…')} />}
                     {im === 'formula' && (<><FormulaInput value={m.input} options={cols} onChange={(v) => set({ input: v })} placeholder={'IF(data.direction=="in", data.qty, -data.qty)'} /><SqlPreview formula={m.input} columns={cols} /></>)}
@@ -336,26 +343,21 @@ export function ScanCalcManager({ api }: { api: any }) {
               </>),
             },
             {
-              key: 'output', label: t('③ Kết quả'),
+              key: 'output', label: t('Kết quả'),
               children: body(<>
-                {hint(stateBased ? t('Chọn ghi số liệu nào ra cột nào. Để trống nếu không cần.') : t('Cột kết quả sẽ được tạo/cập nhật.'))}
-                {!stateBased && (<>
-                  {m._mode === 'add' && <F label={t('Tên cột kết quả (name)')} req tip={t('Tên kỹ thuật của cột số sẽ được tạo trong bảng (không dấu, không cách). Vd balance_after.')}><Input value={m.field} onChange={(e) => set({ field: e.target.value })} placeholder="balance_after" /></F>}
-                  {m._mode === 'edit' && <F label={t('Cột kết quả')}><Tag color="blue" style={{ fontFamily: 'monospace' }}>{m.field}</Tag></F>}
-                </>)}
-                {stateBased && OUT_GROUPS.map((g) => (
-                  <div key={g.group}>
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: g.computed ? 'var(--colorPrimary, #722ed1)' : 'var(--colorTextTertiary, #999)', margin: '2px 0 2px' }}>{t(g.group)}</div>
-                    {g.computed && <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #999)', marginBottom: 2 }}>{t('Chọn cột ở đây sẽ tạo 1 "Công thức tự tính" = tỉ số; scan chỉ ghi cột nguồn ở trên.')}</div>}
-                    {g.fields.map((f) => (
-                      <F key={f.key} label={t(f.label)}><ColSelect value={m[f.key] as string} options={cols} onChange={(v) => set({ [f.key]: v } as any)} placeholder={t('(tuỳ chọn)')} /></F>
-                    ))}
-                  </div>
-                ))}
+                {hint(stateBased ? t('Bấm "Thêm số liệu" cho mỗi kết quả: chọn số liệu, rồi chọn cột để ghi vào.') : t('Chọn cột số để ghi kết quả vào.'))}
+                {!stateBased && (
+                  m._mode === 'edit'
+                    ? <F label={t('Cột kết quả')}><Tag color="blue" style={{ fontFamily: 'monospace' }}>{m.field}</Tag></F>
+                    : <F label={t('Cột kết quả')} req tip={t('Chọn một cột SỐ có sẵn trong bảng để ghi giá trị lũy kế vào. Chưa có thì tạo cột số trước ở phần quản lý trường.')}>
+                        <ColSelect value={m.field} options={cols} onChange={(v) => set({ field: v })} placeholder={t('Chọn cột…')} />
+                      </F>
+                )}
+                {stateBased && <OutputCards outputs={outputs} cols={cols} onChange={(o) => set({ _outputs: o })} />}
               </>),
             },
             ...(stateBased ? [{
-              key: 'advanced', label: t('④ Nâng cao'),
+              key: 'advanced', label: t('Nâng cao'),
               children: body(<>
                 {hint(t('Làm tròn số và xử lý các tình huống đặc biệt.'))}
                 <F label={t('Xuất quá tồn (tồn âm)')} tip={t('Khi XUẤT nhiều hơn đang có: Cho phép = tồn âm (ghi nợ, phần thiếu tính theo đơn giá gần nhất); Báo lỗi = dừng và báo dòng lỗi; Bỏ qua = chỉ xuất phần còn lại, tồn về 0.')}>
@@ -439,15 +441,49 @@ const FormulaInput: React.FC<{ value?: string; options: any[]; onChange: (v: str
   );
 };
 
-// Single column = a NORMAL antd dropdown (shows the field's label, searchable, clearable). Value = column name.
+// The two-line column dropdown (title + raw name, dual-search) now lives in @ptdl/shared so other plugins
+// reuse it; we dogfood the same `columnDropdownProps` here.
+const { optionRender: colOptionRender, filterOption: colFilter } = columnDropdownProps as any;
+
+// Single column = a NORMAL antd dropdown (title + raw column name in the list, title in the box). Value = column name.
 const ColSelect: React.FC<{ value?: string; options: any[]; onChange: (v?: string) => void; placeholder?: string }> = ({ value, options, onChange, placeholder }) => (
-  <Select style={{ width: '100%' }} showSearch allowClear optionFilterProp="label" value={value || undefined} options={options} onChange={(v) => onChange(v as any)} placeholder={placeholder} />
+  <Select style={{ width: '100%' }} showSearch allowClear filterOption={colFilter} optionRender={colOptionRender} value={value || undefined} options={options} onChange={(v) => onChange(v as any)} placeholder={placeholder} />
 );
 
 // Multiple columns = a normal multi-select (tags show the field's label).
 const ColMultiSelect: React.FC<{ value?: string[]; options: any[]; onChange: (v: string[]) => void; placeholder?: string }> = ({ value, options, onChange, placeholder }) => (
-  <Select mode="multiple" style={{ width: '100%' }} showSearch optionFilterProp="label" value={value || []} options={options} onChange={(v) => onChange(v as string[])} placeholder={placeholder} />
+  <Select mode="multiple" style={{ width: '100%' }} showSearch filterOption={colFilter} optionRender={colOptionRender} value={value || []} options={options} onChange={(v) => onChange(v as string[])} placeholder={placeholder} />
 );
+
+// Output mapping cards — click "+ Add", pick a METRIC (grouped by nature) then the target COLUMN. Each metric once.
+const OutputCards: React.FC<{ outputs: OutputEntry[]; cols: any[]; onChange: (o: OutputEntry[]) => void }> = ({ outputs, cols, onChange }) => {
+  const used = new Set(outputs.map((o) => o.metric).filter(Boolean));
+  const metricOptions = OUT_GROUPS.map((g) => ({
+    label: t(g.group),
+    options: g.fields.map((f) => ({ value: f.key as string, label: t(f.label), disabled: used.has(f.key as string) })),
+  }));
+  const info = (k?: string) => OUT_KEYS.find((f) => f.key === k);
+  const isComputed = (k?: string) => OUT_GROUPS.some((g) => g.computed && g.fields.some((f) => f.key === k));
+  const upd = (i: number, patch: Partial<OutputEntry>) => onChange(outputs.map((o, j) => (j === i ? { ...o, ...patch } : o)));
+  return (
+    <div>
+      {outputs.map((o, i) => (
+        <div key={i} style={{ border: '1px solid var(--colorBorderSecondary, #eee)', borderRadius: 8, padding: '8px 10px', marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Select style={{ flex: 1 }} placeholder={t('Chọn số liệu…')} value={o.metric} options={metricOptions} showSearch optionFilterProp="label"
+              onChange={(v) => upd(i, { metric: v as string })} />
+            <Select style={{ flex: 1 }} placeholder={t('Chọn cột…')} value={o.column} options={cols} allowClear showSearch filterOption={colFilter} optionRender={colOptionRender}
+              onChange={(v) => upd(i, { column: v as string })} />
+            <Button type="text" danger icon={<CloseOutlined />} onClick={() => onChange(outputs.filter((_, j) => j !== i))} />
+          </div>
+          {isComputed(o.metric) && <div style={{ fontSize: 11, color: 'var(--colorPrimary, #722ed1)', marginTop: 4 }}>{t('Suy diễn — sẽ tạo 1 cột "Công thức tự tính" = giá trị / lượng.')}</div>}
+          {!info(o.metric) && o.metric && <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #999)', marginTop: 4 }} />}
+        </div>
+      ))}
+      <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => onChange([...outputs, {}])}>{t('Thêm số liệu')}</Button>
+    </div>
+  );
+};
 
 // Order-by = a normal multi-select whose TAGS show the field label + a clickable ↑/↓ direction toggle.
 const OrderSelect: React.FC<{ value?: OrderSpec[]; options: any[]; onChange: (v: OrderSpec[]) => void; placeholder?: string }> = ({ value, options, onChange, placeholder }) => {
@@ -465,7 +501,7 @@ const OrderSelect: React.FC<{ value?: OrderSpec[]; options: any[]; onChange: (v:
       </Tag>
     );
   };
-  return <Select mode="multiple" style={{ width: '100%' }} showSearch optionFilterProp="label" value={selected} options={options} onChange={onSel} tagRender={tagRender} placeholder={placeholder} />;
+  return <Select mode="multiple" style={{ width: '100%' }} showSearch filterOption={colFilter} optionRender={colOptionRender} value={selected} options={options} onChange={onSel} tagRender={tagRender} placeholder={placeholder} />;
 };
 
 const ExprInput: React.FC<{ value?: string; options: any[]; onChange: (v: string) => void }> = ({ value, options, onChange }) => {

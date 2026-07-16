@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { InputNumber, Select, Switch, Slider, Segmented, Input } from 'antd';
-import { ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { InputNumber, Select, Switch, Slider, Input } from 'antd';
+import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -113,7 +113,7 @@ function NumberInput({
 
 // ---- settings components (N_*) -----------------------------------------------------------------
 const N_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const N_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const N_Slider = (props: any) => {

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Card, ColorPicker, Divider, Modal, Segmented, Slider, Space, Switch, Tooltip, Upload, message } from 'antd';
-import { COLOR_PRESETS, colorToString } from '@ptdl/shared';
+import { Button, Card, ColorPicker, Divider, Modal, Slider, Space, Switch, Tooltip, Upload, message } from 'antd';
+import { COLOR_PRESETS, colorToString, SegmentedGroup } from '@ptdl/shared';
 import { currentThemeUid, scopedType } from './themeScope';
 
 /**
@@ -825,8 +825,7 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
               </Space>
               <Space size={8} align="center" wrap>
                 <span style={{ fontSize: 12, color: '#888', flex: 'none' }}>{_t('Density')}</span>
-                <Segmented
-                  size="small"
+                <SegmentedGroup
                   value={cfg.density || 'default'}
                   onChange={(v) => setCfg((c) => ({ ...c, density: v as SkinCfg['density'] }))}
                   options={[

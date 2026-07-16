@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Select, Switch, Space, Segmented, Tooltip } from 'antd';
+import { Button, Select, Switch, Space, Tooltip } from 'antd';
 import {
   ColorField, colorToString, RegistryIconPicker, IconByKey, setIconRegistry,
-  evalConditionOp, get, SettingCard, SettingRow, ConditionRow,
+  evalConditionOp, get, SettingCard, SettingRow, ConditionRow, SegmentedGroup,
 } from '@ptdl/shared';
 
 /**
@@ -298,14 +298,14 @@ const RuleCard: React.FC<{
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <b style={{ fontSize: 13 }}>{`${rt('Quy tắc')} ${idx + 1}`}</b>
-          <Segmented size="small" value={mode} onChange={(v: any) => setMode(v)}
+          <SegmentedGroup value={mode} onChange={(v: any) => setMode(v)}
             options={[{ label: rt('Điều kiện'), value: 'condition' }, { label: rt('Thang màu'), value: 'colorScale' }, { label: rt('Thanh dữ liệu'), value: 'dataBar' }]} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {mode === 'condition' && (
             <>
               <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Khớp')}</span>
-              <Segmented size="small" value={rule.match || 'all'} onChange={(v: any) => patch({ match: v })}
+              <SegmentedGroup value={rule.match || 'all'} onChange={(v: any) => patch({ match: v })}
                 options={[{ label: rt('Tất cả'), value: 'all' }, { label: rt('Bất kỳ'), value: 'any' }]} />
             </>
           )}

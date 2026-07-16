@@ -1,10 +1,10 @@
 import React, { useRef } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Select, Segmented, Input, Button, Avatar, Switch } from 'antd';
+import { Select, Input, Button, Avatar, Switch } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { bindDisplayField } from './displayBinding';
-import { FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx } from '@ptdl/shared';
+import { SegmentedGroup, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx } from '@ptdl/shared';
 
 /**
  * No-code widget: field QUAN HỆ (m2o/o2o/oho/obo/o2m/m2m) → dropdown "rich".
@@ -134,7 +134,7 @@ function toRichValue(record: any, fieldNames: FN, isMultiple: boolean, cfg: RSCf
 
 // ---- settings components ------------------------------------------------------------------------
 const RS_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const RS_FieldSelect = (props: any) => (
   <Select allowClear showSearch optionFilterProp="label" style={{ width: '100%' }}

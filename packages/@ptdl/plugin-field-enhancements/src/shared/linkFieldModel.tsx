@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Input, Segmented, Switch, InputNumber, Button, Space } from 'antd';
-import { ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, SEG_PROPS, fieldItem as fi, rx } from '@ptdl/shared';
+import { Input, Switch, InputNumber, Button, Space } from 'antd';
+import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, SEG_PROPS, fieldItem as fi, rx } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -156,7 +156,7 @@ function LinkEdit({ cfg, model, value, onChange, disabled, placeholder }: { cfg:
 
 // ---- settings components (L_*) -----------------------------------------------------------------
 const L_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const L_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const L_Num = (props: any) => (

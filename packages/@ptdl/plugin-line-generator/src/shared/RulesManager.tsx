@@ -6,8 +6,8 @@
 //  - key auto-slugs from the title; runVersionSource only shows for the 'version' policy
 //  - 5 sections instead of 7; rarely-touched knobs live under "Nâng cao" (collapsed)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Space, Table, Tag, Tooltip, message } from 'antd';
-import { CollapsibleSection, SettingRow, RelationAppendsPicker, FieldPickerCascader, getFields } from '@ptdl/shared';
+import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip, message } from 'antd';
+import { CollapsibleSection, SettingRow, RelationAppendsPicker, FieldPickerCascader, getFields, SegmentedGroup } from '@ptdl/shared';
 import { previewInline, RunResult } from './api';
 import { TEMPLATES } from './templates';
 import type { LineGenConfig } from './types';
@@ -493,7 +493,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
               </SettingRow>
               <SettingRow label={tt('Bật')}><Checkbox checked={cfg.enabled} onChange={(e) => set({ enabled: e.target.checked })} /></SettingRow>
               <SettingRow label={tt('Kích hoạt')} hint={tt('Bấm nút: người dùng chủ động chạy trên từng bản ghi. Tự động: server tự chạy ngay khi bản ghi đạt điều kiện (lưu là chạy, không cần nút — kiểu AI Column).')}>
-                <Segmented
+                <SegmentedGroup
                   block
                   style={{ border: '1px solid var(--colorBorder, #d9d9d9)', width: '100%' }}
                   value={cfg.trigger || 'manual'}

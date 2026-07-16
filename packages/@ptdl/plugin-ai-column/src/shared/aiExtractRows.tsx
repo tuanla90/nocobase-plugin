@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Checkbox, Input, InputNumber, Segmented, Select, Tag, Tooltip, message } from 'antd';
+import { Button, Checkbox, Input, InputNumber, Select, Tag, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues, syncAutorunRule, gateConfig } from './aiColumn';
 import { extractTypeTagLabel, type MapRow } from './aiExtract';
-import { getFields, fieldJsonMeta } from '@ptdl/shared';
+import { getFields, fieldJsonMeta, SegmentedGroup } from '@ptdl/shared';
 import { NS, t } from './i18n';
 
 /**
@@ -148,7 +148,7 @@ const RelationRow: React.FC<{ row: MapRow; scalarMapped: any[]; childScalarOpts:
       {/* Line 2: match source */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <span style={labelW}>{t('đối chiếu từ')}</span>
-        <Segmented
+        <SegmentedGroup
           value={sourceMode}
           options={[
             { label: t('cột đã trích'), value: 'column' },

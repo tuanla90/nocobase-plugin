@@ -1,8 +1,8 @@
 import React from 'react';
-import { Segmented, Switch, Slider } from 'antd';
+import { Switch, Slider } from 'antd';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
 
 /**
  * "Icon glyph" display widget (field-enhancements) — for `icon` fields.
@@ -56,7 +56,7 @@ function IconView({ value, cfg }: { value: any; cfg: IcoCfg }) {
 }
 
 const ICO_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const ICO_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const ICO_Slider = (props: any) => {

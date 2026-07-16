@@ -1,7 +1,7 @@
 import React from 'react';
-import { AutoComplete, Checkbox, Input, InputNumber, Segmented, Switch, Popover, Typography } from 'antd';
+import { AutoComplete, Checkbox, Input, InputNumber, Switch, Popover, Typography } from 'antd';
 import { observer, useForm } from '@formily/react';
-import { visibleWhen, fi, SEG_PROPS, PreviewBox, registerSettingsKit, AiCodegenButton, st } from '@ptdl/shared';
+import { visibleWhen, fi, SEG_PROPS, PreviewBox, registerSettingsKit, AiCodegenButton, st, SegmentedGroup } from '@ptdl/shared';
 import { listFunctionNames, evaluateFormula, resultToString } from './formulaEngine';
 import { TRIGGER_OPTIONS, splitTriggers } from './formulaKnowledge';
 import { applyFormulaFormat, DATE_FORMAT_PRESETS } from './formulaFormat';
@@ -140,7 +140,7 @@ export const FormulaPreview = observer((props: any) => {
 
 export function AlignSeg(props: any) {
   return (
-    <Segmented
+    <SegmentedGroup
       size="small"
       {...SEG_PROPS}
       value={props.value || 'left'}
@@ -182,7 +182,7 @@ export function registerFormulaComponents(flowSettings: any) {
 // ---- format kết quả (Number/Date) ----
 export function FmtTypeSeg(props: any) {
   return (
-    <Segmented
+    <SegmentedGroup
       size="small"
       {...SEG_PROPS}
       value={props.value || 'auto'}

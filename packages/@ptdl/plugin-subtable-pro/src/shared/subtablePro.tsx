@@ -15,14 +15,14 @@
  * v2 will add the cross-block bridge subscription. See docs/SUBTABLE-PRO-DESIGN.md.
  */
 import React from 'react';
-import { Table, Button, Space, Form, InputNumber, Segmented, Input, Checkbox, theme } from 'antd';
+import { Table, Button, Space, Form, InputNumber, Input, Checkbox, theme } from 'antd';
 import { css } from '@emotion/css';
 import { CloseOutlined, PlusOutlined, ZoomInOutlined, MinusOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { formatNumber, SettingsGrid, CollapsibleSection, ColorField, fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { formatNumber, SettingsGrid, CollapsibleSection, ColorField, fi, rx, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
 
 /** The theme primary color (real token, not the CSS-var fallback which may be missing → wrong blue). */
 function usePrimary(override?: string): string {
@@ -131,7 +131,7 @@ function TotalsLabel({ count }: { count: number }) {
 
 // ---- Segmented picker for the settings dialog ---------------------------------------------------
 const SegPicker = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 
 // ---- qty stepper -------------------------------------------------------------------------------

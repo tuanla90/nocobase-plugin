@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Progress, InputNumber, Switch, Segmented } from 'antd';
-import { ColorField, SettingsGrid, ResetButton, fieldItem as fi, rx, visibleWhen, SEG_PROPS, colorStrip, registerSettingsKit } from '@ptdl/shared';
+import { Progress, InputNumber, Switch } from 'antd';
+import { SegmentedGroup, ColorField, SettingsGrid, ResetButton, fieldItem as fi, rx, visibleWhen, SEG_PROPS, colorStrip, registerSettingsKit } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -274,7 +274,7 @@ function ProgressEdit({
 
 // ---- settings components (P_*) -----------------------------------------------------------------
 const P_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const P_Switch = (props: any) => <Switch checked={props.value !== false} onChange={(c: any) => props.onChange?.(c)} />;
 const P_Num = (props: any) => (

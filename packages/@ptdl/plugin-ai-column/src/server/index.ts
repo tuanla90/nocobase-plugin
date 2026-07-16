@@ -1170,6 +1170,48 @@ function buildRankSchema(): any {
   };
 }
 
+/** Deep-classify attribute-extraction schema: one nullable property per configured attribute + a
+ *  `missing_info` list (what's still needed to classify confidently — the honest "no golden answer"
+ *  signal). Generic: the caller defines which attributes matter for its domain. */
+function buildDeepExtractSchema(attributes: Array<{ name: string; description?: string }>): any {
+  const properties: Record<string, any> = {};
+  for (const a of attributes) {
+    if (!a?.name) continue;
+    properties[a.name] = { type: 'string', description: (a.description || a.name) + ' — null nếu không nêu rõ, KHÔNG đoán.' };
+  }
+  properties.missing_info = { type: 'array', items: { type: 'string' }, description: 'Thông tin còn thiếu để phân loại chắc chắn.' };
+  return { type: 'object', properties, required: [] };
+}
+
+/** Deep-classify scoring schema: per-candidate rich judgment (score + reasoning + matched/unmatched
+ *  criteria + confidence + what to verify + warnings) + an overall recommendation. Domain-agnostic. */
+function buildDeepScoreSchema(): any {
+  return {
+    type: 'object',
+    properties: {
+      candidates: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            tk: { type: 'string', description: 'Mã (primary key) ứng viên, copy đúng.' },
+            score: { type: 'number', description: 'Điểm khớp 0–100.' },
+            reasoning: { type: 'string', description: 'Giải thích khớp/lệch (cùng ngôn ngữ với input).' },
+            matched_criteria: { type: 'array', items: { type: 'string' } },
+            unmatched_criteria: { type: 'array', items: { type: 'string' } },
+            confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+            requires_verification: { type: 'array', items: { type: 'string' }, description: 'Người dùng cần tự kiểm tra gì để chốt.' },
+            warnings: { type: 'string', description: 'Cảnh báo chính sách/rủi ro nếu có (rút từ dữ liệu ứng viên).' },
+          },
+          required: ['tk', 'score'],
+        },
+      },
+      overall_recommendation: { type: 'string' },
+    },
+    required: ['candidates'],
+  };
+}
+
 export class PluginAiColumnServer extends Plugin {
   /** collectionName → active auto-run rules (in-memory cache; avoids a DB query on every save). */
   autorunCache = new Map<string, any[]>();
@@ -1730,6 +1772,111 @@ export class PluginAiColumnServer extends Plugin {
     });
   }
 
+  /** DEEP classify (decision-support) — the specialized, config-driven pipeline for HARD "no golden
+   *  answer" classification (HS code, ICD, chart-of-accounts, legal categorization…): 1) optional
+   *  attribute extraction (caller-defined schema, surfaces `missing_info`), 2) vector/keyword
+   *  shortlist (larger topK), 3) LLM scores EVERY candidate with domain criteria → reasoning,
+   *  confidence, requires-verification, warnings. Returns rich candidates for a human to pick from —
+   *  never an auto-answer. Domain is driven purely by config (`attributes`, `rubric`, `roleHint`,
+   *  `displayFields`), so ONE engine solves many domains. */
+  async runClassifyDeep(params: {
+    query: string;
+    masterCollection: string;
+    dataSourceKey?: string;
+    llmService?: string;
+    model?: string;
+    embedModel?: string;
+    topK?: number;
+    attributes?: Array<{ name: string; description?: string }>;
+    rubric?: string;
+    roleHint?: string;
+    displayFields?: string[];
+    labelTemplate?: string;
+    writeTemplate?: string;
+  }): Promise<any> {
+    const db = this.db;
+    const dsk = params.dataSourceKey || 'main';
+    const query = String(params.query || '').trim();
+    if (!query) throw new Error('query is required');
+    const topK = Math.min(Number(params.topK) || 15, 40);
+    const coll: any = db.getCollection(params.masterCollection);
+    const pk = coll?.model?.primaryKeyAttribute || 'id';
+
+    // 1) Shortlist — vector if the master is embedded, else lexical keyword.
+    const cached = await db.getRepository('ptdlClassifyEmbed').find({ filter: { collectionName: params.masterCollection, dataSourceKey: dsk } });
+    let scored: Array<{ tk: string; sim: number }> = [];
+    let method = 'vector';
+    if (cached.length) {
+      const creds = await getServiceCredentials(db, params.llmService);
+      if (creds && creds.provider === 'google-genai' && creds.apiKey) {
+        const [qv] = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), [query], creds.baseURL);
+        if (qv?.length) scored = cached.map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { tk: String(r.recordId), sim: cosineSim(qv, r.vector || []) }; }).sort((a, b) => b.sim - a.sim).slice(0, topK);
+      }
+    }
+    if (!scored.length) {
+      method = 'keyword';
+      const cfg = await db.getRepository('ptdlClassifyConfig').findOne({ filter: { key: `${dsk}:${params.masterCollection}` } });
+      const tpl = cfg && (cfg.get ? cfg.get('textTemplate') : (cfg as any).textTemplate);
+      const mrows = await db.getRepository(params.masterCollection).find({ limit: 2000 });
+      const qTokens = tokenize(query);
+      scored = (mrows || []).map((r: any) => { const rec = r.toJSON ? r.toJSON() : r; const text = tpl ? renderTemplate(tpl, rec) : Object.values(rec).filter((v) => typeof v === 'string').join(' '); return { tk: String(rec[pk]), sim: lexScore(qTokens, tokenize(text)) }; }).sort((a, b) => b.sim - a.sim).slice(0, topK);
+    }
+    if (!scored.length) throw new Error(`Master "${params.masterCollection}" không có ứng viên để phân loại.`);
+    const ids = scored.map((s) => s.tk);
+    const recs = await db.getRepository(params.masterCollection).find({ filter: { [pk]: { $in: ids } } });
+    const recByTk: Record<string, any> = {};
+    for (const r of recs) { const rec = r.toJSON ? r.toJSON() : r; recByTk[String(rec[pk])] = rec; }
+
+    const aiPlugin = this.app.pm.get('ai');
+    if (!aiPlugin || !aiPlugin.aiManager) throw new Error('AI plugin (@nocobase/plugin-ai) is not enabled');
+    let svc = params.llmService, mdl = params.model;
+    if (!svc || !mdl) { const rr = await aiPlugin.aiManager.resolveModel({ llmService: svc, model: mdl }); svc = rr.llmService; mdl = rr.model; }
+    const { provider } = await aiPlugin.aiManager.getLLMService({ llmService: svc, model: mdl });
+
+    // 2) Attribute extraction (optional, caller-defined schema).
+    const attributes = Array.isArray(params.attributes) ? params.attributes.filter((a) => a?.name) : [];
+    let attrs: any = null;
+    let missingInfo: string[] = [];
+    if (attributes.length) {
+      try {
+        const res = await provider.invoke({
+          messages: [['system', `Bạn là ${params.roleHint || 'trợ lý phân loại'}. Trích các thuộc tính theo schema; dùng null nếu input không nêu rõ, KHÔNG đoán. Liệt kê thông tin còn thiếu.`], ['human', `Input: ${query}`]],
+          structuredOutput: { schema: buildDeepExtractSchema(attributes), name: 'deep_extract', description: 'Extracted attributes.' },
+        });
+        const parsed = res && typeof res === 'object' && 'parsed' in res ? res.parsed : res;
+        if (parsed && typeof parsed === 'object') { attrs = parsed; missingInfo = Array.isArray(parsed.missing_info) ? parsed.missing_info : []; }
+      } catch (e: any) {
+        this.app.log?.warn?.('[ptdl-ai-column] deep extract failed: ' + (e?.message || e));
+      }
+    }
+
+    // 3) Score EVERY candidate with domain criteria + rich judgment.
+    const displayFields = Array.isArray(params.displayFields) && params.displayFields.length ? params.displayFields : null;
+    const candJson = scored.map((s) => { const rec = recByTk[s.tk] || {}; const view = displayFields ? Object.fromEntries(displayFields.map((f) => [f, rec[f]])) : rec; return { tk: s.tk, ...view, vector_sim: Math.round(s.sim * 100) }; });
+    const sys = `Bạn là ${params.roleHint || 'chuyên gia phân loại'} nhiều năm kinh nghiệm. Cho một ITEM và danh sách ỨNG VIÊN (mỗi cái có mã tk + dữ liệu tham chiếu), chấm 0–100 mức khớp TỪNG ứng viên + giải trình; nêu confidence, requires_verification (người dùng cần tự kiểm gì để chốt), warnings (rút từ dữ liệu ứng viên). CHỈ dùng tk đã cho, không bịa.${params.rubric ? ' Tiêu chí chấm: ' + params.rubric : ''}`;
+    const human = `ITEM: ${query}\n${attrs ? 'Thuộc tính đã trích: ' + JSON.stringify(attrs) + '\n' : ''}${missingInfo.length ? 'Thiếu: ' + missingInfo.join('; ') + '\n' : ''}\nỨNG VIÊN:\n${JSON.stringify(candJson)}`;
+    let ranked: any[] = [];
+    let overall = '';
+    try {
+      const res = await provider.invoke({ messages: [['system', sys], ['human', human]], structuredOutput: { schema: buildDeepScoreSchema(), name: 'deep_score', description: 'Scored candidates.' } });
+      const parsed = res && typeof res === 'object' && 'parsed' in res ? res.parsed : res;
+      ranked = Array.isArray(parsed?.candidates) ? parsed.candidates : [];
+      overall = parsed?.overall_recommendation || '';
+    } catch (e: any) {
+      this.app.log?.warn?.('[ptdl-ai-column] deep score failed: ' + (e?.message || e));
+    }
+
+    const labelOf = (tk: string) => { const rec = recByTk[tk] || {}; return params.labelTemplate ? renderTemplate(params.labelTemplate, rec) : JSON.stringify(rec); };
+    const writeOf = (tk: string) => { const rec = recByTk[tk] || {}; return params.writeTemplate ? renderTemplate(params.writeTemplate, rec) : labelOf(tk); };
+    let out = ranked
+      .filter((r) => ids.includes(String(r.tk)))
+      .map((r) => ({ tk: String(r.tk), score: Number(r.score) || 0, reasoning: r.reasoning || '', matchedCriteria: r.matched_criteria || [], unmatchedCriteria: r.unmatched_criteria || [], confidence: r.confidence || 'medium', requiresVerification: r.requires_verification || [], warnings: r.warnings || '', label: labelOf(String(r.tk)), write: writeOf(String(r.tk)), record: recByTk[String(r.tk)] }))
+      .sort((a, b) => b.score - a.score);
+    if (!out.length) out = scored.slice(0, 5).map((s) => ({ tk: s.tk, score: Math.round(s.sim * 100), reasoning: '(theo tương đồng vector)', matchedCriteria: [], unmatchedCriteria: [], confidence: 'low', requiresVerification: [], warnings: '', label: labelOf(s.tk), write: writeOf(s.tk), record: recByTk[s.tk] }));
+    const best = out[0] || null;
+    return { attributes: attrs, missingInfo, candidates: out.slice(0, Math.min(topK, 10)), best, overallRecommendation: overall, method, service: svc, model: mdl };
+  }
+
   /** Shape a classify result for writing into a child field: if the field is a belongsTo/hasOne
    *  relation, write the association `{[targetKey]: tk}` (a real FK link to the master record);
    *  otherwise write the plain code string. Lets classify fill either a code column OR a relation. */
@@ -1991,6 +2138,30 @@ export class PluginAiColumnServer extends Plugin {
       this.app.log?.warn?.('[ptdl-ai-column] ptdlClassifyConfig sync failed: ' + (e?.message || e));
     }
 
+    // Deep-classify decision log (human-in-the-loop feedback): which candidate a user picked vs the
+    // AI's top suggestion + a note — audit trail + future training signal. A NORMAL (visible)
+    // collection so an admin can drop a table block on it to review corrections.
+    this.db.collection({
+      name: 'ptdlClassifyDecisionLog',
+      title: 'AI Classify Decisions',
+      fields: [
+        { type: 'string', name: 'masterCollection' },
+        { type: 'text', name: 'query' },
+        { type: 'string', name: 'selectedTk' },
+        { type: 'string', name: 'aiTopTk' },
+        { type: 'double', name: 'aiTopScore' },
+        { type: 'boolean', name: 'overrode' }, // user picked ≠ AI's top
+        { type: 'text', name: 'note' },
+        { type: 'string', name: 'userId' },
+        { type: 'json', name: 'candidates' },
+      ],
+    });
+    try {
+      await this.db.getCollection('ptdlClassifyDecisionLog').sync();
+    } catch (e: any) {
+      this.app.log?.warn?.('[ptdl-ai-column] ptdlClassifyDecisionLog sync failed: ' + (e?.message || e));
+    }
+
     // Refresh the auto-run cache + attach hooks once the app is fully started (all collections loaded).
     this.app.on('afterStart', async () => {
       await this.loadAutorunRules();
@@ -2176,6 +2347,43 @@ export class PluginAiColumnServer extends Plugin {
           } catch (e: any) {
             ctx.throw(502, e?.message || 'classifyBatch failed');
           }
+          await next();
+        },
+
+        // DEEP classify — the specialized decision-support pipeline (attribute extract + domain
+        // scoring with reasoning/confidence/verification/warnings over a shortlist). For HARD
+        // classification (HS code, ICD, accounting...) where there's no golden answer.
+        classifyDeep: async (ctx: any, next: any) => {
+          const v = (ctx.action?.params?.values as any) || {};
+          if (!v.query || !v.masterCollection) ctx.throw(400, 'query and masterCollection are required');
+          try {
+            ctx.body = await this.runClassifyDeep(v);
+          } catch (e: any) {
+            const msg = e?.message || 'classifyDeep failed';
+            ctx.throw(/required|not enabled|không có ứng viên/i.test(msg) ? 400 : 502, msg);
+          }
+          await next();
+        },
+
+        // Human-in-the-loop feedback: log which candidate the user finally picked (vs AI's top).
+        classifyFeedback: async (ctx: any, next: any) => {
+          const v = (ctx.action?.params?.values as any) || {};
+          if (!v.masterCollection || v.selectedTk == null) ctx.throw(400, 'masterCollection and selectedTk are required');
+          const aiTop = v.aiTopTk != null ? String(v.aiTopTk) : '';
+          await ctx.db.getRepository('ptdlClassifyDecisionLog').create({
+            values: {
+              masterCollection: v.masterCollection,
+              query: v.query || '',
+              selectedTk: String(v.selectedTk),
+              aiTopTk: aiTop,
+              aiTopScore: Number(v.aiTopScore) || 0,
+              overrode: !!aiTop && aiTop !== String(v.selectedTk),
+              note: v.note || '',
+              userId: ctx.state?.currentUser?.id != null ? String(ctx.state.currentUser.id) : '',
+              candidates: v.candidates || [],
+            },
+          });
+          ctx.body = { ok: true };
           await next();
         },
 
@@ -2561,6 +2769,8 @@ export class PluginAiColumnServer extends Plugin {
     this.app.acl.allow('ptdlAiColumn', 'embedMaster', 'loggedIn');
     this.app.acl.allow('ptdlAiColumn', 'classify', 'loggedIn');
     this.app.acl.allow('ptdlAiColumn', 'classifyBatch', 'loggedIn');
+    this.app.acl.allow('ptdlAiColumn', 'classifyDeep', 'loggedIn');
+    this.app.acl.allow('ptdlAiColumn', 'classifyFeedback', 'loggedIn');
     this.app.acl.allow('ptdlAiColumn', 'classifyStatus', 'loggedIn');
     this.app.acl.allow('ptdlAiColumn', 'classifyReindex', 'loggedIn');
     this.app.acl.allow('ptdlAiColumn', 'classifyClear', 'loggedIn');

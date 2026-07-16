@@ -1,8 +1,8 @@
 import React from 'react';
 import dayjs from 'dayjs';
-import { Segmented, Select, Slider, Tooltip } from 'antd';
+import { Select, Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
-import { ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx } from '@ptdl/shared';
+import { SegmentedGroup, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx } from '@ptdl/shared';
 
 /**
  * "Relative date" display widget (field-enhancements).
@@ -132,7 +132,7 @@ function RelDateView({ value, refValue, cfg }: { value: any; refValue?: any; cfg
 
 // --- settings components -----------------------------------------------------------------------
 const RD_Seg = (props: any) => (
-  <Segmented value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const RD_FieldSelect = (props: any) => (
   <Select

@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Segmented, Slider, Switch } from 'antd';
-import { ColorField, tagColorToHex, setIconRegistry, IconByKey, RegistryIconPicker, SettingsGrid, CollapsibleSection, fieldItem as fi, rx, visibleWhen, SEG_PROPS } from '@ptdl/shared';
+import { Slider, Switch } from 'antd';
+import { SegmentedGroup, ColorField, tagColorToHex, setIconRegistry, IconByKey, RegistryIconPicker, SettingsGrid, CollapsibleSection, fieldItem as fi, rx, visibleWhen, SEG_PROPS } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -162,7 +162,7 @@ function ButtonGroupView({
 
 // ---- Settings components ------------------------------------------------------------------------
 const SegPicker = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const PxSlider = (props: any) => {
   const min = props.min ?? 0, max = props.max ?? 24, unit = props.unit ?? 'px';

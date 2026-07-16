@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Tag, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
-import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues } from './aiColumn';
-import { FieldTokenTextArea } from '@ptdl/shared';
+import { FieldTokenTextArea, getFields } from '@ptdl/shared';
 import { NS, t } from './i18n';
 
 /**
@@ -298,10 +297,14 @@ function aiClassifyFlowConfig(t: (s: string) => any) {
         title: t('AI phân loại'),
         uiMode: { type: 'dialog', props: { width: 760 } },
         uiSchema: aiClassifyStepUiSchema(t),
-        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiTextTemplate: '', aiQuery: '', aiLabelTemplate: '', aiWriteTemplate: '', aiTopK: 8, aiEmbedModel: '', aiAuto: { enabled: false, threshold: 80 }, aiRerank: true },
+        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiLabelFields: [], aiTopK: 8, aiAuto: { enabled: false, threshold: 80 }, aiRerank: true },
         handler(ctx: any, params: any) {
-          for (const k of ['aiService', 'aiModel', 'aiTextTemplate', 'aiQuery', 'aiLabelTemplate', 'aiWriteTemplate', 'aiEmbedModel']) ctx.model.setProps(k, params?.[k] || '');
+          ctx.model.setProps('aiService', params?.aiService || '');
+          ctx.model.setProps('aiModel', params?.aiModel || '');
           ctx.model.setProps('aiMaster', params?.aiMaster || {});
+          ctx.model.setProps('aiQueryFields', Array.isArray(params?.aiQueryFields) ? params.aiQueryFields : []);
+          ctx.model.setProps('aiWriteField', params?.aiWriteField || '');
+          ctx.model.setProps('aiLabelFields', Array.isArray(params?.aiLabelFields) ? params.aiLabelFields : []);
           ctx.model.setProps('aiTopK', params?.aiTopK || 8);
           ctx.model.setProps('aiAuto', params?.aiAuto || { enabled: false, threshold: 80 });
           ctx.model.setProps('aiRerank', params?.aiRerank !== false);
@@ -319,7 +322,7 @@ export const AiClassifyEditable: React.FC<{ model: any; baseRender: () => React.
   const [candidates, setCandidates] = useState<any[]>([]);
   const p: any = model?.props || {};
   const master = p.aiMaster || {};
-  const canGen = !!master.collection && !!String(p.aiQuery || '').trim();
+  const canGen = !!master.collection && Array.isArray(p.aiQueryFields) && p.aiQueryFields.length > 0;
 
   const writeValue = (val: any) => {
     if (val == null) return;
@@ -341,11 +344,19 @@ export const AiClassifyEditable: React.FC<{ model: any; baseRender: () => React.
     setLoading(true);
     try {
       const values = collectValues(model);
-      const query = renderTokens(String(p.aiQuery || ''), values).trim();
+      // Build the query by joining the selected current-record columns' values.
+      const query = (Array.isArray(p.aiQueryFields) ? p.aiQueryFields : [])
+        .map((f: string) => values?.[f])
+        .filter((v: any) => v != null && String(v).trim() !== '')
+        .map((v: any) => String(v))
+        .join(' ')
+        .trim();
       if (!query) {
-        message.info(t('Nội dung đối chiếu đang trống (kiểm tra field nguồn).'));
+        message.info(t('Nội dung đối chiếu đang trống (kiểm tra cột nguồn).'));
         return;
       }
+      const writeTemplate = p.aiWriteField ? `{{${p.aiWriteField}}}` : undefined;
+      const labelTemplate = Array.isArray(p.aiLabelFields) && p.aiLabelFields.length ? p.aiLabelFields.map((c: string) => `{{${c}}}`).join(' - ') : undefined;
       const res = await API.request({
         url: 'ptdlAiColumn:classify',
         method: 'post',
@@ -353,13 +364,12 @@ export const AiClassifyEditable: React.FC<{ model: any; baseRender: () => React.
           query,
           masterCollection: master.collection,
           dataSourceKey: master.dataSourceKey || 'main',
-          labelTemplate: p.aiLabelTemplate || undefined,
-          writeTemplate: p.aiWriteTemplate || undefined,
+          labelTemplate,
+          writeTemplate,
           topK: p.aiTopK || 8,
           rerank: p.aiRerank !== false,
           llmService: p.aiService || undefined,
           model: p.aiModel || undefined,
-          embedModel: p.aiEmbedModel || undefined,
         },
       });
       const d = res?.data?.data || {};
@@ -446,11 +456,12 @@ export function registerAiClassify({ flowEngine, variants, EditableItemModel, ap
       PtdlClassifyQuery,
       PtdlEmbedButton,
       PtdlNumber,
-      PtdlPlainInput,
       PtdlAutoPick,
       PtdlRerankToggle,
-      FormTab,
-      'FormTab.TabPane': FormTab.TabPane,
+      PtdlQueryFieldsMulti,
+      PtdlMasterColSelect,
+      PtdlMasterColMulti,
+      PtdlMasterIndexHint,
     });
   } catch (e) {
     // eslint-disable-next-line no-console

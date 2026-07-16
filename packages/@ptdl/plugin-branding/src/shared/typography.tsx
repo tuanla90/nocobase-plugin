@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Card, ColorPicker, Divider, Input, Segmented, Slider, Space, Switch, message } from 'antd';
-import { COLOR_PRESETS, colorToString } from '@ptdl/shared';
+import { Button, Card, ColorPicker, Divider, Input, Slider, Space, Switch, message } from 'antd';
+import { COLOR_PRESETS, colorToString, SegmentedGroup } from '@ptdl/shared';
 import { currentThemeUid, scopedType } from './themeScope';
 
 /**
@@ -382,8 +382,7 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
               </Space>
               <Space size={10} align="center">
                 <span style={{ fontSize: 12, color: '#888', width: 70, flex: 'none' }}>{_t('Header weight')}</span>
-                <Segmented
-                  size="small"
+                <SegmentedGroup
                   value={tb.headWeight || 0}
                   onChange={(v) => setTable({ headWeight: v as number })}
                   options={[

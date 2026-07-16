@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button, Card, Input, Segmented, Space, Switch, Typography, Upload, message } from 'antd';
+import { Button, Card, Input, Space, Switch, Typography, Upload, message } from 'antd';
+import { SegmentedGroup } from '@ptdl/shared';
 import { currentThemeUid, scopedType } from './themeScope';
 
 /**
@@ -531,8 +532,7 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
             <>
               <Space align="center">
                 <span style={{ fontSize: 12, color: '#888' }}>{_t('Open in')}</span>
-                <Segmented
-                  size="small"
+                <SegmentedGroup
                   value={cfg.logoTarget || '_self'}
                   onChange={(v) => set({ logoTarget: v as any })}
                   options={[

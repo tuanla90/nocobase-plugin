@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Switch, Segmented, Slider, Input } from 'antd';
-import { IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS, colorStrip } from '@ptdl/shared';
+import { Switch, Slider, Input } from 'antd';
+import { SegmentedGroup, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS, colorStrip } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -106,7 +106,7 @@ function BoolView({
 
 // ---- settings components (B_*) -----------------------------------------------------------------
 const B_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const B_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const B_Slider = (props: any) => {

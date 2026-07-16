@@ -10,8 +10,18 @@ export {
   insertAtCaret,
   FieldPickerCascader,
   FieldTokenTextArea,
+  // Column picker dropdown (title + raw name, dual-search) + spreadable props + option builder +
+  // the shared two-line option renderer (used by both the flat select and the multi-level cascader).
+  ColumnSelect,
+  columnDropdownProps,
+  buildColumnOptions,
+  TwoLineOption,
+  fieldTypeIcon,
 } from './fieldPicker';
-export type { FieldJsonMeta, TokenFormat, FieldPickerCascaderProps, FieldTokenTextAreaProps } from './fieldPicker';
+export type { FieldJsonMeta, TokenFormat, FieldPickerCascaderProps, FieldTokenTextAreaProps, ColumnOption, ColumnSelectProps } from './fieldPicker';
+// Standard "button group" (Segmented at medium) — house default for every @ptdl segmented control.
+export { SegmentedGroup } from './controls';
+export type { SegmentedGroupProps } from './controls';
 // Relation-appends cascader (picks relation dot-paths for `appends`, not leaf columns).
 export { buildRelationOptions, RelationAppendsPicker } from './relationPicker';
 export type { RelationAppendsPickerProps } from './relationPicker';

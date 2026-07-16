@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Button, Segmented, Select, Slider, Switch, Input, message } from 'antd';
-import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS } from '@ptdl/shared';
+import { Button, Select, Slider, Switch, Input, message } from 'antd';
+import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
 import { CameraCaptureModal } from './cameraModal';
 import { getCurrentUserName, currentUserNameSync } from './user';
 import type { WatermarkCfg, CaptureResult } from './watermark';
@@ -177,7 +177,7 @@ const CameraLauncher: React.FC<{ model: any; cfg: CCfg }> = ({ model, cfg }) => 
 // ---- settings components ------------------------------------------------------------------------
 const C_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const C_PosSeg = (props: any) => (
-  <Segmented
+  <SegmentedGroup
     {...SEG_PROPS}
     value={props.value || 'bottom-left'}
     onChange={(v: any) => props.onChange?.(v)}
@@ -190,7 +190,7 @@ const C_PosSeg = (props: any) => (
   />
 );
 const C_ModeSeg = (props: any) => (
-  <Segmented
+  <SegmentedGroup
     {...SEG_PROPS}
     value={props.value || 'inapp'}
     onChange={(v: any) => props.onChange?.(v)}

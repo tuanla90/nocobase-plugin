@@ -1,8 +1,8 @@
 import React from 'react';
-import { Segmented, Slider, Tooltip } from 'antd';
+import { Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
-import { SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { SegmentedGroup, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
 
 /**
  * "Clamp text" display widget (field-enhancements) — for long-text fields (`textarea` / `markdown` / `richText`).
@@ -66,7 +66,7 @@ function LongTextView({ value, isHtml, cfg }: { value: any; isHtml: boolean; cfg
 }
 
 const LT_Seg = (props: any) => (
-  <Segmented {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
+  <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
 const LT_Slider = (props: any) => {
   const v = typeof props.value === 'number' ? props.value : 2;

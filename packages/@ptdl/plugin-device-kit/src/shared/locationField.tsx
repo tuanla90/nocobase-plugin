@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EditableItemModel, DisplayItemModel } from '@nocobase/flow-engine';
-import { Button, Input, Segmented, Switch, Slider, Space, message } from 'antd';
+import { Button, Input, Switch, Slider, Space, message } from 'antd';
 import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS } from '@ptdl/shared';
 import { getCurrentFix, formatFix, mapsUrl, parseLocation, accuracyBucket, type GeoFix } from './geo';
 import { te, t } from './i18n';

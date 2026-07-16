@@ -17,7 +17,7 @@ import React from 'react';
 // Bare import GIỮ NGUYÊN: nocobase-build chỉ externalize package mà SOURCE plugin import trực tiếp.
 // ag-grid-react cần react-dom (createPortal); không có dòng này react-dom bị bundle thành stub rỗng.
 import 'react-dom';
-import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx } from '@ptdl/shared';
+import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx, SegmentedGroup } from '@ptdl/shared';
 import {
   ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight,
   Copy, Download, ExternalLink, Eye, EyeOff, Flag, Pencil, Pin, Play, Plus, Send, SlidersHorizontal,
@@ -56,7 +56,6 @@ import {
   Pagination,
   Popconfirm,
   Popover,
-  Segmented,
   Select as AntSelect,
   Space as AntSpace,
   Switch as AntSwitch,
@@ -1211,8 +1210,7 @@ function PtdlColStylePanel({ model, fieldName }: any) {
   return (
     <div ref={rootRef} style={{ width: 264 }}>
       <Row label={t('Căn lề')}>
-        <Segmented
-          size="small"
+        <SegmentedGroup
           value={cfg.align || 'left'}
           onChange={(v: any) => upd({ align: v })}
           options={[
