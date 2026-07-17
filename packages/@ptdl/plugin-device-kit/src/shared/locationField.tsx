@@ -4,6 +4,7 @@ import { observer, useForm } from '@formily/react';
 import { Button, Input, Switch, Slider, Space, Segmented, message } from 'antd';
 import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS } from '@ptdl/shared';
 import { getCurrentFix, formatFix, mapsUrl, parseLocation, accuracyBucket, type GeoFix } from './geo';
+import { reverseGeocode } from './geocode';
 import { PickMap } from './mapView';
 import { PermissionHelp } from './permissionHelp';
 import { te, t } from './i18n';
@@ -30,6 +31,8 @@ const L_DEFAULTS = {
   mapHeight: 220,
   autoWhen: 'ifEmpty', // auto-capture-on-submit timing (used only when the FORM enables auto-capture)
   autoRequired: false, // block submit if GPS can't be obtained
+  addrMode: 'off',     // reverse geocode: off | manual (button) | auto (after locate)
+  addrLang: 'vi',
 };
 type LCfg = typeof L_DEFAULTS;
 
@@ -43,6 +46,8 @@ function lcfgFromProps(p: any): LCfg {
     mapInput: p.ptdllMapInput !== false,
     mapDisplay: p.ptdllMapDisplay !== undefined ? !!p.ptdllMapDisplay : !!p.ptdllEmbed,
     mapHeight: typeof p.ptdllMapHeight === 'number' ? p.ptdllMapHeight : 220,
+    addrMode: ['off', 'manual', 'auto'].includes(p.ptdllAddrMode) ? p.ptdllAddrMode : 'off',
+    addrLang: p.ptdllAddrLang || 'vi',
   };
 }
 function lcfgFromForm(v: any): LCfg {
@@ -54,6 +59,8 @@ function lcfgFromForm(v: any): LCfg {
     mapInput: v?.mapInput !== false,
     mapDisplay: v?.mapDisplay !== false,
     mapHeight: typeof v?.mapHeight === 'number' ? v.mapHeight : 220,
+    addrMode: ['off', 'manual', 'auto'].includes(v?.addrMode) ? v.addrMode : 'off',
+    addrLang: v?.addrLang || 'vi',
   };
 }
 
@@ -71,10 +78,22 @@ function nowSafe(): number { try { return Date.now(); } catch (_) { return 0; } 
 // ---- editable widget ----------------------------------------------------------------------------
 const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => void; disabled?: boolean }> = ({ cfg, value, onChange, disabled }) => {
   const [busy, setBusy] = useState(false);
+  const [addrBusy, setAddrBusy] = useState(false);
   const [manual, setManual] = useState('');
   const [showManual, setShowManual] = useState(false);
   const [denied, setDenied] = useState(false);
   const fix = asFix(value);
+
+  const fetchAddr = async (f: GeoFix) => {
+    if (!f || f.lat == null) return;
+    setAddrBusy(true);
+    try {
+      const addr = await reverseGeocode(f.lat, f.lng, { lang: cfg.addrLang });
+      if (addr) onChange?.({ ...f, address: addr });
+      else message.warning(t('Không tìm được địa chỉ cho toạ độ này.'));
+    } catch (_) { /* ignore */ }
+    setAddrBusy(false);
+  };
 
   const locate = async () => {
     setBusy(true);
@@ -82,6 +101,7 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
     try {
       const f = await getCurrentFix({ enableHighAccuracy: cfg.highAccuracy, timeoutMs: 12000 });
       onChange?.(f);
+      if (cfg.addrMode === 'auto') fetchAddr(f);
     } catch (e: any) {
       const code = e?.code;
       if (code === 'denied') setDenied(true);
@@ -129,7 +149,19 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
         ) : (
           <span style={{ color: '#bfbfbf', fontSize: 13 }}>{t('Chưa có vị trí')}</span>
         )}
+        {cfg.addrMode === 'manual' && fix && !disabled && (
+          <Button size="small" type="link" loading={addrBusy} onClick={() => fetchAddr(fix)} style={{ padding: 0, height: 'auto' }}>
+            🏠 {fix.address ? t('Cập nhật địa chỉ') : t('Lấy địa chỉ')}
+          </Button>
+        )}
+        {cfg.addrMode === 'auto' && addrBusy && <span style={{ fontSize: 12, color: '#8c8c8c' }}>🏠 {t('Đang lấy địa chỉ…')}</span>}
       </div>
+
+      {fix?.address && (
+        <div style={{ fontSize: 12.5, color: 'var(--colorTextSecondary, #666)', display: 'flex', gap: 4 }}>
+          <span>🏠</span><span>{fix.address}</span>
+        </div>
+      )}
 
       {denied && !disabled && <PermissionHelp kind="location" compact onRetry={locate} />}
 
@@ -168,6 +200,7 @@ const LocationDisplay: React.FC<{ cfg: LCfg; value?: any }> = ({ cfg, value }) =
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: DOT_COLORS[bucket], flex: 'none' }} />
         📍 {formatFix(fix, { showAccuracy: cfg.showAccuracy })}
       </a>
+      {fix.address && <span style={{ fontSize: 12.5, color: 'var(--colorTextSecondary, #666)' }}>🏠 {fix.address}</span>}
       {cfg.mapDisplay && <PickMap lat={fix.lat} lng={fix.lng} height={cfg.mapHeight} />}
     </span>
   );
@@ -217,6 +250,19 @@ const L_WhenSeg = (props: any) => (
     ]}
   />
 );
+const L_AddrSeg = (props: any) => (
+  <Segmented
+    {...SEG_PROPS}
+    value={props.value || 'off'}
+    onChange={(v: any) => props.onChange?.(v)}
+    options={[
+      { label: t('Tắt'), value: 'off' },
+      { label: t('Nút bấm'), value: 'manual' },
+      { label: t('Tự động'), value: 'auto' },
+    ]}
+  />
+);
+const L_Text = (props: any) => <Input value={props.value} onChange={(e: any) => props.onChange?.(e.target.value)} placeholder={props.placeholder} style={{ width: 90 }} />;
 
 export function registerLocationField(deps: {
   flowEngine: any; flowSettings?: any; FieldModel: any; DisplayTextFieldModel: any;
@@ -228,7 +274,7 @@ export function registerLocationField(deps: {
   if (flowSettings?.registerComponents) {
     try {
       flowSettings.registerComponents({
-        L_Grid: SettingsGrid, L_Switch, L_Meters, L_Height, L_WhenSeg, L_Reset: ResetButton,
+        L_Grid: SettingsGrid, L_Switch, L_Meters, L_Height, L_WhenSeg, L_AddrSeg, L_Text, L_Reset: ResetButton,
         L_Section: CollapsibleSection, L_Preview: LocationSettingsPreview,
       });
     } catch (e) { console.warn('[device-kit] location registerComponents failed', e); }
@@ -295,6 +341,19 @@ export function registerLocationField(deps: {
               },
             },
           },
+          addrSection: {
+            type: 'void', 'x-component': 'L_Section',
+            'x-component-props': { title: te('Địa chỉ (reverse geocode — OSM, miễn phí)'), defaultOpen: false },
+            properties: {
+              rowAddr: {
+                type: 'void', 'x-component': 'L_Grid', 'x-component-props': { style: { gridTemplateColumns: '1fr auto' }, alignItems: 'end' },
+                properties: {
+                  addrMode: fi(te('Lấy địa chỉ từ toạ độ (OSM miễn phí, ~1/giây)'), 'L_AddrSeg'),
+                  addrLang: fi(te('Ngôn ngữ'), 'L_Text', { componentProps: { placeholder: 'vi' } }),
+                },
+              },
+            },
+          },
           accSection: {
             type: 'void', 'x-component': 'L_Section',
             'x-component-props': { title: te('Ngưỡng màu độ chính xác'), defaultOpen: false },
@@ -323,6 +382,8 @@ export function registerLocationField(deps: {
             ptdllMapHeight: typeof p.mapHeight === 'number' ? p.mapHeight : 220,
             ptdllAutoWhen: p.autoWhen === 'always' ? 'always' : 'ifEmpty',
             ptdllAutoRequired: !!p.autoRequired,
+            ptdllAddrMode: ['off', 'manual', 'auto'].includes(p.addrMode) ? p.addrMode : 'off',
+            ptdllAddrLang: p.addrLang || 'vi',
           });
         },
       },

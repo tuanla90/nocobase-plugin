@@ -5,7 +5,7 @@
   "displayName.zh-CN": "设备套件（拍照·定位）",
   "description": "Use the device hardware for field data-entry: an on-site Camera field widget (in-app getUserMedia capture, forces a live shot; burns a watermark with time / GPS / user into the pixels; compresses before upload) and a first-class GPS Location field type (ptdlLocation, stored as JSON {lat,lng,accuracy,ts}) with a one-tap 📍 capture button, accuracy readout, manual paste, and a display pill that opens Google Maps — no map API key required. Camera capture writes its GPS metadata straight into a chosen Location field. Full Vietnamese UI. QR/barcode scan to follow.",
   "description.vi-VN": "Dùng phần cứng thiết bị để nhập liệu hiện trường: widget Chụp ảnh tại chỗ (getUserMedia trong app, ép chụp ảnh sống; đóng dấu watermark giờ / GPS / người dùng vào pixel; nén trước khi tải lên) và kiểu field Định vị GPS (ptdlLocation, lưu JSON {lat,lng,accuracy,ts}) với nút 📍 lấy vị trí, hiển thị độ chính xác, dán tay, và pill hiển thị mở Google Maps — không cần API key bản đồ. Chụp ảnh ghi luôn metadata GPS vào field Định vị đã chọn. Giao diện tiếng Việt đầy đủ. Quét QR/barcode làm sau.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

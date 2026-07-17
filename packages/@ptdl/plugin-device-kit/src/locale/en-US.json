@@ -170,5 +170,16 @@
   "Nét bút": "Pen width",
   "Chiều cao": "Height",
   "Nền trắng": "White background",
-  "Ghi tên + giờ dưới chữ ký": "Stamp name + time under the signature"
+  "Ghi tên + giờ dưới chữ ký": "Stamp name + time under the signature",
+
+  "Không tìm được địa chỉ cho toạ độ này.": "Couldn't find an address for these coordinates.",
+  "Lấy địa chỉ": "Get address",
+  "Cập nhật địa chỉ": "Update address",
+  "Đang lấy địa chỉ…": "Getting address…",
+  "Địa chỉ (reverse geocode — OSM, miễn phí)": "Address (reverse geocode — OSM, free)",
+  "Tắt": "Off",
+  "Nút bấm": "Button",
+  "Tự động": "Auto",
+  "Lấy địa chỉ từ toạ độ (OSM miễn phí, ~1/giây)": "Address from coordinates (OSM free, ~1/sec)",
+  "Ngôn ngữ": "Language"
 }
