@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { InputNumber, Switch, Slider, Input } from 'antd';
-import { SegmentedGroup, ColumnSelect, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { SegmentedGroup, ColumnSelect, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS, makeNumberFormatter } from '@ptdl/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -43,14 +43,18 @@ function formatDisplay(v: any, cfg: NCfg): string {
   if (v == null || v === '') return '';
   const n = Number(v);
   if (Number.isNaN(n)) return String(v);
-  let s = cfg.decimals >= 0 ? n.toFixed(cfg.decimals) : String(n);
-  if (cfg.thousands) {
-    const neg = s.startsWith('-');
-    const abs = neg ? s.slice(1) : s;
-    const [int, dec] = abs.split('.');
-    s = (neg ? '-' : '') + addThousands(int) + (dec ? '.' + dec : '');
+  // decimals < 0 = full precision — makeNumberFormatter can't (toFixed rejects negatives) → keep local.
+  if (cfg.decimals < 0) {
+    let s = String(n);
+    if (cfg.thousands) {
+      const neg = s.startsWith('-');
+      const abs = neg ? s.slice(1) : s;
+      const [int, dec] = abs.split('.');
+      s = (neg ? '-' : '') + addThousands(int) + (dec ? '.' + dec : '');
+    }
+    return s;
   }
-  return s;
+  return makeNumberFormatter({ decimals: cfg.decimals, thousandSep: cfg.thousands ? ',' : '', decimalSep: '.' })(n);
 }
 function prefixNode(cfg: NCfg): React.ReactNode {
   const color = cfg.iconColor || 'currentColor';

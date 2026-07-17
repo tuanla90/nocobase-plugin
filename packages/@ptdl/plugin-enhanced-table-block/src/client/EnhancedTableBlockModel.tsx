@@ -10,9 +10,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { css } from '@emotion/css';
 import { tExpr } from '@nocobase/flow-engine';
-// Pure format helper from the shared source lib (sideEffects:false → tree-shaken to just this
-// function; pulls no antd/@nocobase/client, so the /v/ client-v2 bundle stays clean).
-import { escapeHtml } from '@ptdl/shared';
+// Pure helpers from the shared source lib (sideEffects:false → tree-shaken to just these
+// functions; pull no antd/@nocobase/client, so the /v/ client-v2 bundle stays clean).
+// aggSum/aggAvg (aggregate.ts) are null-safe reducers; verified byte-equivalent to the former
+// inline `arr.reduce((a,b)=>a+b,0)` / `sum/length` for every call site here (all operate on a
+// pre-filtered number[] guarded non-empty, so aggAvg's empty→0 branch is never reached).
+import { escapeHtml, aggSum, aggAvg } from '@ptdl/shared';
 import { useContainerNarrow, ResponsiveCards, RESP_CARD_CSS } from './responsiveCards';
 
 /**
@@ -394,7 +397,7 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
       });
 
       if (selectedNumbers.length > 1) {
-        const sum = selectedNumbers.reduce((a, b) => a + b, 0);
+        const sum = aggSum(selectedNumbers);
         const max = Math.max(...selectedNumbers);
         const min = Math.min(...selectedNumbers);
         const avg = sum / selectedNumbers.length;
@@ -714,8 +717,8 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
           } else if (type === 'countDistinct') {
             result = new Set(rawValues.map((v: any) => (typeof v === 'object' ? JSON.stringify(v) : String(v)))).size;
           } else if (numValues.length > 0) {
-            if (type === 'sum') result = numValues.reduce((a, b) => a + b, 0);
-            else if (type === 'avg') result = numValues.reduce((a, b) => a + b, 0) / numValues.length;
+            if (type === 'sum') result = aggSum(numValues);
+            else if (type === 'avg') result = aggAvg(numValues);
             else if (type === 'max') result = Math.max(...numValues);
             else if (type === 'min') result = Math.min(...numValues);
           }
@@ -745,8 +748,8 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
             if (type === 'count') selResult = texts.length;
             else if (type === 'countDistinct') selResult = new Set(texts).size;
             else if (nums.length > 0) {
-              if (type === 'sum') selResult = nums.reduce((a, b) => a + b, 0);
-              else if (type === 'avg') selResult = nums.reduce((a, b) => a + b, 0) / nums.length;
+              if (type === 'sum') selResult = aggSum(nums);
+              else if (type === 'avg') selResult = aggAvg(nums);
               else if (type === 'max') selResult = Math.max(...nums);
               else if (type === 'min') selResult = Math.min(...nums);
             }

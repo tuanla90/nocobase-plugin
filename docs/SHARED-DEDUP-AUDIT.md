@@ -84,3 +84,26 @@ Dup audit gốc BỎ SÓT: cascader "chọn quan hệ nhiều cấp → tag" bui
 - **Chưa đề xuất** relative-time & aggregate dù có 3 & 5 bản → thêm vào §10.
 - **R2 vs proposal mâu thuẫn về condition:** R2 cấm copy-paste `condition`, nhưng `filter-tree` có trước rule và giữ taxonomy riêng (proposal §condition thừa nhận là deferred). → R2 mang ngoại lệ filter-tree.
 - Proposal §condition liệt kê `menu-enhancements` là "chưa migrate" → **stale**, đã import `ConditionRow`/`opNeedsNoValue`.
+
+---
+
+## D) KẾT QUẢ THỰC THI §B (2026-07-17) — kiểm chứng bằng test tương đương OLD≡NEW
+
+Mỗi đề xuất §B được 1 sub-agent viết test Node so **OLD (verbatim)** vs **shared**, chỉ swap khi **100% khớp**. Nhiều claim "=" trong §A/§B **sai** khi test kỹ — giữ local đúng. Đã build + deploy nb-local + served-bundle byte-match + app 200.
+
+**✅ ĐÃ MIGRATE (proven byte-identical, đã ship):**
+- **formula** `formatNumberValue`/`formatDateValue` → `makeNumberFormatter`/`formatDate` (§B1, source từ 2026-07-15, ship qua 0.1.58). Nhánh decimals-unset giữ local (full precision).
+- **field-enhancements 0.2.11** `formatDisplay` nhánh `decimals>=0` → `makeNumberFormatter` (1548/1548). Giữ local: guards (null/''→''), nhánh `decimals<0` (toFixed từ chối số âm), `addThousands`, `clampDecimals` (input mask).
+- **spreadsheet-view 0.2.2** `clientAgg.sum/avg` → `aggSum/aggAvg` (254/254 + 300/300 e2e).
+- **enhanced-table-block 2.1.0-beta.16** summary `sum/avg` (3 call site) → `aggSum/aggAvg` (112/112, 111/111).
+- **block-custom-html 0.12.3** `buildHelpers` sum/avg/count/min/max/groupBy + `timeAgo` → shared aggregate/relativeTime (ship trước đó).
+
+**⛔ GIỮ LOCAL (test CHỨNG MINH không tương đương — swap = regression):**
+- **spreadsheet `formatNum`** → `makeNumberFormatter`: khi `decimals` unset call site truyền `{thousands:true}` → OLD `String(n)` (full precision, không làm tròn); `makeNumberFormatter` mặc định `toFixed(0)` làm tròn. `1234.5`→OLD "1,234.5" vs "1,235".
+- **spreadsheet `min/max/range/median`** → shared: shared lọc `pluckNums` (isFinite) **rớt ±Infinity** mà OLD `Math.min/max` giữ (`x/0` hoặc cell `"1e400"` → Infinity). `count`: OLD đếm mọi cell non-null (kể cả non-numeric), `aggCount(nums)` chỉ đếm số.
+- **enhanced-table `formatStat`** → `formatNumber`: `toLocaleString('en-US')` giữ tới 2-3 chữ số thập phân, `formatNumber` toFixed(0) làm tròn. `99.99`→OLD "99.99" vs "100". (FAIL 83/193.)
+- **change-log `formatDateFriendly`** → `formatDate(v,'DD/MM/YYYY HH:mm')`: nhánh ngày-không-hợp-lệ khác — `undefined`→OLD `'undefined'` vs shared `''`; `{}`/`{label}`... khác. 58 case ngày-hợp-lệ giống hệt; chỉ nhánh invalid lệch → giữ local (hoặc guard invalid trước rồi mới delegate — chưa làm).
+- **print-template `arraySum/arrayAvg`** → `aggSum/aggAvg`: OLD `Number(b||0)` → 1 phần tử **truthy-non-numeric** (`"N/A"`) làm `NaN` **poison** cả tổng; shared `Number(cell)||0` bỏ qua (→ số hữu hạn). `[1,'abc']`→OLD NaN vs 1. Khác user-visible với `{{arraySum (pluck items "amount")}}` khi amount bẩn.
+- **change-log `relativeTime`**, **field-enh `reduceUnit`**: vocabulary/ngưỡng khác (tuần; day-distance + i18n plural) — không map sạch, giữ local.
+
+**Bài học:** claim "A = B" trong audit tĩnh KHÔNG đủ — 5/10 swap thất bại khi test đối chứng (làm tròn `toFixed`, lọc `isFinite`, NaN-poison, nhánh invalid). Test OLD≡NEW là bắt buộc trước mọi dedup format/reducer.

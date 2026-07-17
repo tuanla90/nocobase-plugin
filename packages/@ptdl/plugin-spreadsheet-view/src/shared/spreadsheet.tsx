@@ -17,7 +17,7 @@ import React from 'react';
 // Bare import GIỮ NGUYÊN: nocobase-build chỉ externalize package mà SOURCE plugin import trực tiếp.
 // ag-grid-react cần react-dom (createPortal); không có dòng này react-dom bị bundle thành stub rỗng.
 import 'react-dom';
-import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx, SegmentedGroup, ColumnSelect } from '@ptdl/shared';
+import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx, SegmentedGroup, ColumnSelect, aggSum, aggAvg } from '@ptdl/shared';
 import {
   ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight,
   Copy, Download, ExternalLink, Eye, EyeOff, Flag, Pencil, Pin, Play, Plus, Send, SlidersHorizontal,
@@ -807,8 +807,14 @@ function clientAgg(rows: any[], field: string, agg: string, coll: any, fc: any):
   if (agg === 'unique') return seen.size; // số giá trị KHÁC NHAU (vd số khách hàng)
   if (agg === 'filledPct') return total ? (nonNull / total) * 100 : null;
   if (!nums.length) return null;
-  if (agg === 'sum') return nums.reduce((s, n) => s + n, 0);
-  if (agg === 'avg') return nums.reduce((s, n) => s + n, 0) / nums.length;
+  // sum/avg migrated to @ptdl/shared (aggSum/aggAvg) — verified byte-identical over the reachable
+  // domain (non-empty numeric arrays incl. ±Infinity): shared aggSum's `Number(x)||0` coercion is a
+  // no-op for the already-numeric, non-NaN `nums` here, and aggAvg = aggSum/len matches exactly.
+  // min/max/range/median/count intentionally KEPT local: shared min/max/range/median use pluckNums
+  // (isFinite filter) which drops ±Infinity that OLD Math.min/max/sort preserve; and OLD `count`
+  // returns `nonNull` (non-empty incl. non-numeric), not aggCount(nums)=numeric count.
+  if (agg === 'sum') return aggSum(nums);
+  if (agg === 'avg') return aggAvg(nums);
   if (agg === 'min') return Math.min(...nums);
   if (agg === 'max') return Math.max(...nums);
   if (agg === 'range') return Math.max(...nums) - Math.min(...nums);
