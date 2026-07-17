@@ -23,6 +23,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [text, setText] = useState(() => JSON.stringify(SAMPLE_BAN_HANG, null, 2));
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<{ pages: Array<{ title: string; collection: string; url: string; schemaUid: string }> } | null>(null);
+    const [desc, setDesc] = useState('');
+    const [aiBusy, setAiBusy] = useState(false);
 
     const parse = (): any => {
       try { return JSON.parse(text); } catch (e: any) { message.error(t('Invalid JSON') + ': ' + e.message); return null; }
@@ -48,6 +50,24 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         setBusy(false);
       }
     };
+    // ✨ Describe → App-Spec via NocoBase's own AI (server action appBuilder:aiGenerate). Fills the JSON
+    // box below so the user reviews before Create.
+    const onAiGenerate = async () => {
+      if (!desc.trim()) { message.warning(t('Describe your app first')); return; }
+      setAiBusy(true);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:aiGenerate', method: 'post', data: { description: desc } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('AI could not generate a spec')); return; }
+        setText(JSON.stringify(res.spec, null, 2));
+        message.success(res.explain || t('Spec generated — review then Create app'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setAiBusy(false);
+      }
+    };
 
     return (
       <>
@@ -61,10 +81,22 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
           </Button>
         </Tooltip>
         <Modal open={open} onCancel={() => setOpen(false)} width={800} title={t('Build app from spec')} footer={null} destroyOnClose>
-          <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-            {t('Paste an App-Spec (JSON) or load the demo below, then Create.')}
+          <Typography.Text strong>✨ {t('Describe → build with AI')}</Typography.Text>
+          <Input.TextArea
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            rows={2}
+            placeholder={t('e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn')}
+            style={{ margin: '6px 0 8px' }}
+          />
+          <Space style={{ marginBottom: 14 }} wrap>
+            <Button type="primary" loading={aiBusy} onClick={onAiGenerate}>✨ {t('Generate with AI')}</Button>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('AI (NocoBase) writes the App-Spec below; review then Create.')}</Typography.Text>
+          </Space>
+          <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 6, fontSize: 12 }}>
+            {t('…or paste / load a demo App-Spec (JSON):')}
           </Typography.Paragraph>
-          <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={16} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={14} style={{ fontFamily: 'monospace', fontSize: 12 }} />
           <Space style={{ marginTop: 12 }} wrap>
             <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))}>{t('Load demo')}</Button>
             <Button onClick={onValidate}>{t('Validate')}</Button>

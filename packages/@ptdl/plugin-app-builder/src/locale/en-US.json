@@ -11,5 +11,13 @@
   "pages": "pages",
   "Created pages": "Created pages",
   "Invalid JSON": "Invalid JSON",
-  "App spec is empty or invalid": "App spec is empty or invalid"
+  "App spec is empty or invalid": "App spec is empty or invalid",
+  "Describe → build with AI": "Describe → build with AI",
+  "Generate with AI": "Generate with AI",
+  "AI (NocoBase) writes the App-Spec below; review then Create.": "AI (NocoBase) writes the App-Spec below; review then Create.",
+  "…or paste / load a demo App-Spec (JSON):": "…or paste / load a demo App-Spec (JSON):",
+  "Describe your app first": "Describe your app first",
+  "AI could not generate a spec": "AI could not generate a spec",
+  "Spec generated — review then Create app": "Spec generated — review then Create app",
+  "e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn": "e.g. a sales app: customers, products, orders with line items + order status"
 }

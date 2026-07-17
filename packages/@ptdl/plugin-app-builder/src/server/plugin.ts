@@ -143,6 +143,52 @@ export function relationDef(sourceColl: string, r: RelationSpec): any {
 /** Order relation types so paired FKs exist before the side that reuses them: m2o/o2o/m2m first, o2m last. */
 const RELATION_ORDER: Record<string, number> = { m2o: 0, o2o: 0, m2m: 1, o2m: 2 };
 
+// ── AI (NocoBase @nocobase/plugin-ai) ─────────────────────────────────────────────────────────────
+/** Resolve the app's configured LLM provider (same path formula/ai-column use). Inlined so app-builder
+ *  stays self-contained (no @ptdl/shared runtime dep). */
+async function getAiProvider(app: any): Promise<{ provider?: any; error?: string }> {
+  const aiPlugin: any = app?.pm?.get?.('ai');
+  if (!aiPlugin?.aiManager) return { error: 'Chưa bật/cấu hình AI (@nocobase/plugin-ai)' };
+  try {
+    const resolved = await aiPlugin.aiManager.resolveModel({});
+    const { provider } = await aiPlugin.aiManager.getLLMService({ llmService: resolved.llmService, model: resolved.model });
+    return { provider };
+  } catch (e: any) {
+    return { error: 'Không lấy được model AI: ' + (e?.message || e) };
+  }
+}
+const stripFences = (s: any) => String(s ?? '').replace(/^\s*```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+function aiText(msg: any): string {
+  if (!msg) return '';
+  if (typeof msg === 'string') return msg;
+  if (Array.isArray(msg?.content)) return msg.content.map((c: any) => c?.text || '').join('');
+  return String(msg?.content ?? msg?.text ?? msg?.output_text ?? '');
+}
+
+/** System prompt: the App-Spec shape + the @ptdl vocabulary + rules, so the LLM emits a valid spec. */
+function appSpecSystemPrompt(): string {
+  return [
+    'Bạn là trợ lý dựng app NocoBase. Từ MÔ TẢ tiếng Việt của người dùng, sinh MỘT App-Spec JSON hợp lệ.',
+    '',
+    'App-Spec = { "meta": {"name","locale":"vi"}, "collections": [...], "pages": [...], "menu": {"groups": [...]} }.',
+    'collection = { "name" (machine, ^[a-z][a-z0-9_]*), "title" (vi có dấu), "titleField", "fields": [...], "relations": [...], "seed": [...] }.',
+    'field = { "name", "title", "interface", "options"?, "required"?, "widget"?, "computed"?, "states"? }.',
+    '  interface ∈ input, textarea, markdown, phone, email, url, number, integer, percent, select, multipleSelect, checkbox, date, datetime, time, color, json, statusFlow.',
+    '  select/multipleSelect PHẢI có "options": ["A","B"]. statusFlow PHẢI có "states": ["Mới","Xong"]. computed = {"expression":"data.qty * data.price"} (cú pháp data.<field>, SUM(data.rel.field) cho rollup).',
+    '  widget (tùy chọn, cho đẹp): "Progress bar","Star rating","Value tag","Rich select","Input icon","Sub-table Pro".',
+    'relation = { "name", "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"? }.',
+    'page = { "title", "collection", "menuGroup"?, "icon"? ("lucide-users"…), "block"? ("TableBlockModel"|"EnhancedTableBlockModel"), "columns": [tên field], "popupColumns"? }.',
+    '',
+    'QUY TẮC:',
+    '- name của collection/field = KHÔNG DẤU, snake_case (vd "khach_hang", "ngay_dat"); title = tiếng Việt có dấu.',
+    '- Mỗi collection có titleField = 1 field string chính (vd "ten", "ma").',
+    '- Đơn có dòng chi tiết: khai o2m ở bảng cha (reverseName = tên m2o ở bảng con) + m2o ở bảng con; cột computed line-total dùng data.<field>.',
+    '- Seed 2-3 dòng demo mỗi collection; giá trị quan hệ m2o = giá trị titleField của bản ghi target.',
+    '- Mỗi collection nên có 1 page; nhóm menu hợp lý (Danh mục / Vận hành…).',
+    '- CHỈ trả JSON App-Spec, không markdown, không giải thích ngoài trường "explain".',
+  ].join('\n');
+}
+
 /**
  * Read a custom-action's values (`resource().op({values})` → ctx.action.params.values; raw HTTP may put
  * them top-level). Accept both.
@@ -333,9 +379,41 @@ export class PluginAppBuilderServer extends Plugin {
         seed: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opSeed(v.collection, v.rows || []); await next(); },
         // {prefix?}  → introspect current collections/fields
         describeApp: async (ctx: any, next: any) => { ctx.body = await this.opDescribe(readVals(ctx).prefix); await next(); },
+
+        // {description} → dùng LLM của NocoBase sinh App-Spec (structured output + validate/retry ≤3).
+        // Client sau đó preview + buildApp (materialize). Đây là "Tả là dựng".
+        aiGenerate: async (ctx: any, next: any) => {
+          const description = String(readVals(ctx).description || '').trim();
+          if (!description) { ctx.body = { ok: false, error: 'Thiếu mô tả' }; await next(); return; }
+          const { provider, error } = await getAiProvider(this.app);
+          if (error) { ctx.body = { ok: false, error }; await next(); return; }
+          const system = appSpecSystemPrompt();
+          const schema = { type: 'object', properties: { spec: { type: 'string', description: 'App-Spec dạng chuỗi JSON hợp lệ' }, explain: { type: 'string', description: 'Giải thích ngắn tiếng Việt (1 câu)' } }, required: ['spec'] };
+          let human = `Mô tả app: ${description}\n\nSinh App-Spec JSON.`;
+          let spec: any = null; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !spec; attempt++) {
+            let raw = '';
+            try {
+              const result: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'appspec', description: 'App-Spec + giải thích' } });
+              const parsed = result && typeof result === 'object' && 'parsed' in result ? result.parsed : result;
+              raw = parsed?.spec || ''; explain = String(parsed?.explain || '');
+            } catch { /* structured output not supported → plain-text fallback */ }
+            if (!raw) { try { raw = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả về DUY NHẤT JSON App-Spec.'], ['human', human]] })); } catch {} }
+            raw = stripFences(raw);
+            let parsedSpec: any;
+            try { parsedSpec = JSON.parse(raw); } catch (e: any) { lastError = 'JSON không parse được: ' + e?.message; human += `\n\nLần trước output KHÔNG phải JSON hợp lệ. Trả JSON App-Spec thuần.`; continue; }
+            const v = validateAppSpec(parsedSpec);
+            if (v.ok) { spec = parsedSpec; break; }
+            lastError = v.errors.slice(0, 6).map((x) => `${x.path}: ${x.message}`).join('; ');
+            human = `Mô tả app: ${description}\n\nApp-Spec bạn vừa sinh SAI:\n${JSON.stringify(parsedSpec)}\n\nLỖI cần sửa: ${lastError}\n\nSửa lại cho HỢP LỆ, trả JSON App-Spec.`;
+          }
+          if (!spec) { ctx.body = { ok: false, error: lastError || 'AI không trả về App-Spec hợp lệ' }; await next(); return; }
+          ctx.body = { ok: true, spec, explain, warnings: validateAppSpec(spec).warnings };
+          await next();
+        },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate'], 'loggedIn');
   }
 }
 

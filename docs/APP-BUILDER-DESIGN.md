@@ -418,6 +418,22 @@ Mỗi mẫu kèm **2–3 mô tả NL** (khác độ dài/độ mơ hồ) — là
 
 **Verify: test step-by-step 15/15** (describeApp→createCollection→addField→addRelation[fk customerId]→addStatusFlow→addComputed→seed→describe→computed=200+relation live→cleanup). **TRAP:** `opSeed` trả key **`inserted`** (KHÔNG `rows` — top-level `rows` bị NocoBase list-unwrap nuốt sibling). Orphan `ptdlComputedRules` sau destroy collection (không cascade) → cần dọn khi re-apply.
 
+## 13. "Tả là dựng" — AI sinh App-Spec bằng LLM của NocoBase (2026-07-17, DONE + verify)
+
+Trực tiếp trên UI (giống nút "🛠 Dựng app"), dùng **LLM có sẵn của NocoBase** — KHÔNG cần cấu hình AI riêng:
+- **Server** `appBuilder:aiGenerate({description})` → `getAiProvider(app)` (`app.pm.get('ai').aiManager` →
+  `resolveModel` → `getLLMService` → `provider.invoke({messages, structuredOutput:{spec,explain}})`, inline nên
+  app-builder tự chứa, không dep `@ptdl/shared`) → NL → App-Spec (chuỗi JSON) + **validate/retry ≤3** (nhét lỗi
+  `validateAppSpec` lại cho model sửa). System prompt = shape App-Spec + từ vựng interface/widget/relation + quy
+  tắc (name snake không dấu, title vi, titleField, seed). ACL loggedIn.
+- **Launcher (client)** thêm mục **"✨ Sinh bằng AI"**: ô mô tả → gọi `aiGenerate` → điền spec vào editor JSON để
+  **user xem lại** → "Tạo app" chạy `buildApp` (pipeline có sẵn). Không auto-build — luôn preview trước.
+- **NocoBase AI**: nb-local có sẵn `llmServices` provider `google-genai` (Gemini). **Verify:** mô tả "quản lý dự
+  án…" → spec HỢP LỆ trong ~7s (collections du_an+cong_viec, quan hệ m2o+o2m, field statusFlow [Mới/Đang làm/Xong],
+  pages); launcher render đủ AI section.
+- **Kế (nâng cấp)**: chuyển sang **tool-calling agentic** (LLM gọi trực tiếp bộ primitive §12 từng bước + `describeApp`
+  làm mắt) để dựng tăng dần / sửa app có sẵn — thay cho one-shot NL→spec hiện tại.
+
 ## Files
 `packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
 `src/server/{index.ts, plugin.ts (actions apply/dryRun)}`, `src/client-v2/index.tsx` (launcher + settings),
