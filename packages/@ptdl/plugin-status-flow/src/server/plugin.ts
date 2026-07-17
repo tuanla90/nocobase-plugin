@@ -5,7 +5,14 @@ type AnyObj = Record<string, any>;
 function statusFlowFields(collection: any): any[] {
   try {
     const fields = collection?.getFields?.() || [];
-    return fields.filter((f: any) => f?.options?.interface === 'statusFlow');
+    return fields.filter((f: any) => {
+      const o = f?.options || {};
+      // Match a status-flow field by its interface OR (robust) the presence of a configured statusFlow.
+      // `options.interface` is NOT reliably populated at runtime — it's undefined for every status-flow
+      // field created via the fields repo (incl. programmatically, e.g. @ptdl/plugin-app-builder), which
+      // silently disabled enforcement. A configured field always carries `options.statusFlow.initial`.
+      return o.interface === 'statusFlow' || !!(o.statusFlow && typeof o.statusFlow === 'object' && o.statusFlow.initial);
+    });
   } catch (e) {
     return [];
   }

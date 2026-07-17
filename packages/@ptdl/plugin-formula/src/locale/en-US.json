@@ -1,5 +1,11 @@
 {
   "Công thức": "Formula",
+  "kết quả mẫu": "sample result",
+  "Hãy mô tả bạn muốn tính": "Describe what you want to compute",
+  "Sinh công thức": "Generate formula",
+  "Sửa công thức hiện tại": "Fix current formula",
+  "Ctrl+Enter để sinh nhanh": "Ctrl+Enter to generate",
+  "Công thức được ghi thẳng vào ô trên — xem kết quả ở khung Xem trước.": "The formula is written straight into the box above — see the result in the Preview.",
   "Cột công thức": "Formula column",
   "Thiết lập công thức": "Formula settings",
   "Lỗi công thức": "Formula error",

@@ -1,0 +1,263 @@
+/**
+ * App-Spec IR — the high-level, declarative description of a whole NocoBase app that the compiler
+ * materializes (collections + relations + seed + pages + menu) and the extractor produces from a live app.
+ *
+ * Design intent (see docs/APP-BUILDER-DESIGN.md): the AI (P2) and human authors reason in THIS shape —
+ * business-level "a customer has orders, show orders in a table with a Progress bar on total" — never in
+ * flowModels/collections JSON. A deterministic compiler owns the framework details. Keep this file
+ * antd/React/@nocobase-free so it can run in the server action, the client materializer, and pure tests.
+ */
+
+// ── field interfaces ─────────────────────────────────────────────────────────────────────────────
+// The subset of NocoBase field interfaces the compiler supports, plus the @ptdl `statusFlow` extension.
+// (Relations are NOT here — they live in CollectionSpec.relations so the compiler can order table
+// creation and synthesize the foreign keys.)
+export const FIELD_INTERFACES = [
+  'input', 'textarea', 'markdown', 'richText', 'phone', 'email', 'url', 'uuid', 'nanoid', 'password',
+  'number', 'integer', 'percent',
+  'select', 'multipleSelect', 'radioGroup', 'checkbox', 'checkboxGroup', 'boolean',
+  'date', 'datetime', 'time',
+  'color', 'icon', 'json',
+  'statusFlow', // @ptdl status-flow (needs `states`)
+] as const;
+export type FieldInterface = (typeof FIELD_INTERFACES)[number];
+
+/** Interfaces that carry an enumerated option list (value/label/color). */
+export const OPTION_INTERFACES: FieldInterface[] = ['select', 'multipleSelect', 'radioGroup', 'checkboxGroup'];
+
+export type RelationType = 'm2o' | 'o2m' | 'o2o' | 'm2m';
+
+// ── spec shapes ──────────────────────────────────────────────────────────────────────────────────
+export interface FieldOption {
+  value: string;
+  label?: string;
+  color?: string;
+}
+
+/** A computed/formula column, materialized via @ptdl/plugin-formula. `expression` is Excel-style
+ *  (400+ functions, field refs). `kind`: 'display' = virtual view column (recomputed each render, right
+ *  for time-based / roll-up), 'stored' = a real column recomputed on write across relations. */
+export interface ComputedSpec {
+  expression: string;
+  kind?: 'display' | 'stored';
+}
+
+export interface FieldSpec {
+  /** machine name, [a-z][a-z0-9_]* (camelCase also accepted). */
+  name: string;
+  /** human label (vi). */
+  title: string;
+  /** value type of the field (also the value type of a computed field's result). */
+  interface: FieldInterface;
+  /** select/radio/multi/checkboxGroup — string is shorthand for {value:s,label:s}. */
+  options?: Array<string | FieldOption>;
+  required?: boolean;
+  unique?: boolean;
+  defaultValue?: any;
+  /** friendly @ptdl widget LABEL (e.g. 'Progress bar', 'Value tag', 'Rich select'). See §4 of the design. */
+  widget?: string;
+  /** deep per-widget config — P4; P0/P1 use each widget's defaults. */
+  widgetConfig?: Record<string, any>;
+  /** statusFlow only: the ordered status names. */
+  states?: string[];
+  /** present → this is a formula column wired via @ptdl/plugin-formula (not a plain data field). */
+  computed?: ComputedSpec;
+}
+
+export interface RelationSpec {
+  /** association field name on THIS collection (e.g. 'customer', 'items'). */
+  name: string;
+  type: RelationType;
+  /** target collection `name`. */
+  target: string;
+  /** reverse field name on the target (auto-derived if omitted). */
+  reverseName?: string;
+  /** m2m junction collection name (auto if omitted). */
+  through?: string;
+  title?: string;
+  /** friendly render widget for this relation in pages/popups, e.g. 'Sub-table Pro', 'Subform',
+   *  'Dropdown select'. Default: to-many → inline sub-table, to-one → record picker / title text. */
+  widget?: string;
+}
+
+export interface CollectionSpec {
+  name: string;
+  title: string;
+  /** field whose value labels a record in relation pickers/columns (default: first string field). */
+  titleField?: string;
+  fields: FieldSpec[];
+  relations?: RelationSpec[];
+  /** demo rows; keyed by field.name. Relation values reference the target's titleField value. */
+  seed?: Record<string, any>[];
+}
+
+export interface ColumnSpec {
+  name: string;
+  title?: string;
+  widget?: string;
+}
+
+export const BLOCK_TYPES = ['TableBlockModel', 'EnhancedTableBlockModel'] as const;
+export type BlockType = (typeof BLOCK_TYPES)[number];
+
+export interface PageSpec {
+  key?: string;
+  title: string;
+  icon?: string;
+  collection: string;
+  /** menu group label; the compiler creates the group route if missing. */
+  menuGroup?: string;
+  block?: BlockType;
+  columns: Array<string | ColumnSpec>;
+  /** fields shown in View/Edit/Add popups; defaults to `columns`. */
+  popupColumns?: string[];
+}
+
+export interface MenuGroup {
+  label: string;
+  icon?: string;
+  order?: number;
+}
+
+export interface AppSpec {
+  meta: { name: string; description?: string; locale?: 'vi' | 'en' };
+  collections: CollectionSpec[];
+  pages: PageSpec[];
+  menu?: { groups: MenuGroup[] };
+}
+
+// ── pure validation (no app / no network) — the schema half of compiler.dryRun ────────────────────
+export interface ValidationIssue {
+  level: 'error' | 'warning';
+  path: string; // e.g. "collections[2].fields[1].interface"
+  message: string;
+}
+export interface ValidationResult {
+  ok: boolean;
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+}
+
+const NAME_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+/** Implicit fields every auto-id collection has — valid `titleField` / column targets without being
+ *  declared in `fields[]` (the compiler sets autoGenId/createdAt/updatedAt). */
+export const SYSTEM_FIELDS = ['id', 'createdAt', 'updatedAt'];
+const colName = (c: ColumnSpec | string): string => (typeof c === 'string' ? c : c.name);
+
+/**
+ * Structural validation of an App-Spec that needs NO live app: names, interfaces, option presence,
+ * relation targets, title fields, page columns, menu references, name collisions, relation cycles.
+ * The live half (does this collection already exist? does this widget label resolve to a binding?)
+ * runs in the server/client dryRun on top of this.
+ */
+export function validateAppSpec(spec: AppSpec): ValidationResult {
+  const errors: ValidationIssue[] = [];
+  const warnings: ValidationIssue[] = [];
+  const err = (path: string, message: string) => errors.push({ level: 'error', path, message });
+  const warn = (path: string, message: string) => warnings.push({ level: 'warning', path, message });
+
+  if (!spec || typeof spec !== 'object') {
+    return { ok: false, errors: [{ level: 'error', path: '', message: 'Spec rỗng hoặc không phải object' }], warnings };
+  }
+  if (!spec.meta?.name) err('meta.name', 'Thiếu tên app (meta.name)');
+  if (!Array.isArray(spec.collections) || spec.collections.length === 0) {
+    err('collections', 'App cần ít nhất 1 collection');
+  }
+  if (!Array.isArray(spec.pages)) err('pages', 'pages phải là mảng');
+
+  const collections = spec.collections || [];
+  const collNames = new Set<string>();
+  const fieldsByColl = new Map<string, Set<string>>(); // includes relation field names
+  const ifaceInterfaces = new Set<string>(FIELD_INTERFACES);
+
+  // pass 1 — collections, fields, name collisions
+  collections.forEach((c, ci) => {
+    const cp = `collections[${ci}]`;
+    if (!c.name || !NAME_RE.test(c.name)) err(`${cp}.name`, `Tên collection không hợp lệ: "${c.name}"`);
+    if (collNames.has(c.name)) err(`${cp}.name`, `Trùng tên collection: "${c.name}"`);
+    collNames.add(c.name);
+    if (!c.title) warn(`${cp}.title`, `Collection "${c.name}" thiếu title`);
+
+    const fnames = new Set<string>();
+    (c.fields || []).forEach((f, fi) => {
+      const fp = `${cp}.fields[${fi}]`;
+      if (!f.name || !NAME_RE.test(f.name)) err(`${fp}.name`, `Tên field không hợp lệ: "${f.name}"`);
+      if (fnames.has(f.name)) err(`${fp}.name`, `Trùng field "${f.name}" trong "${c.name}"`);
+      fnames.add(f.name);
+      if (!ifaceInterfaces.has(f.interface)) err(`${fp}.interface`, `interface không hỗ trợ: "${f.interface}"`);
+      if (OPTION_INTERFACES.includes(f.interface) && !(f.options && f.options.length)) {
+        err(`${fp}.options`, `Field "${f.name}" (${f.interface}) cần options`);
+      }
+      if (f.interface === 'statusFlow' && !(f.states && f.states.length >= 2)) {
+        err(`${fp}.states`, `Field statusFlow "${f.name}" cần ≥ 2 states`);
+      }
+      if (f.computed && !(typeof f.computed.expression === 'string' && f.computed.expression.trim())) {
+        err(`${fp}.computed.expression`, `Cột computed "${f.name}" cần expression`);
+      }
+    });
+
+    // relation field names share the field namespace
+    (c.relations || []).forEach((r, ri) => {
+      const rp = `${cp}.relations[${ri}]`;
+      if (!r.name || !NAME_RE.test(r.name)) err(`${rp}.name`, `Tên quan hệ không hợp lệ: "${r.name}"`);
+      if (fnames.has(r.name)) err(`${rp}.name`, `Quan hệ "${r.name}" trùng tên field trong "${c.name}"`);
+      fnames.add(r.name);
+    });
+    fieldsByColl.set(c.name, fnames);
+  });
+
+  // pass 2 — relation targets, titleField, relation graph (for cycle warning)
+  const edges = new Map<string, Set<string>>();
+  collections.forEach((c, ci) => {
+    const cp = `collections[${ci}]`;
+    if (c.titleField && !(fieldsByColl.get(c.name)?.has(c.titleField)) && !SYSTEM_FIELDS.includes(c.titleField)) {
+      err(`${cp}.titleField`, `titleField "${c.titleField}" không có trong fields của "${c.name}"`);
+    }
+    (c.relations || []).forEach((r, ri) => {
+      const rp = `${cp}.relations[${ri}]`;
+      if (!collNames.has(r.target)) err(`${rp}.target`, `Quan hệ trỏ tới collection không tồn tại: "${r.target}"`);
+      if (!['m2o', 'o2m', 'o2o', 'm2m'].includes(r.type)) err(`${rp}.type`, `Loại quan hệ lạ: "${r.type}"`);
+      if (!edges.has(c.name)) edges.set(c.name, new Set());
+      edges.get(c.name)!.add(r.target);
+    });
+  });
+  // shallow self-loop notice (full cycle detection is a warning, not a blocker)
+  edges.forEach((tos, from) => {
+    if (tos.has(from)) warn(`collections`, `Quan hệ tự tham chiếu trên "${from}" — kiểm tra reverseName`);
+  });
+
+  // pass 3 — pages reference real collections + real columns; menu groups referenced exist
+  const menuGroupLabels = new Set((spec.menu?.groups || []).map((g) => g.label));
+  (spec.pages || []).forEach((p, pi) => {
+    const pp = `pages[${pi}]`;
+    if (!p.collection || !collNames.has(p.collection)) {
+      err(`${pp}.collection`, `Trang "${p.title}" trỏ collection không tồn tại: "${p.collection}"`);
+    } else {
+      const known = fieldsByColl.get(p.collection)!;
+      const cols = (p.columns || []).map(colName);
+      if (!cols.length) warn(`${pp}.columns`, `Trang "${p.title}" không có cột nào`);
+      cols.forEach((cn, xi) => {
+        if (!known.has(cn) && !SYSTEM_FIELDS.includes(cn)) err(`${pp}.columns[${xi}]`, `Cột "${cn}" không có trong "${p.collection}"`);
+      });
+      (p.popupColumns || []).forEach((cn, xi) => {
+        if (!known.has(cn) && !SYSTEM_FIELDS.includes(cn)) err(`${pp}.popupColumns[${xi}]`, `popupColumn "${cn}" không có trong "${p.collection}"`);
+      });
+    }
+    if (p.block && !BLOCK_TYPES.includes(p.block)) err(`${pp}.block`, `block type lạ: "${p.block}"`);
+    if (p.menuGroup && spec.menu?.groups && !menuGroupLabels.has(p.menuGroup)) {
+      warn(`${pp}.menuGroup`, `menuGroup "${p.menuGroup}" không khai trong menu.groups (sẽ tự tạo)`);
+    }
+  });
+
+  return { ok: errors.length === 0, errors, warnings };
+}
+
+/** Normalize a field's options to the {value,label,color} shape (accepts string shorthand). */
+export function normalizeOptions(options?: Array<string | FieldOption>): FieldOption[] {
+  return (options || []).map((o) => (typeof o === 'string' ? { value: o, label: o } : { label: o.value, ...o }));
+}
+
+/** The display column name list of a page (accepts string | ColumnSpec). */
+export function pageColumnNames(p: PageSpec): string[] {
+  return (p.columns || []).map(colName);
+}

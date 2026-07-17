@@ -1,7 +1,7 @@
 import React from 'react';
-import { AutoComplete, Checkbox, Input, InputNumber, Switch, Popover, Typography } from 'antd';
+import { AutoComplete, Button, Checkbox, Input, InputNumber, Switch, Popover, Typography } from 'antd';
 import { observer, useForm } from '@formily/react';
-import { visibleWhen, fi, SEG_PROPS, PreviewBox, registerSettingsKit, AiCodegenButton, st, SegmentedGroup } from '@ptdl/shared';
+import { visibleWhen, fi, SEG_PROPS, PreviewBox, registerSettingsKit, st, SegmentedGroup, FieldPickerCascader, getCaretElement, insertAtCaret, getFields } from '@ptdl/shared';
 import { listFunctionNames, evaluateFormula, resultToString } from './formulaEngine';
 import { TRIGGER_OPTIONS, splitTriggers } from './formulaKnowledge';
 import { applyFormulaFormat, DATE_FORMAT_PRESETS } from './formulaFormat';
@@ -26,29 +26,71 @@ const HELP_GROUPS: Array<[string, string]> = [
   ['HTML', 'B · I · U · BR · COLOR(x,màu) · BG · TAG(text,màu) · DOT(màu,size) · LINK(url,text) · IMG(src,size)'],
 ];
 
-// Formula textarea + a "ƒ" help popover. value/onChange are Formily-wired. No React hooks.
-// When the uiSchema passes `collection`+`api` (display-field / column models), an "✨ AI viết hộ" button
-// reuses the proven server writer `ptdlComputed:aiWrite` (NL → formula, self-validated via testFormula,
-// retried server-side). Gated on collection+api so contexts without them (default-value) just omit it.
+// Formula textarea + a "ƒ" help popover + an INLINE "✨ AI viết hộ" panel (no modal). When the uiSchema
+// passes `collection`+`getApi` (display-field / column models), the AI writes/fixes straight into the
+// field via the proven server writer `ptdlComputed:aiWrite` (NL → formula, self-validated via
+// testFormula) — the form's own Preview box re-evaluates automatically, so it all stays on one screen.
 export function FormulaCodeInput(props: any) {
   const { value, onChange } = props;
-  const aiGenerate = async (r: any) => {
-    if (!props.api?.request || !props.collection) return { error: st('Thiếu bảng hoặc kết nối API') };
+  // IMPORTANT: the apiClient arrives as a getter `getApi()`, NOT as a plain `api` object. Passing the
+  // client object through a flow-engine `x-component-props` strips its methods during schema compile
+  // (only functions/strings survive — that is why the field picker was disabled and AI said "Missing
+  // collection or API connection": `props.api` was a methodless clone with no `.request`). A closure
+  // survives, so we call it to get the real client. Fall back to a direct `api` prop for any other caller.
+  const api = (typeof props.getApi === 'function' ? props.getApi() : null) || props.api;
+  const hasApi = !!(props.collection && api?.request);
+  const taRef = React.useRef<any>(null);
+  // Insert `data.<path>` at the caret (or append). For a to-many relation path (e.g. items.amount)
+  // the user wraps it in SUM/AVERAGE… — the ƒ help documents `SUM(data.rel.field)`.
+  const insertColumn = (path: string[]) => {
+    if (!path?.length) return;
+    const token = `data.${path.join('.')}`;
+    insertAtCaret(getCaretElement(taRef.current), token, value || '', (v) => onChange?.(v));
+  };
+
+  // ---- Inline AI (no popup). Writes/fixes the formula straight into the field; the form's Preview box
+  //      re-evaluates on its own, so the whole loop (describe → write/fix → see result) is one screen.
+  const [aiOpen, setAiOpen] = React.useState(false);
+  const [instr, setInstr] = React.useState('');
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiMsg, setAiMsg] = React.useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const callAi = async (description: string, fixFormula?: string) => {
     try {
-      const res = await props.api.request({
+      const res = await api.request({
         url: 'ptdlComputed:aiWrite',
         method: 'post',
-        data: { collection: props.collection, dataSourceKey: props.dataSourceKey, description: r.instruction, fixFormula: r.current },
+        data: { collection: props.collection, dataSourceKey: props.dataSourceKey, description, fixFormula },
       });
       const d = res?.data?.data || {};
       if (d.error) return { error: d.error };
       if (!d.formula) return { error: st('AI không trả về công thức') };
-      const note = d.test?.error ? `⚠️ ${d.test.error}` : `✓ ${st('chạy thử OK')}`;
-      return { code: d.formula, explain: [d.explanation, note].filter(Boolean).join(' — ') };
+      // Surface the ACTUAL computed result the server already evaluated (testFormula → test.value).
+      let note = '';
+      if (d.test?.error) note = `⚠️ ${d.test.error}`;
+      else if (d.test && 'value' in d.test) {
+        const s = resultToString(d.test.value);
+        const shown = s && s.length > 140 ? `${s.slice(0, 140)}…` : s || '—';
+        note = `✓ ${st('chạy thử OK')} → ${t('kết quả mẫu')}: ${shown}`;
+      } else note = `✓ ${st('chạy thử OK')}`;
+      return { code: d.formula, note: [d.explanation, note].filter(Boolean).join(' — '), ok: !d.test?.error };
     } catch (e: any) {
       return { error: e?.response?.data?.errors?.[0]?.message || e?.message || String(e) };
     }
   };
+
+  const runAi = async (mode: 'write' | 'fix') => {
+    if (!hasApi) { setAiMsg({ type: 'err', text: st('Thiếu bảng hoặc kết nối API') }); return; }
+    if (mode === 'write' && !instr.trim()) { setAiMsg({ type: 'err', text: t('Hãy mô tả bạn muốn tính') }); return; }
+    setAiBusy(true);
+    setAiMsg(null);
+    const r: any = await callAi(instr.trim(), mode === 'fix' ? value || '' : undefined);
+    setAiBusy(false);
+    if (r.error) { setAiMsg({ type: 'err', text: r.error }); return; }
+    onChange?.(r.code); // write into the field → the Preview box updates itself
+    setAiMsg({ type: r.ok ? 'ok' : 'err', text: r.note });
+  };
+
   let fnCount = 0;
   try { fnCount = listFunctionNames().length; } catch (_) { fnCount = 0; }
   const help = (
@@ -69,26 +111,81 @@ export function FormulaCodeInput(props: any) {
   return (
     <div>
       <Input.TextArea
+        ref={taRef}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         rows={4}
         placeholder={t('VD: CONCATENATE("<b>", data.name, "</b>")\nhoặc: IF(data.stock>0, TAG("Còn","green"), TAG("Hết","red"))')}
         style={{ fontFamily: 'monospace', fontSize: 13 }}
       />
-      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {hasApi ? (
+          <FieldPickerCascader
+            api={api}
+            collectionName={props.collection}
+            dataSourceKey={props.dataSourceKey}
+            includeToMany
+            onPick={insertColumn}
+          />
+        ) : null}
         <Popover content={help} trigger="click" placement="bottomLeft" title={t('Hàm & cú pháp')}>
           <a style={{ fontSize: 12 }}>ƒ {t('Danh sách hàm & cú pháp')}</a>
         </Popover>
-        {props.collection && props.api ? (
-          <AiCodegenButton
-            language="formula"
-            placeholder={st('Mô tả bạn muốn tính (vd: tổng tiền = số lượng × đơn giá, có định dạng tiền)')}
-            getCurrent={() => value}
-            callGenerate={aiGenerate}
-            onInsert={(code) => onChange?.(code)}
-          />
+        {hasApi ? (
+          <a style={{ fontSize: 12 }} onClick={() => setAiOpen((o) => !o)}>
+            ✨ {st('AI viết hộ')} {aiOpen ? '▴' : '▾'}
+          </a>
         ) : null}
       </div>
+
+      {hasApi && aiOpen ? (
+        <div
+          style={{
+            marginTop: 8,
+            padding: 10,
+            border: '1px solid var(--colorBorderSecondary, #f0f0f0)',
+            borderRadius: 8,
+            background: 'var(--colorFillQuaternary, #fafafa)',
+          }}
+        >
+          <Input.TextArea
+            value={instr}
+            onChange={(e) => setInstr(e.target.value)}
+            autoSize={{ minRows: 2, maxRows: 4 }}
+            placeholder={st('Mô tả bạn muốn tính (vd: tổng tiền = số lượng × đơn giá, có định dạng tiền)')}
+            onPressEnter={(e: any) => {
+              if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                runAi('write');
+              }
+            }}
+          />
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button type="primary" size="small" loading={aiBusy} onClick={() => runAi('write')}>
+              ✨ {t('Sinh công thức')}
+            </Button>
+            <Button size="small" loading={aiBusy} disabled={!String(value || '').trim()} onClick={() => runAi('fix')}>
+              {t('Sửa công thức hiện tại')}
+            </Button>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('Ctrl+Enter để sinh nhanh')}</Typography.Text>
+          </div>
+          {aiMsg ? (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 12,
+                whiteSpace: 'pre-wrap',
+                color: aiMsg.type === 'err' ? '#cf1322' : 'var(--colorTextSecondary, #666)',
+              }}
+            >
+              {aiMsg.text}
+            </div>
+          ) : null}
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--colorTextTertiary, #999)' }}>
+            {t('Công thức được ghi thẳng vào ô trên — xem kết quả ở khung Xem trước.')}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -249,9 +346,21 @@ export function formulaStepUiSchema(t: (s: string) => any, ctx?: any) {
   const dsKey = coll?.dataSourceKey || cf?.dataSourceKey;
   const loadSample = async () => {
     if (!api || !collName) return null;
+    // Append the collection's relations (one level) so `data.<rel>.<field>` resolves in the preview —
+    // otherwise a formula like SUM(data.items.amount) errors with "reading 'amount' of undefined"
+    // because the plain :list omits relation data. Only real relation fields are appended (safe).
+    let appends: string[] = [];
+    try {
+      const REL = new Set(['belongsTo', 'hasOne', 'hasMany', 'belongsToMany']);
+      const fields = await getFields(api, collName, dsKey);
+      appends = (fields || []).filter((f: any) => REL.has(f.type) && f.target).map((f: any) => f.name);
+    } catch (_) {
+      /* no field metadata → fetch without appends */
+    }
     try {
       const res = await api.request({
-        url: `${collName}:list`, method: 'get', params: { pageSize: 1 },
+        url: `${collName}:list`, method: 'get',
+        params: { pageSize: 1, ...(appends.length ? { appends } : {}) },
         headers: dsKey ? { 'X-Data-Source': dsKey } : undefined,
       });
       return res?.data?.data?.[0] || null;
@@ -271,8 +380,11 @@ export function formulaStepUiSchema(t: (s: string) => any, ctx?: any) {
       'x-decorator': 'FormItem',
       'x-decorator-props': { style: { marginBottom: 8 } },
       'x-component': 'FormulaCodeInput',
-      // collection+api let FormulaCodeInput show the "AI viết hộ" button (reuses ptdlComputed:aiWrite).
-      'x-component-props': { collection: collName, api, dataSourceKey: dsKey },
+      // collection + getApi let FormulaCodeInput show the field picker + "AI viết hộ" button. api is
+      // passed as a CLOSURE (getApi) not a bare object: schema compilation strips methods off a plain
+      // object in x-component-props (functions survive), so a bare `api` reached the component without
+      // `.request` → picker disabled + "Missing collection or API connection".
+      'x-component-props': { collection: collName, getApi: () => api, dataSourceKey: dsKey },
     },
     display: {
       type: 'void', 'x-component': 'CollapsibleSection', 'x-component-props': { title: t('Hiển thị') },

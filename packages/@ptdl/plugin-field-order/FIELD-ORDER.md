@@ -39,11 +39,17 @@ display metadata). Targets the **main** data source's `fields` table.
 
 The classic lane tags actions with aria-labels (`action-CollectionFields-…-fields-<coll>`); the
 **modern `/v/` lane exposes none**. So detection is structural + click-tracked, identical on both:
+- **Route gate (critical)**: only ever act when `location.pathname` contains `data-source-manager`.
+  Without it the structural heuristic below **false-positives on record-edit drawers** on ordinary app
+  pages — those have a sub-table (`tr[data-row-key]`) + a Submit primary button in a Space, and their
+  row clicks are record ids (not collection names). The Configure-fields drawer keeps the
+  `…/data-source-manager/…` URL while open; record-edit views (`/v/admin/<page>/view/…`) do not.
 - **Drawer**: an open `.ant-drawer` holding a field table (`tr[data-row-key]`) + a primary "Add field"
   button in a multi-button toolbar `.ant-space`.
-- **Collection name + reopen trigger**: a capture-phase click listener records the last collections-
-  list row (`tr[data-row-key]` = collection name) + the `<a>` clicked. The drawer's mask blocks
-  background clicks while open, so this stays pinned to the right collection. Reopen = re-click that `<a>`.
+- **Collection name + reopen trigger**: a capture-phase click listener (also route-gated) records the
+  last collections-list row (`tr[data-row-key]` = collection name) + the `<a>` clicked. The drawer's
+  mask blocks background clicks while open, so this stays pinned to the right collection. Reopen =
+  re-click that `<a>`.
 
 ## Traps hit while building (all fixed)
 

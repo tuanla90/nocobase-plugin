@@ -1,0 +1,15 @@
+{
+  "App Builder": "App Builder",
+  "Build app": "Build app",
+  "Build app from spec": "Build app from an App-Spec",
+  "Paste an App-Spec (JSON) or load the demo below, then Create.": "Paste an App-Spec (JSON) or load the demo below, then Create.",
+  "Load demo": "Load demo",
+  "Validate": "Validate",
+  "Create app": "Create app",
+  "Spec is valid": "Spec is valid",
+  "Created": "Created",
+  "pages": "pages",
+  "Created pages": "Created pages",
+  "Invalid JSON": "Invalid JSON",
+  "App spec is empty or invalid": "App spec is empty or invalid"
+}

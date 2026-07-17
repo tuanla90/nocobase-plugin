@@ -1,0 +1,35 @@
+{
+  "name": "@ptdl/plugin-ip-guard",
+  "displayName": "IP Guard (Whitelist / Blacklist)",
+  "displayName.vi-VN": "Chặn/Cho phép theo IP (Danh sách trắng/đen)",
+  "description": "Firewall your NocoBase by client IP. Allow-list mode lets only listed IPs reach the API; block-list mode blocks listed IPs; a monitor mode logs without blocking. Supports single IPs, CIDR ranges and start-end ranges (IPv4 + IPv6), an always-allow admin safe-list, loopback/LAN exemptions, X-Forwarded-For proxy handling, an access log and a built-in IP tester.",
+  "description.vi-VN": "Tường lửa NocoBase theo IP client. Chế độ danh sách trắng chỉ cho các IP trong danh sách truy cập API; danh sách đen chặn các IP liệt kê; chế độ giám sát chỉ ghi log mà không chặn. Hỗ trợ IP đơn, dải CIDR và dải đầu-cuối (IPv4 + IPv6), danh sách an toàn luôn cho phép (dành cho admin), miễn trừ loopback/LAN, xử lý proxy X-Forwarded-For, nhật ký truy cập và công cụ kiểm tra IP.",
+  "version": "0.2.0",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@ptdl/shared": "*",
+    "@nocobase/actions": "2.x",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "2.x",
+    "@nocobase/server": "2.x",
+    "antd": "5.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "1.x || 2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "antd": "5.x"
+  },
+  "keywords": [
+    "security",
+    "firewall",
+    "ip",
+    "whitelist",
+    "blacklist",
+    "acl"
+  ]
+}

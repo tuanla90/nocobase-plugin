@@ -1,0 +1,15 @@
+{
+  "App Builder": "Dựng app từ mô tả",
+  "Build app": "Dựng app",
+  "Build app from spec": "Dựng app từ App-Spec",
+  "Paste an App-Spec (JSON) or load the demo below, then Create.": "Dán App-Spec (JSON) hoặc bấm nạp demo bên dưới, rồi Tạo app.",
+  "Load demo": "Nạp demo",
+  "Validate": "Kiểm tra",
+  "Create app": "Tạo app",
+  "Spec is valid": "Spec hợp lệ",
+  "Created": "Đã tạo",
+  "pages": "trang",
+  "Created pages": "Các trang đã tạo",
+  "Invalid JSON": "JSON không hợp lệ",
+  "App spec is empty or invalid": "App spec rỗng hoặc không hợp lệ"
+}

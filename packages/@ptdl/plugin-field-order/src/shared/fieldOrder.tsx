@@ -27,9 +27,18 @@ const UI_FIELD_FILTER = { $or: [{ 'interface.$not': null }, { 'options.source.$n
 // carries aria-labels we could parse, but the modern (/v/) lane exposes NONE, so the collection name
 // and the reopen trigger both come from the click the user just made. We also keep the clicked
 // <a> element itself to reopen the exact drawer for the post-save refresh.
+// The Configure-fields drawer ONLY lives under the Collection Manager (data-source-manager) route.
+// Gating everything on it keeps us off record-edit drawers on ordinary app pages — those have a
+// sub-table (`tr[data-row-key]`) + a Submit primary button that would otherwise match the structural
+// heuristic, and their row clicks are record ids, not collection names.
+function onCollectionManager(): boolean {
+  return typeof location !== 'undefined' && location.pathname.indexOf('data-source-manager') >= 0;
+}
+
 type LastClick = { collection: string; link: HTMLElement | null; time: number };
 let lastClick: LastClick = { collection: '', link: null, time: 0 };
 function trackClick(e: Event) {
+  if (!onCollectionManager()) return;
   const el = e.target as Element;
   if (!el || !el.closest) return;
   const tr = el.closest('tr[data-row-key]') as HTMLElement | null;
@@ -46,6 +55,8 @@ function trackClick(e: Event) {
  * recent row click that opened it.
  */
 function findDrawer(): { space: HTMLElement; collectionName: string } | null {
+  // Only ever inject on the Collection Manager route (never on record-edit drawers elsewhere).
+  if (!onCollectionManager()) return null;
   // A drawer only opens via a row click, and its mask blocks background clicks while open, so
   // lastClick stays pinned to the collection this drawer is about (no time gate needed — that would
   // make the button vanish from a drawer left open a while).
