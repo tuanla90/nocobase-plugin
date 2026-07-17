@@ -25,6 +25,10 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [result, setResult] = useState<{ pages: Array<{ title: string; collection: string; url: string; schemaUid: string }> } | null>(null);
     const [desc, setDesc] = useState('');
     const [aiBusy, setAiBusy] = useState(false);
+    const [plan, setPlan] = useState<Array<{ tool: string; args: any }> | null>(null);
+    const [planBusy, setPlanBusy] = useState(false);
+    const [runBusy, setRunBusy] = useState(false);
+    const [planLog, setPlanLog] = useState<any[] | null>(null);
 
     const parse = (): any => {
       try { return JSON.parse(text); } catch (e: any) { message.error(t('Invalid JSON') + ': ' + e.message); return null; }
@@ -68,6 +72,38 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         setAiBusy(false);
       }
     };
+    // 🔧 Agentic: instruction → AI plans a sequence of tool calls (build new OR modify existing app,
+    // using the live state as its eyes). Preview the steps, then Run executes them one by one.
+    const onPlan = async () => {
+      if (!desc.trim()) { message.warning(t('Describe your app first')); return; }
+      setPlanBusy(true); setPlan(null); setPlanLog(null);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:aiPlan', method: 'post', data: { instruction: desc } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('AI could not plan')); return; }
+        setPlan(res.steps);
+        message.success(res.explain || t('Plan ready — review then Run'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setPlanBusy(false);
+      }
+    };
+    const onRunPlan = async () => {
+      if (!plan) return;
+      setRunBusy(true);
+      try {
+        const results: any[] = await (window as any).__ptdlAppBuilder.runPlan(plan);
+        setPlanLog(results);
+        const okN = results.filter((r) => r.ok).length;
+        (okN === results.length ? message.success : message.warning)(`${okN}/${results.length} ${t('steps ok')}`);
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setRunBusy(false);
+      }
+    };
 
     return (
       <>
@@ -89,10 +125,32 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             placeholder={t('e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn')}
             style={{ margin: '6px 0 8px' }}
           />
-          <Space style={{ marginBottom: 14 }} wrap>
+          <Space style={{ marginBottom: 8 }} wrap>
             <Button type="primary" loading={aiBusy} onClick={onAiGenerate}>✨ {t('Generate with AI')}</Button>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('AI (NocoBase) writes the App-Spec below; review then Create.')}</Typography.Text>
+            <Button loading={planBusy} onClick={onPlan}>🔧 {t('Build/modify step-by-step')}</Button>
           </Space>
+          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
+            {t('“Generate” fills the App-Spec below (a new app). “Step-by-step” lets AI plan tool calls — it can also MODIFY an existing app (e.g. add a status field / a page).')}
+          </Typography.Paragraph>
+          {plan && (
+            <div style={{ marginBottom: 14, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 6, padding: 10 }}>
+              <Space style={{ marginBottom: 6 }} wrap>
+                <Typography.Text strong>{t('Plan')} ({plan.length}):</Typography.Text>
+                <Button size="small" type="primary" loading={runBusy} onClick={onRunPlan}>▶ {t('Run plan')}</Button>
+              </Space>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, maxHeight: 170, overflow: 'auto' }}>
+                {plan.map((s, i) => {
+                  const log = planLog?.[i];
+                  return (
+                    <li key={i} style={{ color: log ? (log.ok ? '#389e0d' : '#cf1322') : undefined }}>
+                      <code>{s.tool}</code>(<span style={{ opacity: 0.75 }}>{s.args?.collection || s.args?.name || s.args?.title || s.args?.label || ''}</span>)
+                      {log ? (log.ok ? ' ✓' : ` ✕ ${log.error || ''}`) : ''}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
           <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 6, fontSize: 12 }}>
             {t('…or paste / load a demo App-Spec (JSON):')}
           </Typography.Paragraph>
@@ -149,14 +207,30 @@ export class PluginAppBuilderClientV2 extends Plugin {
         // page tier (client) — build the UI
         createMenuGroup: (v) => createMenuGroup(app, v.label, v.icon),
         createPage: (v) => createPage(app, v, v.collectionSpec),
-        // whole-app
+        // whole-app + AI
         apply: (spec) => api('apply', { spec }),
         materialize: (spec) => materializeApp(app, spec),
         buildApp: (spec) => buildApp(app, spec),
+        aiGenerate: (v) => api('aiGenerate', v),
+        aiPlan: (v) => api('aiPlan', v),
+      };
+      // Execute an AI-planned sequence of tool calls step-by-step (data tools → server, page tools → client).
+      const runPlan = async (steps: Array<{ tool: string; args: any }>) => {
+        const results: any[] = [];
+        for (const s of steps || []) {
+          try {
+            if (!tools[s.tool]) throw new Error('unknown tool ' + s.tool);
+            results.push({ tool: s.tool, ok: true, out: await tools[s.tool](s.args) });
+          } catch (e: any) {
+            results.push({ tool: s.tool, ok: false, error: e?.message || String(e) });
+          }
+        }
+        return results;
       };
       (window as any).__ptdlAppBuilder = {
         ...tools,
         tools,
+        runPlan,
         callTool: (name: string, args: any) => (tools[name] ? tools[name](args) : Promise.reject(new Error('unknown tool: ' + name))),
         toolNames: Object.keys(tools),
         samples: { banHang: SAMPLE_BAN_HANG },

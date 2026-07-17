@@ -19,5 +19,12 @@
   "Describe your app first": "Describe your app first",
   "AI could not generate a spec": "AI could not generate a spec",
   "Spec generated — review then Create app": "Spec generated — review then Create app",
-  "e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn": "e.g. a sales app: customers, products, orders with line items + order status"
+  "e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn": "e.g. a sales app: customers, products, orders with line items + order status",
+  "Build/modify step-by-step": "Build/modify step-by-step",
+  "“Generate” fills the App-Spec below (a new app). “Step-by-step” lets AI plan tool calls — it can also MODIFY an existing app (e.g. add a status field / a page).": "“Generate” fills the App-Spec below (a new app). “Step-by-step” lets AI plan tool calls — it can also MODIFY an existing app (e.g. add a status field / a page).",
+  "Plan": "Plan",
+  "Run plan": "Run plan",
+  "steps ok": "steps ok",
+  "AI could not plan": "AI could not plan",
+  "Plan ready — review then Run": "Plan ready — review then Run"
 }

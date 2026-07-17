@@ -189,6 +189,35 @@ function appSpecSystemPrompt(): string {
   ].join('\n');
 }
 
+/** System prompt for AGENTIC tool-planning: given an instruction + current state, plan an ordered list
+ *  of tool calls (build from scratch OR modify an existing app). */
+function toolPlanSystemPrompt(state: string): string {
+  return [
+    'Bạn là trợ lý DỰNG/SỬA app NocoBase. Từ YÊU CẦU + TRẠNG THÁI hiện tại, lập KẾ HOẠCH gồm các bước gọi tool (đúng THỨ TỰ). Trả JSON.',
+    '',
+    'TOOL (mỗi bước = {"tool":"...","args":{...}}):',
+    '- createCollection {name(snake, không dấu), title(vi), titleField, fields:[{name,title,interface,options?,widget?,computed?,states?}]}',
+    '- addField {collection, field:{name,title,interface,...}}',
+    '- addRelation {collection, relation:{name,type:"m2o"|"o2m"|"o2o"|"m2m",target,reverseName?}}',
+    '- addComputed {collection, field:{name,title,interface:"number",computed:{expression:"data.x * data.y"}}}',
+    '- addStatusFlow {collection, field:{name,title,states:["Mới","Đang làm","Xong"]}}',
+    '- seed {collection, rows:[{...}]}  (giá trị quan hệ m2o = giá trị titleField của bản ghi target)',
+    '- createMenuGroup {label, icon?}',
+    '- createPage {collection, title, menuGroup?, icon?("lucide-users"), block?("EnhancedTableBlockModel"), columns:[tên field], popupColumns?}',
+    '',
+    'interface ∈ input,textarea,phone,email,url,number,integer,percent,select,multipleSelect,checkbox,date,datetime,time,color,json,statusFlow (select/multi cần options; statusFlow cần states; computed cú pháp data.<field>). widget?: "Progress bar","Value tag","Sub-table Pro".',
+    '',
+    'QUY TẮC:',
+    '- DỰNG MỚI: createCollection từng bảng TRƯỚC → addRelation → createMenuGroup + createPage. Tên snake không dấu, title tiếng Việt.',
+    '- SỬA app CÓ SẴN: CHỈ thêm cái còn thiếu (addField/addStatusFlow/addComputed/addRelation/createPage) trên collection ĐÃ CÓ trong TRẠNG THÁI. TUYỆT ĐỐI KHÔNG createCollection lại collection đã tồn tại.',
+    '- addRelation chỉ sau khi cả 2 collection tồn tại (đã có, hoặc được createCollection trước đó trong plan).',
+    '- CHỈ trả JSON {"steps":[...], "explain":"..."}.',
+    '',
+    'TRẠNG THÁI hiện tại (các collection + field đang có):',
+    state || '(chưa có collection nào)',
+  ].join('\n');
+}
+
 /**
  * Read a custom-action's values (`resource().op({values})` → ctx.action.params.values; raw HTTP may put
  * them top-level). Accept both.
@@ -411,9 +440,52 @@ export class PluginAppBuilderServer extends Plugin {
           ctx.body = { ok: true, spec, explain, warnings: validateAppSpec(spec).warnings };
           await next();
         },
+
+        // {instruction} → AGENTIC: AI lập plan gọi các primitive (dùng trạng thái hiện tại làm "mắt").
+        // KHÔNG chạy — trả steps để client preview + execute (data→server tool, page→flowEngine).
+        aiPlan: async (ctx: any, next: any) => {
+          const instruction = String(readVals(ctx).instruction || readVals(ctx).description || '').trim();
+          if (!instruction) { ctx.body = { ok: false, error: 'Thiếu yêu cầu' }; await next(); return; }
+          const { provider, error } = await getAiProvider(this.app);
+          if (error) { ctx.body = { ok: false, error }; await next(); return; }
+          // compact live state (the AI's "eyes"): collection names + fields; names-only if too big.
+          let stateStr = '';
+          try {
+            const d = await this.opDescribe();
+            const lines = (d.collections || []).map((c: any) => `- ${c.name}${c.title ? ` (${c.title})` : ''} [${(c.fields || []).map((f: any) => `${f.name}:${f.interface}${f.target ? `→${f.target}` : ''}`).join(', ')}]`);
+            let s = lines.join('\n');
+            if (s.length > 6000) s = (d.collections || []).map((c: any) => c.name).join(', ');
+            stateStr = s;
+          } catch { /* no state */ }
+          const system = toolPlanSystemPrompt(stateStr);
+          const schema = { type: 'object', properties: { steps: { type: 'string', description: 'Mảng JSON các bước [{"tool","args"}]' }, explain: { type: 'string', description: 'Giải thích ngắn tiếng Việt' } }, required: ['steps'] };
+          const KNOWN = new Set(['createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'createMenuGroup', 'createPage']);
+          let human = `Yêu cầu: ${instruction}\n\nLập kế hoạch tool (JSON).`;
+          let steps: any = null; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !steps; attempt++) {
+            let raw = '';
+            try {
+              const result: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'plan', description: 'Kế hoạch tool' } });
+              const parsed = result && typeof result === 'object' && 'parsed' in result ? result.parsed : result;
+              raw = parsed?.steps || ''; explain = String(parsed?.explain || '');
+            } catch { /* plain-text fallback */ }
+            if (!raw) { try { raw = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả DUY NHẤT JSON {"steps":[...]}'], ['human', human]] })); } catch {} }
+            raw = stripFences(raw);
+            let parsed: any;
+            try { parsed = JSON.parse(raw); } catch (e: any) { lastError = 'JSON lỗi: ' + e?.message; human += '\n\nLần trước KHÔNG phải JSON. Trả JSON thuần.'; continue; }
+            const arr = Array.isArray(parsed) ? parsed : parsed?.steps;
+            if (!Array.isArray(arr) || !arr.length) { lastError = 'Không có steps'; human += '\n\nTrả mảng "steps" không rỗng.'; continue; }
+            const bad = arr.find((s: any) => !KNOWN.has(s?.tool));
+            if (bad) { lastError = 'Tool lạ: ' + bad?.tool; human += `\n\nBước dùng tool KHÔNG hợp lệ ("${bad?.tool}"). CHỈ dùng tool trong danh sách.`; continue; }
+            steps = arr;
+          }
+          if (!steps) { ctx.body = { ok: false, error: lastError || 'AI không lập được plan' }; await next(); return; }
+          ctx.body = { ok: true, steps, explain };
+          await next();
+        },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiPlan'], 'loggedIn');
   }
 }
 

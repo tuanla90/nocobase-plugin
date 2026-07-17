@@ -19,5 +19,12 @@
   "Describe your app first": "Nhập mô tả app trước đã",
   "AI could not generate a spec": "AI chưa sinh được spec hợp lệ",
   "Spec generated — review then Create app": "Đã sinh spec — xem lại rồi bấm Tạo app",
-  "e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn": "vd App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn"
+  "e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn": "vd App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn",
+  "Build/modify step-by-step": "Dựng/Sửa từng bước",
+  "“Generate” fills the App-Spec below (a new app). “Step-by-step” lets AI plan tool calls — it can also MODIFY an existing app (e.g. add a status field / a page).": "“Sinh bằng AI” điền App-Spec bên dưới (app mới). “Dựng/Sửa từng bước” cho AI lập kế hoạch gọi tool — SỬA được cả app đã có (vd thêm field trạng thái / thêm trang).",
+  "Plan": "Kế hoạch",
+  "Run plan": "Chạy",
+  "steps ok": "bước OK",
+  "AI could not plan": "AI chưa lập được kế hoạch",
+  "Plan ready — review then Run": "Đã lập kế hoạch — xem lại rồi bấm Chạy"
 }
