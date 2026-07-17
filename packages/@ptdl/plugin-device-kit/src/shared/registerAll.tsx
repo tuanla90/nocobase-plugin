@@ -1,6 +1,10 @@
 import { registerCameraFieldModel } from './cameraFieldModel';
 import { registerLocationField } from './locationField';
 import { registerAutoSubmit } from './autoSubmit';
+import { registerScanInputModel } from './scanInputModel';
+import { registerQrDisplayModel } from './qrDisplayModel';
+import { registerCheckinAction } from './checkinAction';
+import { registerScanLookupAction } from './scanLookupAction';
 import { setTExpr, setRuntimeT, NS } from './i18n';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@ptdl/shared';
 import enUS from '../locale/en-US.json';
@@ -55,6 +59,26 @@ export function registerDeviceKit(deps: RegisterAllDeps) {
   try {
     registerAutoSubmit({ flowEngine, flowSettings, lane });
   } catch (e) { console.warn(`[device-kit] (${lane}) autoSubmit register failed`, e); }
+
+  // A1 — scan-input field widget (QR/barcode → field value).
+  try {
+    registerScanInputModel({ flowEngine, flowSettings, Base: FieldModel });
+  } catch (e) { console.warn(`[device-kit] (${lane}) scan-input register failed`, e); }
+
+  // A3 — QR display widget (field value → antd QRCode).
+  try {
+    registerQrDisplayModel({ flowEngine, flowSettings, Base: DisplayTextFieldModel || FieldModel });
+  } catch (e) { console.warn(`[device-kit] (${lane}) qr-display register failed`, e); }
+
+  // C2 — Check-in record action (GPS → update current record).
+  try {
+    registerCheckinAction({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) check-in register failed`, e); }
+
+  // A2 — Scan → lookup collection action (POS cart / filter / toast).
+  try {
+    registerScanLookupAction({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) scan-lookup register failed`, e); }
 
   console.log(`[device-kit] ${lane} loaded`);
 }
