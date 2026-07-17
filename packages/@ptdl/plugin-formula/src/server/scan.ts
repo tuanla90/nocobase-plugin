@@ -27,8 +27,26 @@ export type RoundMode = 'half_up' | 'half_even' | 'up' | 'down' | 'ceil' | 'floo
 export type NegativePolicy = 'allow' | 'error' | 'ignore'; // outflow > available stock
 export type MissingCostPolicy = 'zero' | 'error' | 'previous'; // inflow with no unit cost
 
+/**
+ * One source table of a MULTI-SOURCE scan (e.g. a separate goods-receipt and goods-issue table). Each
+ * source maps its own signed quantity, price, order key (time) and partition key via Excel formulas
+ * (relation paths like `data.phieu.ngay` are supported), so tables that store things differently still
+ * merge into one ordered ledger. Outputs are written back to THIS source's own rows.
+ */
+export type ScanSource = {
+  collection: string;
+  qtyFormula: string; // Excel → SIGNED qty (e.g. `data.qty` for receipts, `-data.qty` for issues)
+  costMode?: CostMode; costField?: string; costFormula?: string; // inflow unit price
+  orderExpr: string; // Excel → the order value (date/number); rows across sources merge-sort by this
+  partitionExpr: string; // Excel → the partition KEY string (e.g. `data.product_id & "|" & data.kho`)
+  expiryExpr?: string; // Excel → expiry (FEFO)
+  // outputs written back to THIS source's rows (leave blank to skip):
+  outUnitCost?: string; outCogs?: string; outConsumedQty?: string; outRunningQty?: string; outRunningValue?: string; outAllocations?: string;
+};
+
 export type ScanRule = {
   collectionName: string;
+  sources?: ScanSource[]; // MULTI-SOURCE mode: when present, scan a union of these tables (ignores the single-source fields below)
   partitionBy: string[];
   orderBy: OrderSpec[];
   method: Strategy; // allocation strategy
@@ -283,6 +301,17 @@ const round = (n: number, precision = 4, mode: RoundMode = 'half_up'): number =>
 };
 /** Evaluate an Excel-style formula (data.<field>) against a row; NaN-safe number. */
 const evalNum = (formula: string, row: any): number => { try { const r = evaluateFormula(String(formula), row.toJSON()); return 'error' in r ? 0 : num((r as any).value); } catch { return 0; } };
+/** Evaluate an Excel-style formula against a row; returns the RAW value (string/number/date) or undefined. */
+const evalRaw = (formula: string, row: any): any => { try { const r = evaluateFormula(String(formula), row.toJSON()); return 'error' in r ? undefined : (r as any).value; } catch { return undefined; } };
+/** A comparable numeric key for a merge-order value (date / ISO string / number). Missing → -Infinity (first). */
+const ordKey = (v: any): number => {
+  if (v == null) return -Infinity;
+  if (typeof v === 'number') return v;
+  const t = new Date(v).getTime();
+  if (!Number.isNaN(t)) return t;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : -Infinity;
+};
 
 /** Build the per-row qty / price / expiry / id resolvers for a rule, honouring the input modes. */
 function makeResolvers(rule: ScanRule, pk: string) {
@@ -302,6 +331,15 @@ function makeResolvers(rule: ScanRule, pk: string) {
     : undefined;
   const expiryOf = rule.expiryField ? (r: any) => r.get(rule.expiryField as string) : undefined;
   return { strategy: rule.method, qtyOf, priceOf, priceMissingOf, expiryOf, idOf: (r: any) => r.get(pk), negative: rule.negativePolicy, missingCost: rule.missingCostPolicy };
+}
+
+/** Parse the `sources` JSON of a multi-source rule; keep only entries with the required fields. */
+function parseSources(v: any): ScanSource[] | undefined {
+  let arr = v;
+  if (typeof v === 'string') { try { arr = JSON.parse(v); } catch { return undefined; } }
+  if (!Array.isArray(arr)) return undefined;
+  const out = arr.filter((s: any) => s && s.collection && s.qtyFormula && s.orderExpr && s.partitionExpr) as ScanSource[];
+  return out.length ? out : undefined;
 }
 
 export class ScanManager {
@@ -342,15 +380,25 @@ export class ScanManager {
         outUnitCost: g('outUnitCost') || undefined, outCogs: g('outCogs') || undefined, outConsumedQty: g('outConsumedQty') || undefined,
         outConsumedUnitCost: g('outConsumedUnitCost') || undefined, outRunningQty: g('outRunningQty') || undefined,
         outRunningValue: g('outRunningValue') || undefined, outAvgCost: g('outAvgCost') || undefined, outAllocations: g('outAllocations') || undefined,
+        sources: parseSources(g('sources')),
         enabled: g('enabled') !== false,
       } as ScanRule;
-    }).filter((r) => r.collectionName && r.orderBy.length && (r.qtyMode === 'split' ? (r.inQtyField || r.outQtyField) : r.qtyMode === 'formula' ? r.qtyFormula : r.qtyField));
-    for (const r of this.rules) this.ensureHook(r.collectionName);
+    }).filter((r) => (r.sources && r.sources.length)
+      // multi-source rule is valid once its sources are (validated in parseSources)
+      ? true
+      : (r.collectionName && r.orderBy.length && (r.qtyMode === 'split' ? (r.inQtyField || r.outQtyField) : r.qtyMode === 'formula' ? r.qtyFormula : r.qtyField)));
+    for (const r of this.rules) {
+      if (r.sources && r.sources.length) for (const s of r.sources) this.ensureHook(s.collection);
+      else this.ensureHook(r.collectionName);
+    }
     this.logger?.info?.(`[ptdl-scan] ${this.rules.length} scan rule(s) across ${this.hooked.size} collection(s)`);
     return this.rules;
   }
 
-  private rulesFor(collection: string) { return this.rules.filter((r) => r.collectionName === collection); }
+  // A rule matches a collection if it's the single-source table, or ONE of a multi-source rule's tables.
+  private rulesFor(collection: string) {
+    return this.rules.filter((r) => (r.sources && r.sources.length) ? r.sources.some((s) => s.collection === collection) : r.collectionName === collection);
+  }
 
   private ensureHook(collection: string) {
     if (!collection || this.hooked.has(collection)) return;
@@ -370,7 +418,8 @@ export class ScanManager {
   private onChange(collection: string, instance: any, options: any, isUpdate: boolean) {
     const rules = this.rulesFor(collection);
     if (!rules.length) return;
-    const jobs = rules.map((rule) => {
+    const multiRules = rules.filter((r) => r.sources && r.sources.length);
+    const singleJobs = rules.filter((r) => !(r.sources && r.sources.length)).map((rule) => {
       const cur: Record<string, any> = {};
       for (const c of rule.partitionBy) cur[c] = instance.get(c);
       const parts = [cur];
@@ -384,27 +433,93 @@ export class ScanManager {
     });
     this.afterCommit(options, async () => {
       const touched = new Set<string>();
-      for (const { rule, parts } of jobs) for (const p of parts) { await this.recomputePartition(rule, p); touched.add(rule.collectionName); }
+      for (const { rule, parts } of singleJobs) for (const p of parts) { await this.recomputePartition(rule, p); touched.add(rule.collectionName); }
+      // Multi-source: a change in one table can shift the merged ledger of its partition across ALL tables →
+      // recompute the whole rule (v1). Partition key may come through a relation (not loaded on the instance),
+      // so we can't reliably scope to one partition from the hook — full recompute is the safe choice.
+      for (const rule of multiRules) { await this.recomputeMulti(rule); (rule.sources || []).forEach((s) => touched.add(s.collection)); }
       if (touched.size) { try { this.notify?.([...touched]); } catch { /* ignore */ } }
     });
   }
 
-  /** Relations referenced by the rule's qty/cost FORMULAS (data.rel.field) → appends, so the JS eval can
-   *  read related data. Only genuine relation prefixes are appended (validated against the collection). */
-  private relationAppends(rule: ScanRule): string[] {
-    const forms: string[] = [];
-    if (rule.qtyMode === 'formula' && rule.qtyFormula) forms.push(rule.qtyFormula);
-    if (rule.costMode === 'formula' && rule.costFormula) forms.push(rule.costFormula);
+  /** Relation prefixes referenced by `data.rel.field` paths in `formulas` on `collection` → appends, so a JS
+   *  eval can read related data. Only genuine relations of the collection are appended (validated). */
+  private collectionAppends(collection: string, formulas: (string | undefined)[]): string[] {
+    const forms = formulas.filter(Boolean) as string[];
     if (!forms.length) return [];
     let relNames: Set<string>;
     try {
-      const coll = this.db.getCollection(rule.collectionName);
+      const coll = this.db.getCollection(collection);
       relNames = new Set([...(coll?.fields?.values?.() || [])].filter((f: any) => ['belongsTo', 'hasOne', 'hasMany', 'belongsToMany'].includes(f.type)).map((f: any) => f.name));
     } catch { return []; }
     const set = new Set<string>();
     const re = /data\.([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)/g;
     for (const f of forms) { let m: RegExpExecArray | null; while ((m = re.exec(f))) { const parts = m[1].split('.'); parts.pop(); if (parts.length && relNames.has(parts[0])) set.add(parts.join('.')); } }
     return [...set];
+  }
+
+  /** Relations referenced by a single-source rule's qty/cost FORMULAS. */
+  private relationAppends(rule: ScanRule): string[] {
+    return this.collectionAppends(rule.collectionName, [
+      rule.qtyMode === 'formula' ? rule.qtyFormula : undefined,
+      rule.costMode === 'formula' ? rule.costFormula : undefined,
+    ]);
+  }
+
+  /**
+   * MULTI-SOURCE scan: load every source table, resolve each row's partition-key / order-value / signed-qty /
+   * price via that source's formulas, GROUP by partition across all tables, merge-sort by order, run the
+   * allocation scan, and write the outputs back onto each row's OWN source table. `opts.onlyPartition` limits
+   * to one partition (unused by the hook for now — see onChange). v1 recomputes all partitions.
+   */
+  async recomputeMulti(rule: ScanRule, opts?: { onlyPartition?: string }) {
+    const sources = rule.sources || [];
+    if (!sources.length) return;
+    const P = rule.roundPrecision ?? 4;
+    const RM = rule.roundMode || 'half_up';
+    type Item = { srcIdx: number; id: any; part: string; ord: number; qty: number; price: number; expiry: any; missing: boolean };
+    const repos: any[] = [];
+    const pks: string[] = [];
+    const items: Item[] = [];
+    for (let si = 0; si < sources.length; si++) {
+      const s = sources[si];
+      const repo = this.db.getRepository(s.collection);
+      repos[si] = repo;
+      const pk = repo.collection?.model?.primaryKeyAttribute || 'id';
+      pks[si] = pk;
+      const appends = this.collectionAppends(s.collection, [s.qtyFormula, s.costMode === 'formula' ? s.costFormula : undefined, s.orderExpr, s.partitionExpr, s.expiryExpr]);
+      const rows = await repo.find({ appends: appends.length ? appends : undefined });
+      for (const row of rows) {
+        const part = String(evalRaw(s.partitionExpr, row) ?? '');
+        if (opts?.onlyPartition !== undefined && part !== opts.onlyPartition) continue;
+        const price = s.costMode === 'formula' ? evalNum(s.costFormula || '0', row) : (s.costField ? num(row.get(s.costField)) : 0);
+        const missing = s.costMode !== 'formula' && !!s.costField ? (() => { const v = row.get(s.costField as string); return v == null || v === ''; })() : false;
+        items.push({ srcIdx: si, id: row.get(pk), part, ord: ordKey(evalRaw(s.orderExpr, row)), qty: evalNum(s.qtyFormula || '0', row), price, expiry: s.expiryExpr ? evalRaw(s.expiryExpr, row) : undefined, missing });
+      }
+    }
+    // group across all tables by partition key
+    const groups = new Map<string, Item[]>();
+    for (const it of items) { const g = groups.get(it.part); if (g) g.push(it); else groups.set(it.part, [it]); }
+    const opt = { strategy: rule.method, qtyOf: (it: Item) => it.qty, priceOf: (it: Item) => it.price, priceMissingOf: (it: Item) => it.missing, expiryOf: (it: Item) => it.expiry, idOf: (it: Item) => `${it.srcIdx}:${it.id}`, negative: rule.negativePolicy, missingCost: rule.missingCostPolicy } as ScanOpts;
+    for (const group of groups.values()) {
+      group.sort((a, b) => a.ord - b.ord || a.srcIdx - b.srcIdx || (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
+      const metrics = scanLedger(group, opt);
+      await this.db.sequelize.transaction(async (transaction: any) => {
+        for (let i = 0; i < group.length; i++) {
+          const it = group[i];
+          const o = metrics[i];
+          const s = sources[it.srcIdx];
+          const values: Record<string, any> = {};
+          if (s.outUnitCost) values[s.outUnitCost] = round(o.unitCost, P, RM);
+          if (s.outCogs) values[s.outCogs] = round(o.consumedValue, P, RM);
+          if (s.outConsumedQty) values[s.outConsumedQty] = round(o.consumedQty, P, RM);
+          if (s.outRunningQty) values[s.outRunningQty] = round(o.runningQty, P, RM);
+          if (s.outRunningValue) values[s.outRunningValue] = round(o.runningValue, P, RM);
+          if (s.outAllocations) values[s.outAllocations] = o.allocations.length ? JSON.stringify(o.allocations) : null;
+          if (Object.keys(values).length) await repos[it.srcIdx].update({ filterByTk: it.id, values, transaction, hooks: false });
+        }
+      });
+    }
   }
 
   /** Load one partition ordered, run the allocation scan, write the mapped output columns per row. */
@@ -445,8 +560,10 @@ export class ScanManager {
 
   /** Backfill: recompute every partition for the matching rule(s). */
   async recomputeAll(opts?: { collection?: string }): Promise<number> {
-    const rules = this.rules.filter((r) => !opts?.collection || r.collectionName === opts.collection);
+    const match = (r: ScanRule) => !opts?.collection || ((r.sources && r.sources.length) ? r.sources.some((s) => s.collection === opts.collection) : r.collectionName === opts.collection);
+    const rules = this.rules.filter(match);
     for (const rule of rules) {
+      if (rule.sources && rule.sources.length) { await this.recomputeMulti(rule); continue; } // multi-source: full recompute
       if (!rule.partitionBy.length) { await this.recomputePartition(rule, {}); continue; }
       const repo = this.db.getRepository(rule.collectionName);
       const all = await repo.find({ fields: [...rule.partitionBy] });
@@ -460,13 +577,13 @@ export class ScanManager {
         await this.recomputePartition(rule, partVals);
       }
     }
-    if (rules.length) { try { this.notify?.([...new Set(rules.map((r) => r.collectionName))]); } catch { /* ignore */ } }
+    if (rules.length) { try { this.notify?.([...new Set(rules.flatMap((r) => (r.sources && r.sources.length) ? r.sources.map((s) => s.collection) : [r.collectionName]))]); } catch { /* ignore */ } }
     return rules.length;
   }
 
-  /** Period close / point-in-time: on-hand qty + value per partition AS OF a cutoff (read-only). */
+  /** Period close / point-in-time: on-hand qty + value per partition AS OF a cutoff (read-only). Single-source only. */
   async closing(opts: { collection?: string; asOf?: string } = {}): Promise<any[]> {
-    const rules = this.rules.filter((r) => !opts.collection || r.collectionName === opts.collection);
+    const rules = this.rules.filter((r) => !(r.sources && r.sources.length) && (!opts.collection || r.collectionName === opts.collection));
     const out: any[] = [];
     for (const rule of rules) {
       const repo = this.db.getRepository(rule.collectionName);

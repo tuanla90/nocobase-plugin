@@ -104,6 +104,7 @@ export class PluginFormulaServer extends Plugin {
         { type: 'string', name: 'collectionName', uiSchema: ui('Bảng sổ (collection)') },
         { type: 'json', name: 'partitionBy' }, // ['product_id','warehouse']
         { type: 'json', name: 'orderBy' }, // [{field:'moved_at',dir:'asc'}, …]
+        { type: 'json', name: 'sources' }, // MULTI-SOURCE: [{collection,qtyFormula,orderExpr,partitionExpr,cost*,out*}, …]
         { type: 'string', name: 'method', defaultValue: 'weighted_avg', uiSchema: { type: 'string', title: 'Chiến lược phân bổ', 'x-component': 'Select', 'x-decorator': 'FormItem', enum: [{ label: 'FIFO', value: 'fifo' }, { label: 'LIFO', value: 'lifo' }, { label: 'FEFO (hết hạn trước)', value: 'fefo' }, { label: 'Bình quân gia quyền', value: 'weighted_avg' }] } },
         { type: 'string', name: 'qtyMode', defaultValue: 'signed', uiSchema: ui('Kiểu nhập lượng') },
         { type: 'string', name: 'qtyField', uiSchema: ui('Cột lượng có dấu (+ vào / − ra)') },
@@ -179,7 +180,10 @@ export class PluginFormulaServer extends Plugin {
 
     // Reload scan rules + backfill the affected collection when a scan rule row changes.
     const onScanRuleChange = (model: any, options: any) => {
-      const col = model?.get?.('collectionName');
+      let col = model?.get?.('collectionName');
+      // multi-source rules have no single collectionName — backfill via the first source collection
+      // (recomputeAll matches the rule by any source and recomputeMulti recomputes ALL its sources in one pass).
+      if (!col) { try { const s = model?.get?.('sources'); const arr = typeof s === 'string' ? JSON.parse(s) : s; if (Array.isArray(arr) && arr[0]?.collection) col = arr[0].collection; } catch { /* ignore */ } }
       const run = async () => { await this.scan.loadRules(); if (col) await this.scan.recomputeAll({ collection: col }); };
       const t = options?.transaction;
       const go = () => run().catch((e) => this.app.logger?.error?.(`[ptdl-scan] rule-change reload/backfill failed: ${e?.message || e}`));

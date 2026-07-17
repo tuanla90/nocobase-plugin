@@ -37,8 +37,25 @@ type Row = {
   // scan outputs:
   outRunningQty?: string; outRunningValue?: string; outConsumedQty?: string; outCogs?: string; outConsumedUnitCost?: string; outUnitCost?: string; outAvgCost?: string; outAllocations?: string;
   _outputs?: OutputEntry[]; // UI-only: the metric→column mapping list being edited (converted to out* on save)
+  // MULTI-SOURCE (nhập/xuất tách thành nhiều bảng → trộn thành MỘT sổ): each source table brings its own
+  // signed-qty / order-value / partition-key FORMULAS (order may drill a relation, e.g. data.phieu.ngay).
+  multi?: boolean; sources?: SourceUI[];
 };
 type OutputEntry = { metric?: string; column?: string };
+type SourceUI = {
+  collection?: string;
+  qtyFormula?: string; orderExpr?: string; partitionExpr?: string; expiryExpr?: string;
+  costMode?: 'none' | 'column' | 'formula'; costField?: string; costFormula?: string;
+  outUnitCost?: string; outCogs?: string; outRunningQty?: string; outRunningValue?: string; outConsumedQty?: string;
+};
+// The output columns a single source table can receive (per-table; written back onto that table's own rows).
+const SRC_OUT: Array<{ key: keyof SourceUI; label: string }> = [
+  { key: 'outRunningQty', label: 'Số dư lượng (tồn)' },
+  { key: 'outUnitCost', label: 'Đơn giá đã định (dòng này)' },
+  { key: 'outCogs', label: 'Giá trị tiêu hao (COGS)' },
+  { key: 'outRunningValue', label: 'Số dư giá trị' },
+  { key: 'outConsumedQty', label: 'Lượng tiêu hao' },
+];
 type ModalState = null | (Partial<Row> & { _mode: 'add' | 'edit' });
 
 const STATE_BASED = new Set(['fifo', 'lifo', 'fefo', 'weighted_avg']);
@@ -109,6 +126,12 @@ export function ScanCalcManager({ api }: { api: any }) {
         roundPrecision: r.roundPrecision, roundMode: r.roundMode || 'half_up', negativePolicy: r.negativePolicy || 'allow', missingCostPolicy: r.missingCostPolicy || 'zero',
         outRunningQty: r.outRunningQty, outRunningValue: r.outRunningValue, outConsumedQty: r.outConsumedQty, outCogs: r.outCogs,
         outConsumedUnitCost: r.outConsumedUnitCost, outUnitCost: r.outUnitCost, outAvgCost: r.outAvgCost, outAllocations: r.outAllocations,
+        multi: !!(Array.isArray(r.sources) && r.sources.length),
+        sources: Array.isArray(r.sources) ? r.sources.map((s: any): SourceUI => ({
+          collection: s.collection, qtyFormula: s.qtyFormula, orderExpr: s.orderExpr, partitionExpr: s.partitionExpr, expiryExpr: s.expiryExpr,
+          costMode: s.costMode || (s.costField ? 'column' : 'none'), costField: s.costField, costFormula: s.costFormula,
+          outUnitCost: s.outUnitCost, outCogs: s.outCogs, outRunningQty: s.outRunningQty, outRunningValue: s.outRunningValue, outConsumedQty: s.outConsumedQty,
+        })) : undefined,
       }));
       setList([...win, ...scan]);
     } catch (e) { message.error(t('Tải danh sách thất bại')); }
@@ -130,6 +153,10 @@ export function ScanCalcManager({ api }: { api: any }) {
     setColsCache((p) => ({ ...p, [coll]: opts }));
   };
   useEffect(() => { if (modal?.collection) loadCols(modal.collection); }, [modal?.collection]);
+  // Multi-source: preload the column list for every source table so its per-table dropdowns fill in.
+  const srcColsKey = (modal?.sources || []).map((s) => s.collection || '').join(',');
+  useEffect(() => { (modal?.sources || []).forEach((s) => s.collection && loadCols(s.collection)); }, [srcColsKey]);
+  const colsFor = (c?: string) => (c ? colsCache[c] || [] : []);
   const cols = modal?.collection ? colsCache[modal.collection] || [] : [];
   const pick = cols.map((o) => ({ ...o, isLeaf: true }));
   const set = (patch: Partial<Row>) => setModal((p) => ({ ...(p as any), ...patch }));
@@ -137,7 +164,8 @@ export function ScanCalcManager({ api }: { api: any }) {
   const recompute = async (r: Row) => {
     try {
       if (r._type === 'window') await api.request({ url: 'ptdlWindow:recompute', method: 'post', params: { collection: r.collection, field: r.field } });
-      else await api.request({ url: 'ptdlScan:recompute', method: 'post', params: { collection: r.collection } });
+      // multi-source rules have no single collection → recompute via the first source (server recomputes ALL sources).
+      else await api.request({ url: 'ptdlScan:recompute', method: 'post', params: { collection: r.collection || (r.sources && r.sources[0] && r.sources[0].collection) } });
       message.success(t('Đã tính lại'));
     } catch (e) { message.error(t('Tính lại thất bại')); }
   };
@@ -171,11 +199,44 @@ export function ScanCalcManager({ api }: { api: any }) {
 
   const save = async () => {
     const m = modal!;
-    if (!m.collection) return message.warning(t('Chọn bảng'));
-    if (!(m.orderBy || []).length) return message.warning(t('Chọn cột sắp theo'));
+    const multi = isStateBased(m.accumulator) && !!m.multi;
+    if (!multi) {
+      if (!m.collection) return message.warning(t('Chọn bảng'));
+      if (!(m.orderBy || []).length) return message.warning(t('Chọn cột sắp theo'));
+    }
     const stateBased = isStateBased(m.accumulator);
     setBusy(true);
     try {
+      if (multi) {
+        // MULTI-SOURCE: one rule, several source tables merged into a single ledger per partition.
+        const srcs = (m.sources || []).filter((s) => s.collection);
+        if (!srcs.length) return message.warning(t('Thêm ít nhất một bảng nguồn'));
+        for (const s of srcs) {
+          if (!s.qtyFormula?.trim()) return message.warning(t('Mỗi bảng cần công thức lượng (+ vào / − ra)'));
+          if (!s.orderExpr?.trim()) return message.warning(t('Mỗi bảng cần công thức thời điểm sắp xếp'));
+          if (!s.partitionExpr?.trim()) return message.warning(t('Mỗi bảng cần công thức phân vùng (khóa gộp sổ)'));
+        }
+        if (m.accumulator === 'fefo' && srcs.some((s) => !s.expiryExpr?.trim())) return message.warning(t('FEFO: mỗi bảng cần công thức hạn dùng'));
+        const sources = srcs.map((s) => ({
+          collection: s.collection, qtyFormula: s.qtyFormula, orderExpr: s.orderExpr, partitionExpr: s.partitionExpr,
+          expiryExpr: s.expiryExpr?.trim() || undefined,
+          costMode: s.costMode && s.costMode !== 'none' ? s.costMode : undefined,
+          costField: s.costMode === 'column' ? s.costField || undefined : undefined,
+          costFormula: s.costMode === 'formula' ? s.costFormula || undefined : undefined,
+          outUnitCost: s.outUnitCost || undefined, outCogs: s.outCogs || undefined, outRunningQty: s.outRunningQty || undefined,
+          outRunningValue: s.outRunningValue || undefined, outConsumedQty: s.outConsumedQty || undefined,
+        }));
+        const data: any = { title: m.title, collectionName: '', method: m.accumulator, sources,
+          roundPrecision: m.roundPrecision, roundMode: m.roundMode || 'half_up', negativePolicy: m.negativePolicy || 'allow', missingCostPolicy: m.missingCostPolicy || 'zero',
+          // clear any single-source config so a rule switched to multi doesn't carry stale mappings
+          partitionBy: [], orderBy: [], qtyField: null, inQtyField: null, outQtyField: null, directionField: null, qtyFormula: null, costField: null, costFormula: null,
+          outRunningQty: null, outRunningValue: null, outConsumedQty: null, outCogs: null, outConsumedUnitCost: null, outUnitCost: null, outAvgCost: null, outAllocations: null };
+        if (m.id) await api.request({ url: 'ptdlScanRules:update', method: 'post', params: { filterByTk: m.id }, data });
+        else await api.request({ url: 'ptdlScanRules:create', method: 'post', data });
+        message.success(t('Đã lưu (đang tính lại…)'));
+        setModal(null); load();
+        return;
+      }
       if (stateBased) {
         const qm = m.qtyMode || 'signed';
         if (qm === 'signed' && !m.qtyField) return message.warning(t('Chọn cột lượng có dấu'));
@@ -229,11 +290,20 @@ export function ScanCalcManager({ api }: { api: any }) {
 
   const openEdit = (r: Row) => { setTab('strategy'); setModal({ ...r, _mode: 'edit' }); };
   const columns = [
-    { title: t('Kết quả'), render: (_: any, r: Row) => (<span>{r.title || <i style={{ color: '#999' }}>—</i>} <Tag color="default" style={{ fontFamily: 'monospace' }}>{r.collection}</Tag>{r._type === 'window' && r.field ? <Tag color="blue" style={{ fontFamily: 'monospace' }}>{r.field}</Tag> : null}</span>) },
+    { title: t('Kết quả'), render: (_: any, r: Row) => (<span>{r.title || <i style={{ color: '#999' }}>—</i>}{' '}
+      {r.multi
+        ? (r.sources || []).map((s, i) => <Tag key={i} color="purple" style={{ fontFamily: 'monospace' }}>{s.collection}</Tag>)
+        : <Tag color="default" style={{ fontFamily: 'monospace' }}>{r.collection}</Tag>}
+      {r._type === 'window' && r.field ? <Tag color="blue" style={{ fontFamily: 'monospace' }}>{r.field}</Tag> : null}</span>) },
     { title: t('Kiểu tính'), dataIndex: 'accumulator', width: 200, render: (v: string) => <Tag color={isStateBased(v) ? 'volcano' : 'geekblue'}>{accLabel(v)}</Tag> },
     { title: t('Phân vùng theo cột (partition by)'), dataIndex: 'partitionBy', render: (v: string[]) => (v || []).map((x) => <Tag key={x} style={{ fontFamily: 'monospace' }}>{x}</Tag>) },
     { title: t('Sắp theo'), dataIndex: 'orderBy', render: (v: OrderSpec[]) => (v || []).map((o) => <Tag key={o.field} style={{ fontFamily: 'monospace' }}>{o.field} {o.dir === 'desc' ? '↓' : '↑'}</Tag>) },
-    { title: t('Ghi ra'), render: (_: any, r: Row) => r._type === 'scan' ? OUT_KEYS.filter((f) => r[f.key]).map((f) => <Tag key={f.key} color="green" style={{ fontFamily: 'monospace' }}>{r[f.key] as string}</Tag>) : <Tag color="green" style={{ fontFamily: 'monospace' }}>{r.field}</Tag> },
+    { title: t('Ghi ra'), render: (_: any, r: Row) => {
+      if (r._type !== 'scan') return <Tag color="green" style={{ fontFamily: 'monospace' }}>{r.field}</Tag>;
+      if (r.multi) { const cols = [...new Set((r.sources || []).flatMap((s) => SRC_OUT.map((o) => s[o.key]).filter(Boolean)))] as string[];
+        return cols.map((c) => <Tag key={c} color="green" style={{ fontFamily: 'monospace' }}>{c}</Tag>); }
+      return OUT_KEYS.filter((f) => r[f.key]).map((f) => <Tag key={f.key} color="green" style={{ fontFamily: 'monospace' }}>{r[f.key] as string}</Tag>);
+    } },
     { title: '', key: 'act', width: 200, render: (_: any, r: Row) => (
       <Space size={4}>
         <Tooltip title={t('Tính lại toàn bộ')}><Button size="small" icon={<ReloadOutlined />} onClick={() => recompute(r)}>{t('Tính lại')}</Button></Tooltip>
@@ -264,7 +334,7 @@ export function ScanCalcManager({ api }: { api: any }) {
           const qm = m.qtyMode || 'signed';
           const cm = m.costMode || 'column';
           const im = m.inputMode || 'column';
-          const activeTab = tab === 'advanced' && !stateBased ? 'strategy' : tab;
+          const multi = stateBased && !!m.multi; // nhập/xuất tách nhiều bảng → trộn một sổ
           const hint = (s: string) => <div style={{ fontSize: 11.5, color: 'var(--colorTextTertiary, #999)', marginBottom: 2 }}>{s}</div>;
           const body = (children: React.ReactNode) => <Space direction="vertical" style={{ width: '100%' }} size={11}>{children}</Space>;
           // scan output editing list: use the in-progress `_outputs` if present, else derive from the mapped out* fields.
@@ -286,6 +356,18 @@ export function ScanCalcManager({ api }: { api: any }) {
               key: 'input', label: t('Đầu vào'),
               children: body(<>
                 {hint(t('Bảng dữ liệu, ánh xạ cột, phân vùng và thứ tự duyệt.'))}
+                {stateBased && (
+                  <F label={t('Cấu trúc dữ liệu')} tip={t('Một bảng, hay nhập–xuất TÁCH thành nhiều bảng (hệ thống trộn tất cả thành MỘT sổ theo thời gian rồi định giá). Mỗi bảng có thể lấy thời điểm/phân vùng qua quan hệ, vd data.phieu.ngay.')}>
+                    <SegmentedGroup value={multi ? 'multi' : 'single'} onChange={(v) => set(v === 'multi'
+                      ? { multi: true, sources: (m.sources && m.sources.length) ? m.sources : [{ costMode: 'none' }] }
+                      : { multi: false })}
+                      options={[{ label: t('1 bảng'), value: 'single' }, { label: t('Nhiều bảng (nhập–xuất tách)'), value: 'multi' }]} />
+                  </F>
+                )}
+
+                {multi ? (
+                  <MultiSourceEditor sources={m.sources || []} api={api} collections={collections} colsFor={colsFor} method={m.accumulator} onChange={(s) => set({ sources: s })} />
+                ) : (<>
                 <F label={t('Bảng (collection)')} req>
                   <Select style={{ width: '100%' }} showSearch optionFilterProp="label" disabled={m._mode === 'edit'} value={m.collection} options={collections}
                     onChange={(v) => set({ collection: v, partitionBy: [], orderBy: [], input: undefined, qtyField: undefined, inQtyField: undefined, outQtyField: undefined, directionField: undefined, costField: undefined, expiryField: undefined })} placeholder={t('Chọn bảng')} />
@@ -341,9 +423,10 @@ export function ScanCalcManager({ api }: { api: any }) {
 
                 <F label={t('Phân vùng theo cột (partition by)')} tip={t('Mỗi phân vùng là một "sổ" riêng, tính độc lập. Vd mỗi (sản phẩm, kho) một tồn riêng. Để trống = một sổ chung.')}><ColMultiSelect value={m.partitionBy} options={cols} onChange={(v) => set({ partitionBy: v })} placeholder={t('Chọn cột…')} /></F>
                 <F label={t('Sắp theo cột (order by) — bấm ↑/↓ trên thẻ để đổi chiều')} req tip={t('Thứ tự duyệt từng dòng. Nên kết thúc bằng một cột duy nhất (id) để phá hoà khi trùng thời điểm.')}><OrderSelect value={m.orderBy} options={cols} onChange={(v) => set({ orderBy: v })} placeholder={t('Chọn cột…')} /></F>
+                </>)}
               </>),
             },
-            {
+            ...(multi ? [] : [{
               key: 'output', label: t('Kết quả'),
               children: body(<>
                 {hint(stateBased ? t('Bấm "Thêm số liệu" cho mỗi kết quả: chọn số liệu, rồi chọn cột để ghi vào.') : t('Chọn cột số để ghi kết quả vào.'))}
@@ -356,7 +439,7 @@ export function ScanCalcManager({ api }: { api: any }) {
                 )}
                 {stateBased && <OutputCards outputs={outputs} cols={cols} onChange={(o) => set({ _outputs: o })} />}
               </>),
-            },
+            }]),
             ...(stateBased ? [{
               key: 'advanced', label: t('Nâng cao'),
               children: body(<>
@@ -394,6 +477,9 @@ export function ScanCalcManager({ api }: { api: any }) {
               </>),
             }] : []),
           ];
+          // keep the active tab valid — some tabs (output / advanced) don't exist in every mode.
+          const keys = items.map((it: any) => it.key);
+          const activeTab = keys.includes(tab) ? tab : 'strategy';
           return <Tabs size="small" activeKey={activeTab} onChange={setTab} items={items} style={{ minHeight: 300 }} />;
         })()}
       </Modal>
@@ -486,6 +572,71 @@ const OutputCards: React.FC<{ outputs: OutputEntry[]; cols: any[]; onChange: (o:
         </div>
       ))}
       <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => onChange([...outputs, {}])}>{t('Thêm số liệu')}</Button>
+    </div>
+  );
+};
+
+// MULTI-SOURCE editor: one card per source table. Each brings its own signed-qty / order / partition FORMULAS
+// (Excel-style, `data.<col>` or relation `data.<rel>.<col>`), an optional inflow unit-price, and the output
+// columns to write back onto THAT table's own rows. The server merges all sources into one ledger per partition.
+const MultiSourceEditor: React.FC<{
+  sources: SourceUI[]; api: any; collections: any[]; method?: string;
+  colsFor: (c?: string) => any[]; onChange: (s: SourceUI[]) => void;
+}> = ({ sources, api, collections, method, colsFor, onChange }) => {
+  const upd = (i: number, patch: Partial<SourceUI>) => onChange(sources.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const collLabel = (n?: string) => collections.find((c) => c.value === n)?.label || n;
+  return (
+    <div>
+      {sources.map((s, i) => {
+        const cols = colsFor(s.collection);
+        const cm = s.costMode || 'none';
+        return (
+          <div key={i} style={{ border: '1px solid var(--colorBorderSecondary, #e8e8e8)', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 12.5, flex: 1 }}>{t('Bảng nguồn')} #{i + 1}{s.collection ? <span style={{ color: 'var(--colorTextTertiary, #999)', fontWeight: 400 }}> — {collLabel(s.collection)}</span> : null}</span>
+              <Button type="text" danger size="small" icon={<CloseOutlined />} onClick={() => onChange(sources.filter((_, j) => j !== i))} />
+            </div>
+            <Space direction="vertical" style={{ width: '100%' }} size={9}>
+              <F label={t('Bảng (collection)')} req>
+                <Select style={{ width: '100%' }} showSearch optionFilterProp="label" value={s.collection} options={collections}
+                  onChange={(v) => upd(i, { collection: v as string, costField: undefined, outUnitCost: undefined, outCogs: undefined, outRunningQty: undefined, outRunningValue: undefined, outConsumedQty: undefined })} placeholder={t('Chọn bảng')} />
+              </F>
+              <F label={t('Lượng nhập / xuất (công thức)')} req tip={t('Dương = NHẬP (+), âm = XUẤT (−). Bảng nhập thường là data.<cột lượng>; bảng xuất là -data.<cột lượng>.')}>
+                <FormulaInput api={api} collectionName={s.collection} value={s.qtyFormula} onChange={(v) => upd(i, { qtyFormula: v })} placeholder={'data.sl   /   -data.sl'} />
+              </F>
+              <F label={t('Thời điểm sắp xếp (công thức)')} req tip={t('Giá trị (ngày/số) để TRỘN các bảng theo thời gian. Có thể lấy qua quan hệ nếu ngày nằm ở bảng cha, vd data.phieu.ngay.')}>
+                <FormulaInput api={api} collectionName={s.collection} value={s.orderExpr} onChange={(v) => upd(i, { orderExpr: v })} placeholder={'data.ngay   /   data.phieu.ngay'} />
+              </F>
+              <F label={t('Phân vùng — khóa gộp sổ (công thức)')} req tip={t('Các dòng cùng giá trị này (ở mọi bảng) mới chung MỘT sổ. Vd data.sp (mã sản phẩm). Phải khớp kiểu giữa các bảng.')}>
+                <FormulaInput api={api} collectionName={s.collection} value={s.partitionExpr} onChange={(v) => upd(i, { partitionExpr: v })} placeholder={'data.sp'} />
+              </F>
+              <F label={t('Đơn giá dòng nhập')} tip={t('Chỉ bảng NHẬP cần: đơn giá mỗi đơn vị nhập. Bảng xuất để "Không" — hệ thống tự suy giá vốn xuất.')}>
+                <SegmentedGroup style={{ marginBottom: 6 }} value={cm} onChange={(v) => upd(i, { costMode: v as any })}
+                  options={[{ label: t('Không'), value: 'none' }, { label: t('Cột'), value: 'column' }, { label: t('Công thức'), value: 'formula' }]} />
+                {cm === 'column' && <ColSelect value={s.costField} options={cols} onChange={(v) => upd(i, { costField: v })} placeholder={t('Chọn cột đơn giá…')} />}
+                {cm === 'formula' && <FormulaInput api={api} collectionName={s.collection} value={s.costFormula} onChange={(v) => upd(i, { costFormula: v })} placeholder={'data.gia   /   data.amount / data.sl'} />}
+              </F>
+              {method === 'fefo' && (
+                <F label={t('Hạn dùng (công thức, FEFO)')} req tip={t('FEFO xuất lô hết hạn sớm nhất trước. Công thức trả về ngày hết hạn của lô.')}>
+                  <FormulaInput api={api} collectionName={s.collection} value={s.expiryExpr} onChange={(v) => upd(i, { expiryExpr: v })} placeholder={'data.hsd'} />
+                </F>
+              )}
+              <F label={t('Ghi kết quả vào cột (của bảng này)')} tip={t('Chọn cột SỐ có sẵn trên chính bảng này để nhận kết quả. Bảng nào không cần một số liệu thì để trống.')}>
+                <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', gap: '6px 10px', alignItems: 'center' }}>
+                  {SRC_OUT.map((o) => (
+                    <React.Fragment key={o.key as string}>
+                      <span style={{ fontSize: 12, color: 'var(--colorTextSecondary, #555)' }}>{t(o.label)}</span>
+                      <ColSelect value={s[o.key] as string} options={cols} onChange={(v) => upd(i, { [o.key]: v } as any)} placeholder={t('— (bỏ trống)')} />
+                    </React.Fragment>
+                  ))}
+                </div>
+              </F>
+            </Space>
+          </div>
+        );
+      })}
+      <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => onChange([...sources, { costMode: 'none' }])}>{t('Thêm bảng nguồn')}</Button>
+      {!sources.length && <div style={{ fontSize: 11.5, color: 'var(--colorTextTertiary, #999)', marginTop: 6 }}>{t('Thêm mỗi bảng nhập / xuất một thẻ. Tối thiểu 2 bảng cho ca nhập–xuất tách.')}</div>}
     </div>
   );
 };

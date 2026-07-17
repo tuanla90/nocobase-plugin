@@ -85,7 +85,37 @@ Sổ 5 phiếu (+10@100, +10@120, −15, +5@130, −8):
 - Sửa 1 phiếu (cost 100→200) → cả 2 method tự quét lại đúng.
 - `closing` asOf giữa kỳ → tồn tại thời điểm đúng (avg 5/800, fifo 5/600).
 
-## 7. TODO
+## 7. Đa nguồn — nhập/xuất tách nhiều bảng (v0.1.57–58)
+
+Case thực tế: chứng từ nhập & xuất nằm ở **các bảng khác nhau** (vd `stockIn` và dòng-xuất `stockOutLine` thuộc phiếu `stockOutHeader`), mỗi bảng lưu **kiểu khác nhau** (ngày ở chính dòng, hoặc ở bảng cha qua quan hệ). Không thể gộp thành một cột có dấu → cần **scan đa nguồn**: đọc mọi bảng, mỗi bảng tự khai công thức, hệ thống **trộn thành MỘT sổ** theo thời gian rồi định giá.
+
+**Cấu hình** — `ptdlScanRules.sources` (JSON), mỗi phần tử = một bảng nguồn:
+- `collection` — bảng nguồn.
+- `qtyFormula` — công thức Excel → **lượng CÓ DẤU** (bảng nhập `data.sl`, bảng xuất `-data.sl`).
+- `orderExpr` — công thức → giá trị (ngày/số) để **trộn** các bảng; **được drill quan hệ** vd `data.phieu.ngay` (ngày nằm ở phiếu cha).
+- `partitionExpr` — công thức → **khóa gộp sổ** (vd `data.sp`); các dòng cùng khóa ở MỌI bảng mới chung một sổ.
+- `costMode`/`costField`/`costFormula` — đơn giá dòng nhập (bảng xuất để trống → engine tự suy giá vốn xuất).
+- `expiryExpr` — hạn dùng (FEFO).
+- `outUnitCost` / `outCogs` / `outRunningQty` / `outRunningValue` / `outConsumedQty` — cột ghi kết quả **trên chính bảng đó** (mỗi dòng ghi về bảng gốc của nó).
+
+`collectionName` để rỗng khi đa nguồn. Engine = `ScanManager.recomputeMulti()`: load từng bảng (auto-`appends` quan hệ trong công thức qua `collectionAppends`), tính `{part, ord, qty, price}` mỗi dòng, group theo `part` **xuyên bảng**, merge-sort `(ord, srcIdx, id)`, chạy chung `scanLedger`, ghi output về `repos[srcIdx]`. Hook mọi bảng nguồn: đổi 1 dòng ở bảng nào → `recomputeMulti` cả rule (đổi bảng nhập cũng tính lại cột giá vốn ở bảng xuất). UI: tab Đầu vào có nút **1 bảng / Nhiều bảng (nhập–xuất tách)**; mỗi bảng một thẻ (collection + 3 công thức + đơn giá + map cột output), công thức dùng cascader drill quan hệ.
+
+## 8. Đã kiểm chứng (live nb-local)
+
+Đơn nguồn — sổ 5 phiếu (+10@100, +10@120, −15, +5@130, −8):
+- **Bình quân**: COGS tổng **2610**, tồn cuối **2 / 240**, các dòng khớp tay 100%.
+- **FIFO**: COGS tổng **2590**, tồn cuối **2 / 260**, khớp tay 100%.
+- Sửa 1 phiếu (cost 100→200) → cả 2 method tự quét lại đúng.
+- `closing` asOf giữa kỳ → tồn tại thời điểm đúng (avg 5/800, fifo 5/600).
+
+Đa nguồn — 2 bảng `msIn` (ngày ở dòng) + `msOutLn` (ngày qua `data.phieu.ngay`), bình quân, partition `data.sp`:
+- Sổ trộn: 01-01 nhập 10@100 · 01-02 xuất 4 · 01-03 nhập 10@200 · 01-04 xuất 8.
+- Kết quả khớp tay: tồn 10→6→16→8, đơn giá vốn xuất **100** rồi **162.5**, COGS **400** + **1300**.
+- Xoá dòng nhập 200 → hook tự tính lại: dòng xuất-8 thành COGS **800**, tồn **−2** (negative allow).
+- Round-trip UI: create/edit/save (APIClient) giữ nguyên `sources` 2 bảng, tự backfill đúng.
+
+## 9. TODO
 - Đóng kỳ **có lưu + khoá** (bảng kỳ + chặn sửa kỳ đã đóng) — cần chốt policy khoá.
 - Ghi output qua raw bulk UPDATE (hiện per-row trong transaction) nếu phân vùng rất lớn.
 - LIFO / định danh đích (specific-identification) nếu cần.
+- Đa nguồn: scope recompute theo partition (hiện full-rule mỗi lần đổi); `closing`/FEFO cho đa nguồn.
