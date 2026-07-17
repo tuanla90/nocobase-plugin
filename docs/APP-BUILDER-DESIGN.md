@@ -398,6 +398,26 @@ Mỗi mẫu kèm **2–3 mô tả NL** (khác độ dài/độ mơ hồ) — là
 - **Relation column hiển thị id**: cột phải trỏ field quan hệ BY NAME (`customer`), ẩn FK (`customer_id`) — đã xử lý trong quickView.
 - **Headless /v/ render janky** nhưng JS context chạy: validate qua `window.__nocobase_v2_app__` (flowEngine/dataSourceManager/routeRepository).
 
+## 12. Tool catalog — tách primitive để AI gọi từng bước (2026-07-17, DONE + verify)
+
+`apply` (whole-spec) đã refactor thành **primitives** — mỗi bước dựng app là 1 hàm độc lập, idempotent — và **expose từng cái thành action riêng** để AI/script/UI gọi **từng bước** (thay vì 1 spec khổng lồ). `apply` giờ chỉ **orchestrate** các primitive (collections→relations→computed→seed). Cùng 1 engine, 2 mặt (spec compiler + tool-calling).
+
+| Tool (action) | Args | Tầng | Việc |
+|---|---|---|---|
+| `appBuilder:createCollection` | `{name,title,titleField,fields[]}` | server | Tạo data model (collection + field) |
+| `appBuilder:addField` | `{collection, field}` | server | Config data type (+ rule nếu computed) |
+| `appBuilder:addRelation` | `{collection, relation}` | server | Quan hệ (m2o/o2m/o2o/m2m) |
+| `appBuilder:addStatusFlow` | `{collection, field:{name,title,states}}` | server | Status flow (field THẬT) |
+| `appBuilder:addComputed` | `{collection, field:{...,computed:{expression}}}` | server | Công thức (cột computed) |
+| `appBuilder:seed` | `{collection, rows[]}` | server | Dữ liệu mẫu (m2o resolve theo titleField) |
+| `appBuilder:describeApp` | `{prefix?}` | server | **Introspection** (AI "nhìn" state) |
+| `appBuilder:dryRun` / `apply` | `{spec}` | server | Validate / dựng cả app |
+| client: `createMenuGroup` / `createPage` | — | client | Dựng giao diện (flowEngine) |
+
+**Client:** `window.__ptdlAppBuilder` = `{...tools, tools, callTool(name,args), toolNames, buildApp, samples, validateAppSpec}` — data-tier tool gọi server action, page-tier tool chạy flowEngine. `callTool` = dispatcher chung (nền cho Claude tool-use ở P2: mỗi primitive = 1 tool, `describeApp` = mắt, `validate` = kiểm).
+
+**Verify: test step-by-step 15/15** (describeApp→createCollection→addField→addRelation[fk customerId]→addStatusFlow→addComputed→seed→describe→computed=200+relation live→cleanup). **TRAP:** `opSeed` trả key **`inserted`** (KHÔNG `rows` — top-level `rows` bị NocoBase list-unwrap nuốt sibling). Orphan `ptdlComputedRules` sau destroy collection (không cascade) → cần dọn khi re-apply.
+
 ## Files
 `packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
 `src/server/{index.ts, plugin.ts (actions apply/dryRun)}`, `src/client-v2/index.tsx` (launcher + settings),

@@ -10,7 +10,7 @@
  *   POST /api/appBuilder:apply   { spec }  → { ok, created[] }             (create collections + fields)
  */
 import { Plugin } from '@nocobase/server';
-import { AppSpec, FieldSpec, normalizeOptions, RelationSpec, validateAppSpec, ValidationIssue } from '../shared/appSpec';
+import { AppSpec, CollectionSpec, FieldSpec, normalizeOptions, RelationSpec, validateAppSpec, ValidationIssue } from '../shared/appSpec';
 
 /** Read the App-Spec from a custom-action call. The SDK wraps `resource().apply({values:{spec}})` as
  *  `ctx.action.params.values`; raw HTTP may put it top-level. Accept both. */
@@ -143,13 +143,132 @@ export function relationDef(sourceColl: string, r: RelationSpec): any {
 /** Order relation types so paired FKs exist before the side that reuses them: m2o/o2o/m2m first, o2m last. */
 const RELATION_ORDER: Record<string, number> = { m2o: 0, o2o: 0, m2m: 1, o2m: 2 };
 
+/**
+ * Read a custom-action's values (`resource().op({values})` → ctx.action.params.values; raw HTTP may put
+ * them top-level). Accept both.
+ */
+function readVals(ctx: any): any {
+  const p = ctx?.action?.params || {};
+  return p.values ?? p ?? {};
+}
+
 export class PluginAppBuilderServer extends Plugin {
+  // ── PRIMITIVES ──────────────────────────────────────────────────────────────────────────────────
+  // Each op is a self-contained, idempotent building block. `apply` orchestrates them for a whole spec,
+  // and each is ALSO exposed as its own action (below) so an AI / script / UI can call them step-by-step.
+
+  /** Create one collection + its fields (scalar / select / status-flow / computed-as-number-column).
+   *  Does NOT create computed RULES here — those run AFTER relations so roll-ups can reference them.
+   *  Idempotent: an existing collection is skipped. */
+  private async opCreateCollection(c: CollectionSpec): Promise<any> {
+    const colRepo: any = this.db.getRepository('collections');
+    if (!colRepo) throw new Error('collection-manager (collections repo) không có');
+    if (await colRepo.findOne({ filter: { name: c.name } })) return { name: c.name, skipped: 'exists' };
+    const fields = (c.fields || []).map(fieldDef);
+    await colRepo.create({
+      values: {
+        name: c.name, title: c.title || c.name, ...(c.titleField ? { titleField: c.titleField } : {}),
+        autoGenId: true, createdAt: true, updatedAt: true, sortable: true, logging: true, fields,
+      },
+      context: {}, // run collection-manager hooks → migrate the physical table
+    });
+    try { await (this.db.getCollection(c.name) as any)?.sync?.({ alter: true }); } catch {}
+    return { name: c.name, fields: fields.length };
+  }
+
+  /** Add one field to an existing collection (+ its computed rule if it's a computed field). Idempotent
+   *  on the column; the computed rule is (re)ensured regardless (so `addComputed` on an existing column works). */
+  private async opAddField(coll: string, f: FieldSpec): Promise<any> {
+    const fieldRepo: any = this.db.getRepository('fields');
+    const exists = await fieldRepo.findOne({ filter: { collectionName: coll, name: f.name } });
+    if (!exists) {
+      await fieldRepo.create({ values: { ...fieldDef(f), collectionName: coll }, context: {} });
+      try { await (this.db.getCollection(coll) as any)?.sync?.({ alter: true }); } catch {}
+    }
+    const computed = f.computed?.expression ? await this.opAddComputedRules(coll, [f]) : [];
+    return { coll, field: f.name, interface: f.interface, field_status: exists ? 'exists' : 'created', ...(computed.length ? { computed } : {}) };
+  }
+
+  /** Create @ptdl/plugin-formula computed-column rules (`ptdlComputedRules`); local/sibling first,
+   *  roll-ups (SUM over a relation) last so their dependencies compute first. */
+  private async opAddComputedRules(coll: string, fields: FieldSpec[]): Promise<any[]> {
+    if (!fields.length) return [];
+    const ruleRepo: any = this.db.getRepository('ptdlComputedRules');
+    if (!ruleRepo) return [{ skipped: 'plugin-formula (ptdlComputedRules) chưa cài' }];
+    const isRollup = (e: string) => /\b(SUM|COUNT|AVG|MIN|MAX)\s*\(\s*data\./i.test(e);
+    const sorted = [...fields].sort((a, b) => Number(isRollup(a.computed!.expression)) - Number(isRollup(b.computed!.expression)));
+    const out: any[] = [];
+    for (const f of sorted) {
+      try { await (this.db.getCollection(coll) as any)?.sync?.({ alter: true }); } catch {}
+      if (await ruleRepo.findOne({ filter: { collectionName: coll, targetField: f.name } })) { out.push({ field: f.name, skipped: 'exists' }); continue; }
+      await ruleRepo.create({
+        values: { dataSourceKey: 'main', collectionName: coll, targetField: f.name, formula: f.computed!.expression, runOn: 'create,update,source', enabled: true, onError: 'null' },
+        context: {},
+      });
+      out.push({ field: f.name, formula: f.computed!.expression });
+    }
+    return out;
+  }
+
+  /** Create one relation field on `coll`. Idempotent. (Both endpoint collections must already exist.) */
+  private async opAddRelation(coll: string, r: RelationSpec): Promise<any> {
+    const fieldRepo: any = this.db.getRepository('fields');
+    if (await fieldRepo.findOne({ filter: { collectionName: coll, name: r.name } })) return { coll, name: r.name, skipped: 'exists' };
+    const def = relationDef(coll, r);
+    await fieldRepo.create({ values: def, context: {} });
+    return { coll, name: r.name, type: r.type, foreignKey: def.foreignKey };
+  }
+
+  /** Seed rows into a collection. Self-contained: resolves m2o values (a string) against the target's
+   *  titleField by querying the live DB — no spec needed, so it works as a standalone tool. */
+  private async opSeed(coll: string, rows: any[]): Promise<any> {
+    const repo: any = this.db.getRepository(coll);
+    // NOTE: return key is `inserted`, NOT `rows` — a top-level `rows` key in a custom action's ctx.body
+    // triggers NocoBase's list-unwrap (data := rows), dropping siblings. See reference memory.
+    if (!repo || !rows?.length) return { coll, inserted: 0 };
+    const collObj: any = this.db.getCollection(coll);
+    const belongsTo = (collObj?.getFields?.() || []).filter((f: any) => f.type === 'belongsTo');
+    const relByName = new Map<string, any>(belongsTo.map((f: any) => [f.name, f]));
+    let n = 0;
+    for (const row of rows) {
+      const values: any = {};
+      for (const [k, v] of Object.entries(row)) {
+        const rel = relByName.get(k);
+        if (rel && typeof v === 'string') {
+          const tColl: any = this.db.getCollection(rel.target);
+          const tTitle = (tColl?.titleField) || (tColl?.options?.titleField) || 'id';
+          const tRepo: any = this.db.getRepository(rel.target);
+          const hit = tRepo && (await tRepo.findOne({ filter: { [tTitle]: v } }));
+          const id = hit && (hit.get ? hit.get('id') : hit.id);
+          if (id != null) values[rel.foreignKey || rel.options?.foreignKey || `${rel.name}Id`] = id;
+        } else if (!rel) {
+          values[k] = v;
+        }
+      }
+      try { await repo.create({ values }); n++; } catch { /* skip a bad row */ }
+    }
+    return { coll, inserted: n };
+  }
+
+  /** Introspection: list collections (optionally by name prefix) + their fields, so a step-by-step
+   *  caller can "see" current state before deciding the next call. */
+  private async opDescribe(prefix?: string): Promise<any> {
+    const colRepo: any = this.db.getRepository('collections');
+    const all = (await colRepo.find({ appends: ['fields'] })) || [];
+    const collections = all
+      .filter((c: any) => !prefix || String(c.name).startsWith(prefix))
+      .map((c: any) => ({
+        name: c.name, title: c.get ? c.get('title') : c.title, titleField: c.get ? c.get('titleField') : c.titleField,
+        fields: (c.fields || []).filter((f: any) => f.interface).map((f: any) => ({ name: f.name, interface: f.interface, type: f.type, ...(f.target ? { target: f.target } : {}) })),
+      }));
+    return { count: collections.length, collections };
+  }
+
   async load() {
     this.app.resourceManager.define({
       name: 'appBuilder',
       actions: {
-        // Validate a spec without writing anything: the structural half (validateAppSpec) plus a live
-        // check for collection-name collisions against the running DB.
+        // ── validate a spec (no writes) ──
         dryRun: async (ctx: any, next: any) => {
           const spec = readSpec(ctx);
           const result = validateAppSpec(spec);
@@ -158,134 +277,65 @@ export class PluginAppBuilderServer extends Plugin {
           try {
             const colRepo: any = this.db.getRepository('collections');
             for (const c of spec.collections || []) {
-              const existing = await colRepo.findOne({ filter: { name: c.name } });
-              if (existing) {
-                warnings.push({ level: 'warning', path: 'collections', message: `Collection "${c.name}" đã tồn tại — apply sẽ bỏ qua` });
-              }
+              if (await colRepo.findOne({ filter: { name: c.name } })) warnings.push({ level: 'warning', path: 'collections', message: `Collection "${c.name}" đã tồn tại — apply sẽ bỏ qua` });
             }
-          } catch {
-            /* live check best-effort — structural validation still stands */
-          }
+          } catch { /* best-effort */ }
           ctx.body = { ok: errors.length === 0, errors, warnings };
           await next();
         },
 
-        // Create the DATA tier of an app: collections + scalar fields (phase 1), relations (phase 2),
-        // seed rows (phase 3). The PAGE tier (routes + flowModels) is built client-side. Idempotent:
-        // existing collections/fields are skipped. On error mid-run, best-effort rollback drops the
-        // collections THIS call created (reverse order).
+        // ── whole-spec compiler = orchestrate the primitives (collections → relations → computed → seed).
+        //    Idempotent; best-effort rollback of THIS run's new collections on error. ──
         apply: async (ctx: any, next: any) => {
           const spec = readSpec(ctx);
           const result = validateAppSpec(spec);
-          if (!result.ok) {
-            ctx.body = { ok: false, phase: 'validate', errors: result.errors, warnings: result.warnings };
-            await next();
-            return;
-          }
+          if (!result.ok) { ctx.body = { ok: false, phase: 'validate', errors: result.errors, warnings: result.warnings }; await next(); return; }
           const colRepo: any = this.db.getRepository('collections');
-          const fieldRepo: any = this.db.getRepository('fields');
-          if (!colRepo || !fieldRepo) throw new Error('Không tìm thấy collection-manager (collections/fields repo)');
-
-          const createdCollections: string[] = [];
+          const created: string[] = [];
           const report: any = { collections: [], relations: [], computed: [], seeded: [] };
           try {
-            // ── phase 1: collections + scalar fields ──
-            for (const c of spec.collections || []) {
-              const existing = await colRepo.findOne({ filter: { name: c.name } });
-              if (existing) { report.collections.push({ name: c.name, skipped: 'exists' }); continue; }
-              const fields = (c.fields || []).map(fieldDef);
-              await colRepo.create({
-                values: {
-                  name: c.name, title: c.title || c.name,
-                  ...(c.titleField ? { titleField: c.titleField } : {}),
-                  autoGenId: true, createdAt: true, updatedAt: true, sortable: true, logging: true, fields,
-                },
-                context: {}, // run collection-manager hooks → migrate the physical table
-              });
-              try { await (this.db.getCollection(c.name) as any)?.sync?.({ alter: true }); } catch {}
-              createdCollections.push(c.name);
-              report.collections.push({ name: c.name, fields: fields.length });
-            }
-
-            // ── phase 2: relations (both endpoints exist now; m2o/m2m before o2m so shared FKs pre-exist) ──
+            for (const c of spec.collections || []) { const r = await this.opCreateCollection(c); if (!r.skipped) created.push(c.name); report.collections.push(r); }
             const rels: Array<{ coll: string; r: RelationSpec }> = [];
             for (const c of spec.collections || []) for (const r of c.relations || []) rels.push({ coll: c.name, r });
             rels.sort((a, b) => (RELATION_ORDER[a.r.type] ?? 9) - (RELATION_ORDER[b.r.type] ?? 9));
-            for (const { coll, r } of rels) {
-              const exists = await fieldRepo.findOne({ filter: { collectionName: coll, name: r.name } });
-              if (exists) { report.relations.push({ coll, name: r.name, skipped: 'exists' }); continue; }
-              const def = relationDef(coll, r);
-              await fieldRepo.create({ values: def, context: {} });
-              report.relations.push({ coll, name: r.name, type: r.type, foreignKey: def.foreignKey });
-            }
-            for (const name of createdCollections) { try { await (this.db.getCollection(name) as any)?.sync?.({ alter: true }); } catch {} }
-
-            // ── phase 2.5: computed-column rules (via @ptdl/plugin-formula's ptdlComputedRules) ──
-            // A computed field is a real number column (created in phase 1) PLUS a rule row that holds the
-            // expression; the formula plugin's rule-afterSave hook attaches compute hooks + backfills. Create
-            // local (sibling) rules before rollups (SUM over a relation) so dependencies compute first.
-            const ruleRepo: any = this.db.getRepository('ptdlComputedRules');
-            const computedFields: Array<{ coll: string; f: FieldSpec }> = [];
-            for (const c of spec.collections || []) for (const f of c.fields || []) if (f.computed?.expression) computedFields.push({ coll: c.name, f });
-            if (computedFields.length && !ruleRepo) {
-              report.computed.push({ skipped: 'plugin-formula (ptdlComputedRules) not installed' });
-            } else if (ruleRepo) {
-              const isRollup = (e: string) => /\b(SUM|COUNT|AVG|MIN|MAX)\s*\(\s*data\./i.test(e);
-              computedFields.sort((a, b) => Number(isRollup(a.f.computed!.expression)) - Number(isRollup(b.f.computed!.expression)));
-              for (const { coll, f } of computedFields) {
-                try { await (this.db.getCollection(coll) as any)?.sync?.({ alter: true }); } catch {}
-                const existsRule = await ruleRepo.findOne({ filter: { collectionName: coll, targetField: f.name } });
-                if (existsRule) { report.computed.push({ coll, field: f.name, skipped: 'exists' }); continue; }
-                await ruleRepo.create({
-                  values: {
-                    dataSourceKey: 'main', collectionName: coll, targetField: f.name,
-                    formula: f.computed!.expression, runOn: 'create,update,source', enabled: true, onError: 'null',
-                  },
-                  context: {},
-                });
-                report.computed.push({ coll, field: f.name, formula: f.computed!.expression });
-              }
-            }
-
-            // ── phase 3: seed rows (scalars + m2o resolved by the target's titleField) ──
-            for (const c of spec.collections || []) {
-              if (!c.seed || !c.seed.length) continue;
-              const repo: any = this.db.getRepository(c.name);
-              if (!repo) continue;
-              const relByName = new Map((c.relations || []).map((r) => [r.name, r]));
-              let n = 0;
-              for (const row of c.seed) {
-                const values: any = {};
-                for (const [k, v] of Object.entries(row)) {
-                  const rel = relByName.get(k);
-                  if (!rel) { values[k] = v; continue; }
-                  if (rel.type === 'm2o' && typeof v === 'string') {
-                    const tSpec = (spec.collections || []).find((x) => x.name === rel.target);
-                    const tTitle = tSpec?.titleField || 'id';
-                    const tRepo: any = this.db.getRepository(rel.target);
-                    const hit = tRepo && (await tRepo.findOne({ filter: { [tTitle]: v } }));
-                    const id = hit && (hit.get ? hit.get('id') : hit.id);
-                    if (id != null) values[`${rel.name}Id`] = id;
-                  }
-                  // o2m / m2m seed values are set from the other side — skip here
-                }
-                try { await repo.create({ values }); n++; } catch { /* skip a bad seed row */ }
-              }
-              report.seeded.push({ coll: c.name, rows: n });
-            }
-
-            ctx.body = { ok: true, ...report, note: 'Data tier xong (collections + relations + seed). Trang = client tier.' };
+            for (const { coll, r } of rels) report.relations.push(await this.opAddRelation(coll, r));
+            for (const name of created) { try { await (this.db.getCollection(name) as any)?.sync?.({ alter: true }); } catch {} }
+            for (const c of spec.collections || []) { const cf = (c.fields || []).filter((f) => f.computed?.expression); if (cf.length) (await this.opAddComputedRules(c.name, cf)).forEach((x) => report.computed.push({ coll: c.name, ...x })); }
+            for (const c of spec.collections || []) { if (c.seed?.length) report.seeded.push(await this.opSeed(c.name, c.seed)); }
+            ctx.body = { ok: true, ...report, note: 'Data tier xong (collections + relations + computed + seed). Trang = client tier.' };
           } catch (e: any) {
-            for (const name of [...createdCollections].reverse()) {
-              try { await colRepo.destroy({ filter: { name } }); } catch {}
-            }
-            ctx.body = { ok: false, phase: 'apply', error: e?.message || String(e), rolledBack: createdCollections };
+            for (const name of [...created].reverse()) { try { await colRepo.destroy({ filter: { name } }); } catch {} }
+            ctx.body = { ok: false, phase: 'apply', error: e?.message || String(e), rolledBack: created };
           }
           await next();
         },
+
+        // ── GRANULAR TOOLS (step-by-step / AI tool-calling) ──
+        // POST /api/appBuilder:createCollection {name,title,titleField,fields:[FieldSpec]}
+        createCollection: async (ctx: any, next: any) => { ctx.body = await this.opCreateCollection(readVals(ctx) as CollectionSpec); await next(); },
+        // {collection, field:FieldSpec}
+        addField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opAddField(v.collection, v.field); await next(); },
+        // {collection, relation:RelationSpec}
+        addRelation: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opAddRelation(v.collection, v.relation); await next(); },
+        // {collection, field:{name,title,interface?,computed:{expression}}} OR {collection, field:{name,title}, expression}
+        addComputed: async (ctx: any, next: any) => {
+          const v = readVals(ctx); const f = v.field || {};
+          ctx.body = await this.opAddField(v.collection, { interface: 'number', ...f, computed: f.computed || { expression: v.expression } });
+          await next();
+        },
+        // {collection, field:{name,title,states:[...]}}  → a real @ptdl status-flow field
+        addStatusFlow: async (ctx: any, next: any) => {
+          const v = readVals(ctx); const f = v.field || v;
+          ctx.body = await this.opAddField(v.collection, { name: f.name, title: f.title, interface: 'statusFlow', states: f.states });
+          await next();
+        },
+        // {collection, rows:[...]}
+        seed: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opSeed(v.collection, v.rows || []); await next(); },
+        // {prefix?}  → introspect current collections/fields
+        describeApp: async (ctx: any, next: any) => { ctx.body = await this.opDescribe(readVals(ctx).prefix); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp'], 'loggedIn');
   }
 }
 

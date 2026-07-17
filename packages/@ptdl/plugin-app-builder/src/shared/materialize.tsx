@@ -41,8 +41,8 @@ async function waitForCollection(app: any, name: string, tries = 10): Promise<bo
   return false;
 }
 
-/** Create a menu group route; returns its id (used as a page's parentId). */
-async function createMenuGroup(app: any, label: string, icon?: string): Promise<number | null> {
+/** Create a menu group route; returns its id (used as a page's parentId). Exposed as a tool. */
+export async function createMenuGroup(app: any, label: string, icon?: string): Promise<number | null> {
   const routeRepo = app?.context?.routeRepository;
   const values: any = { type: 'group', title: label, icon: icon || undefined };
   try {
@@ -57,6 +57,26 @@ async function createMenuGroup(app: any, label: string, icon?: string): Promise<
     return r?.data?.data?.id ?? null;
   } catch { /* give up — page goes top-level */ }
   return null;
+}
+
+/** Create ONE page from a PageSpec (+ optional CollectionSpec for field-level widget threading). A
+ *  standalone tool AND the per-page step of materializeApp. `p.parentId` places it under a menu group. */
+export async function createPage(app: any, p: any, cspec?: any): Promise<{ title: string; collection: string; schemaUid: string; url: string }> {
+  await waitForCollection(app, p.collection);
+  const wmap = new Map<string, string | undefined>();
+  (cspec?.fields || []).forEach((f: any) => { if (f.widget) wmap.set(f.name, f.widget); });
+  (cspec?.relations || []).forEach((r: any) => { if (r.widget) wmap.set(r.name, r.widget); });
+  const widgetOf = (name: string) => wmap.get(name);
+  const { pageSchemaUid } = await createQuickPage(app, {
+    collectionName: p.collection,
+    columns: toQuickColumns(p.columns, widgetOf),
+    popupColumns: p.popupColumns ? toQuickColumns(p.popupColumns, widgetOf) : undefined,
+    title: p.title,
+    icon: p.icon,
+    parentId: p.parentId ?? null,
+    blockUse: p.block,
+  });
+  return { title: p.title, collection: p.collection, schemaUid: pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}` };
 }
 
 export interface MaterializeResult {
@@ -83,24 +103,9 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
 
   const pages: MaterializeResult['pages'] = [];
   for (const p of spec.pages || []) {
-    await waitForCollection(app, p.collection);
     const parentId = p.menuGroup ? groupIdByLabel.get(p.menuGroup) ?? null : null;
-    // field- + relation-level widgets for this page's collection, so bare-string columns pick them up
     const cspec = (spec.collections || []).find((c) => c.name === p.collection);
-    const wmap = new Map<string, string | undefined>();
-    (cspec?.fields || []).forEach((f) => { if (f.widget) wmap.set(f.name, f.widget); });
-    (cspec?.relations || []).forEach((r) => { if (r.widget) wmap.set(r.name, r.widget); });
-    const widgetOf = (name: string) => wmap.get(name);
-    const { pageSchemaUid } = await createQuickPage(app, {
-      collectionName: p.collection,
-      columns: toQuickColumns(p.columns, widgetOf),
-      popupColumns: p.popupColumns ? toQuickColumns(p.popupColumns, widgetOf) : undefined,
-      title: p.title,
-      icon: p.icon,
-      parentId,
-      blockUse: p.block,
-    });
-    pages.push({ title: p.title, collection: p.collection, schemaUid: pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}` });
+    pages.push(await createPage(app, { ...p, parentId }, cspec));
   }
   return { pages, groups };
 }

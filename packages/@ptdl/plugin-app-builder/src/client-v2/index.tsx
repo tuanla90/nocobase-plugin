@@ -10,7 +10,7 @@ import React, { useState } from 'react';
 import { Plugin } from '@nocobase/client-v2';
 import { Button, Input, message, Modal, Space, Tooltip, Typography } from 'antd';
 import { validateAppSpec } from '../shared/appSpec';
-import { buildApp } from '../shared/materialize';
+import { buildApp, createMenuGroup, createPage, materializeApp } from '../shared/materialize';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
@@ -98,12 +98,37 @@ export class PluginAppBuilderClientV2 extends Plugin {
     } catch { /* i18n best-effort */ }
     const t = (s: string) => { try { return app.i18n.t(s, { ns: NS }); } catch { return s; } };
 
-    // scripted-testing hook (also handy for power users)
+    // ── Tool catalog: each app-building primitive as an individually-callable function, for step-by-step
+    //    orchestration (AI tool-calling / scripts / power users). Data-tier tools hit the server actions;
+    //    page-tier tools run client-side via flowEngine. `callTool(name, args)` is a generic dispatcher. ──
     try {
+      const api = (op: string, data: any) =>
+        app.apiClient.request({ url: `appBuilder:${op}`, method: 'post', data }).then((r: any) => r?.data?.data ?? r?.data);
+      const tools: Record<string, (args: any) => any> = {
+        // data tier (server) — create data model / field types / status flow / formulas / seed
+        createCollection: (v) => api('createCollection', v),
+        addField: (v) => api('addField', v),
+        addRelation: (v) => api('addRelation', v),
+        addComputed: (v) => api('addComputed', v),
+        addStatusFlow: (v) => api('addStatusFlow', v),
+        seed: (v) => api('seed', v),
+        describeApp: (v) => api('describeApp', v || {}),
+        validate: (spec) => validateAppSpec(spec),
+        // page tier (client) — build the UI
+        createMenuGroup: (v) => createMenuGroup(app, v.label, v.icon),
+        createPage: (v) => createPage(app, v, v.collectionSpec),
+        // whole-app
+        apply: (spec) => api('apply', { spec }),
+        materialize: (spec) => materializeApp(app, spec),
+        buildApp: (spec) => buildApp(app, spec),
+      };
       (window as any).__ptdlAppBuilder = {
-        buildApp: (spec: any) => buildApp(app, spec),
-        validateAppSpec,
+        ...tools,
+        tools,
+        callTool: (name: string, args: any) => (tools[name] ? tools[name](args) : Promise.reject(new Error('unknown tool: ' + name))),
+        toolNames: Object.keys(tools),
         samples: { banHang: SAMPLE_BAN_HANG },
+        validateAppSpec,
       };
     } catch { /* non-browser */ }
 
