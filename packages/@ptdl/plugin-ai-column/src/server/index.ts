@@ -1831,6 +1831,7 @@ export class PluginAiColumnServer extends Plugin {
     displayFields?: string[];
     labelTemplate?: string;
     writeTemplate?: string;
+    examples?: { collection: string; dataSourceKey?: string; queryField: string; codeField: string; masterCodeField?: string; k?: number };
   }): Promise<any> {
     const db = this.db;
     const dsk = params.dataSourceKey || 'main';
@@ -1844,11 +1845,14 @@ export class PluginAiColumnServer extends Plugin {
     const cached = await db.getRepository('ptdlClassifyEmbed').find({ filter: { collectionName: params.masterCollection, dataSourceKey: dsk } });
     let scored: Array<{ tk: string; sim: number }> = [];
     let method = 'vector';
+    let sharedCreds: any = null; // reused by the few-shot examples block (avoid a 2nd credentials fetch)
+    let queryVec: number[] | null = null; // the master-dim query embedding, reused where dims match
     if (cached.length) {
       const creds = await getServiceCredentials(db, params.llmService);
+      sharedCreds = creds;
       if (creds && creds.provider === 'google-genai' && creds.apiKey) {
         const [qv] = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), [query], creds.baseURL, embedDimsOf(cached));
-        if (qv?.length) scored = cached.map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { tk: String(r.recordId), sim: cosineSim(qv, r.vector || []) }; }).sort((a, b) => b.sim - a.sim).slice(0, topK);
+        if (qv?.length) { queryVec = qv; scored = cached.map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { tk: String(r.recordId), sim: cosineSim(qv, r.vector || []) }; }).sort((a, b) => b.sim - a.sim).slice(0, topK); }
       }
       // HYBRID recall boost: vector similarity can miss the TRUE candidate when the query omits a
       // distinguishing word (e.g. "Lego khủng long" doesn't say "plastic" → the plastic-variant HS code
@@ -1902,6 +1906,65 @@ export class PluginAiColumnServer extends Plugin {
       }
     }
 
+    // 2.5) Few-shot from a human-VERIFIED examples table: rank ALL example rows by similarity to the
+    // query (VECTOR/semantic when the examples table is embedded, else keyword) and take the nearest K —
+    // NOT the first K. Then (a) inject them into the score prompt as precedent, (b) ensure each verified
+    // code is in the candidate set (precedent fixes anchoring AND recall).
+    let fewShot: Array<{ q: string; code: string }> = [];
+    const ex = params.examples;
+    if (ex?.collection && ex.queryField && ex.codeField) {
+      try {
+        const exRepo = db.getRepository(ex.collection);
+        if (exRepo) {
+          const exDsk = ex.dataSourceKey || 'main';
+          const wantK = Math.min(Number(ex.k) || 3, 8);
+          const exColl: any = db.getCollection(ex.collection);
+          const exPk = exColl?.model?.primaryKeyAttribute || 'id';
+          // Prefer VECTOR (semantic) nearest examples when the examples table is embedded — catches
+          // paraphrases that share no keywords. The examples cache is keyed by the examples collection;
+          // reuse the master-dim query vector if dims match, else embed the query once at the cache dims.
+          const exCached = await db.getRepository('ptdlClassifyEmbed').find({ filter: { collectionName: ex.collection, dataSourceKey: exDsk } });
+          let ranked: Array<{ recordId: string; sim: number }> = [];
+          if (exCached.length) {
+            const creds = sharedCreds || (await getServiceCredentials(db, params.llmService));
+            if (creds?.apiKey) {
+              const exDims = embedDimsOf(exCached);
+              let evq = queryVec && queryVec.length === exDims ? queryVec : null;
+              if (!evq) { try { const [v] = await googleEmbed(creds.apiKey, normEmbedModel(params.embedModel), [query], creds.baseURL, exDims); evq = v || null; } catch { evq = null; } }
+              if (evq) ranked = exCached.map((c: any) => { const r = c.toJSON ? c.toJSON() : c; return { recordId: String(r.recordId), sim: cosineSim(evq as number[], r.vector || []) }; }).sort((a, b) => b.sim - a.sim).slice(0, wantK);
+            }
+          }
+          if (ranked.length) {
+            // Hydrate the nearest example rows to read queryField + codeField.
+            const exRecs = await exRepo.find({ filter: { [exPk]: { $in: ranked.map((r) => r.recordId) } } });
+            const byId: Record<string, any> = {};
+            for (const r of exRecs) { const rec = r.toJSON ? r.toJSON() : r; byId[String(rec[exPk])] = rec; }
+            fewShot = ranked.map((r) => byId[r.recordId]).filter(Boolean)
+              .map((rec: any) => ({ q: String(rec[ex.queryField] ?? '').trim(), code: String(rec[ex.codeField] ?? '').trim() }))
+              .filter((x) => x.q && x.code);
+          } else {
+            // Keyword fallback (zero-config): rank ALL example rows by lexical overlap, take the nearest K.
+            const exRows = await exRepo.find({ limit: 3000 });
+            const qTok = tokenize(query);
+            fewShot = (exRows || [])
+              .map((r: any) => { const rec = r.toJSON ? r.toJSON() : r; return { q: String(rec[ex.queryField] ?? '').trim(), code: String(rec[ex.codeField] ?? '').trim(), sim: lexScore(qTok, tokenize(String(rec[ex.queryField] ?? ''))) }; })
+              .filter((x) => x.q && x.code && x.sim > 0)
+              .sort((a, b) => b.sim - a.sim)
+              .slice(0, wantK)
+              .map((x) => ({ q: x.q, code: x.code }));
+          }
+          const codeField = ex.masterCodeField || (params.writeTemplate || '').match(/\{\{\s*([^}]+?)\s*\}\}/)?.[1];
+          if (codeField) {
+            for (const f of fewShot) {
+              if (scored.some((s) => String(recByTk[s.tk]?.[codeField]) === f.code)) continue;
+              const rec = await db.getRepository(params.masterCollection).findOne({ filter: { [codeField]: f.code } as any });
+              if (rec) { const j = rec.toJSON ? rec.toJSON() : rec; const tk = String(j[pk]); if (!scored.some((s) => s.tk === tk)) { scored.push({ tk, sim: 1 }); recByTk[tk] = j; } }
+            }
+          }
+        }
+      } catch (e: any) { this.app.log?.warn?.('[ptdl-ai-column] few-shot examples failed: ' + (e?.message || e)); }
+    }
+
     // 3) Score EVERY candidate with domain criteria + rich judgment.
     const displayFields = Array.isArray(params.displayFields) && params.displayFields.length ? params.displayFields : null;
     const candJson = scored.map((s) => { const rec = recByTk[s.tk] || {}; const view = displayFields ? Object.fromEntries(displayFields.map((f) => [f, rec[f]])) : rec; return { tk: s.tk, ...view, vector_sim: Math.round(s.sim * 100) }; });
@@ -1913,7 +1976,8 @@ export class PluginAiColumnServer extends Plugin {
       ? ` Tiêu chí chấm (chấm điểm ĐẠT cho TỪNG tiêu chí, không vượt điểm tối đa, tổng ≤100; trả về trong criteria_scores đúng TÊN tiêu chí): ${rubricText}.`
       : (rubricText ? ' Tiêu chí chấm: ' + rubricText : '');
     const sys = `Bạn là ${params.roleHint || 'chuyên gia phân loại'} nhiều năm kinh nghiệm. Cho một ITEM và danh sách ỨNG VIÊN (mỗi cái có mã tk + dữ liệu tham chiếu), chấm 0–100 mức khớp TỪNG ứng viên + giải trình; nêu confidence, requires_verification (người dùng cần tự kiểm gì để chốt), warnings (rút từ dữ liệu ứng viên). CHỈ dùng tk đã cho, không bịa.${rubricInstr}`;
-    const human = `ITEM: ${query}\n${attrs ? 'Thuộc tính đã trích: ' + JSON.stringify(attrs) + '\n' : ''}${missingInfo.length ? 'Thiếu: ' + missingInfo.join('; ') + '\n' : ''}\nỨNG VIÊN:\n${JSON.stringify(candJson)}`;
+    const fewShotBlock = fewShot.length ? 'TIỀN LỆ ĐÃ XÁC THỰC (ca tương tự người dùng đã duyệt đúng — nếu ITEM khớp bản chất với một tiền lệ thì ƯU TIÊN mã đó):\n' + fewShot.map((f) => `• "${f.q}" → ${f.code}`).join('\n') + '\n\n' : '';
+    const human = `ITEM: ${query}\n${attrs ? 'Thuộc tính đã trích: ' + JSON.stringify(attrs) + '\n' : ''}${missingInfo.length ? 'Thiếu: ' + missingInfo.join('; ') + '\n' : ''}\n${fewShotBlock}ỨNG VIÊN:\n${JSON.stringify(candJson)}`;
     let ranked: any[] = [];
     let overall = '';
     try {
@@ -1939,13 +2003,25 @@ export class PluginAiColumnServer extends Plugin {
         return { criterion: crit, points: Math.max(0, Number(c?.points) || 0), max };
       }).filter((c: any) => c.criterion);
     };
+    // Valid tks = the FINAL shortlist (post few-shot injection) — NOT the pre-injection `ids`, else an
+    // injected precedent candidate the AI scored would be filtered right back out.
+    const validTks = new Set(scored.map((s) => String(s.tk)));
     let out = ranked
-      .filter((r) => ids.includes(String(r.tk)))
+      .filter((r) => validTks.has(String(r.tk)))
       .map((r) => ({ tk: String(r.tk), score: Number(r.score) || 0, reasoning: r.reasoning || '', matchedCriteria: r.matched_criteria || [], unmatchedCriteria: r.unmatched_criteria || [], confidence: r.confidence || 'medium', requiresVerification: r.requires_verification || [], warnings: r.warnings || '', criteriaScores: critScoresOf(r), label: labelOf(String(r.tk)), write: writeOf(String(r.tk)), record: recByTk[String(r.tk)] }))
       .sort((a, b) => b.score - a.score);
     if (!out.length) out = scored.slice(0, 5).map((s) => ({ tk: s.tk, score: Math.round(s.sim * 100), reasoning: '(theo tương đồng vector)', matchedCriteria: [], unmatchedCriteria: [], confidence: 'low', requiresVerification: [], warnings: '', criteriaScores: [], label: labelOf(s.tk), write: writeOf(s.tk), record: recByTk[s.tk] }));
     const best = out[0] || null;
-    return { attributes: attrs, missingInfo, candidates: out.slice(0, Math.min(topK, 10)), best, overallRecommendation: overall, method, service: svc, model: mdl, rubricItems };
+    // Always surface verified-precedent codes even if the AI scored them below the top-N cutoff — the
+    // whole point of the examples table is that those codes stay visible & pickable.
+    let shown = out.slice(0, Math.min(topK, 10));
+    if (fewShot.length) {
+      const fsCodes = new Set(fewShot.map((f) => f.code));
+      const shownTks = new Set(shown.map((c: any) => c.tk));
+      const extra = out.filter((c: any) => !shownTks.has(c.tk) && fsCodes.has(String(c.write)));
+      if (extra.length) shown = shown.concat(extra.map((c: any) => ({ ...c, fromPrecedent: true })));
+    }
+    return { attributes: attrs, missingInfo, candidates: shown, best, overallRecommendation: overall, method, service: svc, model: mdl, rubricItems, examplesUsed: fewShot };
   }
 
   /** Shape a classify result for writing into a child field: if the field is a belongsTo/hasOne

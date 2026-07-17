@@ -53,6 +53,11 @@ const DISPLAY_BY_INTERFACE: Record<string, string> = {
   createdAt: 'DisplayDateTimeFieldModel', updatedAt: 'DisplayDateTimeFieldModel', unixTimestamp: 'DisplayDateTimeFieldModel',
   time: 'DisplayTimeFieldModel', color: 'DisplayColorFieldModel', icon: 'DisplayIconFieldModel',
   password: 'DisplayPasswordFieldModel', json: 'DisplayJSONFieldModel', richText: 'DisplayHtmlFieldModel',
+  // relations render as the related record's title text (verified live: belongsTo → DisplayTextFieldModel,
+  // shows "Super Admin" not the FK id). Used only if the framework resolver can't answer.
+  m2o: 'DisplayTextFieldModel', o2o: 'DisplayTextFieldModel', oho: 'DisplayTextFieldModel', obo: 'DisplayTextFieldModel',
+  createdBy: 'DisplayTextFieldModel', updatedBy: 'DisplayTextFieldModel', chinaRegion: 'DisplayTextFieldModel',
+  o2m: 'DisplayTextFieldModel', m2m: 'DisplayTextFieldModel', mbm: 'DisplayTextFieldModel', linkTo: 'DisplayTextFieldModel',
 };
 const EDIT_BY_INTERFACE: Record<string, string> = {
   input: 'InputFieldModel', email: 'InputFieldModel', phone: 'InputFieldModel', uuid: 'InputFieldModel',
@@ -65,6 +70,11 @@ const EDIT_BY_INTERFACE: Record<string, string> = {
   date: 'DateOnlyFieldModel', datetime: 'DateTimeFieldModel', datetimeNoTz: 'DateTimeNoTzFieldModel',
   time: 'TimeFieldModel', color: 'ColorFieldModel', icon: 'IconFieldModel',
   password: 'PasswordFieldModel', json: 'JsonFieldModel', richText: 'RichTextFieldModel',
+  // relations edit via the record picker (verified live: belongsTo → RecordSelectFieldModel). Fallback
+  // only; the framework resolver is tried first. Never let a relation fall back to a plain Input.
+  m2o: 'RecordSelectFieldModel', o2o: 'RecordSelectFieldModel', oho: 'RecordSelectFieldModel', obo: 'RecordSelectFieldModel',
+  createdBy: 'RecordSelectFieldModel', updatedBy: 'RecordSelectFieldModel', chinaRegion: 'RecordSelectFieldModel',
+  o2m: 'RecordSelectFieldModel', m2m: 'RecordSelectFieldModel', mbm: 'RecordSelectFieldModel', linkTo: 'RecordSelectFieldModel',
 };
 
 type Kind = 'table' | 'details' | 'form';

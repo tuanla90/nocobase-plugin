@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { EditableItemModel, DisplayItemModel } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { Button, Input, Switch, Slider, Space, message } from 'antd';
-import { SettingsGrid, fi, ResetButton, CollapsibleSection } from '@ptdl/shared';
+import { Button, Input, Switch, Slider, Space, Segmented, message } from 'antd';
+import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS } from '@ptdl/shared';
 import { getCurrentFix, formatFix, mapsUrl, parseLocation, accuracyBucket, type GeoFix } from './geo';
 import { PickMap } from './mapView';
 import { te, t } from './i18n';
@@ -27,6 +27,8 @@ const L_DEFAULTS = {
   mapInput: true,   // interactive map while editing (see location + drag/click to pick)
   mapDisplay: true, // interactive map in detail/read view
   mapHeight: 220,
+  autoWhen: 'ifEmpty', // auto-capture-on-submit timing (used only when the FORM enables auto-capture)
+  autoRequired: false, // block submit if GPS can't be obtained
 };
 type LCfg = typeof L_DEFAULTS;
 
@@ -192,6 +194,17 @@ const L_Height = (props: any) => {
     </div>
   );
 };
+const L_WhenSeg = (props: any) => (
+  <Segmented
+    {...SEG_PROPS}
+    value={props.value || 'ifEmpty'}
+    onChange={(v: any) => props.onChange?.(v)}
+    options={[
+      { label: t('Chỉ khi trống'), value: 'ifEmpty' },
+      { label: t('Luôn cập nhật'), value: 'always' },
+    ]}
+  />
+);
 
 export function registerLocationField(deps: {
   flowEngine: any; flowSettings?: any; FieldModel: any; DisplayTextFieldModel: any;
@@ -203,7 +216,7 @@ export function registerLocationField(deps: {
   if (flowSettings?.registerComponents) {
     try {
       flowSettings.registerComponents({
-        L_Grid: SettingsGrid, L_Switch, L_Meters, L_Height, L_Reset: ResetButton,
+        L_Grid: SettingsGrid, L_Switch, L_Meters, L_Height, L_WhenSeg, L_Reset: ResetButton,
         L_Section: CollapsibleSection, L_Preview: LocationSettingsPreview,
       });
     } catch (e) { console.warn('[device-kit] location registerComponents failed', e); }
@@ -257,6 +270,19 @@ export function registerLocationField(deps: {
               mapHeight: fi(te('Chiều cao bản đồ'), 'L_Height', { type: 'number' }),
             },
           },
+          autoSection: {
+            type: 'void', 'x-component': 'L_Section',
+            'x-component-props': { title: te('Tự động khi Lưu (nếu form bật)'), defaultOpen: false },
+            properties: {
+              rowA: {
+                type: 'void', 'x-component': 'L_Grid', 'x-component-props': { style: { gridTemplateColumns: '1fr auto' }, alignItems: 'end' },
+                properties: {
+                  autoWhen: fi(te('Thời điểm lấy'), 'L_WhenSeg'),
+                  autoRequired: fi(te('Bắt buộc có vị trí'), 'L_Switch', { type: 'boolean' }),
+                },
+              },
+            },
+          },
           accSection: {
             type: 'void', 'x-component': 'L_Section',
             'x-component-props': { title: te('Ngưỡng màu độ chính xác'), defaultOpen: false },
@@ -283,6 +309,8 @@ export function registerLocationField(deps: {
             ptdllMapInput: p.mapInput !== false,
             ptdllMapDisplay: p.mapDisplay !== false,
             ptdllMapHeight: typeof p.mapHeight === 'number' ? p.mapHeight : 220,
+            ptdllAutoWhen: p.autoWhen === 'always' ? 'always' : 'ifEmpty',
+            ptdllAutoRequired: !!p.autoRequired,
           });
         },
       },

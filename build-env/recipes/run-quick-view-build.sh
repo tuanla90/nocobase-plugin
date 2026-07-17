@@ -53,9 +53,15 @@ mkstub "@nocobase/flow-engine" 2.1.19
 # resolve"). Do NOT `npm i` them here — npm prunes the hand-built stubs + @ptdl/shared. They are
 # already installed; fail loudly if a stray prune removed them.
 for real in "@formily/react" "@formily/core" "@formily/reactive" "lucide-react"; do
-  # real = package.json + actual code files; a bare stub has only package.json
-  if [ ! -f "$NM/$real/package.json" ] || [ -z "$(find "$NM/$real" -maxdepth 3 \( -name '*.js' -o -name '*.mjs' \) 2>/dev/null | head -1)" ]; then
-    echo "FATAL: real package '$real' missing from build-env node_modules. Run: (cd $ROOT && npm i $real --no-save) then restore @ptdl/shared."; exit 1
+  # real = package.json + other files; a bare stub has ONLY package.json. If a stub is found, try to
+  # self-heal by copying the real package from nb-local (a fully-installed app) before giving up.
+  if [ ! -f "$NM/$real/package.json" ] || [ "$(ls -A "$NM/$real" 2>/dev/null | grep -vc '^package.json$')" = "0" ]; then
+    NLREAL="$ROOT/../nb-local/node_modules/$real"
+    if [ -d "$NLREAL" ] && [ "$(ls -A "$NLREAL" | grep -vc '^package.json$')" != "0" ]; then
+      rm -rf "$NM/$real"; cp -r "$NLREAL" "$NM/$real"; echo "restored real: $real (from nb-local)"
+    else
+      echo "FATAL: real package '$real' missing from build-env node_modules and nb-local. Install it real."; exit 1
+    fi
   fi
 done
 

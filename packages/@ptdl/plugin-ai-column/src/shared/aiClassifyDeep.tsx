@@ -122,6 +122,41 @@ export const PtdlDeepDisplayFields: React.FC<any> = observer((props: any) => {
   );
 });
 
+/** Human-verified examples config: {collection, queryField, codeField, k}. At classify time the server
+ *  retrieves the most similar past (input→correct-code) pairs, injects them as few-shot precedent AND
+ *  forces their codes into the candidate list — the strongest accuracy lever for a no-golden-answer domain. */
+export const PtdlDeepExamples: React.FC<any> = observer((props: any) => {
+  const v = props.value || {};
+  const [colls, setColls] = useState<any[]>([]);
+  const [cols, setCols] = useState<any[]>([]);
+  useEffect(() => {
+    let a = true;
+    if (!API) return;
+    API.request({ url: 'collections:list', params: { paginate: false } }).then((r: any) => { if (!a) return; setColls((r?.data?.data || []).filter((c: any) => c?.name && !c.hidden && c.template !== 'view').map((c: any) => ({ value: c.name, label: `${c.title || c.name} (${c.name})` }))); }).catch(() => {});
+    return () => { a = false; };
+  }, []);
+  useEffect(() => {
+    let a = true;
+    if (v.collection) getFields(API, v.collection, v.dataSourceKey || 'main').then((f: any) => a && setCols((f || []).filter((x: any) => !x.isForeignKey).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')' }))));
+    else setCols([]);
+    return () => { a = false; };
+  }, [v.collection]);
+  const set = (patch: any) => props.onChange?.({ ...v, ...patch });
+  return (
+    <div>
+      <Select style={{ width: '100%', marginBottom: 6 }} allowClear showSearch optionFilterProp="label" options={colls} value={v.collection || undefined} onChange={(c) => set({ collection: c || undefined, dataSourceKey: 'main', queryField: undefined, codeField: undefined })} placeholder={t('Bảng ví dụ đã xác thực (input → mã đúng)')} />
+      {v.collection ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <ColumnSelect style={{ flex: 1 }} options={cols} value={v.queryField} onChange={(q: any) => set({ queryField: q })} placeholder={t('Cột nội dung ví dụ')} />
+          <ColumnSelect style={{ flex: 1 }} options={cols} value={v.codeField} onChange={(c: any) => set({ codeField: c })} placeholder={t('Cột mã đúng')} />
+          <Input type="number" style={{ width: 70 }} value={v.k ?? 3} onChange={(e) => set({ k: Number(e.target.value) || 3 })} />
+        </div>
+      ) : null}
+      <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('Lấy vài ví dụ giống nhất làm few-shot cho AI + đảm bảo mã đúng lọt vào danh sách. Để trống nếu chưa có.')}</div>
+    </div>
+  );
+});
+
 export const PtdlDeepRubric: React.FC<any> = observer((props: any) => (
   <Input.TextArea autoSize={{ minRows: 2, maxRows: 8 }} value={props.value} placeholder={t('Tiêu chí chấm điểm (vd: chức năng chính 40đ, vật liệu 20đ, mục đích dùng 20đ, hàng nguyên chiếc 20đ)')} onChange={(e) => props.onChange?.(e.target.value)} />
 ));
@@ -179,6 +214,7 @@ function aiClassifyDeepStepUiSchema(t: (s: string) => any, relationMode?: boolea
             aiRoleHint: { type: 'string', title: t('Vai chuyên gia'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('AI sẽ nhập vai này khi trích thuộc tính & chấm điểm — ảnh hưởng cách lý luận (vd chuyên gia hải quan, bác sĩ mã ICD).') }, 'x-component': 'PtdlDeepRoleHint' },
             aiAttributes: { type: 'array', title: t('① Thuộc tính AI trích để HIỂU input (hiện ở đầu kết quả)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('AI đọc nội dung đầu vào và rút ra các thuộc tính này (vd bản chất, chức năng…) TRƯỚC khi chấm. Chúng hiện ở panel “AI đã hiểu…” đầu modal kết quả, và giúp AI chấm sát hơn. Đây là bước HIỂU đề, khác với Rubric (bước CHẤM).') }, 'x-component': 'PtdlDeepAttributes' },
             aiRubricItems: { type: 'array', title: t('② Tiêu chí CHẤM ĐIỂM ứng viên (tiêu chí + trọng số)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Mỗi dòng: một tiêu chí + điểm tối đa. AI chấm điểm ĐẠT của từng tiêu chí → điểm tổng hiện thành thanh nhiều màu theo cấu phần. Đây là bước CHẤM (khác Attributes = bước HIỂU). Bỏ trống = AI tự chấm tổng quát.') }, 'x-component': 'PtdlDeepRubricRows' },
+            aiExamples: { type: 'object', title: t('③ Ví dụ đã xác thực (few-shot — tăng độ chính xác)'), 'x-decorator': 'FormItem', 'x-decorator-props': { tooltip: t('Trỏ tới một bảng chứa các ca ĐÃ DUYỆT ĐÚNG (nội dung → mã đúng). AI lấy vài ca giống nhất làm ví dụ mẫu và đảm bảo mã đúng của tiền lệ luôn nằm trong danh sách ứng viên — cách tăng độ chính xác mạnh nhất cho domain khó.') }, 'x-component': 'PtdlDeepExamples' },
             aiFeedback: { type: 'boolean', 'x-decorator': 'FormItem', 'x-component': 'PtdlDeepFeedback' },
           },
         },
@@ -197,7 +233,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
         title: te('AI phân loại chuyên sâu'),
         uiMode: { type: 'dialog', props: { width: 820 } },
         uiSchema: aiClassifyDeepStepUiSchema(te, relationMode),
-        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 20, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiRubricItems: [], aiFeedback: true },
+        defaultParams: { aiService: '', aiModel: '', aiMaster: {}, aiQueryFields: [], aiWriteField: '', aiDisplayFields: [], aiTopK: 20, aiRoleHint: '', aiAttributes: [], aiRubric: '', aiRubricItems: [], aiExamples: {}, aiFeedback: true },
         handler(ctx: any, params: any) {
           ctx.model.setProps('aiService', params?.aiService || '');
           ctx.model.setProps('aiModel', params?.aiModel || '');
@@ -210,6 +246,7 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
           ctx.model.setProps('aiAttributes', Array.isArray(params?.aiAttributes) ? params.aiAttributes : []);
           ctx.model.setProps('aiRubric', params?.aiRubric || '');
           ctx.model.setProps('aiRubricItems', Array.isArray(params?.aiRubricItems) ? params.aiRubricItems : []);
+          ctx.model.setProps('aiExamples', params?.aiExamples || {});
           ctx.model.setProps('aiFeedback', params?.aiFeedback !== false);
         },
       },
@@ -287,6 +324,7 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayRoles, writeField
         <span style={{ flex: '0 0 auto', width: 22, height: 22, borderRadius: 11, background: isTop ? '#7c3aed' : '#eee', color: isTop ? '#fff' : '#888', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{rank}</span>
         <code style={{ fontSize: 16, fontWeight: 700, color: '#4c1d95', background: '#f3effc', padding: '2px 8px', borderRadius: 6, letterSpacing: 0.3 }}>{code}</code>
         {isTop ? <Tag color="purple" style={{ marginInlineEnd: 0 }}>{t('Đề xuất')}</Tag> : null}
+        {c.fromPrecedent ? <Tooltip title={t('Mã này khớp một tiền lệ đã xác thực — luôn được hiện để bạn cân nhắc.')}><Tag color="gold" style={{ marginInlineEnd: 0 }}>{t('Tiền lệ')}</Tag></Tooltip> : null}
         <span style={{ flex: 1 }} />
         <Tooltip title={t('Mức khớp AI chấm (0–100)')}>
           <span style={{ fontSize: 13, fontWeight: 700, color: st.fg, background: st.bg, border: `1px solid ${st.bd}`, borderRadius: 20, padding: '1px 10px' }}>{c.score}</span>
@@ -372,6 +410,9 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
           rubricItems: Array.isArray(p.aiRubricItems) ? p.aiRubricItems.filter((r: any) => r?.criterion) : undefined,
           attributes: Array.isArray(p.aiAttributes) ? p.aiAttributes.filter((a: any) => a?.name) : undefined,
           displayFields: displayFieldNames.length ? displayFieldNames : undefined,
+          examples: p.aiExamples?.collection && p.aiExamples?.queryField && p.aiExamples?.codeField
+            ? { collection: p.aiExamples.collection, dataSourceKey: p.aiExamples.dataSourceKey || 'main', queryField: p.aiExamples.queryField, codeField: p.aiExamples.codeField, masterCodeField: p.aiWriteField || undefined, k: p.aiExamples.k || 3 }
+            : undefined,
           labelTemplate, writeTemplate, llmService: p.aiService || undefined, model: p.aiModel || undefined,
         },
       });
@@ -459,6 +500,9 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
         })()}
         {result?.overallRecommendation ? <Alert type="info" showIcon style={{ marginBottom: 10 }} message={t('Tư vấn')} description={result.overallRecommendation} /> : null}
         {(result?.missingInfo || []).length ? <Alert type="warning" showIcon style={{ marginBottom: 10 }} message={t('Thiếu thông tin để chắc chắn')} description={<ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{(result.missingInfo || []).map((m: string, i: number) => <li key={i}>{m}</li>)}</ul>} /> : null}
+        {(result?.examplesUsed || []).length ? (
+          <Alert type="success" showIcon style={{ marginBottom: 10 }} message={t('Đã tham chiếu {{n}} tiền lệ đã xác thực', { n: result.examplesUsed.length })} description={<div>{(result.examplesUsed || []).map((e: any, i: number) => <div key={i} style={{ fontSize: 12 }}>• “{e.q}” → <b>{e.code}</b></div>)}</div>} />
+        ) : null}
         {cands.map((c: any, i: number) => (
           <CandidateCard key={c.tk ?? i} c={c} rank={i + 1} isTop={i === 0} displayRoles={result?.displayRoles} writeField={p.aiWriteField} fieldTitles={result?.fieldTitles} onPick={pick} />
         ))}
@@ -474,7 +518,7 @@ export function registerAiClassifyDeep({ flowEngine, variants, EditableItemModel
   const te = (s: string) => (tExpr ? tExpr(s, { ns: NS }) : s);
 
   try {
-    flowEngine.flowSettings?.registerComponents?.({ PtdlDeepAttributes, PtdlDeepRubric, PtdlDeepRubricRows, PtdlDeepDisplayFields, PtdlDeepRoleHint, PtdlDeepFeedback, FormTab, 'FormTab.TabPane': FormTab.TabPane });
+    flowEngine.flowSettings?.registerComponents?.({ PtdlDeepAttributes, PtdlDeepRubric, PtdlDeepRubricRows, PtdlDeepDisplayFields, PtdlDeepExamples, PtdlDeepRoleHint, PtdlDeepFeedback, FormTab, 'FormTab.TabPane': FormTab.TabPane });
   } catch (e) {
     console.warn('[ai-column] classifyDeep: registerComponents failed', e);
   }

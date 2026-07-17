@@ -45,6 +45,29 @@ TableBlockModel  stepParams.resourceSettings.init={dataSourceKey,collectionName}
   (framework's own interface→model resolver, honors @ptdl field-enhancements overrides), with an
   interface→model map fallback. Table/Details use `Display*FieldModel`; Form uses editable (`Input/Number/Select/...`).
 
+### Column → field-component mapping (verified live)
+Auto-resolved from the field's interface; fallback maps in `quickView.tsx` mirror it:
+
+| Field interface / type | Table + Details (display) | Form (edit) |
+|---|---|---|
+| input/email/phone/url/uuid | `DisplayTextFieldModel` | `InputFieldModel` |
+| textarea/markdown | `DisplayTextFieldModel` | `TextareaFieldModel` |
+| number/integer/id/percent | `DisplayNumber`/`DisplayPercentFieldModel` | `NumberFieldModel`/`PercentFieldModel` |
+| select/multipleSelect/radio | `DisplayEnumFieldModel` | `SelectFieldModel` |
+| checkbox/boolean | `DisplayCheckboxFieldModel` | `CheckboxFieldModel` |
+| date/datetime/time | `DisplayDateTime`/`DisplayTimeFieldModel` | `DateOnly`/`DateTimeNoTz`/`TimeFieldModel` |
+| color/icon/json/richText/password | `DisplayColor`/`Icon`/`JSON`/`Html`/`PasswordFieldModel` | `Color`/`Icon`/`Json`/`RichText`/`PasswordFieldModel` |
+| **relation** (belongsTo/m2o, hasOne, hasMany, m2m…) | `DisplayTextFieldModel` (related record's **title**) | `RecordSelectFieldModel` (record picker) |
+
+### Relation columns — the "column turns into an id" fix
+`@ptdl/shared`'s `buildColumnOptions` maps a belongsTo → its **foreign-key** column (right for filtering,
+wrong for a table column) → `fieldPath = client_id` → renders the FK **id**. Fix in
+`QuickCreateForm.buildQuickColumnOptions`: offer the **relation by name** (`fieldPath = client`) and **hide
+the raw FK columns** (client_id, createdById, …) they back. Then `getDefaultBindingByField` resolves the
+relation renderer and the column shows the related record's title (verified live: "Super Admin", not `1`),
+data auto-appended by the framework (no manual `appends`). Also: collection/column/group selects show a
+loading spinner while fetching so an in-flight list never looks like an empty dropdown.
+
 ## Gotchas that bit us (fix once, remember)
 - **`uid` is NOT exported by `@nocobase/flow-engine`** (agent guessed wrong). NocoBase's is in
   `@nocobase/utils/client`. We use a **local generator** (lowercase alphanumeric, 11 chars) — verified to

@@ -517,5 +517,14 @@
   "+ Thêm cột hiển thị": "+ Add display column",
   "Khai từng cột + vai trò để thẻ ứng viên hiển thị đúng ý (không đoán tự động).": "Declare each column + its role so candidate cards render exactly as intended (no auto-guessing).",
   "Cột hiển thị trên thẻ ứng viên + vai trò": "Columns shown on candidate cards + role",
-  "Khai từng cột và VAI TRÒ hiển thị: Tiêu đề (đậm) / Đường dẫn (breadcrumb) / Văn bản / Nhãn (chip). Chỉ để xem khi so sánh — KHÔNG ảnh hưởng việc khớp.": "Declare each column and its display ROLE: Title (bold) / Path (breadcrumb) / Text / Tag (chip). For comparison only — does NOT affect matching."
+  "Khai từng cột và VAI TRÒ hiển thị: Tiêu đề (đậm) / Đường dẫn (breadcrumb) / Văn bản / Nhãn (chip). Chỉ để xem khi so sánh — KHÔNG ảnh hưởng việc khớp.": "Declare each column and its display ROLE: Title (bold) / Path (breadcrumb) / Text / Tag (chip). For comparison only — does NOT affect matching.",
+  "Bảng ví dụ đã xác thực (input → mã đúng)": "Verified examples table (input → correct code)",
+  "Cột nội dung ví dụ": "Example content column",
+  "Cột mã đúng": "Correct-code column",
+  "Lấy vài ví dụ giống nhất làm few-shot cho AI + đảm bảo mã đúng lọt vào danh sách. Để trống nếu chưa có.": "Pulls the most similar examples as few-shot for the AI + guarantees their codes reach the candidate list. Leave empty if none yet.",
+  "③ Ví dụ đã xác thực (few-shot — tăng độ chính xác)": "③ Verified examples (few-shot — boosts accuracy)",
+  "Trỏ tới một bảng chứa các ca ĐÃ DUYỆT ĐÚNG (nội dung → mã đúng). AI lấy vài ca giống nhất làm ví dụ mẫu và đảm bảo mã đúng của tiền lệ luôn nằm trong danh sách ứng viên — cách tăng độ chính xác mạnh nhất cho domain khó.": "Point to a table of CONFIRMED-CORRECT cases (content → correct code). The AI pulls the most similar ones as worked examples and guarantees the precedent's code stays in the candidate list — the strongest accuracy lever for a hard domain.",
+  "Đã tham chiếu {{n}} tiền lệ đã xác thực": "Referenced {{n}} verified precedent(s)",
+  "Tiền lệ": "Precedent",
+  "Mã này khớp một tiền lệ đã xác thực — luôn được hiện để bạn cân nhắc.": "This code matches a verified precedent — always shown for your consideration."
 }

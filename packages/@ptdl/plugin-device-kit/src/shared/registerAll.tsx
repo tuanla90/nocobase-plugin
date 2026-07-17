@@ -1,5 +1,6 @@
 import { registerCameraFieldModel } from './cameraFieldModel';
 import { registerLocationField } from './locationField';
+import { registerAutoSubmit } from './autoSubmit';
 import { setTExpr, setRuntimeT, NS } from './i18n';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@ptdl/shared';
 import enUS from '../locale/en-US.json';
@@ -49,6 +50,11 @@ export function registerDeviceKit(deps: RegisterAllDeps) {
   try {
     registerLocationField({ flowEngine, flowSettings, FieldModel, DisplayTextFieldModel, CollectionFieldInterface, app, lane });
   } catch (e) { console.warn(`[device-kit] (${lane}) location register failed`, e); }
+
+  // Auto-capture on form submit (form-level enable + per-field options).
+  try {
+    registerAutoSubmit({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) autoSubmit register failed`, e); }
 
   console.log(`[device-kit] ${lane} loaded`);
 }

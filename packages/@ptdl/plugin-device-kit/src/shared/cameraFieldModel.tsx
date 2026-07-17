@@ -30,6 +30,7 @@ const C_DEFAULTS = {
   maxDim: 1600,
   quality: 0.72,
   metaField: undefined as string | undefined,
+  requirePhoto: false, // block form submit if no photo (enforced when the form enables auto-capture)
 };
 
 type CCfg = typeof C_DEFAULTS;
@@ -348,6 +349,7 @@ export function registerCameraFieldModel(deps: {
                   },
                 },
                 metaField: fi(te('Lưu toạ độ vào field'), 'C_MetaField', { componentProps: { options: metaOpts } }),
+                requirePhoto: fi(te('Bắt buộc chụp ảnh khi Lưu'), 'C_Switch', { type: 'boolean' }),
                 reset: {
                   type: 'void', 'x-component': 'C_Reset',
                   'x-component-props': { defaults: C_DEFAULTS, label: te('Đặt lại') },
@@ -371,6 +373,7 @@ export function registerCameraFieldModel(deps: {
             ptdlcMaxDim: typeof p.maxDim === 'number' ? p.maxDim : 1600,
             ptdlcQuality: typeof p.quality === 'number' ? p.quality : 0.72,
             ptdlcMetaField: p.metaField || undefined,
+            ptdlcRequirePhoto: !!p.requirePhoto,
           });
         },
       },

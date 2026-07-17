@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Select, Space, Spin, Typography, message } from 'antd';
-import { ColumnSelect } from '@ptdl/shared';
+import { ColumnSelect, getFields } from '@ptdl/shared';
 import { createQuickPage, clientPrefix } from './quickView';
 
 export interface QuickCreateFormProps {
@@ -59,6 +59,33 @@ async function fetchGroups(api: any): Promise<Group[]> {
   }
 }
 
+// Column options for the picker. IMPORTANT: unlike @ptdl/shared's buildColumnOptions (which maps a
+// belongsTo to its foreign-key column — right for FILTERING), a table COLUMN wants the RELATION itself
+// (fieldPath = the relation name, e.g. `client`), so it renders the related record's title (verified
+// live: shows "Super Admin", not the id). So we offer relations by name and HIDE the raw FK columns
+// they back (client_id, createdById, …) to avoid the "column turns into an id" trap.
+const REL_TYPES = new Set(['belongsTo', 'hasOne', 'hasMany', 'belongsToMany', 'belongsToArray']);
+const HIDDEN_IFACE = new Set(['password']);
+type ColOpt = { value: string; label: string; type?: string; iface?: string };
+function buildQuickColumnOptions(fields: any[]): ColOpt[] {
+  const fkNames = new Set(
+    (fields || []).filter((f) => f && f.type === 'belongsTo' && f.foreignKey).map((f) => f.foreignKey),
+  );
+  const out: ColOpt[] = [];
+  const seen = new Set<string>();
+  for (const f of fields || []) {
+    if (!f || !f.name || seen.has(f.name)) continue;
+    if (fkNames.has(f.name)) continue; // hide raw FK — the relation column shows the title instead
+    if (f.interface && HIDDEN_IFACE.has(f.interface)) continue;
+    if (!f.interface && !REL_TYPES.has(f.type)) continue; // skip internal/non-UI columns
+    out.push({ value: f.name, label: humanize(f?.uiSchema?.title || f?.title, f.name), type: f.type, iface: f.interface });
+    seen.add(f.name);
+  }
+  const extraType: Record<string, string> = { id: 'bigInt', createdAt: 'date', updatedAt: 'date' };
+  for (const extra of ['id', 'createdAt', 'updatedAt']) if (!seen.has(extra)) out.push({ value: extra, label: extra, type: extraType[extra] });
+  return out;
+}
+
 export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCreated, compact }) => {
   const api = app?.apiClient;
   const [collections, setCollections] = useState<Coll[]>([]);
@@ -75,6 +102,8 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
   // being mistaken for "no options").
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [columnOptions, setColumnOptions] = useState<ColOpt[]>([]);
+  const [columnsLoading, setColumnsLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -84,6 +113,18 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
     fetchGroups(api).then((g) => { if (alive) { setGroups(g); setGroupsLoading(false); } });
     return () => { alive = false; };
   }, [api]);
+
+  // Load the picked collection's fields and build column options that offer RELATIONS by name (so a
+  // relation column renders the related record, not its id) — see buildQuickColumnOptions.
+  useEffect(() => {
+    if (!collectionName) { setColumnOptions([]); return; }
+    let alive = true;
+    setColumnsLoading(true);
+    getFields(api, collectionName, 'main')
+      .then((fs) => { if (alive) { setColumnOptions(buildQuickColumnOptions(fs)); setColumnsLoading(false); } })
+      .catch(() => { if (alive) { setColumnOptions([]); setColumnsLoading(false); } });
+    return () => { alive = false; };
+  }, [api, collectionName]);
 
   const collTitle = useMemo(() => collections.find((c) => c.name === collectionName)?.title || '', [collections, collectionName]);
 
@@ -144,9 +185,9 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
       <div style={rowStyle}>
         <label style={labelStyle}>{t('Columns')}</label>
         <ColumnSelect
-          key={collectionName /* reset internal loaded options when collection changes */}
-          api={api}
-          collectionName={collectionName || undefined}
+          key={collectionName /* reset internal state when collection changes */}
+          options={columnOptions}
+          loading={columnsLoading}
           mode="multiple"
           value={fields}
           onChange={(v: any) => setFields(v || [])}

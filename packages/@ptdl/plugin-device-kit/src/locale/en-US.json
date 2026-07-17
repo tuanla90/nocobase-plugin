@@ -60,5 +60,16 @@
   "Nhúng bản đồ (chi tiết)": "Embed map (detail view)",
   "Ngưỡng màu độ chính xác": "Accuracy colour thresholds",
   "Tốt khi ≤ (m)": "Good when ≤ (m)",
-  "Khá khi ≤ (m)": "OK when ≤ (m)"
+  "Khá khi ≤ (m)": "OK when ≤ (m)",
+  "Bắt buộc chụp ảnh khi Lưu": "Require a photo before saving",
+  "Tự động khi Lưu (nếu form bật)": "Auto on save (when the form enables it)",
+  "Thời điểm lấy": "When to capture",
+  "Chỉ khi trống": "Only when empty",
+  "Luôn cập nhật": "Always update",
+  "Bắt buộc có vị trí": "Location required",
+  "Tự động ghi nhận khi Lưu": "Auto-record on save",
+  "Bật tự động ghi nhận khi Lưu": "Enable auto-record on save",
+  "Khi bật: lúc Lưu form này, các field \"Vị trí (GPS)\" sẽ tự lấy toạ độ (theo cấu hình từng field), và field \"Chụp ảnh\" đặt bắt buộc sẽ chặn lưu nếu chưa có ảnh. Giờ & người ghi tự động dùng trường hệ thống (createdAt/updatedAt/createdBy).": "When on: saving this form auto-captures GPS for each \"Location (GPS)\" field (per its own settings), and any \"Camera\" field marked required blocks saving until a photo is added. Time & author are recorded via the system fields (createdAt/updatedAt/createdBy).",
+  "Không lấy được vị trí cho \"{{f}}\".": "Couldn't get the location for \"{{f}}\".",
+  "Cần chụp ít nhất 1 ảnh cho \"{{f}}\".": "At least 1 photo is required for \"{{f}}\"."
 }
