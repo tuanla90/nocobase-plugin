@@ -26,6 +26,8 @@ mkstub() {
 }
 mkstub react 18.3.1
 mkstub react-dom 18.3.1
+mkstub react-i18next 11.18.6
+mkstub "@emotion/css" 11.11.2
 mkstub antd 5.24.2
 mkstub "@formily/react" 2.3.7
 mkstub "@formily/antd-v5" 1.2.3

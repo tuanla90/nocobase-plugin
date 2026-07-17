@@ -685,6 +685,20 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                     <Switch checked={appearance.showShortcut} onChange={(v) => setAppear({ showShortcut: v })} />
                   </SettingRow>
 
+                  <SettingRow label={t('Auto icon')} labelWidth={84} hint={t('Responsive: on a narrow screen, collapse the bar to just the search icon. The bar collapses when the window width is at or below this value (0 = never).')} style={{ marginBottom: 16 }}>
+                    <Slider
+                      min={0}
+                      max={1200}
+                      step={20}
+                      value={appearance.autoIconBelow ?? 820}
+                      onChange={(v) => setAppear({ autoIconBelow: Number(v) })}
+                      style={{ flex: 1, maxWidth: 300 }}
+                    />
+                    <span style={{ width: 74, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                      {(appearance.autoIconBelow ?? 820) > 0 ? `≤ ${appearance.autoIconBelow ?? 820}px` : t('Off')}
+                    </span>
+                  </SettingRow>
+
                   <SettingRow label={t('Background')} labelWidth={84} hint={t('Custom background colour; leave empty to use the header theme default.')} style={{ marginBottom: 16 }}>
                     <ColorField value={appearance.bg} onChange={(v: string) => setAppear({ bg: v || '' })} emptyValue="" allowAlpha />
                   </SettingRow>

@@ -91,6 +91,9 @@ chi tiết record** (popup/route mở 1 record) chứ không phải trang list.
   buttons, dùng `bridge.ChangeLogTrigger` (mode popover). Không có change-log → không hiện (no hard dep).
 
 ## Còn thiếu / cần làm tiếp
+- ✅ **Phân quyền đọc log — ĐÃ LÀM (v0.1.2):** resourcer middleware gate `ptdlChangeLogs:list/get` theo
+  quyền `view`/`list` collection nguồn (`filter.collectionName`), strategy-aware (root/admin qua tự động),
+  FAIL-OPEN khi bất định (không vỡ timeline). ⚠️ chưa test với role hạn chế thật — verify trước khi tin cậy.
 - **Source 'form'**: đổi qua widget editable/dropdown đi theo form submit chuẩn (không qua code
   mình) → server chỉ đoán heuristic (api/bulk/create). Muốn label 'form' chính xác phải hook
   submit của block — để sau.

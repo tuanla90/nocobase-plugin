@@ -35,6 +35,20 @@ mkstub react 18.3.1
 mkstub react-dom 18.3.1
 mkstub antd 5.24.2
 mkstub "@ant-design/icons" 5.6.1
+# @ptdl/shared's settingsKit imports @formily/react (observer/useForm) — stub it so nocobase-build
+# externalizes it (the app provides it) instead of trying to bundle it.
+mkstub "@formily/react" 2.3.7
+mkstub "@formily/shared" 2.3.7
+# @ptdl/shared inlines `{ observer, useForm } from '@formily/react'` into this plugin's bundle
+# (global-search uses lane-B primitives only, never these). The version-only stub has no entry, so
+# rspack can't bundle it → give it a no-op resolvable entry (harmless dead code). Plugins that
+# EXTERNALIZE @formily never touch this file.
+FR="$NM/@formily/react"
+if [ ! -f "$FR/index.js" ]; then
+  printf 'var i=function(c){return c;};module.exports={observer:i,useForm:function(){return{};}};Object.defineProperty(module.exports,"__esModule",{value:true});\n' > "$FR/index.js"
+  printf '{"name":"@formily/react","version":"2.3.7","main":"index.js"}\n' > "$FR/package.json"
+  echo "shim      : @formily/react (no-op entry)"
+fi
 mkstub "@nocobase/client" 2.1.19
 mkstub "@nocobase/client-v2" 2.1.19
 mkstub "@nocobase/server" 2.1.19

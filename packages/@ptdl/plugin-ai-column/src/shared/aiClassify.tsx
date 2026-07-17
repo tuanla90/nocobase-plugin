@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Tag, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
+import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues } from './aiColumn';
-import { FieldTokenTextArea, getFields, ColumnSelect } from '@ptdl/shared';
+import { FieldTokenTextArea, getFields, ColumnSelect, cleanLabel } from '@ptdl/shared';
 import { NS, t } from './i18n';
 
 /**
@@ -64,7 +65,7 @@ export const PtdlMasterCollectionSelect: React.FC<any> = observer((props: any) =
         const list = res?.data?.data || [];
         const cleaned = list
           .filter((c: any) => c?.name && !c.hidden && c.template !== 'view')
-          .map((c: any) => ({ value: c.name, label: `${c.title || c.name} (${c.name})` }));
+          .map((c: any) => ({ value: c.name, label: `${cleanLabel(c.title, c.name)} (${c.name})` }));
         setOpts(cleaned);
       })
       .catch(() => setOpts([]));
@@ -169,7 +170,7 @@ export const PtdlQueryFieldsMulti: React.FC<any> = observer((props: any) => {
   const [opts, setOpts] = useState<any[]>([]);
   useEffect(() => {
     let alive = true;
-    if (coll) getFields(API, coll, dsk).then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: x.uiSchema?.title || x.name, type: x.type, iface: x.interface }))));
+    if (coll) getFields(API, coll, dsk).then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: cleanLabel(x.uiSchema?.title, x.name), type: x.type, iface: x.interface }))));
     else setOpts([]);
     return () => {
       alive = false;
@@ -186,7 +187,7 @@ function makeMasterColSelect(multiple: boolean): React.FC<any> {
     const [opts, setOpts] = useState<any[]>([]);
     useEffect(() => {
       let alive = true;
-      if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')', type: x.type, iface: x.interface }))));
+      if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey && CLF_SCALAR.has(x?.type)).map((x: any) => ({ value: x.name, label: cleanLabel(x.uiSchema?.title, x.name) + ' (' + x.name + ')', type: x.type, iface: x.interface }))));
       else setOpts([]);
       return () => {
         alive = false;
@@ -231,31 +232,45 @@ export const PtdlMasterIndexHint: React.FC<any> = observer(() => {
 });
 
 function aiClassifyStepUiSchema(t: (s: string) => any) {
-  // Flat + dropdowns. Embedding the master is managed centrally (Settings → AI Providers), NOT here —
-  // this field only points at a master and defines query / write / display / rules.
+  // 2 tabs like "AI Classify pro" (FormTab/TabPane = void wrappers → field paths stay flat). Embedding
+  // the master is managed centrally (Settings → AI Providers), NOT here.
   return {
-    aiMaster: { type: 'object', title: t('Bảng master (danh mục đối chiếu)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterCollectionSelect' },
-    aiIndexHint: { type: 'void', 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginTop: -12, marginBottom: 8 } }, 'x-component': 'PtdlMasterIndexHint' },
-    aiQueryFields: { type: 'array', title: t('Nội dung cần đối chiếu (cột trên bản ghi)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlQueryFieldsMulti' },
-    rowWrite: {
+    tabs: {
       type: 'void',
-      'x-component': 'PtdlGrid',
+      'x-component': 'FormTab',
       properties: {
-        aiWriteField: { type: 'string', title: t('Ghi mã vào field (cột master)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterColSelect' },
-        aiLabelFields: { type: 'array', title: t('Hiển thị ứng viên (cột master)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterColMulti' },
+        tabMatch: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Đối chiếu & Hiển thị') },
+          properties: {
+            aiMaster: { type: 'object', title: t('Bảng master (danh mục đối chiếu)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterCollectionSelect' },
+            aiIndexHint: { type: 'void', 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginTop: -12, marginBottom: 8 } }, 'x-component': 'PtdlMasterIndexHint' },
+            aiQueryFields: { type: 'array', title: t('Nội dung cần đối chiếu (cột trên bản ghi)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlQueryFieldsMulti' },
+            rowWrite: {
+              type: 'void', 'x-component': 'PtdlGrid',
+              properties: {
+                aiWriteField: { type: 'string', title: t('Ghi mã vào field (cột master)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterColSelect' },
+                aiLabelFields: { type: 'array', title: t('Hiển thị ứng viên (cột master)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlMasterColMulti' },
+              },
+            },
+          },
+        },
+        tabScore: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Chấm điểm & AI') },
+          properties: {
+            aiAuto: { type: 'object', title: t('Tự chọn đáp án tốt nhất'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAutoPick' },
+            aiRerank: { type: 'boolean', 'x-decorator': 'FormItem', 'x-component': 'PtdlRerankToggle' },
+            rowAdv: {
+              type: 'void', 'x-component': 'PtdlGrid',
+              properties: {
+                aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmServiceSelect' },
+                aiModel: { type: 'string', title: t('Model (chấm điểm)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmModelSelect' },
+              },
+            },
+            aiTopK: { type: 'number', title: t('Số ứng viên xét (topK)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlNumber' },
+          },
+        },
       },
     },
-    aiAuto: { type: 'object', title: t('Tự chọn đáp án tốt nhất'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAutoPick' },
-    aiRerank: { type: 'boolean', 'x-decorator': 'FormItem', 'x-component': 'PtdlRerankToggle' },
-    rowAdv: {
-      type: 'void',
-      'x-component': 'PtdlGrid',
-      properties: {
-        aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmServiceSelect' },
-        aiModel: { type: 'string', title: t('Model (chấm điểm)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmModelSelect' },
-      },
-    },
-    aiTopK: { type: 'number', title: t('Số ứng viên xét (topK)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlNumber' },
   };
 }
 
@@ -458,6 +473,8 @@ export function registerAiClassify({ flowEngine, variants, EditableItemModel, ap
       PtdlMasterColSelect,
       PtdlMasterColMulti,
       PtdlMasterIndexHint,
+      FormTab,
+      'FormTab.TabPane': FormTab.TabPane,
     });
   } catch (e) {
     // eslint-disable-next-line no-console

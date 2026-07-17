@@ -135,11 +135,13 @@ in/PDF) và `plugin-email-template` (preset newsletter + inliner + gửi mail).
 
 - ~~status-flow: log lịch sử chuyển trạng thái~~ → **ĐÃ XONG** ở plugin riêng @ptdl/plugin-change-log
   (xem bảng §1 + docs/CHANGE-LOG-NOTES.md).
-- **change-log — backlog (chưa có yêu cầu, để sau):**
-  - **Phân quyền đọc log**: hiện `acl.allow('ptdlChangeLogs', ['list','get'], 'loggedIn')` → MỌI user
-    đọc được lịch sử mọi collection qua API, không gate theo quyền collection nguồn. Nên override
-    action `list` kiểm tra ACL `filter.collectionName` (bằng chuẩn record-history NocoBase). ⚠️ điểm
-    bảo mật, làm khi cần multi-role.
+- **change-log — backlog:**
+  - ~~**Phân quyền đọc log**~~ → ✅ **ĐÃ LÀM (v0.1.2, 2026-07-17).** Thêm resourcer middleware gate
+    `ptdlChangeLogs:list/get` theo quyền `view`/`list` của **collection nguồn** (`filter.collectionName`),
+    strategy-aware nên **root/admin qua tự động**. **FAIL-OPEN** khi không xác định được (không có
+    collectionName / collection lạ / lỗi ACL / chưa resolve role) → không bao giờ vỡ timeline của user
+    chính. `ctx.throw(403)` đặt NGOÀI try để catch fail-open không nuốt mất. ⚠️ **Cần verify với 1 role
+    hạn chế thật** trước khi tin cậy hoàn toàn (chưa test multi-role được ở môi trường này).
   - **Retention**: log tăng vô hạn — cần cơ chế dọn/xoá cũ cho collection lưu lượng cao.
   - Source **'form'** vẫn label 'api' (server không phân biệt form vs API) — giới hạn đã biết.
 - ~~plugin-number-format (_inactive): lỗi build thiếu lane dist/client-v2 — cần sửa builder nếu dùng lại.~~

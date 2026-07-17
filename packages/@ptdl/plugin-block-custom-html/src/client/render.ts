@@ -7,7 +7,16 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { escapeHtml } from '@ptdl/shared';
+import {
+  escapeHtml,
+  aggSum,
+  aggAvg,
+  aggCount,
+  aggMin,
+  aggMax,
+  groupBy as sharedGroupBy,
+  relativeTime,
+} from '@ptdl/shared';
 
 /**
  * Icon registry is INJECTED by the lane (classic → @nocobase/client, modern → @nocobase/client-v2)
@@ -92,13 +101,21 @@ export function getCachedData(uid?: string): any[] {
 
 // Render a registered icon (from the shared registry — Lucide via icon-kit, or
 // antd) to an SVG string, once, cached. No icon library is bundled by this plugin.
-const _iconSvgCache: Record<string, string | null> = {};
+// Cache ONLY successful renders. A negative result is never cached: the icon registry is populated
+// by @ptdl/plugin-custom-icons on its own load, so an early lookup (config-dialog live preview,
+// plugin load order) could otherwise poison the cache with `null` forever → every icon then falls
+// back to the tiny built-in set and renders the wrong glyph (`circle`). Retrying is cheap because
+// `reg.has(key)` short-circuits a genuinely-absent icon before any React render.
+const _iconSvgCache: Record<string, string> = {};
 function registryIconSvg(key: string): string | null {
   if (Object.prototype.hasOwnProperty.call(_iconSvgCache, key)) return _iconSvgCache[key];
+  const reg: any = iconRegistry;
+  // Registry not wired yet, or it does not (yet) have this key → return null WITHOUT caching, so a
+  // later call (once custom-icons has registered) can still resolve it.
+  if (!reg || !reg.get || (reg.has && !reg.has(key))) return null;
   let out: string | null = null;
   try {
-    const reg: any = iconRegistry;
-    const Comp = reg && reg.get ? reg.get(key) : null;
+    const Comp = reg.get(key);
     if (Comp && ReactDOM && (ReactDOM as any).render && typeof document !== 'undefined') {
       const div = document.createElement('div');
       (ReactDOM as any).render(React.createElement(Comp, {}), div);
@@ -109,7 +126,7 @@ function registryIconSvg(key: string): string | null {
   } catch (e) {
     out = null;
   }
-  _iconSvgCache[key] = out;
+  if (out) _iconSvgCache[key] = out; // only memoize a real hit
   return out;
 }
 
@@ -169,33 +186,15 @@ function errorBox(msg: string): string {
 }
 
 export function buildHelpers() {
-  const sum = (arr: any[], key?: string) =>
-    (arr || []).reduce((s: number, r: any) => s + (Number(key ? r && r[key] : r) || 0), 0);
-  const nums = (arr: any[], key?: string) =>
-    (arr || []).map((r: any) => Number(key ? r && r[key] : r)).filter((n: number) => isFinite(n));
+  // Numeric reducers come from @ptdl/shared/aggregate (same null-safe semantics as the old local
+  // copies; min/max there reduce instead of Math.min(...xs) so they're safe on huge arrays).
   const helpers: any = {
-    sum,
-    avg: (arr: any[], key?: string) => {
-      const a = arr || [];
-      return a.length ? sum(a, key) / a.length : 0;
-    },
-    count: (arr: any[]) => (arr || []).length,
-    min: (arr: any[], key?: string) => {
-      const xs = nums(arr, key);
-      return xs.length ? Math.min.apply(null, xs) : 0;
-    },
-    max: (arr: any[], key?: string) => {
-      const xs = nums(arr, key);
-      return xs.length ? Math.max.apply(null, xs) : 0;
-    },
-    groupBy: (arr: any[], key: string) => {
-      const m: any = {};
-      (arr || []).forEach((r: any) => {
-        const k = r && r[key];
-        (m[k] = m[k] || []).push(r);
-      });
-      return m;
-    },
+    sum: aggSum,
+    avg: aggAvg,
+    count: aggCount,
+    min: aggMin,
+    max: aggMax,
+    groupBy: sharedGroupBy,
     fmt: (n: any, opts?: any) => {
       const locale = (opts && opts.locale) || 'vi-VN';
       const o = Object.assign({ maximumFractionDigits: 0 }, opts || {});
@@ -224,28 +223,8 @@ export function buildHelpers() {
       };
       return f.replace(/YYYY|YY|MM|M|DD|D|HH|H|mm|ss/g, (t: string) => '' + map[t]);
     },
-    /** timeAgo(v) — "2 giờ trước" / "3 ngày trước". */
-    timeAgo: (v: any) => {
-      if (v == null || v === '') return '';
-      const d = v instanceof Date ? v : new Date(v);
-      if (isNaN(d.getTime())) return String(v);
-      const s = Math.floor((Date.now() - d.getTime()) / 1000);
-      const abs = Math.abs(s);
-      const units: Array<[number, string]> = [
-        [31536000, 'năm'],
-        [2592000, 'tháng'],
-        [86400, 'ngày'],
-        [3600, 'giờ'],
-        [60, 'phút'],
-      ];
-      for (let i = 0; i < units.length; i++) {
-        if (abs >= units[i][0]) {
-          const n = Math.floor(abs / units[i][0]);
-          return s >= 0 ? n + ' ' + units[i][1] + ' trước' : 'sau ' + n + ' ' + units[i][1];
-        }
-      }
-      return s >= 0 ? 'vừa xong' : 'sắp tới';
-    },
+    /** timeAgo(v) — "2 giờ trước" / "sau 3 ngày". Shared core, default opts = this exact vi vocabulary. */
+    timeAgo: (v: any) => relativeTime(v),
     esc: escapeHtml,
     keys: (arr: any[]) => (arr && arr[0] ? Object.keys(arr[0]) : []),
     first: (arr: any[], key: string, fallback?: any) => {

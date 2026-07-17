@@ -1,4 +1,4 @@
-import { Plugin, InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, useApp, RecordSelectFieldModel } from '@nocobase/client-v2';
+import { Plugin, InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, useApp, RecordSelectFieldModel, RecordActionModel, FormActionModel } from '@nocobase/client-v2';
 import { EditableItemModel, tExpr } from '@nocobase/flow-engine';
 import { UploadFieldModel } from '@nocobase/plugin-file-manager/client-v2';
 import { AttachmentURLFieldModel } from '@nocobase/plugin-field-attachment-url/client-v2';
@@ -20,6 +20,7 @@ const useApiClientV2 = () => (useApp() as any).apiClient;
 import { registerBulkImage, registerBulkVoice } from '../shared/aiBulkMedia';
 import { registerBulkClassify } from '../shared/aiBulkClassify';
 import { registerBulkExtractRows } from '../shared/aiBulkExtractRows';
+import { registerAiFunction } from '../shared/aiFunction';
 
 /**
  * @ptdl/plugin-ai-column — modern (/v/) client lane.
@@ -144,6 +145,9 @@ export class PluginAiColumnClientV2 extends Plugin {
     // Bulk Classify + Bulk Extract-rows — run classify / multi-row extract over selected table rows.
     registerBulkClassify({ flowEngine: fe, ActionModel, ActionSceneEnum, api, tExpr });
     registerBulkExtractRows({ flowEngine: fe, ActionModel, ActionSceneEnum, api, tExpr });
+    // "AI Function" — one record-scoped button that runs any job on the current record. Registered LAST
+    // so all bulk config components it reuses are already registered.
+    registerAiFunction({ flowEngine: fe, RecordActionModel, FormActionModel, ActionSceneEnum, api, tExpr });
 
     // Combined "AI Provider" settings page: Voice (TTS) credentials + AI-Classify embedding index.
     try {

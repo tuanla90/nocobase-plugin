@@ -275,9 +275,18 @@ function displayValue(cf: any, v: any): string {
   const i = cf?.interface;
   if (i === 'checkbox' || i === 'boolean') return v ? '✓' : '';
   if (i === 'percent' && typeof v === 'number') return `${Math.round(v * 10000) / 100}%`;
-  if ((i === 'datetime' || i === 'datetimeNoTz' || i === 'createdAt' || i === 'updatedAt') && typeof v === 'string') {
+  // datetime/createdAt/updatedAt: server trả ISO UTC ("...T02:09:00.000Z") — cắt chuỗi thô là hiện GIỜ UTC
+  // (user VN thấy lệch -7h). Phải convert sang giờ LOCAL của máy (như bảng core). datetimeNoTz lưu "giờ
+  // tường" không timezone → giữ nguyên chuỗi, KHÔNG convert (new Date sẽ làm lệch tuỳ máy).
+  if ((i === 'datetime' || i === 'createdAt' || i === 'updatedAt') && typeof v === 'string') {
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) {
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
     return v.replace('T', ' ').slice(0, 16);
   }
+  if (i === 'datetimeNoTz' && typeof v === 'string') return v.replace('T', ' ').slice(0, 16);
   if ((i === 'date' || i === 'dateOnly') && typeof v === 'string') return v.slice(0, 10);
   return String(v);
 }
@@ -989,16 +998,45 @@ const PtdlGroupLabelCell = observer(function PtdlGroupLabelCell({ model, p }: an
  *  anchor quyết định). Container TRONG SUỐT — dòng nào chưa dock thì slot đó xuyên thấu (header thật hiện
  *  qua, tự trượt vào slot bằng chuyển động cuộn rồi "đóng băng"); từng dòng nền đục đè đúng chỗ header thật
  *  vừa rời đi → không che dòng nào khác, không khoảng trắng, không jitter (layout bảng không đổi). */
-const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, chain, top, rowHeight }: any) {
+const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, coll, getApi, chain, top, rowHeight }: any) {
   void model.props.ptdlGroupRev; // đồng bộ icon mở/đóng theo toggleGroup
+  const boxRef = React.useRef<any>(null);
+  // Vị trí các cột CÓ Summary — đo từ Ô HEADER CỘT thật (.ag-header-cell[col-id]) nên tự đúng cả khi
+  // resize/pin/cuộn ngang. Sticky row nhờ đó hiện subtotal Ở ĐÚNG CỘT như dòng header thật → hết cảnh
+  // "header bị sticky đè thì mất Σ, header khác lại có" (user: summary sai sai khó hiểu). Interval nhẹ
+  // re-đo (400ms, setState chỉ khi đổi).
+  const [sumCols, setSumCols] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    const NUMISH = ['integer', 'number', 'percent', 'datetime', 'datetimeNoTz', 'dateOnly', 'date', 'time', 'unixTimestamp', 'createdAt', 'updatedAt'];
+    const measure = () => {
+      const host = boxRef.current?.parentElement;
+      if (!host) return;
+      const gr = host.getBoundingClientRect();
+      const out: any[] = [];
+      host.querySelectorAll('.ag-header-cell[col-id]').forEach((h: any) => {
+        const colId = h.getAttribute('col-id');
+        if (!colId || colId.startsWith('__ptdl') || colId.startsWith('ag-')) return;
+        const cfg = model.getColCfg(colId);
+        if (!cfg?.summary) return;
+        const r = h.getBoundingClientRect();
+        const cf = coll?.getField?.(colId);
+        const align = cfg.align || (cf && NUMISH.includes(cf.interface) ? 'right' : 'left');
+        out.push({ colId, left: Math.round(r.left - gr.left), width: Math.round(r.width), align });
+      });
+      setSumCols((cur) => (JSON.stringify(cur) === JSON.stringify(out) ? cur : out));
+    };
+    measure();
+    const iv = setInterval(measure, 400);
+    return () => clearInterval(iv);
+  }, [model, coll]);
   if (!chain || !chain.length) return null;
   return (
     <div
+      ref={boxRef}
       data-ptdl-sticky-stack=""
       style={{
         position: 'absolute', top, left: 0, right: 0, height: chain.length * rowHeight, zIndex: 5,
-        // TRONG SUỐT: dòng bị push trượt đi để lại "lỗ" xuyên thấu — header thật đang trờ tới hiện
-        // xuyên qua và trượt vào slot (không còn dải trắng che thông tin). Nền đục nằm ở TỪNG DÒNG.
+        // TRONG SUỐT: slot chưa dock xuyên thấu — header thật hiện qua và trượt vào slot. Nền đục ở TỪNG DÒNG.
         background: 'transparent',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
@@ -1016,7 +1054,6 @@ const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, cha
               paddingLeft: 90 + lvl * 18, paddingRight: 12,
               fontWeight: 600, fontSize: 12.5, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
               borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)',
-              // Push: dòng sâu trượt lên TRƯỚC → chui XUỐNG DƯỚI dòng cha (cha zIndex cao hơn + nền đục).
               position: 'relative', zIndex: chain.length - lvl,
               background: 'var(--colorBgElevated, #fff)',
               boxShadow: '0 1px 3px rgba(0,0,0,.05)',
@@ -1027,6 +1064,35 @@ const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, cha
             </span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.__lbl}</span>
             <span style={{ color: 'var(--colorTextTertiary, #999)', fontWeight: 400, flex: 'none' }}>({g.__count})</span>
+            {model.props.ptdlAllowAdd !== false ? (
+              <span
+                className="ptdl-gadd"
+                title={t('Thêm dòng vào nhóm này')}
+                style={{ display: 'inline-flex', flex: 'none' }}
+                onClick={(e: any) => {
+                  e.stopPropagation();
+                  model.addRowToGroup(g.__rows?.[0], lvl, getApi?.());
+                }}
+              >
+                <Plus size={13} />
+              </span>
+            ) : null}
+            {/* Subtotal per-cột — giống hệt dòng header thật (groupSubtotalText), đặt tuyệt đối theo cột đo được */}
+            {sumCols.map((c: any) => (
+              <span
+                key={c.colId}
+                style={{
+                  position: 'absolute', left: c.left, width: c.width, top: 0, bottom: 0,
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: c.align === 'right' ? 'flex-end' : c.align === 'center' ? 'center' : 'flex-start',
+                  padding: '0 6px', fontWeight: 600, fontSize: 12,
+                  color: 'var(--colorTextSecondary, #595959)',
+                  overflow: 'hidden', whiteSpace: 'nowrap', pointerEvents: 'none',
+                }}
+              >
+                {groupSubtotalText(model, coll, c.colId, g.__rows)}
+              </span>
+            ))}
           </div>
         );
       })}
@@ -2891,7 +2957,7 @@ const SheetGrid = observer(({ model }: { model: any }) => {
     }
     const root = rootRef.current;
     if (!root) return;
-    let last = ''; // chữ ký (chuỗi khoá cha>con) của prefix docked hiện tại
+    let lastArr: any[] = []; // prefix docked hiện tại — so sánh IDENTITY từng object
     const tick = () => {
       const api = apiRef.current;
       const vp = root.querySelector('.ag-grid-viewport') as HTMLElement | null;
@@ -2929,10 +2995,11 @@ const SheetGrid = observer(({ model }: { model: any }) => {
       }
       // Chuyển cảnh KHÔNG cần transform: header thật tự trượt vào slot bằng chính chuyển động cuộn
       // (slot chưa dock = trong suốt), chạm slot thì "đóng băng" (dock); nhóm cũ nhả dock đúng lúc header
-      // mới chạm đáy stack. Mọi thứ chuyển động cùng scroll → mượt tự nhiên, không jitter.
-      const key = docked.map((g: any) => g.__key).join('>');
-      if (key !== last) {
-        last = key;
+      // mới chạm đáy stack. So sánh IDENTITY (không phải chuỗi __key): rowData rebuild tạo group object
+      // MỚI (count/__rows tươi) → sticky cập nhật ngay, hết cảnh count/Σ cũ kẹt lại (vd "Success (31)"
+      // trong khi nhóm con (37)).
+      if (docked.length !== lastArr.length || docked.some((g: any, i: number) => g !== lastArr[i])) {
+        lastArr = docked;
         setTopChain(docked);
       }
     };
@@ -3332,7 +3399,14 @@ const SheetGrid = observer(({ model }: { model: any }) => {
             row chừa chỗ (đổi số pinned = body nhảy N×36px = giật); overlay đè lên nội dung, nhóm mới trờ tới
             có hiệu ứng đẩy (tick ghi translateY — xem topTickRef). */}
         {grouping && !groupMerge && topChain.length ? (
-          <PtdlStickyGroupStack model={model} chain={topChain} top={35} rowHeight={36} />
+          <PtdlStickyGroupStack
+            model={model}
+            coll={coll}
+            getApi={() => apiRef.current}
+            chain={topChain}
+            top={35}
+            rowHeight={36}
+          />
         ) : null}
         <AgGridReact
           theme={SHEET_THEME}

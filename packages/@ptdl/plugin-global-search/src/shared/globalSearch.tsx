@@ -482,36 +482,61 @@ function pillStyle(variant: 'header-dark' | 'header-light' | 'floating', appeara
   return style;
 }
 
+// Responsive: is the window narrower than `breakpoint`px? (0 = never.) Drives the auto-collapse to an
+// icon on small screens. Recomputes on resize.
+function useIsNarrow(breakpoint: number): boolean {
+  const bp = breakpoint > 0 ? breakpoint : 0;
+  const [narrow, setNarrow] = useState<boolean>(() => bp > 0 && typeof window !== 'undefined' && window.innerWidth <= bp);
+  useEffect(() => {
+    if (!(bp > 0) || typeof window === 'undefined') {
+      setNarrow(false);
+      return;
+    }
+    const check = () => setNarrow(window.innerWidth <= bp);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [bp]);
+  return narrow;
+}
+
 const Trigger: React.FC<{
   variant: 'header-dark' | 'header-light' | 'floating';
   onClick: () => void;
   appearance: Appearance;
   t: (s: string) => string;
-}> = ({ variant, onClick, appearance, t }) => (
-  <div
-    data-gs-version={GS_VERSION}
-    role="button"
-    tabIndex={0}
-    aria-label={t('Open global search')}
-    onClick={onClick}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onClick();
-      }
-    }}
-    title={t('Search (Ctrl / ⌘ + K)')}
-    style={pillStyle(variant, appearance)}
-  >
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <SearchOutlined />
-      {appearance.label ? <span>{appearance.label}</span> : null}
-    </span>
-    {appearance.showShortcut ? (
-      <span style={{ opacity: 0.6, fontSize: 11, marginLeft: 12 }}>{SHORTCUT_LABEL}</span>
-    ) : null}
-  </div>
-);
+}> = ({ variant, onClick, appearance, t }) => {
+  // Auto-collapse to an icon-only circle on narrow screens: clear label + shortcut so pillStyle takes
+  // its icon-only branch. Default breakpoint 820px; `autoIconBelow: 0` disables it.
+  const bp = typeof appearance.autoIconBelow === 'number' ? appearance.autoIconBelow : 820;
+  const narrow = useIsNarrow(bp);
+  const eff: Appearance = narrow ? { ...appearance, label: '', showShortcut: false } : appearance;
+  return (
+    <div
+      data-gs-version={GS_VERSION}
+      role="button"
+      tabIndex={0}
+      aria-label={t('Open global search')}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      title={t('Search (Ctrl / ⌘ + K)')}
+      style={pillStyle(variant, eff)}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <SearchOutlined />
+        {eff.label ? <span>{eff.label}</span> : null}
+      </span>
+      {eff.showShortcut ? (
+        <span style={{ opacity: 0.6, fontSize: 11, marginLeft: 12 }}>{SHORTCUT_LABEL}</span>
+      ) : null}
+    </div>
+  );
+};
 
 /**
  * Builds the global-search overlay bound to a specific client lane's API-client hook.

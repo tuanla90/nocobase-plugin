@@ -169,9 +169,9 @@ Audit read-only lại toàn bộ (chi tiết: `docs/SHARED-DEDUP-AUDIT.md`). Xá
 - `change-log/changeLogClient.ts` `formatDateFriendly` → `formatDate(v,'DD/MM/YYYY HH:mm')` (byte-identical).
 - *Giữ local đúng:* `helpers.fmt` (toLocaleString vi-VN + currency/percent), `enhanced-table formatNumberLikeSample` (sniffing), `print-template` (Excel mask). `helpers.date` cần shared thêm token `H` trước khi swap.
 
-**b) 2 module CHƯA từng đề xuất (nhưng đủ điều kiện SHAREABLE):**
-- **`shared/relativeTime`** — 3 bản: block-custom-html `timeAgo`, change-log `relativeTime`, field-enh reduceUnit. API cần tham số hoá `{locale,style,t}` (3 vocabulary khác nhau).
-- **`shared/aggregate`** (data-helper) — ≥5 bản reducer `sum/avg/min/max/count/groupBy/median/range` (seed từ `buildHelpers`). Rủi ro thấp, DRY + thống nhất null-policy.
+**b) 2 module — ✅ ĐÃ EXTRACT (2026-07-17), migrate dần:**
+- **`shared/relativeTime`** ✅ — `relativeTime(value, opts)` (default = vocabulary vi của block-custom-html `timeAgo`). Đã gom `block-custom-html timeAgo` (ship 0.12.3). Còn `change-log relativeTime` (bilingual + "tuần") và `field-enh` reduceUnit (day-distance + i18n plural) — migrate khi test live được (tránh trôi biên/plural). Chi tiết: `docs/SHARED-DEDUP-AUDIT.md §B5`.
+- **`shared/aggregate`** ✅ — `aggSum/aggAvg/aggCount/aggMin/aggMax/aggMedian/aggRange/groupBy/pluckNums` (một null-policy, min/max dùng reduce). Đã gom `block-custom-html buildHelpers`. Còn enhanced-table/spreadsheet/formula/data-viz reducer sets. Chi tiết: `§B6`.
 
 **c) Sửa stale trong doc này:**
 - §condition (dòng ~158) nói `menu-enhancements` "chưa migrate" → SAI, đã import `ConditionRow`/`opNeedsNoValue`.

@@ -22,7 +22,7 @@ export type SearchTarget = {
 };
 
 // Kept in sync with package.json "version"; stamped onto the header pill as data-gs-version.
-export const GS_VERSION = '0.9.3';
+export const GS_VERSION = '0.9.6';
 
 // Shortcut label — macOS shows the ⌘ glyph; Windows/Linux render it as tofu, so use "Ctrl+K".
 export const IS_MAC =
@@ -299,6 +299,7 @@ export type Appearance = {
   radius: number;
   bg: string; // custom background; '' = theme default
   fg: string; // custom text/icon color; '' = theme default
+  autoIconBelow?: number; // responsive: collapse the bar to just the search icon when the window width ≤ this (px); 0 = never
 };
 export const DEFAULT_APPEARANCE: Appearance = {
   width: 150,
@@ -308,6 +309,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   radius: 16,
   bg: '',
   fg: '',
+  autoIconBelow: 820, // collapse to a search icon on narrow screens (≤ 820px) by default
 };
 
 function loadAppearanceLocal(): Appearance {

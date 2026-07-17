@@ -139,9 +139,13 @@ build lại nếu plugin dùng đúng export vừa đổi. Shared thay đổi ki
 - **Deploy version:** cond-fmt bump **0.2.1** — deploy script phải đọc version từ package.json (đừng hardcode 0.2.0,
   dễ deploy nhầm tgz cũ). `latest/@ptdl` giữ 1 bản/plugin.
 
-## 7. KNOWN ISSUES (chưa xong)
-- **block-custom-html `helpers.icon('name')` render sai icon** (user báo). ĐÃ loại trừ: KHÔNG phải lỗi hậu tố
-  (custom-icons đăng ký cả `lucide-<kebab>outlined` LẪN alias `lucide-<kebab>`; bản deployed có alias). Nghi
-  khâu render SVG qua `ReactDOM.render` (API legacy, `src/client/render.ts:95` `registryIconSvg`) — nếu react-dom
-  bị stub rỗng hoặc `.render` không có → mọi icon rơi về bộ built-in nhỏ (`LUCIDE`) → ra `circle`/sai. **Cần
-  reproduce (browser) để chốt trước khi vá.** Cũng nên sửa comment cũ `plugin-icon-kit` trong render.ts:23,277.
+## 7. KNOWN ISSUES
+- **block-custom-html `helpers.icon('name')` render sai icon** — 🔧 **ĐÃ CHẨN + VÁ (0.12.3, 2026-07-17), CHỜ user xác nhận browser.**
+  Loại trừ react-dom: bản deployed dùng `require("react-dom")` = **react-dom THẬT 18.3.1** (không stub), mà 18.3.1
+  VẪN có legacy `.render` → giả thuyết "stub rỗng / thiếu .render" KHÔNG đúng. Bug thật = `registryIconSvg`
+  **cache cả kết quả `null`**: nếu 1 icon bị tra TRƯỚC khi custom-icons nạp xong registry (preview dialog / thứ tự
+  load) → `null` bị cache VĨNH VIỄN → icon rơi về set built-in nhỏ → `circle`/sai. **Fix:** chỉ cache hit; miss thì
+  return null KHÔNG cache; thêm guard `reg.has(key)` (bỏ render khi registry chưa có key) → lần sau tra lại tự đúng.
+  Đã deploy + served bundle có `.has` guard. **User test:** mở block, `helpers.icon('rocket')`/`helpers.icon('phone')`
+  (icon NGOÀI set built-in ~50) phải ra đúng, không phải hình tròn. *(Nhân tiện: reducers + `timeAgo` của buildHelpers
+  giờ dùng `@ptdl/shared` aggregate/relativeTime.)* Comment cũ `plugin-icon-kit` trong render.ts:23,277 vẫn nên dọn.

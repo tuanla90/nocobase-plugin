@@ -522,9 +522,6 @@ active**. Chi tiết đầy đủ pattern provider/consumer: memory `nocobase-ic
 - Dep **phải bundle** (ag-grid, html5-qrcode, mathjs...) → cài thật trong build-env; framework dep thì **stub** (xem BUILD.md).
 - Đổi scope/tên sau này = phải build lại (tên nướng cứng trong client UMD).
 - #6 và #7 nên **chung engine biểu thức** (mathjs/formulajs) để nhất quán và đỡ trùng. (formulajs đã dùng thật trong `runjs-formula.js`.)
-- **Trạng thái tổng (2026-07-09):**
-  - ✅ Plugin xong: #1 Custom Header, #12 Menu Sections, #13 Icon Remap.
-  - 🟢 Snippet dùng được (chưa plugin hoá): #3 Table Cell Display (star/progress/checkbox/link/avatar/tags/select-buttons/formula),
-    #8 Rich Dropdown (record-select-rich), #9 Input Prefix Icon (input-icon-placeholder), #11 Field Widgets (select-buttons; checkbox→toggle trong runjs-checkbox).
-  - ⬜ Chưa bắt đầu: #2 Spreadsheet (BRD xong), #4 Status Flow, #5 QR, #6 Default Expression, #7 Computed Field, #10 Button Icon Picker.
-  - **Việc plugin hoá kế tiếp gợi ý:** #9 (nhẹ nhất, đã research sẵn) → #11 → #8 (thêm badge count) — nâng từ snippet lên plugin theo nhu cầu dùng lặp.
+- **Trạng thái tổng (cập nhật 2026-07-17):** gần như TẤT CẢ mục dưới đã plugin-hoá & LIVE. Nguồn chuẩn = `PLUGIN-REGISTRY.md` (28 plugin @ptdl). Bảng #-số dưới đây là kế hoạch GỐC — ánh xạ sang plugin thực tế:
+  - ✅ Đã ship: **#1** Custom Header · **#2** Spreadsheet View (`spreadsheet-view`) · **#3** Table Cell Display (→ `field-enhancements` widgets + bộ snippet) · **#4** Status Flow (`status-flow`, server-enforced) · **#5** QR/Scanner (→ `device-kit`) · **#7** Computed/Virtual Field (`formula`: computed 3-mode + window/ledger + scan-costing FIFO/avg) · **#8** Rich Dropdown (`field-enhancements` richSelect) · **#9** Input Prefix Icon (`field-enhancements`) · **#10** Button Icon Picker (native `x-component-props.icon` + registry custom-icons) · **#11** Field Widgets (`field-enhancements`) · **#12/#14** Menu Sections & Badge (→ `menu-enhancements`) · **#13** Icon Remap (→ `custom-icons`) · **#16** Filter Tree/Bar (`filter-tree`) · **#17** Sub-table Pro (`subtable-pro`).
+  - 🟡 Còn lại (không chặn): **#6** Default Value Expression thuần — đã có gián tiếp qua `formula` default-value (Excel mode); badge "đếm số bản ghi" per-option của **#8** (cần aggregate group-by) vẫn chưa làm.

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Input, Modal, Select, Tag, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
-import { getFields, ColumnSelect } from '@ptdl/shared';
+import { getFields, ColumnSelect, cleanLabel } from '@ptdl/shared';
 import { SparklesIcon, collectValues } from './aiColumn';
 import { NS, t } from './i18n';
 
@@ -99,7 +99,7 @@ export const PtdlDeepDisplayFields: React.FC<any> = observer((props: any) => {
   const [opts, setOpts] = useState<any[]>([]);
   useEffect(() => {
     let alive = true;
-    if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f: any) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')' }))));
+    if (master.collection) getFields(API, master.collection, master.dataSourceKey || 'main').then((f: any) => alive && setOpts((f || []).filter((x: any) => !x.isForeignKey).map((x: any) => ({ value: x.name, label: cleanLabel(x.uiSchema?.title, x.name) + ' (' + x.name + ')' }))));
     else setOpts([]);
     return () => { alive = false; };
   }, [master.collection]);
@@ -132,12 +132,12 @@ export const PtdlDeepExamples: React.FC<any> = observer((props: any) => {
   useEffect(() => {
     let a = true;
     if (!API) return;
-    API.request({ url: 'collections:list', params: { paginate: false } }).then((r: any) => { if (!a) return; setColls((r?.data?.data || []).filter((c: any) => c?.name && !c.hidden && c.template !== 'view').map((c: any) => ({ value: c.name, label: `${c.title || c.name} (${c.name})` }))); }).catch(() => {});
+    API.request({ url: 'collections:list', params: { paginate: false } }).then((r: any) => { if (!a) return; setColls((r?.data?.data || []).filter((c: any) => c?.name && !c.hidden && c.template !== 'view').map((c: any) => ({ value: c.name, label: `${cleanLabel(c.title, c.name)} (${c.name})` }))); }).catch(() => {});
     return () => { a = false; };
   }, []);
   useEffect(() => {
     let a = true;
-    if (v.collection) getFields(API, v.collection, v.dataSourceKey || 'main').then((f: any) => a && setCols((f || []).filter((x: any) => !x.isForeignKey).map((x: any) => ({ value: x.name, label: (x.uiSchema?.title || x.name) + ' (' + x.name + ')' }))));
+    if (v.collection) getFields(API, v.collection, v.dataSourceKey || 'main').then((f: any) => a && setCols((f || []).filter((x: any) => !x.isForeignKey).map((x: any) => ({ value: x.name, label: cleanLabel(x.uiSchema?.title, x.name) + ' (' + x.name + ')' }))));
     else setCols([]);
     return () => { a = false; };
   }, [v.collection]);
@@ -422,7 +422,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
       let fieldTitles: Record<string, string> = {};
       try {
         const fr = await API.request({ url: `collections/${masterColl}/fields:list`, method: 'get', params: { pageSize: 200 } });
-        (fr?.data?.data || []).forEach((f: any) => { fieldTitles[f.name] = f?.uiSchema?.title || f.name; });
+        (fr?.data?.data || []).forEach((f: any) => { fieldTitles[f.name] = cleanLabel(f?.uiSchema?.title, f.name); });
       } catch { /* titles are best-effort */ }
       // Map each extracted attribute key back to its Vietnamese label (the configured description).
       const attrLabels: Record<string, string> = {};

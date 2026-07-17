@@ -2,7 +2,7 @@ import { Plugin, useAPIClient } from '@nocobase/client';
 // The classic /admin app also hosts flow-engine and provides '@nocobase/client-v2' as a shared
 // runtime module to plugins — so we import the editable field bases here too and register our
 // AI field models into the classic app's flowEngine (works in /admin flow-engine blocks).
-import { InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, RecordSelectFieldModel } from '@nocobase/client-v2';
+import { InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, RecordSelectFieldModel, RecordActionModel, FormActionModel } from '@nocobase/client-v2';
 import { EditableItemModel, tExpr } from '@nocobase/flow-engine';
 import { UploadFieldModel } from '@nocobase/plugin-file-manager/client-v2';
 import { AttachmentURLFieldModel } from '@nocobase/plugin-field-attachment-url/client-v2';
@@ -16,6 +16,7 @@ import { registerBulkGenerate } from '../shared/aiBulkGenerate';
 import { registerBulkExtract } from '../shared/aiBulkExtract';
 import { registerBulkClassify } from '../shared/aiBulkClassify';
 import { registerBulkExtractRows } from '../shared/aiBulkExtractRows';
+import { registerAiFunction } from '../shared/aiFunction';
 import { registerBulkImage, registerBulkVoice } from '../shared/aiBulkMedia';
 import { registerAiColumnClassic } from './aiColumnClassic';
 import { registerAiExtractClassic } from './aiExtractClassic';
@@ -135,6 +136,7 @@ export class PluginAiColumnClient extends Plugin {
     registerBulkVoice({ flowEngine: fe, ActionModel, ActionSceneEnum, api, tExpr });
     registerBulkClassify({ flowEngine: fe, ActionModel, ActionSceneEnum, api, tExpr });
     registerBulkExtractRows({ flowEngine: fe, ActionModel, ActionSceneEnum, api, tExpr });
+    registerAiFunction({ flowEngine: fe, RecordActionModel, FormActionModel, ActionSceneEnum, api, tExpr });
     // Classic Formily forms (the OLD, pre-flow-engine form blocks) — separate mechanism, see
     // aiColumnClassic.tsx / aiExtractClassic.tsx / aiMediaClassic.tsx. Order doesn't matter between
     // these (each keeps its own module-level apiClient var), but all must run — the flow-engine

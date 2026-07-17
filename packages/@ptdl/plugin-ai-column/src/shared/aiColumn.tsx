@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Checkbox, Input, Select, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
+import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { FieldTokenTextArea, SettingsGrid } from '@ptdl/shared';
 import { NS, t } from './i18n';
@@ -335,68 +336,47 @@ const tight = { style: { marginBottom: 8 } };
 // are void grid wrappers pairing 2 fields per row to save vertical space.
 export function aiStepUiSchema(t: (s: string) => any) {
   return {
-    rowConnection: {
+    tabs: {
       type: 'void',
-      'x-component': 'PtdlGrid',
+      'x-component': 'FormTab',
       properties: {
-        aiService: {
-          type: 'string',
-          title: t('Dịch vụ LLM'),
-          'x-decorator': 'FormItem',
-          'x-decorator-props': tight,
-          'x-component': 'PtdlLlmServiceSelect',
+        tabPrompt: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Prompt & Kết quả') },
+          properties: {
+            aiTemplate: { type: 'void', title: t('Mẫu prompt (tùy chọn)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlTextTemplateSelect' },
+            aiSystem: { type: 'string', title: t('Câu lệnh hệ thống'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAiSystemInput' },
+            aiPrompt: { type: 'string', title: t('Prompt'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
+            aiOutputType: { type: 'string', title: t('Kiểu kết quả'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAiOutputSelect' },
+            aiOptions: {
+              type: 'array',
+              title: t('Lựa chọn (Chọn 1)'),
+              'x-decorator': 'FormItem',
+              'x-decorator-props': tight,
+              'x-component': 'PtdlAiOptions',
+              // Hide the whole field (not just disable it) when Output type isn't Single select —
+              // must be a FUNCTION, not a {{$deps}} string (see nocobase-v2-uischema-reaction-gotcha).
+              'x-reactions': (field: any) => {
+                field.display = field.form?.values?.aiOutputType === 'singleSelect' ? 'visible' : 'hidden';
+              },
+            },
+          },
         },
-        aiModel: {
-          type: 'string',
-          title: t('Model'),
-          'x-decorator': 'FormItem',
-          'x-decorator-props': tight,
-          'x-component': 'PtdlLlmModelSelect',
+        tabModel: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Model & Tự động') },
+          properties: {
+            rowConnection: {
+              type: 'void', 'x-component': 'PtdlGrid',
+              properties: {
+                aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlLlmServiceSelect' },
+                aiModel: { type: 'string', title: t('Model'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlLlmModelSelect' },
+              },
+            },
+            aiTrigger: { type: 'array', title: t('Tự sinh khi'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAiTriggerSelect' },
+            aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAutorunGate' },
+          },
         },
       },
     },
-    rowBehavior: {
-      type: 'void',
-      'x-component': 'PtdlGrid',
-      properties: {
-        aiOutputType: {
-          type: 'string',
-          title: t('Kiểu kết quả'),
-          'x-decorator': 'FormItem',
-          'x-decorator-props': tight,
-          'x-component': 'PtdlAiOutputSelect',
-        },
-        aiTrigger: {
-          type: 'array',
-          title: t('Tự sinh khi'),
-          'x-decorator': 'FormItem',
-          'x-decorator-props': tight,
-          'x-component': 'PtdlAiTriggerSelect',
-        },
-      },
-    },
-    aiOptions: {
-      type: 'array',
-      title: t('Lựa chọn (Chọn 1)'),
-      'x-decorator': 'FormItem',
-      'x-decorator-props': tight,
-      'x-component': 'PtdlAiOptions',
-      // Hide the whole field (not just disable it) when Output type isn't Single select —
-      // must be a FUNCTION, not a {{$deps}} string (see nocobase-v2-uischema-reaction-gotcha).
-      'x-reactions': (field: any) => {
-        field.display = field.form?.values?.aiOutputType === 'singleSelect' ? 'visible' : 'hidden';
-      },
-    },
-    aiSystem: {
-      type: 'string',
-      title: t('Câu lệnh hệ thống'),
-      'x-decorator': 'FormItem',
-      'x-decorator-props': tight,
-      'x-component': 'PtdlAiSystemInput',
-    },
-    aiTemplate: { type: 'void', title: t('Mẫu prompt (tùy chọn)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlTextTemplateSelect' },
-    aiPrompt: { type: 'string', title: t('Prompt'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
-    aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAutorunGate' },
   };
 }
 
@@ -724,6 +704,8 @@ export const AI_SETTINGS_COMPONENTS = {
   // 2-col grid wrapper (void) that pairs two fields on one line — now the shared SettingsGrid,
   // registered under the same `PtdlGrid` name so every uiSchema x-component string keeps resolving.
   PtdlGrid: SettingsGrid,
+  FormTab,
+  'FormTab.TabPane': FormTab.TabPane,
 };
 
 export function registerAiColumn({ flowEngine, variants, EditableItemModel, api, tExpr }: Deps) {

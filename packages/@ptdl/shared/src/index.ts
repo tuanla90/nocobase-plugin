@@ -36,6 +36,13 @@ export {
   get, toDisplayString, escapeHtml, makeNumberFormatter, formatNumber, formatDate, applyFilter, interpolate,
 } from './format';
 export type { NumberFormat, InterpolateOpts } from './format';
+// Null-safe numeric reducers (sum/avg/min/max/median/range/groupBy) over row arrays.
+export {
+  pluckNums, aggSum, aggCount, aggAvg, aggMin, aggMax, aggMedian, aggRange, groupBy,
+} from './aggregate';
+// "N units ago / in N units" — parameterized (default = Vietnamese, block-custom-html's timeAgo).
+export { relativeTime } from './relativeTime';
+export type { RtUnit, RelativeTimeOpts } from './relativeTime';
 export {
   // (A) Formily uiSchema lane
   SettingsGrid, fieldItem, fi, rx, visibleWhen, ResetButton, PreviewBox, CollapsibleSection,

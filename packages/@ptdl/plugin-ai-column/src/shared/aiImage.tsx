@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Input, Select, Tooltip, message } from 'antd';
 import { observer, useForm } from '@formily/react';
+import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { getFields, ColumnSelect } from '@ptdl/shared';
 import { SparklesIcon, collectValues, syncAutorunRule, extractDeps, triggerArray, gateConfig, PtdlAutorunGate } from './aiColumn';
@@ -323,19 +324,34 @@ const PtdlImageSourceSelect: React.FC<any> = observer((props: any) => {
 
 function aiImageStepUiSchema(t: (s: string) => any) {
   return {
-    aiTemplate: { type: 'void', title: t('Mẫu prompt (sinh mới / chỉnh sửa)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlImageTemplateSelect' },
-    rowConnection: {
+    tabs: {
       type: 'void',
-      'x-component': 'PtdlGrid',
+      'x-component': 'FormTab',
       properties: {
-        aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlLlmServiceSelect' },
-        aiImageModel: { type: 'string', title: t('Model ảnh'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlImageModelSelect' },
+        tabImage: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Ảnh & Prompt') },
+          properties: {
+            aiTemplate: { type: 'void', title: t('Mẫu prompt (sinh mới / chỉnh sửa)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlImageTemplateSelect' },
+            aiImageSource: { type: 'string', title: t('Ảnh nguồn để SỬA (img2img) — trống = sinh mới'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlImageSourceSelect' },
+            aiPrompt: { type: 'string', title: t('Prompt (mô tả ảnh / cách sửa)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
+          },
+        },
+        tabModel: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Model & Tự động') },
+          properties: {
+            rowConnection: {
+              type: 'void', 'x-component': 'PtdlGrid',
+              properties: {
+                aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlLlmServiceSelect' },
+                aiImageModel: { type: 'string', title: t('Model ảnh'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlImageModelSelect' },
+              },
+            },
+            aiTrigger: { type: 'string', title: t('Tự chạy (trigger)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlMediaTriggerSelect' },
+            aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAutorunGate' },
+          },
+        },
       },
     },
-    aiImageSource: { type: 'string', title: t('Ảnh nguồn để SỬA (img2img) — trống = sinh mới'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlImageSourceSelect' },
-    aiPrompt: { type: 'string', title: t('Prompt (mô tả ảnh / cách sửa)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
-    aiTrigger: { type: 'string', title: t('Tự chạy (trigger)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlMediaTriggerSelect' },
-    aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAutorunGate' },
   };
 }
 
@@ -379,7 +395,7 @@ export function registerAiImage(deps: Deps) {
     logKind: 'image',
     spec: imageMediaSpec,
     flowConfig: aiImageFlowConfig,
-    settingsComponents: { PtdlImageModelSelect, PtdlImageSourceSelect, PtdlImageTemplateSelect, PtdlMediaTriggerSelect, PtdlAutorunGate },
+    settingsComponents: { PtdlImageModelSelect, PtdlImageSourceSelect, PtdlImageTemplateSelect, PtdlMediaTriggerSelect, PtdlAutorunGate, FormTab, 'FormTab.TabPane': FormTab.TabPane },
   });
 }
 
@@ -668,33 +684,40 @@ const showWhenVbee = (field: any) => {
 
 function aiVoiceStepUiSchema(t: (s: string) => any) {
   return {
-    aiVoiceProvider: { type: 'string', title: t('Nhà cung cấp giọng (Provider)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceProviderSelect' },
-    aiVoiceCred: { type: 'string', title: t('Credential (11labs/Vbee)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceCredSelect', 'x-reactions': showWhenThirdParty },
-    aiVoiceId: { type: 'string', title: t('Voice ID / voice_code'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceIdInput', 'x-reactions': showWhenThirdParty },
-    aiElevenModel: { type: 'string', title: t('ElevenLabs model'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlElevenModelSelect', 'x-reactions': showWhenEleven },
-    aiVbeeSpeed: { type: 'string', title: t('Tốc độ đọc (Vbee)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVbeeSpeedInput', 'x-reactions': showWhenVbee },
-    aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlLlmServiceSelect', 'x-reactions': showWhenGoogle },
-    rowVoice: {
+    tabs: {
       type: 'void',
-      'x-component': 'PtdlGrid',
-      'x-reactions': showWhenGoogle,
+      'x-component': 'FormTab',
       properties: {
-        aiVoiceModel: { type: 'string', title: t('Model TTS'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceModelSelect' },
-        aiVoice: { type: 'string', title: t('Giọng đọc'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceSelect' },
+        tabVoice: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Giọng đọc') },
+          properties: {
+            aiVoiceProvider: { type: 'string', title: t('Nhà cung cấp giọng (Provider)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceProviderSelect' },
+            aiVoiceCred: { type: 'string', title: t('Credential (11labs/Vbee)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceCredSelect', 'x-reactions': showWhenThirdParty },
+            aiVoiceId: { type: 'string', title: t('Voice ID / voice_code'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceIdInput', 'x-reactions': showWhenThirdParty },
+            aiElevenModel: { type: 'string', title: t('ElevenLabs model'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlElevenModelSelect', 'x-reactions': showWhenEleven },
+            aiVbeeSpeed: { type: 'string', title: t('Tốc độ đọc (Vbee)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVbeeSpeedInput', 'x-reactions': showWhenVbee },
+            aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlLlmServiceSelect', 'x-reactions': showWhenGoogle },
+            rowVoice: {
+              type: 'void', 'x-component': 'PtdlGrid', 'x-reactions': showWhenGoogle,
+              properties: {
+                aiVoiceModel: { type: 'string', title: t('Model TTS'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceModelSelect' },
+                aiVoice: { type: 'string', title: t('Giọng đọc'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceSelect' },
+              },
+            },
+            aiVoiceStyle: { type: 'string', title: t('Phong cách / cảm xúc / tốc độ (tùy chọn)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoiceStyleInput', 'x-reactions': showWhenGoogle },
+            voicePreview: { type: 'void', 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoicePreview' },
+          },
+        },
+        tabText: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Text & Tự động') },
+          properties: {
+            aiPrompt: { type: 'string', title: t('Text cần đọc (hỗ trợ chèn cột)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
+            aiTrigger: { type: 'string', title: t('Tự chạy (trigger)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlMediaTriggerSelect' },
+            aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAutorunGate' },
+          },
+        },
       },
     },
-    aiVoiceStyle: {
-      type: 'string',
-      title: t('Phong cách / cảm xúc / tốc độ (tùy chọn)'),
-      'x-decorator': 'FormItem',
-      'x-decorator-props': tight,
-      'x-component': 'PtdlVoiceStyleInput',
-      'x-reactions': showWhenGoogle,
-    },
-    voicePreview: { type: 'void', 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlVoicePreview' },
-    aiPrompt: { type: 'string', title: t('Text cần đọc (hỗ trợ chèn cột)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
-    aiTrigger: { type: 'string', title: t('Tự chạy (trigger)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlMediaTriggerSelect' },
-    aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-decorator-props': tight, 'x-component': 'PtdlAutorunGate' },
   };
 }
 
@@ -777,6 +800,8 @@ export function registerAiVoice(deps: Deps) {
       PtdlElevenModelSelect,
       PtdlVoiceIdInput,
       PtdlVbeeSpeedInput,
+      FormTab,
+      'FormTab.TabPane': FormTab.TabPane,
     },
   });
 }

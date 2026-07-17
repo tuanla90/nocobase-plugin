@@ -828,7 +828,7 @@ function SubtableProField(props: any) {
   return <TableView {...props} />;
 }
 
-// ---- source-side control for the "Add to cart" action (plus/minus group or checkbox) ------------
+// ---- source-side control for the "Send row" action (plus/minus group or checkbox) ---------------
 /** Presentational read-only +/− control. layout: 'pill' (joined) | 'split' (two circular icons). */
 function PlusMinusPill({ qty, showCount, size, minusDisabled, onMinus, onPlus, layout = 'pill', accent }: any) {
   const h = size === 'default' ? 32 : 24;
@@ -954,7 +954,7 @@ const PtdlActionPreview: any = observer(() => {
     return (
       <div style={box}>
         <Button type="primary" size={size} icon={<PlusOutlined />}>
-          {_t('Thêm vào giỏ')}
+          {_t('Thêm dòng')}
         </Button>
         {hint}
       </div>
@@ -1186,7 +1186,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
                       'x-component-props': { minColWidth: 240 },
                       'x-reactions': rx((v: any) => !!v.bridgeEnabled),
                       properties: {
-                        bridgeChannel: fi(t('Tên kênh'), 'PtdlInput', { componentProps: { placeholder: 'cart' } }),
+                        bridgeChannel: fi(t('Tên kênh'), 'PtdlInput', { componentProps: { placeholder: 'ch1' } }),
                         bridgeTargetKey: fi(t('Cột/quan hệ khóa khớp (vd Sản phẩm)'), 'ColumnSelect', { componentProps: { options: cols, allowClear: true, style: { width: '100%' } } }),
                         bridgeSourceKey: fi(t('Khóa trên bản ghi nguồn'), 'PtdlInput', { componentProps: { placeholder: 'id' } }),
                       },
@@ -1211,7 +1211,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
           showTotals: true,
           sumFields: [],
           bridgeEnabled: false,
-          bridgeChannel: '',
+          bridgeChannel: 'ch1',
           bridgeTargetKey: '',
           bridgeSourceKey: 'id',
         },
@@ -1275,15 +1275,15 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
       TableBlockModel.__ptdlBridgePublish = true;
       TableBlockModel.registerFlow({
         key: 'ptdlBridgePublish',
-        title: t('Gửi dòng sang giỏ (bridge)'),
+        title: t('Gửi dòng khi bấm (bridge)'),
         on: { eventName: 'rowClick' },
         sort: 900,
         steps: {
           settings: {
-            title: t('Gửi dòng sang giỏ (bridge)'),
+            title: t('Gửi dòng khi bấm (bridge)'),
             uiSchema: {
               bridgeEnabled: { type: 'boolean', title: t('Bật gửi khi bấm dòng'), 'x-decorator': 'FormItem', 'x-component': 'Switch' },
-              bridgeChannel: { type: 'string', title: t('Tên kênh'), 'x-decorator': 'FormItem', 'x-component': 'PtdlInput', 'x-component-props': { placeholder: 'cart' } },
+              bridgeChannel: { type: 'string', title: t('Tên kênh'), 'x-decorator': 'FormItem', 'x-component': 'PtdlInput', 'x-component-props': { placeholder: 'ch1' } },
               bridgeAction: {
                 type: 'string',
                 title: t('Hành động khi bấm'),
@@ -1296,7 +1296,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
                 ],
               },
             },
-            defaultParams: { bridgeEnabled: false, bridgeChannel: 'cart', bridgeAction: 'add' },
+            defaultParams: { bridgeEnabled: false, bridgeChannel: 'ch1', bridgeAction: 'add' },
             handler(ctx: any, params: any) {
               if (!params?.bridgeEnabled || !params?.bridgeChannel) return;
               const record = ctx?.inputArgs?.record;
@@ -1322,14 +1322,14 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
     if (RecordActionModel && !flowEngine.getModelClass?.('PtdlBridgeAddActionModel')) {
       class PtdlBridgeAddActionModel extends RecordActionModel {
         static scene = 'record';
-        defaultProps: any = { title: t('Thêm vào giỏ'), icon: 'PlusCircleOutlined' };
+        defaultProps: any = { title: t('Thêm dòng'), icon: 'PlusCircleOutlined' };
         render() {
           const display = (this as any).props?.ptdlDisplay || 'button';
           if (display === 'plusminus' || display === 'checkbox') return <BridgeActionControl model={this} />;
           return super.render();
         }
       }
-      (PtdlBridgeAddActionModel as any).define({ label: t('Thêm vào giỏ (bridge)') });
+      (PtdlBridgeAddActionModel as any).define({ label: t('Gửi dòng qua kênh (bridge)') });
       (PtdlBridgeAddActionModel as any).registerFlow({
         key: 'ptdlBridgeAddClick',
         on: 'click',
@@ -1353,10 +1353,10 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
       });
       (PtdlBridgeAddActionModel as any).registerFlow({
         key: 'ptdlBridgeAddSettings',
-        title: t('Cấu hình gửi sang giỏ'),
+        title: t('Cấu hình gửi dòng'),
         steps: {
           settings: {
-            title: t('Cấu hình gửi sang giỏ'),
+            title: t('Cấu hình gửi dòng'),
             uiSchema: {
               preview: { type: 'void', title: t('Xem trước'), 'x-decorator': 'FormItem', 'x-component': 'PtdlActionPreview' },
               ptdlDisplay: {
@@ -1402,7 +1402,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
                 'x-component': 'PtdlColor',
                 'x-reactions': rx((v: any) => (v.ptdlDisplay || 'plusminus') === 'plusminus'),
               },
-              channel: { type: 'string', title: t('Tên kênh'), 'x-decorator': 'FormItem', 'x-component': 'PtdlInput', 'x-component-props': { placeholder: 'cart' }, required: true },
+              channel: { type: 'string', title: t('Tên kênh'), 'x-decorator': 'FormItem', 'x-component': 'PtdlInput', 'x-component-props': { placeholder: 'ch1' }, required: true },
               action: {
                 type: 'string',
                 title: t('Hành động khi bấm'),
@@ -1416,7 +1416,7 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
                 'x-reactions': rx((v: any) => (v.ptdlDisplay || 'plusminus') === 'button'),
               },
             },
-            defaultParams: { ptdlDisplay: 'plusminus', ptdlPmStyle: 'split', ptdlShowCount: true, ptdlSize: 'small', pmColor: '', channel: 'cart', action: 'add' },
+            defaultParams: { ptdlDisplay: 'plusminus', ptdlPmStyle: 'split', ptdlShowCount: true, ptdlSize: 'small', pmColor: '', channel: 'ch1', action: 'add' },
             handler(ctx: any, params: any) {
               ctx.model.setProps({
                 ptdlDisplay: params.ptdlDisplay || 'plusminus',

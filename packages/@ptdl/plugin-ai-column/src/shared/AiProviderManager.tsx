@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Input, Popconfirm, Select, Space, Table, Tabs, Tag, Tooltip, Typography, message } from 'antd';
-import { FieldTokenTextArea } from '@ptdl/shared';
+import { FieldTokenTextArea, cleanLabel } from '@ptdl/shared';
 import { createVoiceProviderManager } from './VoiceProviderManager';
 import { t } from './i18n';
 
@@ -43,7 +43,7 @@ function ClassifyManager({ useApiClient }: { useApiClient: () => any }) {
       .request({ url: 'collections:list', params: { paginate: false } })
       .then((res: any) => {
         const l = res?.data?.data || [];
-        setCollOpts(l.filter((c: any) => c?.name && !c.hidden && c.template !== 'view').map((c: any) => ({ value: c.name, label: `${c.title || c.name} (${c.name})` })));
+        setCollOpts(l.filter((c: any) => c?.name && !c.hidden && c.template !== 'view').map((c: any) => ({ value: c.name, label: `${cleanLabel(c.title, c.name)} (${c.name})` })));
       })
       .catch(() => {});
     api

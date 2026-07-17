@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Input, Select, Tag, Tooltip, message } from 'antd';
 import { observer } from '@formily/react';
+import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { SparklesIcon, collectValues, syncAutorunRule, gateConfig } from './aiColumn';
 import { buildFieldCascaderOptions, getFields, fieldJsonMeta, ColumnSelect } from '@ptdl/shared';
@@ -206,36 +207,36 @@ export const PtdlExtractTriggerSelect: React.FC<any> = observer((props: any) => 
 
 function aiExtractStepUiSchema(t: (s: string) => any) {
   return {
-    rowConnection: {
+    tabs: {
       type: 'void',
-      'x-component': 'PtdlGrid',
+      'x-component': 'FormTab',
       properties: {
-        aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmServiceSelect' },
-        aiModel: { type: 'string', title: t('Model'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmModelSelect' },
+        tabMain: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Trích xuất & Prompt') },
+          properties: {
+            aiMapping: { type: 'array', title: t('Các field cần trích xuất'), 'x-decorator': 'FormItem', 'x-component': 'PtdlExtractMapping' },
+            // System prompt BEFORE the user prompt — it sets context/behavior; the prompt is the actual
+            // instruction that follows it (same order as aiColumn.tsx's AI input/textarea dialog).
+            aiSystem: { type: 'string', title: t('Câu lệnh hệ thống'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiSystemInput' },
+            aiPrompt: { type: 'string', title: t('Prompt'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiPromptInput' },
+            rowConnection: {
+              type: 'void', 'x-component': 'PtdlGrid',
+              properties: {
+                aiService: { type: 'string', title: t('Dịch vụ LLM'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmServiceSelect' },
+                aiModel: { type: 'string', title: t('Model'), 'x-decorator': 'FormItem', 'x-component': 'PtdlLlmModelSelect' },
+              },
+            },
+          },
+        },
+        tabAuto: {
+          type: 'void', 'x-component': 'FormTab.TabPane', 'x-component-props': { tab: t('Tự động & Điều kiện') },
+          properties: {
+            aiTrigger: { type: 'array', title: t('Tự sinh khi'), 'x-decorator': 'FormItem', 'x-component': 'PtdlExtractTriggerSelect' },
+            aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAutorunGate' },
+          },
+        },
       },
     },
-    aiTrigger: {
-      type: 'array',
-      title: t('Tự sinh khi'),
-      'x-decorator': 'FormItem',
-      'x-component': 'PtdlExtractTriggerSelect',
-    },
-    // System prompt BEFORE the user prompt — it sets context/behavior, the prompt is the actual
-    // instruction that follows it (same order as aiColumn.tsx's AI input/textarea dialog).
-    aiSystem: { type: 'string', title: t('Câu lệnh hệ thống'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAiSystemInput' },
-    aiPrompt: {
-      type: 'string',
-      title: t('Prompt'),
-      'x-decorator': 'FormItem',
-      'x-component': 'PtdlAiPromptInput',
-    },
-    aiMapping: {
-      type: 'array',
-      title: t('Các field cần trích xuất'),
-      'x-decorator': 'FormItem',
-      'x-component': 'PtdlExtractMapping',
-    },
-    aiGate: { type: 'object', title: t('Điều kiện chạy (tiết kiệm chi phí)'), 'x-decorator': 'FormItem', 'x-component': 'PtdlAutorunGate' },
   };
 }
 
@@ -417,7 +418,7 @@ export function registerAiExtract({ flowEngine, variants, EditableItemModel, api
     // AI_SETTINGS_COMPONENTS (LLM pickers, prompt/system inputs, grid) is ALREADY registered by
     // registerAiColumn() in the same load() — only these two are new here. Re-registering the
     // shared ones is harmless (same names → same components) but avoided for clarity.
-    flowEngine.flowSettings?.registerComponents?.({ PtdlExtractMapping, PtdlExtractTriggerSelect });
+    flowEngine.flowSettings?.registerComponents?.({ PtdlExtractMapping, PtdlExtractTriggerSelect, FormTab, 'FormTab.TabPane': FormTab.TabPane });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[ai-column] extract: registerComponents failed', e);

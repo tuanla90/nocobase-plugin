@@ -4,7 +4,7 @@ Enhanced sub-table field widget for hasMany / m2m associations. Subclasses the n
 `SubTableFieldModel`, so **submit is 100% native** (nested create/update inherited). Adds:
 
 - **Totals row** — sum chosen numeric columns (weight / volume / amount).
-- **View modes** — table (default) / list / cards (POS-style: image + name + price + line total).
+- **View modes** — table (default) / list / cards (compact: image + name + price + line total).
 - **Qty +/− stepper** — a chosen column becomes a `− [n] +` pill (fast entry).
 - **Bridge** — receive events from ANOTHER block (click a product row → add / +1 a line here).
 
@@ -17,19 +17,19 @@ Pick it per field: field ⚙ → **Thành phần trường → Sub-table Pro**. 
 > In CARD/LIST view, the title/subtitle/image/price selectors accept a related field directly
 > (`Sản phẩm · Đơn giá`), fetched on demand.
 
-## Bridge — link two blocks (POS / cargo loading)
+## Bridge — link two blocks (line-item entry / cargo loading)
 
-The widget is the "cart". A **source block** (e.g. a Table of products) publishes events; the widget,
+The widget is the "target". A **source block** (e.g. a Table of products) publishes events; the widget,
 configured with the same **channel**, mutates its own rows.
 
-### 1. Configure the widget (the cart)
+### 1. Configure the widget (the target sub-table)
 
 Field ⚙ → Cấu hình Sub-table Pro → **Kết nối block khác (bridge)**:
 
 | Field | Meaning | Example |
 |---|---|---|
 | Bật nhận sự kiện | enable the subscription | on |
-| Tên kênh | channel name (must match publisher) | `cart` |
+| Tên kênh | channel name (must match publisher) | `ch1` |
 | Cột khóa khớp (FK) | the child-row column that stores the source id | `product_id` |
 | Khóa trên bản ghi nguồn | field on the incoming record to match by | `id` |
 
@@ -45,24 +45,24 @@ duplicating rows.
 Two no-code ways, pick by source block type:
 
 **(a) Any block with record actions (Grid Card / List / Table row)** — add the action
-**"Thêm vào giỏ (bridge)"** to the card/row action area (same place you'd add a "JS action"), then in its
-⚙ set **Tên kênh** = `cart` and a **Kiểu nút** (control style):
+**"Gửi dòng qua kênh (bridge)"** to the card/row action area (same place you'd add a "JS action"), then in its
+⚙ set **Tên kênh** = `ch1` and a **Kiểu nút** (control style):
 - **Nút +/−** (default) — a joined − / + group per card. `+` adds/increments, `−` decrements (disabled when
-  the item isn't in the cart). Needs a **qty column** configured on the cart widget.
+  the item isn't in the target sub-table). Needs a **qty column** configured on the target sub-table widget.
 - **Checkbox (thêm/bớt)** — check = add, uncheck = remove. Auto-reflects whether the item is already in the
-  cart (the cart broadcasts its membership live). **No qty column needed.**
+  target (the target sub-table broadcasts its membership live). **No qty column needed.**
 - **Nút đơn** — a single button that fires one configured action (Add / Reduce / Remove).
 
-The checkbox/+/− stay in sync with the cart no matter how it changed (bridge, manual edit, delete).
+The checkbox/+/− stay in sync with the target sub-table no matter how it changed (bridge, manual edit, delete).
 
-**(b) Table block only** — block ⚙ → **"Gửi dòng sang giỏ (bridge)"** → enable + type the channel.
+**(b) Table block only** — block ⚙ → **"Gửi dòng khi bấm (bridge)"** → enable + type the channel.
 Then clicking any row publishes it (no per-row button).
 
 ### 2-alt. Publish from RunJS (if you prefer code)
 
 ```js
 const bridge = (ctx.app && ctx.app.ptdlBridge) || window.__ptdlBridge;
-bridge?.publish('cart', { action: 'add', record: ctx.record });
+bridge?.publish('ch1', { action: 'add', record: ctx.record });
 ```
 
 `record` is the source row (e.g. a product `{ id, name, unit_price, ... }`). The widget takes
@@ -74,7 +74,7 @@ bridge?.publish('cart', { action: 'add', record: ctx.record });
 bridge.publish(channel, { action, record, delta })
 ```
 
-| action | effect on the cart |
+| action | effect on the target sub-table |
 |---|---|
 | `add` | matching row → qty +1; else push a new row (qty 1, FK = record id) |
 | `inc` | matching row → qty += `delta` (default 1); else new row (qty = delta) |

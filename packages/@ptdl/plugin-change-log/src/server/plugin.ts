@@ -28,8 +28,57 @@ export class PluginChangeLogServer extends Plugin {
 
     this.app.resourcer.define({ name: 'ptdlChangeLogs', only: ['list', 'get'] });
     this.app.resourcer.define({ name: 'ptdlChangeLogConfigs' });
-    // Any signed-in user may read history; writing entries is done by the hooks, not the API.
+    // Signed-in users may reach the endpoint; the per-collection gate below narrows it. Writing
+    // entries is done by the hooks, not the API.
     this.app.acl.allow('ptdlChangeLogs', ['list', 'get'], 'loggedIn');
+
+    // SECURITY (v0.1.2): gate history reads by the SOURCE-collection permission. Previously any
+    // signed-in user could read the change history of ANY collection over the API. The timeline,
+    // badge and block all query with a flat `filter.collectionName`, so we check the caller can
+    // `view`/`list` that collection (strategy-aware → root & admin pass automatically). It is
+    // deliberately FAIL-OPEN on uncertainty (no collectionName, unknown collection, ACL lookup
+    // error, no role resolved) so it can never break the working timeline for the primary/root
+    // user — it only blocks a NON-root role from reading a collection it cannot otherwise see.
+    // ⚠️ Verify with a real restricted role before relying on it (see README / KNOWN ISSUES).
+    this.app.resourcer.use(
+      async (ctx: any, next: any) => {
+        const action = ctx?.action;
+        const isRead =
+          action?.resourceName === 'ptdlChangeLogs' &&
+          (action.actionName === 'list' || action.actionName === 'get');
+        if (isRead) {
+          let denied = false;
+          try {
+            const target = action.params?.filter?.collectionName;
+            const acl = ctx.app?.acl;
+            const roles: string[] = Array.isArray(ctx.state?.currentRoles)
+              ? ctx.state.currentRoles
+              : ctx.state?.currentRole
+                ? [ctx.state.currentRole]
+                : [];
+            if (target && acl && roles.length) {
+              const allowed = roles.some((role) => {
+                try {
+                  return (
+                    !!acl.can({ role, resource: String(target), action: 'view' }) ||
+                    !!acl.can({ role, resource: String(target), action: 'list' })
+                  );
+                } catch (e) {
+                  return true; // per-role lookup failure → don't block
+                }
+              });
+              denied = !allowed;
+            }
+          } catch (e) {
+            denied = false; // fail-open
+          }
+          // Throw OUTSIDE the try so the fail-open catch above can't swallow the 403.
+          if (denied) ctx.throw(403, "No permission to view this collection's change history");
+        }
+        await next();
+      },
+      { tag: 'ptdlChangeLogAcl' },
+    );
     // ptdlChangeLogConfigs is a system collection (dumpRules:'required') → NOT covered by the admin role's
     // strategy, so the settings page's create/update/destroy were denied for non-root admins. Grant them.
     this.app.acl.allow('ptdlChangeLogConfigs', ['list', 'get', 'create', 'update', 'updateOrCreate', 'destroy'], 'loggedIn');

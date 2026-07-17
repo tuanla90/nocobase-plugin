@@ -59,8 +59,10 @@ windowColumn:
 | `running_min` / `running_max` | `MIN/MAX(input) OVER(…)` | nhỏ/lớn nhất tới hiện tại |
 | `running_avg` | `AVG(input) OVER(…)` | trung bình lũy kế |
 | `row_number` | `ROW_NUMBER() OVER(…)` | **số thứ tự** 1,2,3… mỗi phân vùng (không cần input; KHÔNG frame) |
-| `weighted_avg` *(TODO)* | `{qty, value}` recursive | `avg_cost`, `cogs` |
-| `fifo` *(TODO)* | hàng đợi lớp, recursive | `cogs`, tồn theo lô |
+| `weighted_avg` *(→ mode scan, ĐÃ LÀM)* | JS ordered-scan state-based | `avg_cost`, `cogs` |
+| `fifo` / `lifo` / `fefo` *(→ mode scan, ĐÃ LÀM)* | JS allocation strategy (hàng đợi lớp) | `cogs`, tồn theo lô |
+
+> **Lưu ý (cập nhật 2026-07-17):** `weighted_avg`/`fifo` KHÔNG hiện thực bằng recursive-CTE trong window mà bằng **mode thứ 4 "scan/costing"** (v0.1.34+, JS ordered-scan — kernel `allocate(need)`, FIFO/LIFO/FEFO/weighted-average = các `AllocationStrategy`). Multi-source nhiều bảng thêm ở v0.1.57–58. Chi tiết + trạng thái đầy đủ: **`COSTING.md`**. Bảng trên giữ lại để đối chiếu ý tưởng gốc.
 
 **orderBy = `OrderSpec[] {field, dir:'asc'|'desc'}`** (v0.1.32). Chuẩn hoá backward-compat: chuỗi/`['col']` cũ → asc. SQL: `ORDER BY col ASC/DESC`. ROW_NUMBER là ranking fn → build KHÔNG kèm `ROWS UNBOUNDED PRECEDING` (Postgres từ chối frame trên ranking).
 
@@ -126,7 +128,7 @@ Field-interface "Sổ/Lũy kế (window)" ở Add field **đã gỡ hẳn** (`Pt
 - **Recompute-partition hiện quét cả phân vùng** (không anchor-from-point). Đúng + chỉ đụng 1 phân vùng, nhưng phân vùng cực dài thì nên thêm anchor (base = balance_after dòng ngay trước điểm sửa, chỉ tính đuôi) — SQL đã có trong prototype (ledger-engine.mjs).
 - **Field-interface (Add field) vẫn input gõ tay** tên cột — nhưng **trang quản lý tập trung đã có picker cột thật + nút Tính lại** (v0.1.30), nên đây chỉ còn là điểm nice-to-have cho lối tạo-qua-Add-field.
 - **partition value = null** bị bỏ (dùng `IS NULL` cho where nhưng replacements null → cần soát). Ledger nên luôn đủ product+warehouse.
-- **weighted_avg/fifo** cần recursive CTE (không phải window đơn) — accumulator + cột ghi (cogs/avg_cost) mở rộng WindowDef.
+- ~~**weighted_avg/fifo** cần recursive CTE~~ → **ĐÃ LÀM KHÁC HƯỚNG (v0.1.34+):** tách **mode "scan/costing" thứ 4** (JS ordered-scan, không phải recursive-CTE). FIFO/LIFO/FEFO/weighted-average là các `AllocationStrategy`; live-verified COGS phân biệt; multi-source (nhiều bảng) ở v0.1.57–58. Xem `COSTING.md`.
 - **signed_qty** trong demo set tay; thực tế nên là 1 **local computed column** = `qty * IF(direction=='in',1,-1)` (3 mode ghép trên cùng bảng) — HOẶC dùng **input = biểu thức SQL** (v0.1.33, xem dưới) để khỏi cột trung gian.
 
 ## 9. Input = cột HOẶC biểu thức SQL (v0.1.33)
