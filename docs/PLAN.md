@@ -142,8 +142,14 @@ in/PDF) và `plugin-email-template` (preset newsletter + inliner + gửi mail).
     collectionName / collection lạ / lỗi ACL / chưa resolve role) → không bao giờ vỡ timeline của user
     chính. `ctx.throw(403)` đặt NGOÀI try để catch fail-open không nuốt mất. ⚠️ **Cần verify với 1 role
     hạn chế thật** trước khi tin cậy hoàn toàn (chưa test multi-role được ở môi trường này).
-  - **Retention**: log tăng vô hạn — cần cơ chế dọn/xoá cũ cho collection lưu lượng cao.
-  - Source **'form'** vẫn label 'api' (server không phân biệt form vs API) — giới hạn đã biết.
+  - ~~**Retention**~~ → ✅ **ĐÃ LÀM (v0.1.3, 2026-07-17).** Mỗi config có `options.retentionDays`
+    (UI: ô "Lưu giữ (ngày)", 0 = giữ mãi). Server `runRetention` xoá entry của collection đó cũ hơn N
+    ngày; chạy ~30s sau boot, lặp mỗi 24h, và mỗi lần lưu config; best-effort (không throw), clear timer
+    ở `beforeStop`.
+  - ~~Source **'form'** vẫn label 'api'~~ → ✅ **CẢI THIỆN (v0.1.3).** Client cài axios request-interceptor
+    (cả 2 lane) đóng dấu header `x-ptdl-change-source: form` cho `:create`/`:update` từ UI **chỉ khi chưa có
+    source cụ thể hơn** (status-flow vẫn 'quick'/'action'; `:updateMany` loại trừ → server giữ 'bulk'; API
+    ngoài/không có interceptor → giữ 'api'). Matcher test offline 9/9. Chưa click tận mắt (login chặn).
 - ~~plugin-number-format (_inactive): lỗi build thiếu lane dist/client-v2 — cần sửa builder nếu dùng lại.~~
   **Superseded (không cần làm)**: nhu cầu đã có ở field-enhancements "Number with unit" widget (đã ship). Vướng
   gốc là kiến trúc (form settings menu không nhận flow tuỳ ý), không phải lỗi build. Xem README.md.

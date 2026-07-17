@@ -55,5 +55,12 @@
   "Popover (compact)": "Popover (gọn)",
   "Change history settings": "Cấu hình lịch sử thay đổi",
   "Show count badge": "Hiện badge số lượng",
-  "API": "API"
+  "API": "API",
+  "Retention": "Lưu giữ",
+  "{{n}} days": "{{n}} ngày",
+  "Keep forever": "Giữ mãi",
+  "Retention (days)": "Lưu giữ (ngày)",
+  "Automatically delete this collection's log entries older than this many days. 0 = keep forever.": "Tự động xoá bản ghi nhật ký của bảng này cũ hơn số ngày này. 0 = giữ mãi.",
+  "days": "ngày",
+  "0 = keep forever": "0 = giữ mãi"
 }

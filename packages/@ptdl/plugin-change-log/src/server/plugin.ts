@@ -12,6 +12,8 @@ interface Cfg {
   triggerFields: string[];
   snapshotFields: string[];
   captureNote: boolean;
+  /** options.retentionDays: delete this collection's log entries older than N days (0/unset = keep forever). */
+  retentionDays: number;
 }
 
 // The change-log authority. Every create/update that fires model hooks — form save, quick edit,
@@ -95,6 +97,7 @@ export class PluginChangeLogServer extends Plugin {
               triggerFields: Array.isArray(r.triggerFields) ? r.triggerFields.map(String) : [],
               snapshotFields: Array.isArray(r.snapshotFields) ? r.snapshotFields.map(String) : [],
               captureNote: !!r.captureNote,
+              retentionDays: Math.max(0, Number(r.options?.retentionDays) || 0),
             } as Cfg,
           ]),
         );
@@ -103,8 +106,36 @@ export class PluginChangeLogServer extends Plugin {
       }
     };
     await reloadConfigs();
-    db.on('ptdlChangeLogConfigs.afterSave', reloadConfigs);
+
+    // Retention: per-config `options.retentionDays` deletes that collection's log entries older than
+    // N days (0/unset = keep forever). Opt-in, best-effort — a cleanup failure never throws. Runs a
+    // little after boot (let the app settle), then every 24h, and once whenever a config is saved.
+    const runRetention = async () => {
+      try {
+        const repo = db.getRepository('ptdlChangeLogs');
+        if (!repo) return;
+        for (const cfg of this.configs.values()) {
+          if (!cfg.retentionDays || cfg.retentionDays <= 0) continue;
+          const cutoff = new Date(Date.now() - cfg.retentionDays * 86400000);
+          await repo.destroy({ filter: { collectionName: cfg.collectionName, createdAt: { $lt: cutoff } } });
+        }
+      } catch (e) {
+        // best-effort background cleanup — never surface
+      }
+    };
+    const reloadThenPrune = async () => {
+      await reloadConfigs();
+      await runRetention();
+    };
+    db.on('ptdlChangeLogConfigs.afterSave', reloadThenPrune);
     db.on('ptdlChangeLogConfigs.afterDestroy', reloadConfigs);
+    if ((this as any).__retentionTimer) clearInterval((this as any).__retentionTimer);
+    (this as any).__retentionTimer = setInterval(runRetention, 24 * 60 * 60 * 1000);
+    const bootPrune = setTimeout(runRetention, 30 * 1000);
+    this.app.on('beforeStop', () => {
+      clearInterval((this as any).__retentionTimer);
+      clearTimeout(bootPrune);
+    });
 
     const resolveCollection = (model: any) =>
       db.modelCollection?.get?.(model?.constructor) || db.getCollection?.(model?.constructor?.name);

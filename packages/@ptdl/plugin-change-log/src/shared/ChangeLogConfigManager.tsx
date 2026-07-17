@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Modal, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd';
+import { Button, Card, InputNumber, Modal, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd';
 import { ColumnSelect, buildColumnOptions } from '@ptdl/shared';
 import { t, tr } from './changeLogClient';
 
@@ -20,6 +20,10 @@ interface ConfigRow {
   triggerFields: string[];
   snapshotFields: string[];
   captureNote: boolean;
+  /** delete entries older than N days; 0 = keep forever. Persisted inside the `options` JSON column. */
+  retentionDays?: number;
+  /** raw options blob, preserved on save so we don't clobber other keys. */
+  options?: any;
 }
 
 const fieldLabel = (f: { name: string; title?: string }) => {
@@ -71,6 +75,8 @@ export const ChangeLogConfigManager: React.FC<{ api: any }> = ({ api }) => {
           triggerFields: r.triggerFields || [],
           snapshotFields: r.snapshotFields || [],
           captureNote: !!r.captureNote,
+          retentionDays: Math.max(0, Number(r.options?.retentionDays) || 0),
+          options: r.options || {},
         })),
       );
     } catch (e) {
@@ -91,16 +97,26 @@ export const ChangeLogConfigManager: React.FC<{ api: any }> = ({ api }) => {
       message.warning(t('Pick a collection'));
       return;
     }
+    // retentionDays lives inside the `options` JSON column — merge it in (preserving other keys)
+    // rather than sending it as a top-level field (which has no column and would be dropped).
+    const payload: any = {
+      collectionName: row.collectionName,
+      enabled: row.enabled,
+      triggerFields: row.triggerFields,
+      snapshotFields: row.snapshotFields,
+      captureNote: row.captureNote,
+      options: { ...(row.options || {}), retentionDays: Math.max(0, Number(row.retentionDays) || 0) },
+    };
     try {
       if (row.id) {
         await api?.request?.({
           url: 'ptdlChangeLogConfigs:update',
           method: 'post',
           params: { filterByTk: row.id },
-          data: row,
+          data: payload,
         });
       } else {
-        await api?.request?.({ url: 'ptdlChangeLogConfigs:create', method: 'post', data: row });
+        await api?.request?.({ url: 'ptdlChangeLogConfigs:create', method: 'post', data: payload });
       }
       message.success(t('Saved'));
       setEditing(null);
@@ -151,6 +167,12 @@ export const ChangeLogConfigManager: React.FC<{ api: any }> = ({ api }) => {
         v?.length ? v.map((f) => <Tag key={f}>{fieldTagLabel(row, f)}</Tag>) : <span style={{ opacity: 0.5 }}>—</span>,
     },
     { title: t('Note'), dataIndex: 'captureNote', render: (v: boolean) => (v ? t('Yes') : t('No')) },
+    {
+      title: t('Retention'),
+      dataIndex: 'retentionDays',
+      render: (v: number) =>
+        v && v > 0 ? <span>{t('{{n}} days', { n: v } as any)}</span> : <span style={{ opacity: 0.5 }}>{t('Keep forever')}</span>,
+    },
     {
       title: t('Enabled'),
       dataIndex: 'enabled',
@@ -290,6 +312,24 @@ const ConfigEditor: React.FC<{
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Switch checked={row.captureNote} onChange={(c) => setRow({ ...row, captureNote: c })} />
           <span style={{ fontSize: 13 }}>{t('Capture an optional note/reason with each change')}</span>
+        </div>
+        <div>
+          <div style={{ fontSize: 13, marginBottom: 4 }}>
+            {t('Retention (days)')}{' '}
+            <Tooltip title={t("Automatically delete this collection's log entries older than this many days. 0 = keep forever.")}>
+              <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span>
+            </Tooltip>
+          </div>
+          <InputNumber
+            min={0}
+            step={30}
+            style={{ width: 200 }}
+            value={row.retentionDays ?? 0}
+            onChange={(v) => setRow({ ...row, retentionDays: Math.max(0, Number(v) || 0) })}
+            addonAfter={t('days')}
+            placeholder="0"
+          />
+          <div style={{ fontSize: 12, opacity: 0.55, marginTop: 4 }}>{t('0 = keep forever')}</div>
         </div>
       </Space>
     </Modal>

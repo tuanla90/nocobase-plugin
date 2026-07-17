@@ -55,5 +55,12 @@
   "Popover (compact)": "Popover (compact)",
   "Change history settings": "Change history settings",
   "Show count badge": "Show count badge",
-  "API": "API"
+  "API": "API",
+  "Retention": "Retention",
+  "{{n}} days": "{{n}} days",
+  "Keep forever": "Keep forever",
+  "Retention (days)": "Retention (days)",
+  "Automatically delete this collection's log entries older than this many days. 0 = keep forever.": "Automatically delete this collection's log entries older than this many days. 0 = keep forever.",
+  "days": "days",
+  "0 = keep forever": "0 = keep forever"
 }

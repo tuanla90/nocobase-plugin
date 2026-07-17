@@ -6,6 +6,7 @@ import { defineChangeHistoryAction } from '../shared/changeHistoryAction';
 import { registerChangeHistoryBlock } from '../shared/changeHistoryBlock';
 import { exposeChangeLogBridge } from '../shared/ChangeLogSurfaces';
 import { setChangeLogI18n, t, NS } from '../shared/changeLogClient';
+import { installChangeSourceInterceptor } from '../shared/changeSource';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
@@ -29,6 +30,8 @@ export class PluginChangeLogClient extends Plugin {
       console.warn('[change-log] i18n addResources failed', e);
     }
     exposeChangeLogBridge();
+    // Stamp UI create/update writes as source 'form' (so they aren't mislabeled 'api').
+    installChangeSourceInterceptor(this.app);
 
     this.app.pluginSettingsManager.add('ptdl-change-log', {
       title: t('Change Log'),

@@ -93,10 +93,15 @@ chi tiết record** (popup/route mở 1 record) chứ không phải trang list.
 ## Còn thiếu / cần làm tiếp
 - ✅ **Phân quyền đọc log — ĐÃ LÀM (v0.1.2):** resourcer middleware gate `ptdlChangeLogs:list/get` theo
   quyền `view`/`list` collection nguồn (`filter.collectionName`), strategy-aware (root/admin qua tự động),
-  FAIL-OPEN khi bất định (không vỡ timeline). ⚠️ chưa test với role hạn chế thật — verify trước khi tin cậy.
-- **Source 'form'**: đổi qua widget editable/dropdown đi theo form submit chuẩn (không qua code
-  mình) → server chỉ đoán heuristic (api/bulk/create). Muốn label 'form' chính xác phải hook
-  submit của block — để sau.
+  FAIL-OPEN khi bất định (không vỡ timeline). **Đã kiểm chứng OFFLINE** bằng harness nạp `@nocobase/acl`
+  thật: `acl.can` trả truthy cho root/admin, `null` cho role thiếu `view` → gate thực sự chặn, không no-op
+  (9/9 assertion). ⚠️ vẫn nên xác nhận bằng 1 role hạn chế thật trên UI khi tiện.
+- ✅ **Retention — ĐÃ LÀM (v0.1.3):** `options.retentionDays` mỗi config (UI ô "Lưu giữ (ngày)", 0=giữ mãi);
+  server xoá entry cũ hơn N ngày (~30s sau boot + mỗi 24h + mỗi lần lưu config), best-effort, clear ở `beforeStop`.
+- ✅ **Source 'form' — CẢI THIỆN (v0.1.3):** client axios request-interceptor (2 lane) đóng dấu
+  `x-ptdl-change-source: form` cho `:create`/`:update` từ UI **chỉ khi header chưa có** → status-flow giữ
+  'quick'/'action', `:updateMany` giữ 'bulk', API ngoài giữ 'api'. Matcher offline 9/9. (Không cần hook submit
+  từng block như lo ngại cũ.) Chưa click tận mắt (login chặn).
 - **Test runtime** localhost:13000 (môi trường build chỉ có stub, chưa chạy app). Cần verify:
   APIClient forward custom `headers`, ctx.get đọc được header, và `__dirname`/`Buffer` chạy ổn.
 - Deploy: extract tgz `storage/tar/@ptdl/plugin-change-log-0.1.0.tgz` + rebuild status-flow.
