@@ -1,8 +1,9 @@
 import React from 'react';
-import { Switch } from 'antd';
+import { Switch, Select } from 'antd';
 import { message } from 'antd';
 import { SettingsGrid, fi, CollapsibleSection } from '@ptdl/shared';
 import { getCurrentFix, type GeoFix } from './geo';
+import { getDeviceInfo } from './deviceInfo';
 import { te, t } from './i18n';
 
 /**
@@ -85,7 +86,16 @@ async function ptdlAutoCapture(formModel: any): Promise<void> {
     }
   }
 
-  // 2) Enforce "require photo" for each Camera field.
+  // 2) Optionally stamp device info (OS/browser/model/screen/pseudo-id) into a chosen field.
+  try {
+    const deviceField = formModel?.getStepParams?.('ptdlAutoCapture', 'settings')?.deviceField;
+    if (deviceField) {
+      const info = getDeviceInfo();
+      try { formModel.setFieldValue?.(deviceField, info); } catch (_) { formModel.form?.setFieldValue?.(deviceField, info); }
+    }
+  } catch (_) { /* ignore */ }
+
+  // 3) Enforce "require photo" for each Camera field.
   for (const m of cameras) {
     const name = fieldNameOf(m);
     if (!name) continue;
@@ -110,11 +120,43 @@ async function ptdlAutoCapture(formModel: any): Promise<void> {
 
 // ---- settings components -----------------------------------------------------------------------
 const ADK_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
+const ADK_Field = (props: any) => {
+  const opts = Array.isArray(props.options) ? props.options : [];
+  return (
+    <Select
+      style={{ width: '100%' }} allowClear showSearch optionFilterProp="label"
+      placeholder={t('(Không lưu)')}
+      value={props.value ?? undefined}
+      onChange={(v: any) => props.onChange?.(v || undefined)}
+      options={opts}
+    />
+  );
+};
 const ADK_Hint = () => (
   <div style={{ fontSize: 12, color: '#8c8c8c', lineHeight: 1.5 }}>
     {t('Khi bật: lúc Lưu form này, các field "Vị trí (GPS)" sẽ tự lấy toạ độ (theo cấu hình từng field), và field "Chụp ảnh" đặt bắt buộc sẽ chặn lưu nếu chưa có ảnh. Giờ & người ghi tự động dùng trường hệ thống (createdAt/updatedAt/createdBy).')}
+    <br />
+    {t('Thông tin thiết bị ghi được: hệ điều hành, trình duyệt, dòng máy (Android; iOS chỉ "iPhone"), độ phân giải, ID-giả. KHÔNG lấy được IMEI/ID phần cứng; IP cần lấy phía máy chủ.')}
   </div>
 );
+
+/** Fields of the form's collection that can hold device info (json preferred; any text ok). */
+function deviceFieldOptions(model: any): any[] {
+  const coll = model?.collection || model?.context?.collection || model?.context?.collectionField?.collection;
+  const opts: any[] = [];
+  try {
+    const fields = coll?.getFields?.() || [];
+    for (const f of fields) {
+      if (!f?.name) continue;
+      const iface = f?.interface || f?.options?.interface;
+      const type = f?.type || f?.options?.type;
+      if (type === 'json' || iface === 'json' || iface === 'input' || iface === 'textarea' || type === 'string' || type === 'text') {
+        opts.push({ label: `${f.uiSchema?.title || f.title || f.name} (${iface || type})`, value: f.name });
+      }
+    }
+  } catch (_) { /* ignore */ }
+  return opts;
+}
 
 // ---- registration ------------------------------------------------------------------------------
 export function registerAutoSubmit(deps: { flowEngine: any; flowSettings?: any; lane: string }) {
@@ -122,7 +164,7 @@ export function registerAutoSubmit(deps: { flowEngine: any; flowSettings?: any; 
   if (!flowEngine?.getModelClass) { console.warn('[device-kit] autoSubmit: no getModelClass'); return; }
 
   if (flowSettings?.registerComponents) {
-    try { flowSettings.registerComponents({ ADK_Switch, ADK_Hint, ADK_Grid: SettingsGrid, ADK_Section: CollapsibleSection }); }
+    try { flowSettings.registerComponents({ ADK_Switch, ADK_Field, ADK_Hint, ADK_Grid: SettingsGrid, ADK_Section: CollapsibleSection }); }
     catch (e) { console.warn('[device-kit] autoSubmit registerComponents failed', e); }
   }
 
@@ -134,9 +176,12 @@ export function registerAutoSubmit(deps: { flowEngine: any; flowSettings?: any; 
       settings: {
         title: te('Tự động ghi nhận khi Lưu'),
         uiMode: { type: 'dialog', props: { width: 520 } },
-        uiSchema: () => ({
+        uiSchema: (ctx: any) => ({
           enabled: fi(te('Bật tự động ghi nhận khi Lưu'), 'ADK_Switch', { type: 'boolean' }),
-          hint: { type: 'void', 'x-component': 'ADK_Hint', 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginTop: 4 } } },
+          deviceField: fi(te('Ghi thông tin thiết bị vào field'), 'ADK_Field', { componentProps: { options: deviceFieldOptions(ctx?.model) } }),
+          deviceHint: {
+            type: 'void', 'x-component': 'ADK_Hint', 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginTop: 2 } },
+          },
         }),
         defaultParams: { enabled: false },
         handler(_ctx: any, _params: any) {

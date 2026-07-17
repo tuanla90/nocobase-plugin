@@ -5,6 +5,7 @@ import { Button, Input, Switch, Slider, Space, Segmented, message } from 'antd';
 import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS } from '@ptdl/shared';
 import { getCurrentFix, formatFix, mapsUrl, parseLocation, accuracyBucket, type GeoFix } from './geo';
 import { PickMap } from './mapView';
+import { PermissionHelp } from './permissionHelp';
 import { te, t } from './i18n';
 
 /**
@@ -72,16 +73,18 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
   const [busy, setBusy] = useState(false);
   const [manual, setManual] = useState('');
   const [showManual, setShowManual] = useState(false);
+  const [denied, setDenied] = useState(false);
   const fix = asFix(value);
 
   const locate = async () => {
     setBusy(true);
+    setDenied(false);
     try {
       const f = await getCurrentFix({ enableHighAccuracy: cfg.highAccuracy, timeoutMs: 12000 });
       onChange?.(f);
     } catch (e: any) {
       const code = e?.code;
-      if (code === 'denied') message.error(t('Bạn đã từ chối quyền vị trí. Mở lại quyền cho trang trong cài đặt trình duyệt rồi thử lại.'));
+      if (code === 'denied') setDenied(true);
       else if (code === 'timeout') message.warning(t('Lấy vị trí quá lâu. Thử lại ở nơi thoáng hoặc bật GPS.'));
       else if (code === 'unsupported') message.error(t('Thiết bị/trình duyệt không hỗ trợ định vị (hoặc trang không chạy HTTPS).'));
       else message.error(t('Không lấy được vị trí.'));
@@ -106,36 +109,45 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
   const bucket = accuracyBucket(fix?.accuracy, cfg.good, cfg.ok);
 
   return (
-    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, minWidth: 240, width: '100%', maxWidth: 420 }}>
-      <Space size={8} style={{ alignItems: 'center' }}>
-        <Button size="small" loading={busy} onClick={locate} disabled={disabled}>📍 {t('Lấy vị trí')}</Button>
+    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, minWidth: 240, width: '100%', maxWidth: 440 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Button type={fix ? 'default' : 'primary'} icon={<span>📍</span>} loading={busy} onClick={locate} disabled={disabled}>
+          {fix ? t('Cập nhật vị trí') : t('Lấy vị trí')}
+        </Button>
         {fix ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: DOT_COLORS[bucket], flex: 'none' }} />
-            <a href={mapsUrl(fix)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-              {formatFix(fix, { showAccuracy: cfg.showAccuracy })}
-            </a>
-          </span>
+          <a
+            href={mapsUrl(fix)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontVariantNumeric: 'tabular-nums',
+              padding: '3px 10px', borderRadius: 999, border: '1px solid var(--colorBorder, #e5e5e5)',
+              background: 'var(--colorFillQuaternary, #fafafa)', fontSize: 13, textDecoration: 'none',
+            }}
+          >
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: DOT_COLORS[bucket], flex: 'none' }} />
+            <span style={{ color: 'var(--colorText, #333)' }}>{formatFix(fix, { showAccuracy: cfg.showAccuracy })}</span>
+          </a>
         ) : (
-          <span style={{ color: '#bfbfbf' }}>{t('Chưa có vị trí')}</span>
+          <span style={{ color: '#bfbfbf', fontSize: 13 }}>{t('Chưa có vị trí')}</span>
         )}
-      </Space>
+      </div>
+
+      {denied && !disabled && <PermissionHelp kind="location" compact onRetry={locate} />}
 
       {cfg.mapInput && !disabled && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <PickMap lat={fix?.lat} lng={fix?.lng} height={cfg.mapHeight} editable onPick={pickOnMap} />
-          <span style={{ fontSize: 11, color: '#8c8c8c' }}>{t('Bấm hoặc kéo ghim trên bản đồ để chọn vị trí.')}</span>
-        </>
+          <span style={{ fontSize: 11.5, color: '#8c8c8c' }}>💡 {t('Bấm hoặc kéo ghim trên bản đồ để chọn vị trí.')}</span>
+        </div>
       )}
 
       {!disabled && (
         showManual ? (
-          <Space.Compact style={{ width: '100%' }}>
+          <Space.Compact style={{ width: '100%', maxWidth: 320 }}>
             <Input size="small" value={manual} onChange={(e) => setManual(e.target.value)} placeholder={t('vĩ độ, kinh độ hoặc link Google Maps')} onPressEnter={applyManual} />
             <Button size="small" onClick={applyManual}>{t('Áp dụng')}</Button>
           </Space.Compact>
         ) : (
-          <a style={{ fontSize: 12, color: '#8c8c8c' }} onClick={() => setShowManual(true)}>{t('Nhập tay / dán link')}</a>
+          <a style={{ fontSize: 12, color: '#8c8c8c', alignSelf: 'flex-start' }} onClick={() => setShowManual(true)}>{t('Nhập tay / dán link')}</a>
         )
       )}
     </div>

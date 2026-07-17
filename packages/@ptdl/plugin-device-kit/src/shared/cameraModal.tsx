@@ -1,17 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Modal, Button, Spin, Alert, Space, Tooltip } from 'antd';
+import { Modal, Button, Spin, Tooltip } from 'antd';
 import { captureToBlob, fileToImage, type WatermarkCfg, type CaptureResult } from './watermark';
 import { getCurrentFix, formatFix, type GeoFix } from './geo';
+import { PermissionHelp } from './permissionHelp';
 import { t } from './i18n';
 
 /**
- * In-app camera capture modal (getUserMedia). Forces a LIVE shot — no gallery picker — so the
- * captured image is genuine on-site evidence. GPS is fetched in parallel and stamped into the
- * watermark. On "Use photo" the caller receives the watermarked blob + the fix.
- *
- * Secure context (HTTPS/localhost) is required for getUserMedia; on Railway this holds. If the
- * camera can't open (denied / no device / insecure), a localized message + a "pick from file"
- * fallback are offered.
+ * In-app camera capture modal (getUserMedia). Forces a LIVE shot — no gallery picker — so the image
+ * is genuine on-site evidence; GPS is fetched in parallel and stamped into the watermark. On "Use
+ * photo" the caller receives the watermarked blob + the fix. Permission-blocked → inline guidance.
  */
 
 export interface CameraModalProps {
@@ -21,7 +18,7 @@ export interface CameraModalProps {
   watermark: WatermarkCfg;
   maxDim: number;
   quality: number;
-  wantGps: boolean;      // fetch GPS for the watermark / metadata
+  wantGps: boolean;
   title?: string;
 }
 
@@ -35,21 +32,21 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [errMsg, setErrMsg] = useState<string>('');
+  const [denied, setDenied] = useState(false);
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [preview, setPreview] = useState<CaptureResult | null>(null);
   const [fix, setFix] = useState<GeoFix | null>(null);
   const [gpsState, setGpsState] = useState<'idle' | 'locating' | 'ok' | 'fail'>('idle');
 
   const stopStream = useCallback(() => {
-    try {
-      streamRef.current?.getTracks().forEach((tr) => tr.stop());
-    } catch (_) { /* ignore */ }
+    try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch (_) { /* ignore */ }
     streamRef.current = null;
   }, []);
 
   const startStream = useCallback(async (facingMode: 'environment' | 'user') => {
     setPhase('starting');
     setErrMsg('');
+    setDenied(false);
     stopStream();
     const nav = typeof navigator !== 'undefined' ? navigator : undefined;
     if (!nav?.mediaDevices?.getUserMedia) {
@@ -65,13 +62,13 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => { /* autoplay may need the metadata event */ });
+        await videoRef.current.play().catch(() => { /* metadata event will start it */ });
       }
       setPhase('live');
     } catch (e: any) {
       const name = e?.name || '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
-        setErrMsg(t('Bạn đã từ chối quyền camera. Hãy mở lại quyền cho trang này trong cài đặt trình duyệt rồi thử lại.'));
+        setDenied(true);
       } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
         setErrMsg(t('Không tìm thấy camera phù hợp trên thiết bị.'));
       } else {
@@ -81,7 +78,6 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
     }
   }, [stopStream]);
 
-  // Kick GPS as soon as the modal opens (parallel with camera warm-up).
   useEffect(() => {
     if (!open) return;
     if (!wantGps) { setFix(null); setGpsState('idle'); return; }
@@ -93,15 +89,9 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
     return () => { alive = false; };
   }, [open, wantGps]);
 
-  // Open/close lifecycle.
   useEffect(() => {
-    if (open) {
-      setPreview(null);
-      setPhase('starting');
-      startStream(facing);
-    } else {
-      stopStream();
-    }
+    if (open) { setPreview(null); setPhase('starting'); startStream(facing); }
+    else stopStream();
     return () => { stopStream(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -113,40 +103,26 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
       const res = await captureToBlob(video, { maxDim, quality, watermark, fix, at: Date.now() });
       setPreview(res);
       setPhase('preview');
-      stopStream(); // freeze — no need to keep the camera on during preview
+      stopStream();
     } catch (e: any) {
       setErrMsg(t('Chụp ảnh thất bại.') + (e?.message ? ` (${e.message})` : ''));
       setPhase('error');
     }
   }, [maxDim, quality, watermark, fix, stopStream]);
 
-  const doRetake = useCallback(() => {
-    setPreview(null);
-    startStream(facing);
-  }, [facing, startStream]);
-
+  const doRetake = useCallback(() => { setPreview(null); startStream(facing); }, [facing, startStream]);
   const doSwitch = useCallback(() => {
     const next = facing === 'environment' ? 'user' : 'environment';
-    setFacing(next);
-    startStream(next);
+    setFacing(next); startStream(next);
   }, [facing, startStream]);
+  const doUse = useCallback(() => { if (preview) { onCapture(preview, fix); onClose(); } }, [preview, fix, onCapture, onClose]);
 
-  const doUse = useCallback(() => {
-    if (preview) {
-      onCapture(preview, fix);
-      onClose();
-    }
-  }, [preview, fix, onCapture, onClose]);
-
-  // Native fallback: pick/capture via the OS camera app (input capture) then watermark it too.
   const onPickFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
     try {
       const img = await fileToImage(file);
       const res = await captureToBlob(img, { maxDim, quality, watermark, fix, at: Date.now() });
-      setPreview(res);
-      setPhase('preview');
-      stopStream();
+      setPreview(res); setPhase('preview'); stopStream();
     } catch (e: any) {
       setErrMsg(t('Không xử lý được ảnh đã chọn.') + (e?.message ? ` (${e.message})` : ''));
       setPhase('error');
@@ -155,78 +131,101 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
 
   const gpsBadge = () => {
     if (!wantGps) return null;
-    if (gpsState === 'locating') return <span style={{ color: '#8c8c8c' }}>📍 {t('Đang lấy vị trí…')}</span>;
-    if (gpsState === 'ok' && fix) return <span style={{ color: '#52c41a' }}>📍 {formatFix(fix)}</span>;
-    if (gpsState === 'fail') return <span style={{ color: '#faad14' }}>📍 {t('Không lấy được vị trí (ảnh vẫn lưu).')}</span>;
+    const base: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, padding: '3px 10px', borderRadius: 999, fontVariantNumeric: 'tabular-nums' };
+    if (gpsState === 'locating') return <span style={{ ...base, background: 'rgba(0,0,0,.06)', color: '#8c8c8c' }}>📍 {t('Đang lấy vị trí…')}</span>;
+    if (gpsState === 'ok' && fix) return <span style={{ ...base, background: 'rgba(82,196,26,.12)', color: '#389e0d' }}>📍 {formatFix(fix)}</span>;
+    if (gpsState === 'fail') return <span style={{ ...base, background: 'rgba(250,173,20,.14)', color: '#d48806' }}>📍 {t('Không lấy được vị trí (ảnh vẫn lưu).')}</span>;
     return null;
   };
+
+  const IconBtn: React.FC<{ onClick?: () => void; disabled?: boolean; title: string; children: React.ReactNode }> = ({ onClick, disabled, title: tt, children }) => (
+    <Tooltip title={tt}>
+      <button
+        onClick={onClick} disabled={disabled}
+        style={{
+          width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: disabled ? 'default' : 'pointer',
+          background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 18, display: 'inline-flex',
+          alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.4 : 1, backdropFilter: 'blur(4px)',
+        }}
+      >{children}</button>
+    </Tooltip>
+  );
 
   return (
     <Modal
       open={open}
       onCancel={onClose}
-      title={title || t('Chụp ảnh')}
+      title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span>📷</span>{title || t('Chụp ảnh')}</span>}
       footer={null}
-      width={520}
+      width={440}
+      centered
       destroyOnClose
       maskClosable={false}
+      styles={{ body: { paddingTop: 12 } }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Viewfinder / preview / error */}
         <div
           style={{
-            position: 'relative', width: '100%', aspectRatio: '3 / 4', background: '#000',
-            borderRadius: 8, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', width: '100%', aspectRatio: '3 / 4', background: '#0a0a0a',
+            borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.06)',
           }}
         >
           {phase === 'preview' && preview ? (
             <img src={preview.dataUrl} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
-            <video
-              ref={videoRef}
-              playsInline
-              muted
-              autoPlay
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: phase === 'live' ? 'block' : 'none' }}
-            />
+            <video ref={videoRef} playsInline muted autoPlay
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: phase === 'live' ? 'block' : 'none' }} />
           )}
           {phase === 'starting' && <Spin />}
+
           {phase === 'error' && (
-            <div style={{ padding: 16, width: '100%' }}>
-              <Alert type="warning" showIcon message={errMsg} style={{ marginBottom: 12 }} />
-              <Button block onClick={() => fileInputRef.current?.click()}>
-                {t('Chọn/chụp bằng camera hệ thống')}
-              </Button>
+            <div style={{ position: 'absolute', inset: 0, background: '#fff', overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center' }}>
+              {denied
+                ? <PermissionHelp kind="camera" onRetry={() => startStream(facing)} />
+                : <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 13, padding: 8 }}>{errMsg}</div>}
+              <Button block onClick={() => fileInputRef.current?.click()}>{t('Chọn/chụp bằng camera hệ thống')}</Button>
             </div>
+          )}
+
+          {/* GPS badge floating over the live view */}
+          {phase !== 'error' && wantGps && (
+            <div style={{ position: 'absolute', top: 10, left: 10 }}>{gpsBadge()}</div>
           )}
         </div>
 
-        <div style={{ minHeight: 22, fontSize: 13 }}>{gpsBadge()}</div>
-
+        {/* Controls */}
         {phase === 'preview' ? (
-          <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-            <Button onClick={doRetake}>{t('Chụp lại')}</Button>
-            <Button type="primary" onClick={doUse}>{t('Dùng ảnh này')}</Button>
-          </Space>
-        ) : (
-          <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-            <Tooltip title={t('Đổi camera trước/sau')}>
-              <Button onClick={doSwitch} disabled={phase !== 'live'}>{t('Đổi camera')}</Button>
-            </Tooltip>
-            <Button type="primary" size="large" onClick={doCapture} disabled={phase !== 'live'}>
-              {t('Chụp')}
-            </Button>
-            <Button onClick={() => fileInputRef.current?.click()}>{t('Từ máy')}</Button>
-          </Space>
-        )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Button block onClick={doRetake}>↺ {t('Chụp lại')}</Button>
+            <Button block type="primary" onClick={doUse}>✓ {t('Dùng ảnh này')}</Button>
+          </div>
+        ) : phase === 'live' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', justifyItems: 'center' }}>
+            <div style={{ justifySelf: 'start' }}>
+              <IconBtn onClick={doSwitch} title={t('Đổi camera trước/sau')}>⟳</IconBtn>
+            </div>
+            {/* shutter */}
+            <button
+              onClick={doCapture}
+              aria-label={t('Chụp')}
+              style={{
+                width: 66, height: 66, borderRadius: '50%', cursor: 'pointer',
+                border: '3px solid var(--colorPrimary, #1677ff)', background: 'var(--colorPrimary, #1677ff)',
+                boxShadow: '0 0 0 4px rgba(22,119,255,.15)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <span style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff', boxShadow: 'inset 0 0 0 2px var(--colorPrimary, #1677ff)' }} />
+            </button>
+            <div style={{ justifySelf: 'end' }}>
+              <IconBtn onClick={() => fileInputRef.current?.click()} title={t('Chọn/chụp bằng camera hệ thống')}>🖼️</IconBtn>
+            </div>
+          </div>
+        ) : null}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={(e) => { onPickFile(e.target.files?.[0]); e.target.value = ''; }}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+          onChange={(e) => { onPickFile(e.target.files?.[0]); e.target.value = ''; }} />
       </div>
     </Modal>
   );
