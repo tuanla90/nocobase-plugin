@@ -155,5 +155,20 @@
   "Quét liên tục (POS)": "Continuous scan (POS)",
   "Bíp": "Beep",
   "Rung": "Vibrate",
-  "Nhãn nút": "Button label"
+  "Nhãn nút": "Button label",
+
+  "Ký tên": "Sign",
+  "Chữ ký": "Signature",
+  "Ký vào đây bằng ngón tay hoặc chuột": "Sign here with your finger or mouse",
+  "Xoá": "Clear",
+  "Dùng chữ ký": "Use signature",
+  "Không có kết nối API để tải chữ ký lên.": "No API connection to upload the signature.",
+  "Đã thêm chữ ký.": "Signature added.",
+  "Tải chữ ký lên thất bại.": "Signature upload failed.",
+  "Cấu hình chữ ký": "Signature settings",
+  "Màu bút": "Pen color",
+  "Nét bút": "Pen width",
+  "Chiều cao": "Height",
+  "Nền trắng": "White background",
+  "Ghi tên + giờ dưới chữ ký": "Stamp name + time under the signature"
 }

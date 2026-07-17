@@ -1,4 +1,5 @@
 import { registerCameraFieldModel } from './cameraFieldModel';
+import { registerSignatureFieldModel } from './signatureFieldModel';
 import { registerLocationField } from './locationField';
 import { registerAutoSubmit } from './autoSubmit';
 import { registerScanInputModel } from './scanInputModel';
@@ -49,6 +50,11 @@ export function registerDeviceKit(deps: RegisterAllDeps) {
   try {
     registerCameraFieldModel({ flowEngine, flowSettings, lane });
   } catch (e) { console.warn(`[device-kit] (${lane}) camera register failed`, e); }
+
+  // Signature widget (also subclasses UploadFieldModel).
+  try {
+    registerSignatureFieldModel({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) signature register failed`, e); }
 
   // GPS Location field type.
   try {
