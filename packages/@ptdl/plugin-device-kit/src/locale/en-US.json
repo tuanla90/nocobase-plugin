@@ -181,5 +181,23 @@
   "Nút bấm": "Button",
   "Tự động": "Auto",
   "Lấy địa chỉ từ toạ độ (OSM miễn phí, ~1/giây)": "Address from coordinates (OSM free, ~1/sec)",
-  "Ngôn ngữ": "Language"
+  "Ngôn ngữ": "Language",
+
+  "Micro": "Microphone",
+  "Chưa được cấp quyền micro": "Microphone permission not granted",
+  "Mở Cài đặt → Safari → {{w}} → chọn \"Cho phép\".": "Open Settings → Safari → {{w}} → choose \"Allow\".",
+  "Hoặc chạm biểu tượng \"ᴀA\" bên trái thanh địa chỉ → Cài đặt trang → {{w}} → Cho phép.": "Or tap the \"ᴀA\" icon at the left of the address bar → Website Settings → {{w}} → Allow.",
+  "Ghi âm": "Record audio",
+  "Thiết bị/trình duyệt không hỗ trợ ghi âm.": "This device/browser doesn't support audio recording.",
+  "Không mở được micro.": "Couldn't open the microphone.",
+  "Thời lượng": "Duration",
+  "Ghi lại": "Re-record",
+  "Dùng bản ghi": "Use recording",
+  "Dừng": "Stop",
+  "Bắt đầu ghi": "Start recording",
+  "Không có kết nối API để tải bản ghi lên.": "No API connection to upload the recording.",
+  "Đã thêm bản ghi âm.": "Recording added.",
+  "Tải bản ghi lên thất bại.": "Recording upload failed.",
+  "Cấu hình ghi âm": "Audio settings",
+  "Thời lượng tối đa": "Max duration"
 }

@@ -1,5 +1,6 @@
 import { registerCameraFieldModel } from './cameraFieldModel';
 import { registerSignatureFieldModel } from './signatureFieldModel';
+import { registerAudioFieldModel } from './audioFieldModel';
 import { registerLocationField } from './locationField';
 import { registerAutoSubmit } from './autoSubmit';
 import { registerScanInputModel } from './scanInputModel';
@@ -55,6 +56,11 @@ export function registerDeviceKit(deps: RegisterAllDeps) {
   try {
     registerSignatureFieldModel({ flowEngine, flowSettings, lane });
   } catch (e) { console.warn(`[device-kit] (${lane}) signature register failed`, e); }
+
+  // Audio recorder widget (also subclasses UploadFieldModel).
+  try {
+    registerAudioFieldModel({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) audio register failed`, e); }
 
   // GPS Location field type.
   try {

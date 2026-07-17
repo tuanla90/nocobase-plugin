@@ -9,22 +9,23 @@ import { t } from './i18n';
  * the location widget.
  */
 
-export type PermKind = 'camera' | 'location';
+export type PermKind = 'camera' | 'location' | 'microphone';
 
 function steps(kind: PermKind, platform: PlatformKind): string[] {
-  const what = kind === 'camera' ? t('Máy ảnh') : t('Định vị');
+  const what = kind === 'camera' ? t('Máy ảnh') : kind === 'microphone' ? t('Micro') : t('Định vị');
   if (platform === 'ios') {
-    return kind === 'camera'
-      ? [
-          t('Mở Cài đặt → Safari → Máy ảnh → chọn "Cho phép".'),
-          t('Hoặc chạm biểu tượng "ᴀA" bên trái thanh địa chỉ → Cài đặt trang → Máy ảnh → Cho phép.'),
-          t('Quay lại trang này và bấm "Thử lại".'),
-        ]
-      : [
-          t('Mở Cài đặt → Quyền riêng tư & Bảo mật → Dịch vụ định vị → bật, và cho Safari = "Khi dùng ứng dụng".'),
-          t('Cài đặt → Safari → Vị trí → chọn "Hỏi" hoặc "Cho phép".'),
-          t('Quay lại trang này và bấm "Thử lại".'),
-        ];
+    if (kind === 'location') {
+      return [
+        t('Mở Cài đặt → Quyền riêng tư & Bảo mật → Dịch vụ định vị → bật, và cho Safari = "Khi dùng ứng dụng".'),
+        t('Cài đặt → Safari → Vị trí → chọn "Hỏi" hoặc "Cho phép".'),
+        t('Quay lại trang này và bấm "Thử lại".'),
+      ];
+    }
+    return [
+      t('Mở Cài đặt → Safari → {{w}} → chọn "Cho phép".').replace('{{w}}', what),
+      t('Hoặc chạm biểu tượng "ᴀA" bên trái thanh địa chỉ → Cài đặt trang → {{w}} → Cho phép.').replace('{{w}}', what),
+      t('Quay lại trang này và bấm "Thử lại".'),
+    ];
   }
   if (platform === 'android') {
     return [
@@ -49,7 +50,9 @@ export const PermissionHelp: React.FC<{ kind: PermKind; onRetry?: () => void; co
   const list = steps(kind, platform);
   const title = kind === 'camera'
     ? t('Chưa được cấp quyền máy ảnh')
-    : t('Chưa được cấp quyền vị trí');
+    : kind === 'microphone'
+      ? t('Chưa được cấp quyền micro')
+      : t('Chưa được cấp quyền vị trí');
 
   return (
     <div
@@ -64,7 +67,7 @@ export const PermissionHelp: React.FC<{ kind: PermKind; onRetry?: () => void; co
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--colorWarningText, #ad6800)' }}>
-        <span style={{ fontSize: 18, lineHeight: 1 }}>{kind === 'camera' ? '📷' : '📍'}</span>
+        <span style={{ fontSize: 18, lineHeight: 1 }}>{kind === 'camera' ? '📷' : kind === 'microphone' ? '🎙️' : '📍'}</span>
         <span>{title}</span>
       </div>
       <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--colorText, #555)', fontSize: 13, lineHeight: 1.5 }}>
