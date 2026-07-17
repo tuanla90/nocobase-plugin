@@ -39,6 +39,9 @@ import {
   resolveThemePalette,
   gradientCss,
 } from '@ptdl/shared';
+import enUS from '../locale/en-US.json';
+import viVN from '../locale/vi-VN.json';
+import { LoginConfigPaneV2 } from './LoginConfigPaneV2';
 
 const NAMESPACE = '@ptdl/plugin-login-lite';
 
@@ -792,6 +795,23 @@ export class PluginLoginLiteClientV2 extends Plugin {
 
   async load() {
     this.registerAuthRoutes();
+
+    // Load this plugin's i18n bundle on the modern client (the auth-page components rely on it too),
+    // then register the "Login configurations" settings page — the /v/ equivalent of the classic
+    // pluginSettingsManager.add() in ../client, editing the same `login_configs` record.
+    try {
+      this.app.i18n.addResources('en-US', NAMESPACE, enUS as any);
+      this.app.i18n.addResources('vi-VN', NAMESPACE, viVN as any);
+    } catch (e) {
+      // ignore i18n load errors
+    }
+    const psm: any = this.app.pluginSettingsManager;
+    psm?.addMenuItem?.({
+      key: 'plugin-login',
+      title: this.app.i18n.t('Login configurations', { ns: NAMESPACE }),
+      icon: 'SettingOutlined',
+    });
+    psm?.addPageTabItem?.({ menuKey: 'plugin-login', key: 'index', Component: LoginConfigPaneV2 });
   }
 }
 
