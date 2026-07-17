@@ -28,5 +28,8 @@
     "Bottom (default)": "Bottom (default)",
     "Top, sticky below header": "Top, sticky below header",
     "Content": "Content",
-    "Search": "Search"
+    "Search": "Search",
+    "Responsive (mobile cards)": "Responsive (mobile cards)",
+    "Show as cards on narrow screens": "Show as cards on narrow screens",
+    "Switch to cards below width": "Switch to cards below width"
 }

@@ -13,6 +13,7 @@ import { tExpr } from '@nocobase/flow-engine';
 // Pure format helper from the shared source lib (sideEffects:false → tree-shaken to just this
 // function; pulls no antd/@nocobase/client, so the /v/ client-v2 bundle stays clean).
 import { escapeHtml } from '@ptdl/shared';
+import { useContainerNarrow, ResponsiveCards, RESP_CARD_CSS } from './responsiveCards';
 
 /**
  * Lane-injected deps. The base `TableBlockModel` and the v1 hooks
@@ -165,6 +166,13 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
   const collection = injected.useCollection_deprecated();
   const fieldSchema = useFieldSchema();
   const isV1 = !model;
+
+  // Responsive card mode (V2 only): when the block container is narrower than the breakpoint, hide the
+  // wide table and portal a stacked card list in its place. Config lives on the block's props.
+  const respOn = !isV1 && !!model?.props?.responsiveCard;
+  const respBp = (typeof model?.props?.responsiveBreakpoint === 'number' && model.props.responsiveBreakpoint) || 640;
+  const narrow = useContainerNarrow(containerRef, respBp);
+  const cardMode = respOn && narrow;
 
   const config = isV1 ? fieldSchema?.['x-decorator-props']?.summaryConfig || {} : model?.props?.summaryConfig || {};
 
@@ -819,8 +827,10 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
   }, [config, allPagesData, metadataRef.current.columnTitles, t, summaryStyleStr]);
 
   return (
-    <div className={wrapperCss} ref={containerRef}>
+    <div className={`${wrapperCss}${cardMode ? ' ptdl-card-mode' : ''}`} ref={containerRef}>
+      {cardMode && <style>{RESP_CARD_CSS}</style>}
       {children}
+      {cardMode && <ResponsiveCards model={model} containerRef={containerRef} />}
 
       {selectionStats && mousePos && (
         <div
@@ -1104,6 +1114,36 @@ EnhancedTableBlockModel.registerFlow({
         }
         ctx.model.setProps('summaryConfig', config);
         ctx.model.setProps('summaryStyle', params.summaryStyle || {});
+      },
+    },
+  },
+});
+
+EnhancedTableBlockModel.registerFlow({
+  key: 'enhancedTableResponsive',
+  sort: 610,
+  title: `{{t("Responsive (mobile cards)", { ns: "@ptdl/plugin-enhanced-table-block/client" })}}`,
+  steps: {
+    settings: {
+      title: `{{t("Responsive (mobile cards)", { ns: "@ptdl/plugin-enhanced-table-block/client" })}}`,
+      uiSchema: {
+        responsiveCard: {
+          type: 'boolean',
+          title: `{{t("Show as cards on narrow screens", { ns: "@ptdl/plugin-enhanced-table-block/client" })}}`,
+          'x-decorator': 'FormItem',
+          'x-component': 'EtRespSwitch',
+        },
+        responsiveBreakpoint: {
+          type: 'number',
+          title: `{{t("Switch to cards below width", { ns: "@ptdl/plugin-enhanced-table-block/client" })}}`,
+          'x-decorator': 'FormItem',
+          'x-component': 'EtRespNum',
+        },
+      },
+      defaultParams: { responsiveCard: false, responsiveBreakpoint: 640 },
+      handler(ctx: any, params: any) {
+        ctx.model.setProps('responsiveCard', !!params?.responsiveCard);
+        ctx.model.setProps('responsiveBreakpoint', typeof params?.responsiveBreakpoint === 'number' ? params.responsiveBreakpoint : 640);
       },
     },
   },

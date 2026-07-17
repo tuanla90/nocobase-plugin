@@ -11,7 +11,8 @@ DST="$ROOT/packages/plugins/@ptdl/plugin-enhanced-table-block"
 if [ -d "$SRC/src" ]; then
   rm -rf "$DST/src"
   cp -r "$SRC/src" "$DST/src"
-  echo "synced src <- $SRC"
+  cp "$SRC/package.json" "$DST/package.json"
+  echo "synced src + package.json <- $SRC"
 fi
 
 echo "node: $(node -v)"

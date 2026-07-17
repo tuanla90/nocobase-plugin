@@ -17,6 +17,7 @@ import {
   useDesignable,
 } from '@nocobase/client';
 import { defineEnhancedTableBlockModel, EnhancedTableWrapper, setEnhancedTableDeps } from './EnhancedTableBlockModel';
+import { EtRespSwitch, EtRespNum } from './responsiveCards';
 import { EnhancedTableBlockInitializer } from './EnhancedTableBlockInitializer';
 import { observer, useFieldSchema, useField } from '@formily/react';
 import React from 'react';
@@ -35,6 +36,7 @@ export class PluginEnhancedTableBlockClient extends Plugin {
     this.app.i18n.addResources('en-US', '@ptdl/plugin-enhanced-table-block/client', enUS);
 
     setEnhancedTableDeps({ useAPIClient, useTableBlockContext, useCollection_deprecated });
+    try { (this as any).flowEngine?.flowSettings?.registerComponents?.({ EtRespSwitch, EtRespNum }); } catch (e) { /* optional */ }
     const EnhancedTableBlockModel = defineEnhancedTableBlockModel(TableBlockModel);
 
     this.flowEngine.registerModels({

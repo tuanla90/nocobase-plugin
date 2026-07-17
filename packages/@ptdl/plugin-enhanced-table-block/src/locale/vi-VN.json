@@ -28,5 +28,8 @@
   "Bottom (default)": "Dưới cùng (mặc định)",
   "Top, sticky below header": "Trên, dính dưới tiêu đề",
   "Content": "Nội dung",
-  "Search": "Tìm kiếm"
+  "Search": "Tìm kiếm",
+  "Responsive (mobile cards)": "Responsive (thẻ trên mobile)",
+  "Show as cards on narrow screens": "Hiển thị dạng thẻ khi màn hình hẹp",
+  "Switch to cards below width": "Chuyển sang thẻ khi rộng dưới"
 }
