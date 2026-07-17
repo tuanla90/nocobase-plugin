@@ -2,7 +2,7 @@
   "name": "@ptdl/plugin-branding",
   "displayName": "Branding & Theme",
   "displayName.vi-VN": "Thương hiệu & Giao diện",
-  "description": "Branding & Theme: admin skin builder (gradient sidebar/header/cards, presets) plus header tweaks — hide the top menu and make the logo clickable. All applied app-wide via injected global CSS / server-backed config.",
+  "description": "App-wide branding: skin presets and gradient colors for the sidebar, header, cards and content; accent color and density; app-wide font and table styling; app name, favicon, logo (light/dark) and header tweaks. Theme-aware, with config import/export.",
   "version": "0.4.7",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
@@ -21,5 +21,7 @@
     "react": "18.x",
     "antd": "5.x"
   },
-  "keywords": ["UI"]
+  "keywords": [
+    "UI"
+  ]
 }

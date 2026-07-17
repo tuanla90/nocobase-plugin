@@ -3,7 +3,7 @@
   "displayName": "Line Generator",
   "displayName.vi-VN": "Bộ sinh dòng theo quy tắc",
   "displayName.zh-CN": "行生成器",
-  "description": "Rule-based line generator: from one parent record + a rule table, generate N child rows in a single transaction (snapshot, not live). One config covers BOM explosion, commission split, cost allocation — differ only by config. Dynamic relation resolution (based_on/recipient), match across relations, required-null skip, group+sum, largest-remainder rounding, guard + parent bookkeeping. Reuses the formula engine.",
+  "description": "Turn one parent record into N child rows in one transaction. One config covers BOM explosion, commission splits, and cost allocation — with cross-relation matching, dynamic recipients, group-and-sum, and rounding. Run on demand or auto-run on save, with a dry-run preview + debugger.",
   "version": "0.6.9",
   "main": "dist/server/index.js",
   "dependencies": {},
@@ -24,5 +24,7 @@
     "@nocobase/database": "1.x || 2.x",
     "antd": "5.x"
   },
-  "keywords": ["Data model tools"]
+  "keywords": [
+    "Data model tools"
+  ]
 }

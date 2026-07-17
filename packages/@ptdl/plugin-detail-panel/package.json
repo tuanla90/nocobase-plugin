@@ -1,8 +1,9 @@
 {
   "name": "@ptdl/plugin-detail-panel",
   "displayName": "Detail Panel",
+  "displayName.vi-VN": "Panel bên",
   "displayName.zh-CN": "详情侧栏",
-  "description": "Adds a 'Side panel' open mode to NocoBase record popups (/v/). In the 'Edit popup' dialog, alongside Drawer / Dialog / Page, pick 'Side panel' and the SAME configured popup (tabs, actions, editable form/detail/sub-blocks) opens docked into the layout's built-in embed container instead of a masked drawer — the content shrinks beside it, both stay interactive, and opening another record swaps the panel without closing it (AppSheet-style master-detail). Augments the native openView action; client-only, no server.",
+  "description": "AppSheet-style master–detail split view for /v/. Adds a ‘Side panel’ open mode (a 4th choice beside Drawer / Dialog / Page) that docks the configured record popup to the right, shrinking the content beside it. A row-click option opens records in the panel, with a drag splitter to resize.",
   "version": "0.1.0",
   "main": "dist/server/index.js",
   "dependencies": {},
@@ -20,5 +21,7 @@
     "@nocobase/server": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Blocks"]
+  "keywords": [
+    "Blocks"
+  ]
 }

@@ -1,10 +1,10 @@
 {
   "name": "@ptdl/plugin-change-log",
   "displayName": "Change Log",
-  "displayName.zh-CN": "变更日志",
   "displayName.vi-VN": "Nhật ký thay đổi",
-  "description": "Records a rich, status-aware change history: for each configured trigger field (status fields first), every change is logged with who/when/role, the from->to values (with status label/color/icon snapshot), the source of the change, the time spent in the previous value (cycle time), an optional note, and a snapshot of chosen companion fields. Shows the history as a timeline popover and a full drawer.",
-  "version": "0.1.1",
+  "displayName.zh-CN": "变更日志",
+  "description": "Records a status-aware change history for chosen fields: who/when/role, from→to values (with color/icon snapshot), change source, time spent in the previous value, and an optional note. Surfaces as a timeline popover, a full drawer, or a block.",
+  "version": "0.1.2",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {
@@ -24,5 +24,7 @@
     "@nocobase/database": "1.x || 2.x",
     "antd": "5.x"
   },
-  "keywords": ["Auditing"]
+  "keywords": [
+    "Auditing"
+  ]
 }

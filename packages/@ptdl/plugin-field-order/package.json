@@ -2,7 +2,8 @@
   "name": "@ptdl/plugin-field-order",
   "version": "0.1.0",
   "displayName": "Field Order",
-  "description": "Reorder a collection's fields from the Collection Manager. Adds a 'Reorder fields' button to the Configure-fields drawer that opens a drag-and-drop list and persists the new order to fields.sort (drives this screen + new blocks' default field order). Runs on both the classic (/) and modern (/v/) clients.",
+  "displayName.vi-VN": "Thứ tự trường",
+  "description": "Reorder a collection’s fields from the Collection Manager. Adds a ‘Reorder fields’ button to the Configure-fields drawer: a drag-and-drop list that saves the new order to fields.sort, driving this screen and the default field order of new blocks. Works on classic and /v/ clients.",
   "keywords": [
     "nocobase"
   ],

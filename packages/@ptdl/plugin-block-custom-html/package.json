@@ -1,25 +1,25 @@
 {
-    "name": "@ptdl/plugin-block-custom-html",
-    "displayName": "Block: Custom HTML",
-    "displayName.zh-CN": "区块：自定义 HTML",
-    "description": "Custom HTML block for Modern (v2) pages: reuses the Chart block's Data query (Builder / SQL / Run query / preview + filter + refresh) and renders the result with your own HTML + CSS + JS (scorecards, KPIs, custom cards).",
-    "displayName.vi-VN": "Khối: HTML tùy biến",
-    "version": "0.12.2",
-    "license": "AGPL-3.0",
-    "main": "dist/server/index.js",
-    "peerDependencies": {
-        "@nocobase/client": "2.x",
-        "@nocobase/client-v2": "2.x",
-        "@nocobase/flow-engine": "2.x",
-        "@nocobase/plugin-data-visualization": "2.x",
-        "@nocobase/server": "2.x",
-        "antd": "5.x"
-    },
-    "devDependencies": {
-        "@ptdl/shared": "*",
-        "antd": "5.x"
-    },
-    "keywords": [
-        "Blocks"
-    ]
+  "name": "@ptdl/plugin-block-custom-html",
+  "displayName": "Block: Custom HTML",
+  "displayName.vi-VN": "Khối: HTML tùy biến",
+  "displayName.zh-CN": "区块：自定义 HTML",
+  "description": "A block that runs the Chart block’s data query (Builder / SQL / preview / filter / refresh) and renders the result with your own HTML + CSS + JS — scorecards, KPIs, top lists, cards. Ships preset templates and helper functions (format, escape, icons).",
+  "version": "0.12.3",
+  "license": "AGPL-3.0",
+  "main": "dist/server/index.js",
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/plugin-data-visualization": "2.x",
+    "@nocobase/server": "2.x",
+    "antd": "5.x"
+  },
+  "devDependencies": {
+    "@ptdl/shared": "*",
+    "antd": "5.x"
+  },
+  "keywords": [
+    "Blocks"
+  ]
 }

@@ -1,8 +1,9 @@
 {
   "name": "@ptdl/plugin-print-template",
   "displayName": "Print Template",
+  "displayName.vi-VN": "Mẫu in ấn",
   "displayName.zh-CN": "打印模板",
-  "description": "Printable HTML templates: design invoice/report templates with Handlebars placeholders (header, footer, watermark, page setup), then print any record to PDF from a record action.",
+  "description": "Design invoice/report templates in a visual drag-and-drop editor: Handlebars placeholders, QR codes, SQL summaries, headers/footers/watermarks. Print a record to PDF from a record action, batch-print many, or save the PDF to a field; optional server-side PDF rendering.",
   "version": "0.1.3",
   "main": "dist/server/index.js",
   "dependencies": {
@@ -24,5 +25,7 @@
     "@nocobase/database": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Actions"]
+  "keywords": [
+    "Actions"
+  ]
 }

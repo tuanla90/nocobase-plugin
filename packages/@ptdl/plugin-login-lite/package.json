@@ -2,8 +2,8 @@
   "name": "@ptdl/plugin-login-lite",
   "displayName": "Custom Login",
   "displayName.vi-VN": "Trang đăng nhập tùy biến",
-  "description": "Custom login page theme, colors, layout, form position and input icons.",
-  "description.vi-VN": "Tùy biến giao diện, màu sắc, bố cục, vị trí form và icon input của trang đăng nhập.",
+  "description": "Theme the sign-in page: background (gradient presets, image, HTML or embedded webpage), form layout (side panel or floating card) and position, color/light/dark/system themes, logo, input icons, Markdown footer, and a post-login landing page. Live preview; both clients.",
+  "description.vi-VN": "Tùy biến trang đăng nhập: nền (gradient dựng sẵn, ảnh, HTML hoặc nhúng trang web), bố cục form (panel bên hoặc thẻ nổi) và vị trí, chủ đề màu sáng/tối/theo hệ thống, logo, icon ô nhập, chân trang Markdown, và trang đích sau đăng nhập. Có xem trước; cả hai client.",
   "version": "2.2.1",
   "main": "dist/server/index.js",
   "dependencies": {

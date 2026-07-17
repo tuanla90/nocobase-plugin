@@ -1,9 +1,10 @@
 {
   "name": "@ptdl/plugin-subtable-pro",
   "displayName": "Sub-table Pro",
+  "displayName.vi-VN": "Bảng con Pro",
   "displayName.zh-CN": "增强子表格",
-  "description": "Enhanced sub-table field widget for hasMany/m2m associations: subclasses the native SubTableFieldModel so submit stays 100% native, adds a configurable totals row (sum weight/volume/amount), and (later) card/list views + a client-side bridge so clicking rows in another Table block adds/increments rows here (POS, cargo-loading, quick quotes). Standalone drop-in for the native sub-table. Full Vietnamese UI.",
-  "version": "0.2.6",
+  "description": "Enhanced sub-table field for hasMany/m2m associations; subclasses the native model so saving stays 100% native. Adds a totals row, table/list/card views, a quantity +/− stepper, and a bridge so clicking a row in another block adds or increments line items here (quotes, orders, picking).",
+  "version": "0.2.7",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {
@@ -20,5 +21,8 @@
     "@nocobase/server": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Blocks", "Fields"]
+  "keywords": [
+    "Blocks",
+    "Fields"
+  ]
 }

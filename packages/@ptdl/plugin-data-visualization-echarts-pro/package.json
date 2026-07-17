@@ -1,22 +1,23 @@
 {
-    "name": "@ptdl/plugin-data-visualization-echarts-pro",
-    "displayName": "Data visualization: ECharts Pro",
-    "displayName.zh-CN": "数据可视化：ECharts Pro",
-    "description": "A flexible ECharts chart type for the Data Visualization block: custom font, custom number format, data transform (JS) and raw ECharts option override (JSON style).",
-    "description.zh-CN": "为数据可视化区块提供更灵活的 ECharts 图表类型：自定义字体、数字格式、数据转换（JS）与原始 ECharts option 覆盖（JSON style）。",
-    "version": "0.1.0",
-    "license": "AGPL-3.0",
-    "main": "dist/server/index.js",
-    "devDependencies": {
-        "@ptdl/shared": "*"
-    },
-    "peerDependencies": {
-        "@nocobase/client": "2.x",
-        "@nocobase/client-v2": "2.x",
-        "@nocobase/server": "2.x",
-        "@nocobase/plugin-data-visualization": "2.x"
-    },
-    "keywords": [
-        "Blocks"
-    ]
+  "name": "@ptdl/plugin-data-visualization-echarts-pro",
+  "displayName": "Data Visualization: ECharts Pro",
+  "displayName.vi-VN": "Biểu đồ ECharts Pro",
+  "displayName.zh-CN": "数据可视化：ECharts Pro",
+  "description": "A flexible ECharts chart type for the Data Visualization block: line, area, bar, column, pie and scatter with smooth/stack/donut/legend/label toggles, custom fonts and number formatting, a JS data transform, and a raw ECharts option override for full control.",
+  "description.zh-CN": "为数据可视化区块提供更灵活的 ECharts 图表类型：自定义字体、数字格式、数据转换（JS）与原始 ECharts option 覆盖（JSON style）。",
+  "version": "0.1.0",
+  "license": "AGPL-3.0",
+  "main": "dist/server/index.js",
+  "devDependencies": {
+    "@ptdl/shared": "*"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/plugin-data-visualization": "2.x"
+  },
+  "keywords": [
+    "Blocks"
+  ]
 }

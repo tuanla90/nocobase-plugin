@@ -1,9 +1,9 @@
 {
   "name": "@ptdl/plugin-custom-header",
-  "displayName": "Custom header",
-  "displayName.zh-CN": "自定义页头",
+  "displayName": "Custom Header",
   "displayName.vi-VN": "Tiêu đề tùy biến",
-  "description": "Style titles and labels on both clients (classic / and modern /v/): page header, table column headers, form & detail field labels, and block/section titles — prefix icon (Lucide via @ptdl/plugin-custom-icons registry), text color, size, bold, background, and column alignment. Field-level defaults ('set once, show in every view') persist server-side. Client-only; bundles no icon library.",
+  "displayName.zh-CN": "自定义页头",
+  "description": "Style titles and labels across both clients — page header, table column headers, form/detail field labels, and block titles. Set a prefix icon, text color, size, bold, background (solid or gradient), and alignment. Field-level defaults show the style in every view.",
   "version": "0.2.1",
   "main": "dist/server/index.js",
   "dependencies": {},
@@ -21,5 +21,7 @@
     "@nocobase/server": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Blocks"]
+  "keywords": [
+    "Blocks"
+  ]
 }

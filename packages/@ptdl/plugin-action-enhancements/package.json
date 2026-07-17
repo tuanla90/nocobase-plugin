@@ -1,8 +1,9 @@
 {
   "name": "@ptdl/plugin-action-enhancements",
-  "displayName": "Action button enhancements",
+  "displayName": "Action Button Enhancements",
+  "displayName.vi-VN": "Nút thao tác nâng cao",
   "displayName.zh-CN": "操作按钮增强",
-  "description": "Custom action-button display: deep per-button colour (background / text / border / hover via antd component tokens) and per-block action-bar layout (vertical stacking, even distribution, left/right alignment, per-button pin). Full Vietnamese + English UI. Works on /admin and /v/.",
+  "description": "Customize action buttons and toolbars: per-button colours (background/text/border/hover) and per-block action-bar layout (stacking, alignment, pin). Adds two inline table toolbar actions — a Search bar and a Filter bar (dropdown, relation, date-range). Works on /admin and /v/.",
   "version": "0.1.0",
   "main": "dist/server/index.js",
   "dependencies": {},
@@ -20,5 +21,8 @@
     "@nocobase/server": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Actions", "UI"]
+  "keywords": [
+    "Actions",
+    "UI"
+  ]
 }

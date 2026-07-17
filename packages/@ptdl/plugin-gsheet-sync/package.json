@@ -1,8 +1,9 @@
 {
   "name": "@ptdl/plugin-gsheet-sync",
   "displayName": "Google Sheets Sync",
+  "displayName.vi-VN": "Đồng bộ Google Sheets",
   "displayName.zh-CN": "Google Sheets 同步",
-  "description": "Use Google Sheets as a data source: pull rows from a sheet into a real NocoBase collection on demand or on a schedule. Service-account auth, auto collection creation with type inference, upsert by key column (keeps row identity for future two-way sync).",
+  "description": "Sync a Google Sheet tab into a real NocoBase collection — on demand or on a schedule. Auto-creates the collection with type inference or maps to an existing one; replace or upsert-by-key modes; optional two-way write-back. Reusable service-account credentials.",
   "version": "0.1.1",
   "main": "dist/server/index.js",
   "devDependencies": {
@@ -20,5 +21,7 @@
     "@nocobase/database": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Data model tools"]
+  "keywords": [
+    "Data model tools"
+  ]
 }

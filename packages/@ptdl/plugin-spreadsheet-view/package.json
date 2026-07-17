@@ -1,8 +1,9 @@
 {
   "name": "@ptdl/plugin-spreadsheet-view",
-  "displayName": "Spreadsheet view",
+  "displayName": "Spreadsheet View",
+  "displayName.vi-VN": "Chế độ bảng tính",
   "displayName.zh-CN": "电子表格视图",
-  "description": "Excel-like data-entry block on top of an existing collection: AG Grid shell with NocoBase field editors inside cells (reuses the EditableItemModel binding registry, so @ptdl field widgets work in cells too). Commits per row via the collection resource API.",
+  "description": "Excel-like data-entry grid (AG Grid) over any collection: edit cells with native NocoBase field widgets, save per row. Adds virtual formula columns, multi-level grouping with subtotals, a summary aggregate row, conditional formatting, TSV paste, fill-down and CSV export.",
   "version": "0.2.1",
   "main": "dist/server/index.js",
   "dependencies": {

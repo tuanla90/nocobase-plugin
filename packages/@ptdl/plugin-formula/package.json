@@ -1,8 +1,9 @@
 {
   "name": "@ptdl/plugin-formula",
-  "displayName": "Formula",
+  "displayName": "Formula & Computed Fields",
+  "displayName.vi-VN": "Công thức & Trường tự tính",
   "displayName.zh-CN": "公式",
-  "description": "Excel-style formulas (400+ functions via formulajs) for a display field/column and for computing form field default values. Renders HTML; aggregates to-many relations via auto-pluck. Bundles formulajs.",
+  "description": "Excel-style formulas (400+ functions) throughout NocoBase: display columns (HTML, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and FIFO/average inventory costing.",
   "version": "0.1.58",
   "main": "dist/server/index.js",
   "dependencies": {},
@@ -20,5 +21,7 @@
     "@nocobase/server": "1.x || 2.x",
     "@nocobase/test": "1.x || 2.x"
   },
-  "keywords": ["Blocks"]
+  "keywords": [
+    "Blocks"
+  ]
 }
