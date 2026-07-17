@@ -434,6 +434,21 @@ Trực tiếp trên UI (giống nút "🛠 Dựng app"), dùng **LLM có sẵn c
 - **Kế (nâng cấp)**: chuyển sang **tool-calling agentic** (LLM gọi trực tiếp bộ primitive §12 từng bước + `describeApp`
   làm mắt) để dựng tăng dần / sửa app có sẵn — thay cho one-shot NL→spec hiện tại.
 
+## 14. Xoá/Sửa + rollback (2026-07-17, DONE + verify 11/11 + DB)
+
+Hoàn thiện story "SỬA" (trước chỉ THÊM được) + độ tin cậy:
+- **Tool xoá/đổi (server, ACL loggedIn):** `dropField {collection,field}` (xoá field + computed rule; CHẶN system
+  field), `dropCollection {collection}` (xoá bảng + rules; CHẶN `CORE_COLLECTIONS` denylist — users/roles/collections/
+  fields/flowModels/ptdl*…), `renameField {collection,field,title}` (đổi **tên hiển thị** uiSchema.title; KHÔNG đổi tên
+  máy vì vỡ FK/page). Đã thêm vào `toolPlanSystemPrompt` + `KNOWN` set → **AI plan được xoá** (verify: "bỏ trường
+  phone" → `[dropField(mod_test, phone)]`).
+- **deleteApp (client) + rollback:** `deleteApp(app, {collections, pages, groups})` = xoá route trang + group
+  (`routeRepository.deleteRoute` + `flowEngine.destroyModel`) + `dropCollection` (server) + `reloadDataSource`.
+  Launcher track `lastArtifacts` sau buildApp/runPlan → nút danger **"🗑 Xoá app vừa tạo"**.
+- **Verify:** dropField/guard system-field, renameField, dropCollection guard `users`, aiPlan-remove, dropCollection
+  → **11/11**; deleteApp: DB xác nhận metadata + bảng vật lý XOÁ (route trang/group xoá). **TRAP:** repo destroy OK
+  nhưng client `collections:get` trả cache cũ → phải `reloadDataSource` để UI cập nhật.
+
 ## Files
 `packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
 `src/server/{index.ts, plugin.ts (actions apply/dryRun)}`, `src/client-v2/index.tsx` (launcher + settings),

@@ -10,7 +10,7 @@ import React, { useState } from 'react';
 import { Plugin } from '@nocobase/client-v2';
 import { Button, Input, message, Modal, Space, Tooltip, Typography } from 'antd';
 import { validateAppSpec } from '../shared/appSpec';
-import { buildApp, createMenuGroup, createPage, materializeApp } from '../shared/materialize';
+import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
@@ -29,6 +29,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [planBusy, setPlanBusy] = useState(false);
     const [runBusy, setRunBusy] = useState(false);
     const [planLog, setPlanLog] = useState<any[] | null>(null);
+    const [lastArtifacts, setLastArtifacts] = useState<{ collections?: string[]; pages?: any[]; groups?: any[] } | null>(null);
+    const [delBusy, setDelBusy] = useState(false);
 
     const parse = (): any => {
       try { return JSON.parse(text); } catch (e: any) { message.error(t('Invalid JSON') + ': ' + e.message); return null; }
@@ -47,6 +49,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       try {
         const res = await buildApp(app, spec);
         setResult(res);
+        setLastArtifacts({ collections: (spec.collections || []).map((c: any) => c.name), pages: res.pages, groups: res.groups });
         message.success(`${t('Created')} ${res.pages.length} ${t('pages')}`);
       } catch (e: any) {
         message.error(e?.message || String(e));
@@ -96,12 +99,34 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       try {
         const results: any[] = await (window as any).__ptdlAppBuilder.runPlan(plan);
         setPlanLog(results);
+        // collect artifacts THIS plan created, for the delete/undo button
+        const arts: any = { collections: [], pages: [], groups: [] };
+        results.forEach((r) => {
+          if (!r.ok) return;
+          if (r.tool === 'createCollection' && r.out?.name) arts.collections.push(r.out.name);
+          else if (r.tool === 'createPage' && r.out?.schemaUid) arts.pages.push({ schemaUid: r.out.schemaUid });
+          else if (r.tool === 'createMenuGroup' && r.out != null) arts.groups.push({ id: r.out });
+        });
+        if (arts.collections.length || arts.pages.length) setLastArtifacts(arts);
         const okN = results.filter((r) => r.ok).length;
         (okN === results.length ? message.success : message.warning)(`${okN}/${results.length} ${t('steps ok')}`);
       } catch (e: any) {
         message.error(e?.message || String(e));
       } finally {
         setRunBusy(false);
+      }
+    };
+    const onDeleteApp = async () => {
+      if (!lastArtifacts) return;
+      setDelBusy(true);
+      try {
+        const out = await deleteApp(app, lastArtifacts);
+        message.success(`${t('Deleted')}: ${out.collections} collection · ${out.pages} ${t('pages')}`);
+        setLastArtifacts(null); setResult(null); setPlan(null); setPlanLog(null);
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setDelBusy(false);
       }
     };
 
@@ -159,6 +184,9 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))}>{t('Load demo')}</Button>
             <Button onClick={onValidate}>{t('Validate')}</Button>
             <Button type="primary" loading={busy} onClick={onBuild}>{t('Create app')}</Button>
+            {lastArtifacts && (
+              <Button danger loading={delBusy} onClick={onDeleteApp}>🗑 {t('Delete the app I just built')}</Button>
+            )}
           </Space>
           {result && (
             <div style={{ marginTop: 16 }}>
@@ -204,6 +232,11 @@ export class PluginAppBuilderClientV2 extends Plugin {
         seed: (v) => api('seed', v),
         describeApp: (v) => api('describeApp', v || {}),
         validate: (spec) => validateAppSpec(spec),
+        // delete / modify (guardrailed)
+        dropField: (v) => api('dropField', v),
+        dropCollection: (v) => api('dropCollection', v),
+        renameField: (v) => api('renameField', v),
+        deleteApp: (v) => deleteApp(app, v),
         // page tier (client) — build the UI
         createMenuGroup: (v) => createMenuGroup(app, v.label, v.icon),
         createPage: (v) => createPage(app, v, v.collectionSpec),

@@ -26,5 +26,7 @@
   "Run plan": "Chạy",
   "steps ok": "bước OK",
   "AI could not plan": "AI chưa lập được kế hoạch",
-  "Plan ready — review then Run": "Đã lập kế hoạch — xem lại rồi bấm Chạy"
+  "Plan ready — review then Run": "Đã lập kế hoạch — xem lại rồi bấm Chạy",
+  "Delete the app I just built": "Xoá app vừa tạo",
+  "Deleted": "Đã xoá"
 }

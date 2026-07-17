@@ -143,6 +143,16 @@ export function relationDef(sourceColl: string, r: RelationSpec): any {
 /** Order relation types so paired FKs exist before the side that reuses them: m2o/o2o/m2m first, o2m last. */
 const RELATION_ORDER: Record<string, number> = { m2o: 0, o2o: 0, m2m: 1, o2m: 2 };
 
+/** Never drop these — core NocoBase / @ptdl system collections (guardrail for dropCollection). */
+const CORE_COLLECTIONS = new Set([
+  'users', 'roles', 'rolesUsers', 'collections', 'fields', 'dataSources', 'dataSourcesRoles', 'dataSourcesCollections', 'dataSourcesFields',
+  'desktopRoutes', 'mobileRoutes', 'rolesDesktopRoutes', 'rolesMobileRoutes', 'applicationPlugins', 'uiSchemas', 'uiSchemaServerHooks',
+  'uiSchemaTemplates', 'uiSchemaTreePath', 'flowModels', 'systemSettings', 'attachments', 'storages', 'jobs', 'usersJobs', 'tokenControlConfig',
+  'authenticators', 'localizationTexts', 'localizationTranslations', 'themeConfig', 'notificationChannels', 'notificationInAppMessages',
+  'workflows', 'workflowCategories', 'executions', 'flowNodes', 'jobs', 'aiConversations', 'aiMessages', 'aiEmployees', 'llmServices', 'aiSettings',
+  'ptdlComputedRules', 'ptdlScanRules', 'ptdlChangeLogs', 'ptdlChangeLogConfigs', 'ptdlFieldStyles', 'ptdlIconRemaps', 'ptdlIpAccessConfigs',
+]);
+
 // ── AI (NocoBase @nocobase/plugin-ai) ─────────────────────────────────────────────────────────────
 /** Resolve the app's configured LLM provider (same path formula/ai-column use). Inlined so app-builder
  *  stays self-contained (no @ptdl/shared runtime dep). */
@@ -204,12 +214,15 @@ function toolPlanSystemPrompt(state: string): string {
     '- seed {collection, rows:[{...}]}  (giá trị quan hệ m2o = giá trị titleField của bản ghi target)',
     '- createMenuGroup {label, icon?}',
     '- createPage {collection, title, menuGroup?, icon?("lucide-users"), block?("EnhancedTableBlockModel"), columns:[tên field], popupColumns?}',
+    '- dropField {collection, field}  — XOÁ 1 field khỏi bảng',
+    '- dropCollection {collection}  — XOÁ cả 1 bảng',
+    '- renameField {collection, field, title}  — đổi TÊN HIỂN THỊ của field (KHÔNG đổi tên máy)',
     '',
     'interface ∈ input,textarea,phone,email,url,number,integer,percent,select,multipleSelect,checkbox,date,datetime,time,color,json,statusFlow (select/multi cần options; statusFlow cần states; computed cú pháp data.<field>). widget?: "Progress bar","Value tag","Sub-table Pro".',
     '',
     'QUY TẮC:',
     '- DỰNG MỚI: createCollection từng bảng TRƯỚC → addRelation → createMenuGroup + createPage. Tên snake không dấu, title tiếng Việt.',
-    '- SỬA app CÓ SẴN: CHỈ thêm cái còn thiếu (addField/addStatusFlow/addComputed/addRelation/createPage) trên collection ĐÃ CÓ trong TRẠNG THÁI. TUYỆT ĐỐI KHÔNG createCollection lại collection đã tồn tại.',
+    '- SỬA app CÓ SẴN: CHỈ đụng cái cần đổi trên collection ĐÃ CÓ trong TRẠNG THÁI — thêm (addField/addStatusFlow/addComputed/addRelation/createPage), XOÁ (dropField/dropCollection), hoặc đổi tên hiển thị (renameField). TUYỆT ĐỐI KHÔNG createCollection lại collection đã tồn tại. CHỈ dropField/dropCollection field/bảng CÓ THẬT trong TRẠNG THÁI.',
     '- addRelation chỉ sau khi cả 2 collection tồn tại (đã có, hoặc được createCollection trước đó trong plan).',
     '- CHỈ trả JSON {"steps":[...], "explain":"..."}.',
     '',
@@ -339,6 +352,40 @@ export class PluginAppBuilderServer extends Plugin {
     return { count: collections.length, collections };
   }
 
+  /** Drop one field from a collection (+ its computed rule). Refuses system fields. */
+  private async opDropField(coll: string, field: string): Promise<any> {
+    if (['id', 'createdAt', 'updatedAt', 'createdById', 'updatedById'].includes(field)) return { coll, field, skipped: 'system field' };
+    const fieldRepo: any = this.db.getRepository('fields');
+    const f = await fieldRepo.findOne({ filter: { collectionName: coll, name: field } });
+    if (!f) return { coll, field, skipped: 'not found' };
+    try { const ruleRepo: any = this.db.getRepository('ptdlComputedRules'); if (ruleRepo) await ruleRepo.destroy({ filter: { collectionName: coll, targetField: field } }); } catch {}
+    await fieldRepo.destroy({ filter: { collectionName: coll, name: field }, context: {} });
+    try { await (this.db.getCollection(coll) as any)?.sync?.({ alter: true }); } catch {}
+    return { coll, field, dropped: true };
+  }
+
+  /** Drop a whole collection (+ its computed rules). Refuses core NocoBase collections. */
+  private async opDropCollection(coll: string): Promise<any> {
+    if (CORE_COLLECTIONS.has(coll)) return { coll, skipped: 'core collection (refused)' };
+    const colRepo: any = this.db.getRepository('collections');
+    if (!(await colRepo.findOne({ filter: { name: coll } }))) return { coll, skipped: 'not found' };
+    try { const ruleRepo: any = this.db.getRepository('ptdlComputedRules'); if (ruleRepo) await ruleRepo.destroy({ filter: { collectionName: coll } }); } catch {}
+    await colRepo.destroy({ filter: { name: coll }, context: {} });
+    return { coll, dropped: true };
+  }
+
+  /** Rename a field's display label (uiSchema.title). Machine-name rename is intentionally NOT done
+   *  (it breaks relations/pages/FKs); change the label only. */
+  private async opRenameField(coll: string, field: string, title: string): Promise<any> {
+    const fieldRepo: any = this.db.getRepository('fields');
+    const f = await fieldRepo.findOne({ filter: { collectionName: coll, name: field } });
+    if (!f) return { coll, field, skipped: 'not found' };
+    const options = (f.get ? f.get('options') : f.options) || {};
+    const uiSchema = { ...(options.uiSchema || {}), title };
+    await fieldRepo.update({ filter: { collectionName: coll, name: field }, values: { uiSchema }, context: {} });
+    return { coll, field, title };
+  }
+
   async load() {
     this.app.resourceManager.define({
       name: 'appBuilder',
@@ -459,7 +506,7 @@ export class PluginAppBuilderServer extends Plugin {
           } catch { /* no state */ }
           const system = toolPlanSystemPrompt(stateStr);
           const schema = { type: 'object', properties: { steps: { type: 'string', description: 'Mảng JSON các bước [{"tool","args"}]' }, explain: { type: 'string', description: 'Giải thích ngắn tiếng Việt' } }, required: ['steps'] };
-          const KNOWN = new Set(['createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'createMenuGroup', 'createPage']);
+          const KNOWN = new Set(['createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'createMenuGroup', 'createPage', 'dropField', 'dropCollection', 'renameField']);
           let human = `Yêu cầu: ${instruction}\n\nLập kế hoạch tool (JSON).`;
           let steps: any = null; let explain = ''; let lastError = '';
           for (let attempt = 0; attempt < 3 && !steps; attempt++) {
@@ -483,9 +530,17 @@ export class PluginAppBuilderServer extends Plugin {
           ctx.body = { ok: true, steps, explain };
           await next();
         },
+
+        // ── DELETE / MODIFY tools (complete the "modify" story; guardrailed) ──
+        // {collection, field}
+        dropField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opDropField(v.collection, v.field); await next(); },
+        // {collection}
+        dropCollection: async (ctx: any, next: any) => { ctx.body = await this.opDropCollection(readVals(ctx).collection); await next(); },
+        // {collection, field, title}
+        renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiPlan'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 

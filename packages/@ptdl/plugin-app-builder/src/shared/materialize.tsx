@@ -120,3 +120,37 @@ export async function buildApp(app: any, spec: AppSpec): Promise<{ data: any } &
   const mat = await materializeApp(app, spec);
   return { data, ...mat };
 }
+
+/** Delete an app's artifacts: page routes + their flowModels, menu groups, and (via the server
+ *  dropCollection tool) the collections. `artifacts` comes from a build/plan result — powers the
+ *  launcher's "Delete the app I just built" + plan rollback. */
+export async function deleteApp(
+  app: any,
+  artifacts: { collections?: string[]; pages?: Array<{ schemaUid: string }>; groups?: Array<{ id?: number | null; label?: string }> },
+): Promise<{ pages: number; groups: number; collections: number }> {
+  const routeRepo = app?.context?.routeRepository;
+  const api = app.apiClient;
+  const out = { pages: 0, groups: 0, collections: 0 };
+  const pageUids = new Set((artifacts.pages || []).map((p) => p.schemaUid).filter(Boolean));
+  const groupIds = new Set((artifacts.groups || []).map((g) => g.id).filter(Boolean) as number[]);
+  const groupLabels = new Set((artifacts.groups || []).map((g) => g.label).filter(Boolean) as string[]);
+  let routes: any[] = [];
+  try { routes = (await api.request({ url: 'desktopRoutes:list', params: { paginate: false } }))?.data?.data || []; } catch {}
+  for (const r of routes) {
+    const isPage = pageUids.has(r.schemaUid);
+    const isGroup = r.type === 'group' && (groupIds.has(r.id) || groupLabels.has(String(r.title || '').trim()));
+    if (!isPage && !isGroup) continue;
+    try { if (routeRepo?.deleteRoute) await routeRepo.deleteRoute(r.id); else await api.resource('desktopRoutes').destroy({ filterByTk: r.id }); } catch {}
+    if (isPage) out.pages++; else out.groups++;
+  }
+  for (const uid of pageUids) { try { await app.flowEngine?.destroyModel?.(uid); } catch {} }
+  for (const c of artifacts.collections || []) {
+    try {
+      const res = await api.request({ url: 'appBuilder:dropCollection', method: 'post', data: { collection: c } }).then((r: any) => r?.data?.data ?? r?.data);
+      if (res?.dropped) out.collections++;
+    } catch {}
+  }
+  try { await routeRepo?.refreshAccessible?.(); } catch {}
+  try { await reloadDataSource(app); } catch {} // refresh the client collection cache so the UI reflects the drop
+  return out;
+}
