@@ -76,6 +76,9 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [pickChart, setPickChart] = useState<string | undefined>(undefined);
     const [pickInstr, setPickInstr] = useState('');
     const [pickBusy, setPickBusy] = useState(false);
+    const [chartScope, setChartScope] = useState<'page' | 'app'>('page'); // list charts on THIS page vs whole app
+    // the /v/ page schemaUid from the URL (…/v/admin/<uid>) — used to scope the chart list to this dashboard
+    const currentPageUid = () => { try { return (window.location.pathname.match(/\/v\/[^/]+\/([^/?#]+)/) || [])[1] || ''; } catch { return ''; } };
 
     // User data collections to offer as the dashboard source (skip system/hidden ones).
     const collections = React.useMemo(() => {
@@ -128,14 +131,16 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         setChartRefineBusy(null);
       }
     };
-    // Load the list of every chart in the app (for refining a chart that already exists on some dashboard).
-    const loadExistingCharts = async () => {
+    // Load existing charts to refine — scoped to THIS dashboard page by default, or the whole app.
+    const loadExistingCharts = async (scope: 'page' | 'app' = chartScope) => {
       setExistingBusy(true);
       try {
-        const res = await app.apiClient.request({ url: 'appBuilder:listCharts', method: 'post', data: {} }).then((r: any) => r?.data?.data ?? r?.data);
+        const pageSchemaUid = scope === 'page' ? currentPageUid() : '';
+        const res = await app.apiClient.request({ url: 'appBuilder:listCharts', method: 'post', data: { pageSchemaUid } }).then((r: any) => r?.data?.data ?? r?.data);
         if (!res?.ok) { message.error(res?.error || t('Could not list charts')); return; }
         setExistingCharts(res.charts || []);
-        if (!res.charts?.length) message.info(t('No charts found — generate a dashboard first'));
+        setPickChart(undefined);
+        if (!res.charts?.length) message.info(scope === 'page' ? t('No charts on this page — switch to “Whole app” or open a dashboard') : t('No charts found — generate a dashboard first'));
       } catch (e: any) {
         message.error(e?.message || String(e));
       } finally {
@@ -445,9 +450,16 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '4px 0 8px' }}>
               {t('Pick any chart already on a dashboard and describe the change — the AI rewrites its ECharts code.')}
             </Typography.Paragraph>
-            {!existingCharts ? (
-              <Button size="small" loading={existingBusy} onClick={loadExistingCharts}>🔄 {t('Load charts in this app')}</Button>
-            ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+              <Segmented
+                size="small" value={chartScope}
+                onChange={(val) => { const s = val as 'page' | 'app'; setChartScope(s); if (existingCharts) loadExistingCharts(s); }}
+                options={[{ label: t('This page'), value: 'page' }, { label: t('Whole app'), value: 'app' }]}
+              />
+              <Button size="small" loading={existingBusy} onClick={() => loadExistingCharts()}>🔄 {existingCharts ? t('Reload') : t('Load charts')}</Button>
+              {existingCharts && <Typography.Text type="secondary" style={{ fontSize: 11 }}>{existingCharts.length} {t('chart(s)')}</Typography.Text>}
+            </div>
+            {existingCharts && (
               <>
                 <Select
                   showSearch value={pickChart} onChange={setPickChart} optionFilterProp="label"
@@ -464,8 +476,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                   <Button type="primary" loading={pickBusy} onClick={onRefineExisting} disabled={!pickChart}>✏️ {t('Refine')}</Button>
                 </Space.Compact>
                 <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
-                  {t('Reload the dashboard page to see the change.')}{' '}
-                  <a onClick={() => { setExistingCharts(null); setPickChart(undefined); }}>{t('refresh list')}</a>
+                  {t('Reload the dashboard page to see the change.')}
                 </Typography.Paragraph>
               </>
             )}
@@ -522,7 +533,7 @@ export class PluginAppBuilderClientV2 extends Plugin {
         createDashboard: (spec) => createDashboard(app, spec),
         aiDashboard: (v) => api('aiDashboard', v),
         aiRefineChart: (v) => api('aiRefineChart', v),
-        listCharts: () => api('listCharts', {}),
+        listCharts: (v) => api('listCharts', v || {}),
       };
       // Execute an AI-planned sequence of tool calls step-by-step (data tools → server, page tools → client).
       const runPlan = async (steps: Array<{ tool: string; args: any }>) => {

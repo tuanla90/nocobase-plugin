@@ -62,5 +62,11 @@
   "Could not list charts": "Không liệt kê được biểu đồ",
   "Choose a chart first": "Hãy chọn biểu đồ trước",
   "Chart updated — reload the dashboard page to see it": "Đã sửa biểu đồ — tải lại trang dashboard để xem",
-  "Refine": "Sửa"
+  "Refine": "Sửa",
+  "This page": "Trang này",
+  "Whole app": "Cả app",
+  "Load charts": "Tải biểu đồ",
+  "Reload": "Tải lại",
+  "chart(s)": "biểu đồ",
+  "No charts on this page — switch to “Whole app” or open a dashboard": "Trang này chưa có biểu đồ — chuyển “Cả app” hoặc mở một dashboard"
 }

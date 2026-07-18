@@ -898,19 +898,31 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
-        // List every Chart block in the app (uid + a friendly label + type + collection), so the launcher can
-        // offer AI-refine on an EXISTING chart (not just one just generated). Read-only.
+        // List Chart blocks (uid + friendly label + type + collection) so the launcher can AI-refine an
+        // EXISTING chart. {pageSchemaUid?} scopes to charts on ONE page (default), else the whole app.
+        // Read-only. Tree = each model's `options.parentId`; walk chart → grid → tab → page uid.
         listCharts: async (ctx: any, next: any) => {
+          const pageUid = String(readVals(ctx).pageSchemaUid || '').trim();
           const leaf = (f: any) => (Array.isArray(f) ? f[f.length - 1] : f);
+          const rowsOf = (res: any) => (Array.isArray(res?.[0]) ? res[0] : (Array.isArray(res) ? res : []));
+          // Cheap ancestry map (json_extract — no full-options parse) for page scoping.
+          const parentOf: Record<string, string> = {};
+          let scoped = false;
+          if (pageUid) {
+            try {
+              rowsOf(await this.db.sequelize.query("SELECT uid, json_extract(options,'$.parentId') AS parentId FROM flowModels")).forEach((r: any) => { if (r.parentId) parentOf[r.uid] = r.parentId; });
+              scoped = Object.keys(parentOf).length > 0;
+            } catch { /* fall back to whole-app */ }
+          }
+          const underPage = (uid: string) => { let cur: any = uid; for (let i = 0; i < 16 && cur; i++) { cur = parentOf[cur]; if (cur === pageUid) return true; } return false; };
           let rows: any[] = [];
-          try {
-            const res: any = await this.db.sequelize.query("SELECT uid, options FROM flowModels WHERE options LIKE '%ChartBlockModel%'");
-            rows = Array.isArray(res?.[0]) ? res[0] : (Array.isArray(res) ? res : []);
-          } catch (e: any) { ctx.body = { ok: false, error: 'Không đọc được flowModels: ' + (e?.message || e) }; await next(); return; }
+          try { rows = rowsOf(await this.db.sequelize.query("SELECT uid, options FROM flowModels WHERE options LIKE '%ChartBlockModel%'")); }
+          catch (e: any) { ctx.body = { ok: false, error: 'Không đọc được flowModels: ' + (e?.message || e) }; await next(); return; }
           const charts: any[] = [];
           for (const r of rows) {
             let o: any; try { o = typeof r.options === 'string' ? JSON.parse(r.options) : r.options; } catch { continue; }
             if (!o || o.use !== 'ChartBlockModel') continue;
+            if (scoped && !underPage(r.uid)) continue;
             const cfg = o.stepParams?.chartSettings?.configure || {};
             const opt = cfg.chart?.option || {};
             const q = cfg.query || {};
@@ -920,7 +932,7 @@ export class PluginAppBuilderServer extends Plugin {
             const chartType = String(opt.builder?.type || '').replace('echarts.', '') || (/(type:\s*['"](pie|bar|line|scatter)['"])/.exec(String(opt.raw || ''))?.[2]) || 'chart';
             charts.push({ uid: r.uid, title, chartType, collection: q.collectionPath?.[1] || '' });
           }
-          ctx.body = { ok: true, charts };
+          ctx.body = { ok: true, charts, scoped };
           await next();
         },
 

@@ -62,5 +62,11 @@
   "Could not list charts": "Could not list charts",
   "Choose a chart first": "Choose a chart first",
   "Chart updated — reload the dashboard page to see it": "Chart updated — reload the dashboard page to see it",
-  "Refine": "Refine"
+  "Refine": "Refine",
+  "This page": "This page",
+  "Whole app": "Whole app",
+  "Load charts": "Load charts",
+  "Reload": "Reload",
+  "chart(s)": "chart(s)",
+  "No charts on this page — switch to “Whole app” or open a dashboard": "No charts on this page — switch to “Whole app” or open a dashboard"
 }
