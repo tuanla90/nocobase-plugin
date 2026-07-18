@@ -229,6 +229,7 @@ function appSpecSystemPrompt(): string {
     '- Đơn có dòng chi tiết: khai o2m ở bảng cha (reverseName = tên m2o ở bảng con) + m2o ở bảng con; cột computed line-total dùng data.<field>.',
     '- Seed 2-3 dòng demo mỗi collection; giá trị quan hệ m2o = giá trị titleField của bản ghi target.',
     '- Mỗi collection nên có 1 page; nhóm menu hợp lý (Danh mục / Vận hành…).',
+    '- THỨ TỰ cột (columns/popupColumns) theo luồng nhập liệu tự nhiên: field ĐỊNH DANH (mã/tên) hoặc QUAN HỆ chính (khách/sản phẩm — thứ chọn trước) ĐỨNG ĐẦU, rồi thuộc tính, cột COMPUTED/tổng để CUỐI. Đừng để quan hệ ở cuối.',
     '- CHỈ trả JSON App-Spec, không markdown, không giải thích ngoài trường "explain".',
   ].join('\n');
 }

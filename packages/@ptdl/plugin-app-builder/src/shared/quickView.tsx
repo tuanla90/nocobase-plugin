@@ -239,6 +239,16 @@ function buildSubTableColumns(engine: any, ds: string, targetColl: any, parentCo
     if (isToOne && f.target === parentCollName) return false; // don't show the back-ref to the parent row
     return true;
   });
+  // Column ORDER follows data-entry logic, not field-creation order: the m2o relation you pick FIRST
+  // (which product/service — it often drives a lookup) leads, then editable scalars (qty…), then auto/
+  // computed columns (unit-price lookup, line total) last. Field-creation order buried relations (created
+  // after scalars) at the end — that's why "Dịch vụ" showed up last.
+  const rank = (f: any) => {
+    if (f.interface === 'm2o' || (f.type || f.interface) === 'belongsTo') return 0;
+    const ui = f.uiSchema || f.options?.uiSchema || {};
+    return ui['x-read-pretty'] === true ? 2 : 1; // computed/read-pretty → last
+  };
+  fields.sort((a: any, b: any) => rank(a) - rank(b)); // stable sort preserves field order within a rank
   const isForm = kind === 'form';
   return fields.map((f: any) => {
     // The editable inline sub-table derives each cell's antd-Form `name` from the COLUMN model's
