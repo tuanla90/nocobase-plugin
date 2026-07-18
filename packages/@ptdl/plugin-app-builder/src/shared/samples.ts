@@ -6,7 +6,7 @@ import { AppSpec } from './appSpec';
 /** "Bán hàng" — customers · products · orders (+ line items). Shows m2o + o2m relations, seed with
  *  relation resolution, an EnhancedTable page, and a Progress-bar widget on the order total. */
 export const SAMPLE_BAN_HANG: AppSpec = {
-  meta: { name: 'Bán hàng (demo)', locale: 'vi' },
+  meta: { name: 'ban_hang_demo', title: 'Bán hàng (demo)', locale: 'vi' },
   collections: [
     {
       name: 'ab_customers', title: 'Khách hàng', titleField: 'name',

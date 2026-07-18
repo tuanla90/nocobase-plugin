@@ -181,8 +181,13 @@ export function fieldDef(f: FieldSpec): any {
  * boolean flags (autoGenId/createdAt/…) create the runtime columns but NOT visible `fields` metadata —
  * so a flag-only collection shows none of them in the field manager AND its `id` isn't a proper metadata
  * PK, which is what breaks o2m/hasMany `sourceKey:'id'` resolution ("link ngược bị sai"). Mirrors
- * NocoBase's own AI `defineCollections` tool, which pushes these as explicit field records (we use a
- * classic bigInt auto-increment id rather than snowflakeId for continuity with seed/relation/computed).
+ * NocoBase's own AI `defineCollections` tool, which pushes these as explicit field records — INCLUDING its
+ * `idField`: a **Snowflake ID (53-bit)** (`type`/`interface:'snowflakeId'`, `autoIncrement:false`), the exact
+ * default NocoBase's own "Create collection" UI uses too (v0.4.3 — was a classic bigInt auto-increment id;
+ * switched to match core exactly). Still a plain BIGINT column underneath (`SnowflakeIdField.dataType` =
+ * `DataTypes.BIGINT`, same as bigInt) — the id is generated app-side (a `beforeSave`/`beforeBulkCreate` hook
+ * calling `app.snowflakeIdGenerator.generate()`) instead of by a DB sequence, so relations/seed/computed are
+ * unaffected. `autoGenId:false` still applies (we supply the id field explicitly either way).
  * Vietnamese titles because app-builder is VN-first.
  */
 export function systemFieldDefs(): any[] {
@@ -195,8 +200,8 @@ export function systemFieldDefs(): any[] {
     uiSchema: { type: 'datetime', title, 'x-component': 'DatePicker', 'x-component-props': {}, 'x-read-pretty': true },
   });
   return [
-    { name: 'id', type: 'bigInt', autoIncrement: true, primaryKey: true, allowNull: false, interface: 'integer',
-      uiSchema: { type: 'number', title: 'ID', 'x-component': 'InputNumber', 'x-read-pretty': true } },
+    { name: 'id', type: 'snowflakeId', autoIncrement: false, primaryKey: true, allowNull: false, interface: 'snowflakeId',
+      uiSchema: { type: 'number', title: 'ID', 'x-component': 'InputNumber', 'x-component-props': { stringMode: true, separator: '0.00', step: '1' }, 'x-validator': 'integer', 'x-read-pretty': true } },
     ts('createdAt', 'Ngày tạo', 'createdAt'),
     userAssoc('createdBy', 'Người tạo', 'createdById'),
     ts('updatedAt', 'Ngày cập nhật', 'updatedAt'),
@@ -278,7 +283,7 @@ function appSpecSystemPrompt(): string {
     'Bạn là CHUYÊN GIA UI/UX kiêm kỹ sư dựng app NocoBase. Từ MÔ TẢ tiếng Việt, hãy THIẾT KẾ rồi sinh MỘT App-Spec JSON hợp lệ — không chỉ đúng dữ liệu mà còn ĐẸP, GỌN & DỄ DÙNG (thứ tự cột, chọn widget, cột nào lên bảng vs chỉ trong popup… đều do BẠN quyết như một designer).',
     '',
     'App-Spec = { "meta": {"name","locale":"vi"}, "collections": [...], "pages": [...], "menu": {"groups": [...]} }.',
-    'meta.name = TÊN HIỂN THỊ của cả app, tiếng Việt CÓ DẤU, viết hoa đầu câu (vd "Quản lý bán hàng", "Theo dõi dự án") — đây là nhãn hiển thị trên menu, TUYỆT ĐỐI KHÔNG phải tên máy/snake_case (SAI: "quan_ly_ban_hang").',
+    'meta.title = TÊN HIỂN THỊ của cả app, tiếng Việt CÓ DẤU, viết hoa đầu câu (vd "Quản lý bán hàng", "Theo dõi dự án") — nhãn hiển thị trên menu; hãy điền y như "title" của collection (LUÔN có dấu). meta.name = tên máy snake_case, tuỳ chọn. TUYỆT ĐỐI đừng để tên hiển thị ra thành tên máy (SAI: hiển thị "quan_ly_ban_hang").',
     'collection = { "name" (machine, ^[a-z][a-z0-9_]*), "title" (vi có dấu), "titleField", "fields": [...], "relations": [...], "seed": [...] }.',
     'field = { "name", "title", "interface", "options"?, "required"?, "widget"?, "computed"?, "states"?, "transitions"? }.',
     '  interface ∈ input, textarea, markdown, phone, email, url, number, integer, percent, select, multipleSelect, checkbox, date, datetime, time, color, json, statusFlow.',
@@ -296,8 +301,8 @@ function appSpecSystemPrompt(): string {
     'menu = { "groups": [{ "label" (nhãn nhóm sidebar, vd "Danh mục"/"Vận hành"), "icon"? }] }. Đưa trang vào nhóm bằng page.menuGroup = ĐÚNG "label" của nhóm (đừng lồng danh sách pages vào trong group).',
     '',
     'QUY TẮC:',
-    '- meta.name = TÊN HIỂN THỊ tiếng Việt có dấu (vd "Quản lý bán hàng"), KHÔNG PHẢI tên máy/snake_case — khác với name của collection/field bên dưới.',
-    '- name của collection/field = KHÔNG DẤU, snake_case (vd "khach_hang", "ngay_dat"); title = tiếng Việt có dấu.',
+    '- meta.title = TÊN HIỂN THỊ tiếng Việt có dấu (vd "Quản lý bán hàng"); meta.name = tên máy snake tuỳ chọn — GIỐNG cặp name/title của collection/field. Điền title trước, LUÔN có dấu.',
+    '- name của collection/field = KHÔNG DẤU, snake_case (vd "khach_hang", "ngay_dat"); title = tiếng Việt có dấu — SOÁT KỸ đừng bỏ sót dấu ở BẤT KỲ title nào (vd đừng để "phòng" thành "phong").',
     '- Mỗi collection có titleField = 1 field string chính (vd "ten", "ma").',
     '- Đơn có dòng chi tiết: khai o2m ở bảng cha (reverseName = tên m2o ở bảng con) + m2o ở bảng con; cột computed line-total dùng data.<field>.',
     '- Seed 2-3 dòng demo mỗi collection; giá trị quan hệ m2o = giá trị titleField của bản ghi target.',
@@ -359,10 +364,31 @@ export class PluginAppBuilderServer extends Plugin {
   // Each op is a self-contained, idempotent building block. `apply` orchestrates them for a whole spec,
   // and each is ALSO exposed as its own action (below) so an AI / script / UI can call them step-by-step.
 
+  /** Find-or-create a `collectionCategories` row by name and return its id — idempotent, best-effort
+   *  (never throws; a category hiccup must not block collection creation). Categories are GLOBAL (the
+   *  `collectionCategories` table carries no `dataSourceKey`), so the same name across apps/collections
+   *  dedupes onto one row — matching how the built-in "Add collection" panel's category list works. */
+  private async ensureCategory(name: string): Promise<number | undefined> {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) return undefined;
+    try {
+      const repo: any = this.db.getRepository('collectionCategories');
+      if (!repo) return undefined;
+      const existing = await repo.findOne({ filter: { name: trimmed } });
+      if (existing) return existing.get ? existing.get('id') : existing.id;
+      const created = await repo.create({ values: { name: trimmed } });
+      return created.get ? created.get('id') : created.id;
+    } catch { return undefined; }
+  }
+
   /** Create one collection + its fields (scalar / select / status-flow / computed-as-number-column).
    *  Does NOT create computed RULES here — those run AFTER relations so roll-ups can reference them.
+   *  `categoryName`, when given, groups the collection in the data-source panel: ensures/finds a
+   *  `collectionCategories` row by that name and links it via `category` — the SAME belongsToMany
+   *  association (`collections.category` → `collectionCategories`, through `collectionCategory`) the
+   *  built-in "Add collection" UI writes, given as an array of (existing) category ids.
    *  Idempotent: an existing collection is skipped. */
-  private async opCreateCollection(c: CollectionSpec): Promise<any> {
+  private async opCreateCollection(c: CollectionSpec, categoryName?: string): Promise<any> {
     const colRepo: any = this.db.getRepository('collections');
     if (!colRepo) throw new Error('collection-manager (collections repo) không có');
     if (await colRepo.findOne({ filter: { name: c.name } })) return { name: c.name, skipped: 'exists' };
@@ -370,15 +396,17 @@ export class PluginAppBuilderServer extends Plugin {
     // autoGenId MUST be false since we supply the id field explicitly (else NocoBase adds a 2nd, clashing PK).
     const userFields = (c.fields || []).map(fieldDef);
     const fields = [...systemFieldDefs(), ...userFields];
+    const categoryId = categoryName ? await this.ensureCategory(categoryName) : undefined;
     await colRepo.create({
       values: {
         name: c.name, title: c.title || c.name, ...(c.titleField ? { titleField: c.titleField } : {}),
         autoGenId: false, createdAt: true, updatedAt: true, createdBy: true, updatedBy: true, sortable: true, logging: true, fields,
+        ...(categoryId != null ? { category: [categoryId] } : {}),
       },
       context: {}, // run collection-manager hooks → migrate the physical table
     });
     try { await (this.db.getCollection(c.name) as any)?.sync?.({ alter: true }); } catch {}
-    return { name: c.name, fields: userFields.length };
+    return { name: c.name, fields: userFields.length, ...(categoryId != null ? { category: categoryName } : {}) };
   }
 
   /** Add one field to an existing collection (+ its computed rule if it's a computed field). Idempotent
@@ -583,7 +611,12 @@ export class PluginAppBuilderServer extends Plugin {
           const created: string[] = [];
           const report: any = { collections: [], relations: [], computed: [], seeded: [] };
           try {
-            for (const c of spec.collections || []) { const r = await this.opCreateCollection(c); if (!r.skipped) created.push(c.name); report.collections.push(r); }
+            // Category per collection = the menuGroup of its FIRST page (the spec's own logical grouping),
+            // else the app's display name (meta.title||name) as a single catch-all bucket, else none (best-effort —
+            // see opCreateCollection/ensureCategory).
+            const menuGroupByColl = new Map<string, string>();
+            for (const p of spec.pages || []) { if (p.collection && p.menuGroup && !menuGroupByColl.has(p.collection)) menuGroupByColl.set(p.collection, p.menuGroup); }
+            for (const c of spec.collections || []) { const r = await this.opCreateCollection(c, menuGroupByColl.get(c.name) || spec.meta?.title || spec.meta?.name); if (!r.skipped) created.push(c.name); report.collections.push(r); }
             const rels: Array<{ coll: string; r: RelationSpec }> = [];
             for (const c of spec.collections || []) for (const r of c.relations || []) rels.push({ coll: c.name, r });
             rels.sort((a, b) => (RELATION_ORDER[a.r.type] ?? 9) - (RELATION_ORDER[b.r.type] ?? 9));
@@ -600,8 +633,8 @@ export class PluginAppBuilderServer extends Plugin {
         },
 
         // ── GRANULAR TOOLS (step-by-step / AI tool-calling) ──
-        // POST /api/appBuilder:createCollection {name,title,titleField,fields:[FieldSpec]}
-        createCollection: async (ctx: any, next: any) => { ctx.body = await this.opCreateCollection(readVals(ctx) as CollectionSpec); await next(); },
+        // POST /api/appBuilder:createCollection {name,title,titleField,fields:[FieldSpec],category?}
+        createCollection: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opCreateCollection(v as CollectionSpec, v.category); await next(); },
         // {collection, field:FieldSpec}
         addField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opAddField(v.collection, v.field); await next(); },
         // {collection, relation:RelationSpec}

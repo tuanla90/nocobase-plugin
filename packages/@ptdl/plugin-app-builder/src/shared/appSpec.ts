@@ -152,7 +152,10 @@ export interface MenuGroup {
 }
 
 export interface AppSpec {
-  meta: { name: string; description?: string; locale?: 'vi' | 'en' };
+  /** `title` = the app's DISPLAY name (Vietnamese, WITH diacritics) shown as the top menu label; `name` =
+   *  an optional machine id. Mirrors CollectionSpec's name/title split (which the AI fills reliably — the
+   *  root cause of "Quan Ly Ban Hang": a display name routed through a `name`-only field loses its dấu). */
+  meta: { name: string; title?: string; description?: string; locale?: 'vi' | 'en' };
   collections: CollectionSpec[];
   pages: PageSpec[];
   /** `groups` = sidebar sub-groups; `icon` = the single top-level app entry's icon. */
