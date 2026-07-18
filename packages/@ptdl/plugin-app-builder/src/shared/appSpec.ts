@@ -85,6 +85,10 @@ export interface RelationSpec {
    *  relations to entities users create on-the-fly (customer/contact/supplier); false for controlled
    *  master/catalog data (product/room/category/status). AI decides per that heuristic. */
   quickCreate?: boolean;
+  /** o2m only: the AI-designed column order for this relation's inline sub-table (child field names).
+   *  When given, the compiler shows exactly these, in this order; otherwise it auto-derives + ranks them
+   *  (relation → editable → computed). Let the UI/UX designer control the sub-table here. */
+  subColumns?: string[];
 }
 
 export interface CollectionSpec {

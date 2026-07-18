@@ -79,10 +79,15 @@ export async function createPage(app: any, p: any, cspec?: any, quickCreateTempl
   // target's Add form via a block-template reference). See createQuickPage.
   const qcSet = new Set((cspec?.relations || []).filter((r: any) => r.quickCreate).map((r: any) => r.name));
   const quickCreateOf = (name: string) => qcSet.has(name);
+  // o2m relation name → AI-designed sub-table column order.
+  const subMap = new Map<string, string[]>();
+  (cspec?.relations || []).forEach((r: any) => { if (Array.isArray(r.subColumns) && r.subColumns.length) subMap.set(r.name, r.subColumns); });
+  const subColumnsOf = (name: string) => subMap.get(name);
   const { pageSchemaUid } = await createQuickPage(app, {
     collectionName: p.collection,
     columns: toQuickColumns(p.columns, widgetOf, quickCreateOf),
     popupColumns: p.popupColumns ? toQuickColumns(p.popupColumns, widgetOf, quickCreateOf) : undefined,
+    subColumnsOf,
     title: p.title,
     icon: p.icon,
     parentId: p.parentId ?? null,
@@ -143,19 +148,27 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   const pages: MaterializeResult['pages'] = [];
   const mkPage = async (p: any, parentId: number | null) => { pages.push(await createPage(app, { ...p, parentId }, cspecOf(p.collection), quickCreateTemplates)); };
 
+  // Tolerate two menu shapes the AI naturally emits: a group as {label|title, icon, pages?:[pageTitle]}
+  // AND a page's own `menuGroup`. Resolve each page's section from either source.
+  const specGroups = (spec.menu?.groups || []) as any[];
+  const glabel = (g: any) => g?.label || g?.title;
+  const groupOfPage = new Map<string, string>();
+  specGroups.forEach((g) => (g.pages || []).forEach((pt: string) => { const l = glabel(g); if (l) groupOfPage.set(pt, l); }));
+  const menuOf = (p: any) => p.menuGroup || groupOfPage.get(p.title);
+
   // section labels in spec order (menu.groups first, then any referenced only by pages)
   const labels: string[] = [];
-  (spec.menu?.groups || []).forEach((g) => { if (!labels.includes(g.label)) labels.push(g.label); });
-  (spec.pages || []).forEach((p) => { if (p.menuGroup && !labels.includes(p.menuGroup)) labels.push(p.menuGroup); });
+  specGroups.forEach((g) => { const l = glabel(g); if (l && !labels.includes(l)) labels.push(l); });
+  (spec.pages || []).forEach((p) => { const l = menuOf(p); if (l && !labels.includes(l)) labels.push(l); });
 
-  for (const p of (spec.pages || []).filter((p) => !p.menuGroup)) await mkPage(p, topId); // ungrouped → under the app
+  for (const p of (spec.pages || []).filter((p) => !menuOf(p))) await mkPage(p, topId); // ungrouped → under the app
   for (const label of labels) {
-    const icon = (spec.menu?.groups || []).find((g) => g.label === label)?.icon;
+    const icon = specGroups.find((g) => glabel(g) === label)?.icon;
     const groupId = await createMenuGroup(app, label, icon, topId, hasMenuEnh ? DIVIDER : undefined);
     groups.push({ label, id: groupId });
     // divider label → pages sit flat beside it (under the app); native group → pages nest inside it.
     const pageParent = hasMenuEnh ? topId : groupId;
-    for (const p of (spec.pages || []).filter((p) => p.menuGroup === label)) await mkPage(p, pageParent);
+    for (const p of (spec.pages || []).filter((p) => menuOf(p) === label)) await mkPage(p, pageParent);
   }
   return { pages, groups };
 }

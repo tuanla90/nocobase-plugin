@@ -48,6 +48,8 @@ export interface CreateQuickPageParams {
   /** target collection name → its Add-form block template, so quick-create fields on this page can
    *  reference the target's reusable Add form. Built by materializeApp before pages. */
   quickCreateTemplates?: Record<string, TemplateRef>;
+  /** o2m relation name → the AI-designed sub-table column order (child field names). */
+  subColumnsOf?: (relationName: string) => string[] | undefined;
 }
 
 /** Resolved per-column model uses (display for table/details, editable for the form), title synced. */
@@ -218,7 +220,7 @@ function makeResolver(engine: any, collection: any) {
  * Skips system fields, raw FK columns, other to-many fields (no deep nesting), and the back-reference to
  * the parent. Empty array if the target is unavailable.
  */
-function buildSubTableColumns(engine: any, ds: string, targetColl: any, parentCollName: string, assocName: string, kind: 'form' | 'details' = 'form'): any[] {
+function buildSubTableColumns(engine: any, ds: string, targetColl: any, parentCollName: string, assocName: string, kind: 'form' | 'details' = 'form', subColumns?: string[]): any[] {
   if (!targetColl?.getFields) return [];
   const resolveT = makeResolver(engine, targetColl);
   const SYS = new Set(['id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'createdById', 'updatedById', 'sort']);
@@ -239,18 +241,26 @@ function buildSubTableColumns(engine: any, ds: string, targetColl: any, parentCo
     if (isToOne && f.target === parentCollName) return false; // don't show the back-ref to the parent row
     return true;
   });
-  // Column ORDER follows data-entry logic, not field-creation order: the m2o relation you pick FIRST
-  // (which product/service — it often drives a lookup) leads, then editable scalars (qty…), then auto/
-  // computed columns (unit-price lookup, line total) last. Field-creation order buried relations (created
-  // after scalars) at the end — that's why "Dịch vụ" showed up last.
-  const rank = (f: any) => {
-    if (f.interface === 'm2o' || (f.type || f.interface) === 'belongsTo') return 0;
-    const ui = f.uiSchema || f.options?.uiSchema || {};
-    return ui['x-read-pretty'] === true ? 2 : 1; // computed/read-pretty → last
-  };
-  fields.sort((a: any, b: any) => rank(a) - rank(b)); // stable sort preserves field order within a rank
+  // Column ORDER: if the AI/UX designer supplied `subColumns`, honour that exact order (keeping only valid,
+  // non-system columns). Otherwise fall back to a data-entry heuristic — the m2o relation you pick FIRST
+  // (which product/service; it often drives a lookup) leads, then editable scalars (qty…), then auto/
+  // computed columns (unit price, line total) last. (Field-creation order buried relations, created after
+  // scalars, at the end — that's why "Dịch vụ" showed up last.)
+  let ordered = fields;
+  if (subColumns && subColumns.length) {
+    const byName = new Map(fields.map((f: any) => [f.name, f]));
+    ordered = subColumns.map((n) => byName.get(n)).filter(Boolean) as any[];
+    if (!ordered.length) ordered = fields; // spec named nothing valid → fall back
+  } else {
+    const rank = (f: any) => {
+      if (f.interface === 'm2o' || (f.type || f.interface) === 'belongsTo') return 0;
+      const ui = f.uiSchema || f.options?.uiSchema || {};
+      return ui['x-read-pretty'] === true ? 2 : 1; // computed/read-pretty → last
+    };
+    ordered = [...fields].sort((a: any, b: any) => rank(a) - rank(b)); // stable: preserves field order within a rank
+  }
   const isForm = kind === 'form';
-  return fields.map((f: any) => {
+  return ordered.map((f: any) => {
     // The editable inline sub-table derives each cell's antd-Form `name` from the COLUMN model's
     // context.fieldPath (client-v2 SubTableColumnModel → MemoCell: `action.context.fieldPath.split('.')`
     // → `[...prefix, rowIdx, leaf]`). It MUST be the association-relative dotted path on the PARENT
@@ -507,8 +517,9 @@ export async function createQuickPage(app: any, params: CreateQuickPageParams): 
           app?.dataSourceManager?.getDataSource?.(ds)?.getCollection?.(field?.target) ||
           app?.dataSourceManager?.getCollection?.(ds, field?.target);
         if (target) {
-          if (/subtable/i.test(bc.formUse)) bc.formSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'form');
-          if (/subtable/i.test(bc.detailsUse)) bc.detailsSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'details');
+          const sub = params.subColumnsOf?.(c.name); // AI-designed sub-table column order (o2m)
+          if (/subtable/i.test(bc.formUse)) bc.formSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'form', sub);
+          if (/subtable/i.test(bc.detailsUse)) bc.detailsSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'details', sub);
         }
       }
       // quick-create: to-one relation gets an inline "Add new <target>". Prefer the "Rich select"

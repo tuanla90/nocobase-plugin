@@ -209,7 +209,7 @@ function aiText(msg: any): string {
 /** System prompt: the App-Spec shape + the @ptdl vocabulary + rules, so the LLM emits a valid spec. */
 function appSpecSystemPrompt(): string {
   return [
-    'Bạn là trợ lý dựng app NocoBase. Từ MÔ TẢ tiếng Việt của người dùng, sinh MỘT App-Spec JSON hợp lệ.',
+    'Bạn là CHUYÊN GIA UI/UX kiêm kỹ sư dựng app NocoBase. Từ MÔ TẢ tiếng Việt, hãy THIẾT KẾ rồi sinh MỘT App-Spec JSON hợp lệ — không chỉ đúng dữ liệu mà còn ĐẸP, GỌN & DỄ DÙNG (thứ tự cột, chọn widget, cột nào lên bảng vs chỉ trong popup… đều do BẠN quyết như một designer).',
     '',
     'App-Spec = { "meta": {"name","locale":"vi"}, "collections": [...], "pages": [...], "menu": {"groups": [...]} }.',
     'collection = { "name" (machine, ^[a-z][a-z0-9_]*), "title" (vi có dấu), "titleField", "fields": [...], "relations": [...], "seed": [...] }.',
@@ -219,9 +219,10 @@ function appSpecSystemPrompt(): string {
     '    · data.<field> = ô cùng dòng (vd "data.so_luong * data.don_gia");  · SUM(data.<quan_hệ_o2m>.<field>) = tổng con (rollup, vd "SUM(data.chi_tiet.thanh_tien)");',
     '    · data.<quan_hệ_m2o>.<field> = TRA CỨU (lookup) giá trị từ bản ghi liên quan/bảng cấu hình — VD đơn giá dòng chi tiết lấy từ bảng sản phẩm/dịch vụ: "data.san_pham.gia" (đơn giá tự điền khi chọn sản phẩm).',
     '  widget (tùy chọn, cho đẹp): "Progress bar","Star rating","Value tag","Rich select","Input icon","Sub-table Pro".',
-    'relation = { "name" (snake, không dấu), "title" (NHÃN tiếng Việt có dấu, vd "Khách hàng"), "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"?, "quickCreate"? (bool) }.',
+    'relation = { "name" (snake, không dấu), "title" (NHÃN tiếng Việt có dấu, vd "Khách hàng"), "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"?, "quickCreate"? (bool), "subColumns"? ([tên field bảng con hiện trong sub-table, o2m — theo thứ tự bạn thiết kế]) }.',
     '  quickCreate (chỉ m2o/o2o): thêm nút "＋ Thêm mới <target>" ngay trên form. BẬT (true) cho quan hệ tới thực thể người dùng hay tạo tại-chỗ (khách hàng, liên hệ, nhà cung cấp, đối tác). TẮT (bỏ trống) cho danh mục/master quản lý riêng (sản phẩm, phòng, dịch vụ, danh mục, trạng thái).',
     'page = { "title", "collection", "menuGroup"?, "icon"? ("lucide-users"…), "block"? ("TableBlockModel"|"EnhancedTableBlockModel"), "columns": [tên field], "popupColumns"? }.',
+    'menu = { "groups": [{ "label" (nhãn nhóm sidebar, vd "Danh mục"/"Vận hành"), "icon"? }] }. Đưa trang vào nhóm bằng page.menuGroup = ĐÚNG "label" của nhóm (đừng lồng danh sách pages vào trong group).',
     '',
     'QUY TẮC:',
     '- name của collection/field = KHÔNG DẤU, snake_case (vd "khach_hang", "ngay_dat"); title = tiếng Việt có dấu.',
@@ -229,7 +230,12 @@ function appSpecSystemPrompt(): string {
     '- Đơn có dòng chi tiết: khai o2m ở bảng cha (reverseName = tên m2o ở bảng con) + m2o ở bảng con; cột computed line-total dùng data.<field>.',
     '- Seed 2-3 dòng demo mỗi collection; giá trị quan hệ m2o = giá trị titleField của bản ghi target.',
     '- Mỗi collection nên có 1 page; nhóm menu hợp lý (Danh mục / Vận hành…).',
-    '- THỨ TỰ cột (columns/popupColumns) theo luồng nhập liệu tự nhiên: field ĐỊNH DANH (mã/tên) hoặc QUAN HỆ chính (khách/sản phẩm — thứ chọn trước) ĐỨNG ĐẦU, rồi thuộc tính, cột COMPUTED/tổng để CUỐI. Đừng để quan hệ ở cuối.',
+    '',
+    'THIẾT KẾ UI/UX (bạn tự quyết cho MỌI view như một designer, đừng để mặc định):',
+    '- THỨ TỰ cột (columns/popupColumns/subColumns) theo luồng ĐỌC-NHẬP: ĐỊNH DANH (mã/tên) hoặc QUAN HỆ chính (khách/sản phẩm — thứ CHỌN TRƯỚC, hay kéo theo lookup) ĐẦU → thuộc tính chính → trạng thái → COMPUTED/tổng CUỐI. TUYỆT ĐỐI không để quan hệ ở cuối.',
+    '- BẢNG GỌN: "columns" (bảng danh sách) chỉ 4-6 cột QUAN TRỌNG nhất (định danh, quan hệ chính, trạng thái, tổng tiền). Field phụ/chi tiết → CHỈ để "popupColumns" (xem/sửa), đừng nhồi hết lên bảng.',
+    '- CHỌN WIDGET theo ngữ nghĩa, KHÔNG lạm dụng (chỉ gắn khi RÕ hợp): %/tiến độ → "Progress bar"; nhãn/trạng thái ngắn → "Value tag"; đánh giá sao → "Star rating"; quan hệ cần hiện đẹp (avatar/phụ đề) → "Rich select". Trạng thái có luồng → interface "statusFlow". TIỀN/số/ngày/text thường → KHÔNG widget (để mặc định). "Input icon" CHỈ cho field chọn biểu tượng, KHÔNG phải cho tiền.',
+    '- Bảng con (o2m) khai "subColumns" theo cùng logic (quan hệ chọn-trước đầu, số lượng, computed/thành tiền cuối); KHÔNG liệt kê field hệ thống (id/ngày tạo…).',
     '- CHỈ trả JSON App-Spec, không markdown, không giải thích ngoài trường "explain".',
   ].join('\n');
 }
@@ -243,7 +249,7 @@ function toolPlanSystemPrompt(state: string): string {
     'TOOL (mỗi bước = {"tool":"...","args":{...}}):',
     '- createCollection {name(snake, không dấu), title(vi), titleField, fields:[{name,title,interface,options?,widget?,computed?,states?}]}',
     '- addField {collection, field:{name,title,interface,...}}',
-    '- addRelation {collection, relation:{name(snake),title(nhãn tiếng Việt vd "Khách hàng"),type:"m2o"|"o2m"|"o2o"|"m2m",target,reverseName?,quickCreate?(bool: BẬT cho quan hệ tới khách hàng/liên hệ/nhà cung cấp — tạo tại-chỗ; TẮT cho danh mục/master)}}',
+    '- addRelation {collection, relation:{name(snake),title(nhãn tiếng Việt vd "Khách hàng"),type:"m2o"|"o2m"|"o2o"|"m2m",target,reverseName?,quickCreate?(bool: BẬT cho quan hệ tới khách hàng/liên hệ/nhà cung cấp — tạo tại-chỗ; TẮT cho danh mục/master),subColumns?([field con cho sub-table o2m, theo thứ tự thiết kế])}}',
     '- addComputed {collection, field:{name,title,interface:"number",computed:{expression:"data.x * data.y"}}}',
     '- addStatusFlow {collection, field:{name,title,states:["Mới","Đang làm","Xong"]}}',
     '- seed {collection, rows:[{...}]}  (giá trị quan hệ m2o = giá trị titleField của bản ghi target)',
@@ -259,6 +265,7 @@ function toolPlanSystemPrompt(state: string): string {
     '- DỰNG MỚI: createCollection từng bảng TRƯỚC → addRelation → createMenuGroup + createPage. Tên snake không dấu, title tiếng Việt.',
     '- SỬA app CÓ SẴN: CHỈ đụng cái cần đổi trên collection ĐÃ CÓ trong TRẠNG THÁI — thêm (addField/addStatusFlow/addComputed/addRelation/createPage), XOÁ (dropField/dropCollection), hoặc đổi tên hiển thị (renameField). TUYỆT ĐỐI KHÔNG createCollection lại collection đã tồn tại. CHỈ dropField/dropCollection field/bảng CÓ THẬT trong TRẠNG THÁI.',
     '- addRelation chỉ sau khi cả 2 collection tồn tại (đã có, hoặc được createCollection trước đó trong plan).',
+    '- THIẾT KẾ UI/UX (bạn là designer): thứ tự cột theo luồng đọc-nhập (định danh/quan hệ chính ĐẦU → thuộc tính → status → computed CUỐI); "columns" bảng chỉ 4-6 cột quan trọng, field phụ để "popupColumns"; chọn widget theo ngữ nghĩa (%/tiến độ→Progress bar, nhãn→Value tag, quan hệ→Rich select).',
     '- CHỈ trả JSON {"steps":[...], "explain":"..."}.',
     '',
     'TRẠNG THÁI hiện tại (các collection + field đang có):',
