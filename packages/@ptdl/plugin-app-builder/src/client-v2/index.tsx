@@ -59,6 +59,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [planLog, setPlanLog] = useState<any[] | null>(null);
     const [lastArtifacts, setLastArtifacts] = useState<{ collections?: string[]; pages?: any[]; groups?: any[] } | null>(null);
     const [delBusy, setDelBusy] = useState(false);
+    const [refineText, setRefineText] = useState('');
+    const [refineBusy, setRefineBusy] = useState(false);
 
     const parse = (): any => {
       try { return JSON.parse(text); } catch (e: any) { message.error(t('Invalid JSON') + ': ' + e.message); return null; }
@@ -101,6 +103,26 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         message.error(e?.message || String(e));
       } finally {
         setAiBusy(false);
+      }
+    };
+    // ✏️ Chat-refine the CURRENT spec: AI keeps it and applies just the requested change, then re-fills the
+    // box. Flow: preview → see something to fix → type the change → Refine → re-preview → Create.
+    const onRefine = async () => {
+      const spec = parse(); if (!spec) return;
+      if (!refineText.trim()) { message.warning(t('Type what to change')); return; }
+      setRefineBusy(true);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:aiRefine', method: 'post', data: { spec, instruction: refineText } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('AI could not refine the spec')); return; }
+        setText(JSON.stringify(res.spec, null, 2));
+        setRefineText('');
+        message.success(res.explain || t('Spec updated — review then Create app'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setRefineBusy(false);
       }
     };
     // 🔧 Agentic: instruction → AI plans a sequence of tool calls (build new OR modify existing app,
@@ -228,6 +250,16 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
               })()}
             </div>
           )}
+          <Space.Compact style={{ width: '100%', marginTop: 10 }}>
+            <Input
+              value={refineText}
+              onChange={(e) => setRefineText(e.target.value)}
+              placeholder={t('Chat to edit this spec — e.g. add a Notes column to Customers')}
+              onPressEnter={onRefine}
+              disabled={refineBusy}
+            />
+            <Button loading={refineBusy} onClick={onRefine}>✏️ {t('Refine spec (AI)')}</Button>
+          </Space.Compact>
           <Space style={{ marginTop: 12 }} wrap>
             <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))}>{t('Load demo')}</Button>
             <Button onClick={onValidate}>{t('Validate')}</Button>

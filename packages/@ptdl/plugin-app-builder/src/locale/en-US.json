@@ -30,5 +30,10 @@
   "Delete the app I just built": "Delete the app I just built",
   "Deleted": "Deleted",
   "Preview": "Preview",
-  "…or paste / load a demo App-Spec:": "…or paste / load a demo App-Spec:"
+  "…or paste / load a demo App-Spec:": "…or paste / load a demo App-Spec:",
+  "Refine spec (AI)": "Refine spec (AI)",
+  "Type what to change": "Type what to change",
+  "Chat to edit this spec — e.g. add a Notes column to Customers": "Chat to edit this spec — e.g. add a Notes column to Customers",
+  "AI could not refine the spec": "AI could not refine the spec",
+  "Spec updated — review then Create app": "Spec updated — review then Create app"
 }

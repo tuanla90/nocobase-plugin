@@ -697,6 +697,45 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
+        // {spec, instruction} → REFINE an existing App-Spec conversationally: keep everything, apply just
+        // the requested change, return the WHOLE modified spec. Different from aiGenerate (from scratch) and
+        // aiPlan (tool-calls on a BUILT app) — this edits the SPEC in the preview, so a user who sees
+        // something wrong can chat "thêm cột ghi chú vào bảng khách hàng" and re-preview before Create.
+        aiRefine: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const instruction = String(v.instruction || '').trim();
+          let current: any = v.spec;
+          if (typeof current === 'string') { try { current = JSON.parse(current); } catch { /* handled below */ } }
+          if (!instruction) { ctx.body = { ok: false, error: 'Thiếu yêu cầu sửa' }; await next(); return; }
+          if (!current || typeof current !== 'object') { ctx.body = { ok: false, error: 'Thiếu App-Spec hiện tại (spec) hoặc spec không hợp lệ' }; await next(); return; }
+          const { provider, error } = await getAiProvider(this.app);
+          if (error) { ctx.body = { ok: false, error }; await next(); return; }
+          const system = appSpecSystemPrompt();
+          const schema = { type: 'object', properties: { spec: { type: 'string', description: 'App-Spec ĐÃ SỬA, chuỗi JSON hợp lệ' }, explain: { type: 'string', description: 'Giải thích ngắn tiếng Việt đã đổi gì (1 câu)' } }, required: ['spec'] };
+          const base = (extra = '') => `App-Spec HIỆN TẠI:\n${JSON.stringify(current)}\n\nYÊU CẦU SỬA: ${instruction}\n\nTrả về TOÀN BỘ App-Spec ĐÃ SỬA — GIỮ NGUYÊN mọi thứ không liên quan, CHỈ đổi theo yêu cầu. JSON App-Spec thuần.${extra}`;
+          let human = base();
+          let spec: any = null; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !spec; attempt++) {
+            let raw = '';
+            try {
+              const result: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'appspec', description: 'App-Spec đã sửa + giải thích' } });
+              const parsed = result && typeof result === 'object' && 'parsed' in result ? result.parsed : result;
+              raw = parsed?.spec || ''; explain = String(parsed?.explain || '');
+            } catch { /* structured output not supported → plain-text fallback */ }
+            if (!raw) { try { raw = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả về DUY NHẤT JSON App-Spec.'], ['human', human]] })); } catch {} }
+            raw = stripFences(raw);
+            let parsedSpec: any;
+            try { parsedSpec = JSON.parse(raw); } catch (e: any) { lastError = 'JSON không parse được: ' + e?.message; human = base('\n\nLần trước output KHÔNG phải JSON hợp lệ.'); continue; }
+            const vr = validateAppSpec(parsedSpec);
+            if (vr.ok) { spec = parsedSpec; break; }
+            lastError = vr.errors.slice(0, 6).map((x) => `${x.path}: ${x.message}`).join('; ');
+            human = base(`\n\nBản bạn vừa sửa SAI: ${JSON.stringify(parsedSpec)}\nLỖI: ${lastError}\nSửa cho HỢP LỆ.`);
+          }
+          if (!spec) { ctx.body = { ok: false, error: lastError || 'AI không sửa được thành App-Spec hợp lệ' }; await next(); return; }
+          ctx.body = { ok: true, spec, explain, warnings: validateAppSpec(spec).warnings };
+          await next();
+        },
+
         // {instruction} → AGENTIC: AI lập plan gọi các primitive (dùng trạng thái hiện tại làm "mắt").
         // KHÔNG chạy — trả steps để client preview + execute (data→server tool, page→flowEngine).
         aiPlan: async (ctx: any, next: any) => {
@@ -749,7 +788,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 
