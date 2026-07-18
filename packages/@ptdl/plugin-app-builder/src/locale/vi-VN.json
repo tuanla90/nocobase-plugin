@@ -35,5 +35,16 @@
   "Type what to change": "Gõ nội dung cần sửa",
   "Chat to edit this spec — e.g. add a Notes column to Customers": "Chat để sửa spec — vd thêm cột Ghi chú vào bảng Khách hàng",
   "AI could not refine the spec": "AI chưa sửa được spec",
-  "Spec updated — review then Create app": "Đã cập nhật spec — xem lại rồi bấm Tạo app"
+  "Spec updated — review then Create app": "Đã cập nhật spec — xem lại rồi bấm Tạo app",
+  "Dashboard": "Dashboard",
+  "AI Dashboard": "Dashboard AI",
+  "Generate a dashboard with AI": "Tạo dashboard bằng AI",
+  "Pick a table — AI designs KPI cards + charts + a filter bar from its fields.": "Chọn một bảng — AI tự thiết kế thẻ KPI + biểu đồ + thanh lọc từ các field của bảng.",
+  "Choose a table…": "Chọn bảng…",
+  "Optional: what to focus on — e.g. revenue by month, status breakdown": "Tuỳ chọn: muốn tập trung vào gì — vd doanh thu theo tháng, cơ cấu trạng thái",
+  "Generate dashboard (AI)": "Tạo dashboard (AI)",
+  "Pick a collection first": "Hãy chọn bảng trước",
+  "AI could not design a dashboard": "AI chưa thiết kế được dashboard",
+  "Dashboard created": "Đã tạo dashboard",
+  "Filter": "Lọc"
 }

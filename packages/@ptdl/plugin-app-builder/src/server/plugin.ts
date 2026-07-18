@@ -317,6 +317,46 @@ function appSpecSystemPrompt(): string {
   ].join('\n');
 }
 
+/** System prompt for DASHBOARD design: given a collection's fields, design a KPI + charts + filter board. */
+function dashboardSystemPrompt(): string {
+  return [
+    'Bạn là chuyên gia thiết kế DASHBOARD phân tích. Từ danh sách field của MỘT collection, hãy THIẾT KẾ một dashboard đẹp, hữu ích gồm thẻ KPI + biểu đồ + thanh lọc. Trả về DUY NHẤT JSON DashboardSpec.',
+    '',
+    'DashboardSpec = { "title": <tên hiển thị tiếng Việt CÓ DẤU>, "collection": <machine name ĐÚNG như đề bài>, "icon"?: "lucide-<tên>", "widgets": [ ...4-8 widget... ] }.',
+    'widget.kind:',
+    '  "score" — thẻ KPI (1 con số): { "kind":"score", "label":<nhãn vi ngắn>, "measure":{"field":<field số, hoặc "id" để đếm>, "aggregation":"sum"|"count"|"avg"|"max"|"min"}, "icon"?:<lucide kebab: shopping-cart, dollar-sign, users, package, trending-up…>, "unit"?:<đơn vị hiển thị>, "scale"?:<số chia cho gọn> }.',
+    '    · scale + unit ĐI ĐÔI: tiền lớn (>1 triệu) NÊN đặt scale để gọn và unit PHẢI kèm bậc → scale 1000000 ⇒ unit "triệu đ"; scale 1000000000 ⇒ unit "tỷ đ". Đếm/số lượng: bỏ scale, unit "đơn"/"sp"/… %: unit "%".',
+    '  "chart" — biểu đồ: { "kind":"chart", "title":<tiêu đề vi>, "chartType":"line"|"bar"|"pie", "measure":{"field","aggregation"}, "dimension":{"field":<field nhóm>, "format"?:"YYYY-MM"} }.',
+    '    · line/bar = xu hướng/so sánh theo THỜI GIAN hoặc phân loại; dimension theo field NGÀY thì THÊM "format":"YYYY-MM" (gộp tháng). pie = tỉ trọng theo field PHÂN LOẠI (select/statusFlow/quan hệ).',
+    '  "filter" — thanh lọc nối vào biểu đồ: { "kind":"filter", "fields":[<vài field để lọc, ưu tiên NGÀY + PHÂN LOẠI>] }.',
+    '',
+    'QUY TẮC BẮT BUỘC:',
+    '- CHỈ dùng field CÓ trong danh sách được cung cấp (đúng "name"). Không bịa field.',
+    '- measure PHẢI là field KIỂU SỐ (tiền/số lượng/%), hoặc "id" với aggregation "count". TUYỆT ĐỐI không sum field chữ/ngày.',
+    '- dimension thời gian PHẢI là field NGÀY (kèm format YYYY-MM). dimension phân loại = select/statusFlow/quan hệ (KHÔNG phải field số liên tục).',
+    '- Thiết kế cân đối: 2-4 score card (các KPI khác nhau) + 2-3 chart (ít nhất 1 line/bar theo thời gian + 1 pie theo phân loại nếu có) + 1 filter.',
+    '- title tiếng Việt CÓ DẤU. Chỉ trả JSON, không markdown.',
+  ].join('\n');
+}
+
+/** Light validate + coerce a DashboardSpec: force the collection, drop widgets referencing unknown fields. */
+function validateDashboardSpec(spec: any, coll: string, fieldNames: Set<string>): { ok: boolean; spec?: any; error?: string } {
+  if (!spec || typeof spec !== 'object') return { ok: false, error: 'Không phải object' };
+  spec.collection = coll;
+  if (!Array.isArray(spec.widgets)) return { ok: false, error: 'Thiếu widgets[]' };
+  const known = (fn: string) => fn === 'id' || fieldNames.has(fn);
+  spec.widgets = spec.widgets.filter((w: any) => {
+    if (!w || typeof w !== 'object') return false;
+    if (w.kind === 'score') return !!(w.measure && known(w.measure.field));
+    if (w.kind === 'chart') return !!(w.measure && known(w.measure.field) && w.dimension && known(w.dimension.field));
+    if (w.kind === 'filter') { w.fields = (Array.isArray(w.fields) ? w.fields : []).filter((f: string) => fieldNames.has(f)); return w.fields.length > 0; }
+    return false;
+  });
+  if (!spec.widgets.length) return { ok: false, error: 'Không có widget hợp lệ (field không khớp collection)' };
+  if (!spec.title) spec.title = coll;
+  return { ok: true, spec };
+}
+
 /** System prompt for AGENTIC tool-planning: given an instruction + current state, plan an ordered list
  *  of tool calls (build from scratch OR modify an existing app). */
 function toolPlanSystemPrompt(state: string): string {
@@ -736,6 +776,66 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
+        // {collection, description?} → AI thiết kế DashboardSpec (KPI + charts + filter) từ field của bảng.
+        // Trả spec để client materialize (createDashboard). AI "nhìn" field thật của collection để chọn measure/dimension.
+        aiDashboard: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const coll = String(v.collection || '').trim();
+          const hint = String(v.description || v.instruction || '').trim();
+          if (!coll) { ctx.body = { ok: false, error: 'Thiếu collection' }; await next(); return; }
+          const collection: any = this.db.getCollection(coll);
+          if (!collection) { ctx.body = { ok: false, error: 'Không thấy collection: ' + coll }; await next(); return; }
+          // Introspect fields → give the AI real names/types to pick measures & dimensions from.
+          const fields: any[] = [];
+          collection.fields.forEach((f: any) => {
+            const o = f.options || {};
+            if (['belongsToMany', 'hasMany', 'hasOne', 'password'].includes(o.type)) return; // skip to-many rels & secrets
+            const rawTitle = o.uiSchema?.title || o.title || f.name;
+            fields.push({ name: f.name, type: o.type, interface: o.interface, title: typeof rawTitle === 'string' ? rawTitle : f.name });
+          });
+          const fieldNames = new Set<string>(fields.map((f) => f.name));
+          const isNum = (f: any) => ['float', 'double', 'decimal', 'integer', 'bigInt'].includes(f.type) || ['number', 'integer', 'percent', 'currency'].includes(f.interface);
+          const isDate = (f: any) => ['date', 'datetime', 'dateOnly', 'datetimeNoTz', 'timestamp'].includes(f.type) || ['date', 'datetime', 'createdAt', 'updatedAt'].includes(f.interface);
+          const isCat = (f: any) => ['select', 'statusFlow', 'radioGroup', 'checkbox'].includes(f.interface) || f.type === 'belongsTo';
+          const numF = fields.filter(isNum).map((f) => f.name);
+          const dateF = fields.filter(isDate).map((f) => f.name);
+          const catF = fields.filter(isCat).map((f) => f.name);
+          const { provider, error } = await getAiProvider(this.app);
+          if (error) { ctx.body = { ok: false, error }; await next(); return; }
+          const system = dashboardSystemPrompt();
+          const schema = { type: 'object', properties: { spec: { type: 'string', description: 'DashboardSpec, chuỗi JSON hợp lệ' }, explain: { type: 'string', description: 'Giải thích ngắn tiếng Việt (1 câu)' } }, required: ['spec'] };
+          const base = (extra = '') => [
+            `Collection: "${coll}"`,
+            `Các field: ${JSON.stringify(fields)}`,
+            `Gợi ý MEASURE (số): ${numF.join(', ') || '(không có field số → dùng count "id")'}`,
+            `Gợi ý DIMENSION thời gian: ${dateF.join(', ') || '(không)'}`,
+            `Gợi ý DIMENSION phân loại: ${catF.join(', ') || '(không)'}`,
+            hint ? `Yêu cầu thêm của người dùng: ${hint}` : '',
+            '', 'Thiết kế DashboardSpec đẹp, cân đối. Trả JSON thuần.' + extra,
+          ].filter(Boolean).join('\n');
+          let human = base();
+          let spec: any = null; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !spec; attempt++) {
+            let raw = '';
+            try {
+              const result: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'dashboard', description: 'DashboardSpec + giải thích' } });
+              const parsed = result && typeof result === 'object' && 'parsed' in result ? result.parsed : result;
+              raw = parsed?.spec || ''; explain = String(parsed?.explain || '');
+            } catch { /* structured output not supported → plain-text fallback */ }
+            if (!raw) { try { raw = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả về DUY NHẤT JSON DashboardSpec.'], ['human', human]] })); } catch {} }
+            raw = stripFences(raw);
+            let parsedSpec: any;
+            try { parsedSpec = JSON.parse(raw); } catch (e: any) { lastError = 'JSON không parse được: ' + e?.message; human = base('\n\nLần trước output KHÔNG phải JSON hợp lệ.'); continue; }
+            const vr = validateDashboardSpec(parsedSpec, coll, fieldNames);
+            if (vr.ok) { spec = vr.spec; break; }
+            lastError = vr.error || 'không hợp lệ';
+            human = base(`\n\nBản vừa rồi SAI: ${lastError}. Chỉ dùng field có thật, measure phải là số/count.`);
+          }
+          if (!spec) { ctx.body = { ok: false, error: lastError || 'AI không thiết kế được dashboard hợp lệ' }; await next(); return; }
+          ctx.body = { ok: true, spec, explain };
+          await next();
+        },
+
         // {instruction} → AGENTIC: AI lập plan gọi các primitive (dùng trạng thái hiện tại làm "mắt").
         // KHÔNG chạy — trả steps để client preview + execute (data→server tool, page→flowEngine).
         aiPlan: async (ctx: any, next: any) => {
@@ -788,7 +888,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 

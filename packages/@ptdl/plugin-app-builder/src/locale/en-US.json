@@ -35,5 +35,16 @@
   "Type what to change": "Type what to change",
   "Chat to edit this spec — e.g. add a Notes column to Customers": "Chat to edit this spec — e.g. add a Notes column to Customers",
   "AI could not refine the spec": "AI could not refine the spec",
-  "Spec updated — review then Create app": "Spec updated — review then Create app"
+  "Spec updated — review then Create app": "Spec updated — review then Create app",
+  "Dashboard": "Dashboard",
+  "AI Dashboard": "AI Dashboard",
+  "Generate a dashboard with AI": "Generate a dashboard with AI",
+  "Pick a table — AI designs KPI cards + charts + a filter bar from its fields.": "Pick a table — AI designs KPI cards + charts + a filter bar from its fields.",
+  "Choose a table…": "Choose a table…",
+  "Optional: what to focus on — e.g. revenue by month, status breakdown": "Optional: what to focus on — e.g. revenue by month, status breakdown",
+  "Generate dashboard (AI)": "Generate dashboard (AI)",
+  "Pick a collection first": "Pick a collection first",
+  "AI could not design a dashboard": "AI could not design a dashboard",
+  "Dashboard created": "Dashboard created",
+  "Filter": "Filter"
 }

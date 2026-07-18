@@ -8,9 +8,10 @@
  */
 import React, { useState } from 'react';
 import { Plugin } from '@nocobase/client-v2';
-import { Button, Input, message, Modal, Segmented, Space, Tooltip, Typography } from 'antd';
+import { Button, Input, message, Modal, Segmented, Select, Space, Tooltip, Typography } from 'antd';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
+import { createDashboard } from '../shared/dashboard';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
 import SpecPreview from './SpecPreview';
 import enUS from '../locale/en-US.json';
@@ -61,6 +62,44 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [delBusy, setDelBusy] = useState(false);
     const [refineText, setRefineText] = useState('');
     const [refineBusy, setRefineBusy] = useState(false);
+    // 📊 Dashboard launcher (separate flow: pick a collection → AI designs KPI + charts + filter board)
+    const [dashOpen, setDashOpen] = useState(false);
+    const [dashColl, setDashColl] = useState<string | undefined>(undefined);
+    const [dashDesc, setDashDesc] = useState('');
+    const [dashBusy, setDashBusy] = useState(false);
+    const [dashResult, setDashResult] = useState<{ url: string; title: string; widgets: any[] } | null>(null);
+
+    // User data collections to offer as the dashboard source (skip system/hidden ones).
+    const collections = React.useMemo(() => {
+      try {
+        const ds = app.dataSourceManager?.getDataSource?.('main') || app.dataSourceManager?.dataSources?.get?.('main');
+        const cm = ds?.collectionManager || ds;
+        const list: any[] = cm?.getCollections?.() || (ds?.collections ? Array.from(ds.collections.values()) : []);
+        return list
+          .filter((c: any) => c && c.name && !c.options?.hidden && !/^(ptdl|ui|workflow|users|roles|desktop|mobile|application|storages|attachments|jobs|ai|llm|localization|theme|notification|authenticators|collections|fields|dataSources|systemSettings|tokenControl)/.test(c.name))
+          .map((c: any) => { const title = c.title || c.options?.title; return { value: c.name, label: title && title !== c.name ? `${title} (${c.name})` : c.name }; })
+          .sort((a, b) => a.label.localeCompare(b.label));
+      } catch { return []; }
+    }, [dashOpen]);
+
+    // 📊 collection (+optional hint) → AI designs a DashboardSpec (server), then materialize it (client).
+    const onDashboard = async () => {
+      if (!dashColl) { message.warning(t('Pick a collection first')); return; }
+      setDashBusy(true); setDashResult(null);
+      try {
+        const ai = await app.apiClient
+          .request({ url: 'appBuilder:aiDashboard', method: 'post', data: { collection: dashColl, description: dashDesc } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!ai?.ok) { message.error(ai?.error || t('AI could not design a dashboard')); return; }
+        const built = await createDashboard(app, ai.spec);
+        setDashResult({ url: built.url, title: ai.spec.title, widgets: ai.spec.widgets || [] });
+        message.success(ai.explain || t('Dashboard created'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setDashBusy(false);
+      }
+    };
 
     const parse = (): any => {
       try { return JSON.parse(text); } catch (e: any) { message.error(t('Invalid JSON') + ': ' + e.message); return null; }
@@ -281,6 +320,46 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             </div>
           )}
         </Modal>
+        <Tooltip title={t('Generate a dashboard with AI')} placement="left">
+          <Button
+            shape="round" onClick={() => setDashOpen(true)}
+            style={{ position: 'fixed', right: 20, bottom: 124, zIndex: 1000, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
+          >
+            📊 {t('Dashboard')}
+          </Button>
+        </Tooltip>
+        <Modal open={dashOpen} onCancel={() => setDashOpen(false)} width={520} title={`📊 ${t('AI Dashboard')}`} footer={null} destroyOnClose>
+          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 10 }}>
+            {t('Pick a table — AI designs KPI cards + charts + a filter bar from its fields.')}
+          </Typography.Paragraph>
+          <Select
+            showSearch value={dashColl} onChange={setDashColl}
+            placeholder={t('Choose a table…')} options={collections} optionFilterProp="label"
+            style={{ width: '100%', marginBottom: 8 }}
+          />
+          <Input
+            value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} onPressEnter={onDashboard}
+            placeholder={t('Optional: what to focus on — e.g. revenue by month, status breakdown')}
+            style={{ marginBottom: 10 }}
+          />
+          <Button type="primary" block loading={dashBusy} onClick={onDashboard} disabled={!dashColl}>
+            📊 {t('Generate dashboard (AI)')}
+          </Button>
+          {dashResult && (
+            <div style={{ marginTop: 16 }}>
+              <Typography.Text strong>✓ <a href={dashResult.url}>{dashResult.title}</a></Typography.Text>
+              <ul style={{ marginTop: 6, fontSize: 12, paddingLeft: 18 }}>
+                {dashResult.widgets.map((w, i) => (
+                  <li key={i}>
+                    {w.kind === 'score' ? `🔢 ${w.label} — ${w.measure?.aggregation}(${w.measure?.field})`
+                      : w.kind === 'chart' ? `📈 ${w.title} — ${w.chartType}`
+                      : `🔎 ${t('Filter')}: ${(w.fields || []).join(', ')}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </Modal>
           </>
         )}
       </>
@@ -328,6 +407,9 @@ export class PluginAppBuilderClientV2 extends Plugin {
         buildApp: (spec) => buildApp(app, spec),
         aiGenerate: (v) => api('aiGenerate', v),
         aiPlan: (v) => api('aiPlan', v),
+        // dashboard tier (client) — build a /v/ analytics page (score cards + ECharts charts + filter)
+        createDashboard: (spec) => createDashboard(app, spec),
+        aiDashboard: (v) => api('aiDashboard', v),
       };
       // Execute an AI-planned sequence of tool calls step-by-step (data tools → server, page tools → client).
       const runPlan = async (steps: Array<{ tool: string; args: any }>) => {
