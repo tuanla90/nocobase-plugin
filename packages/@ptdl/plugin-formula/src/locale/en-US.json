@@ -104,7 +104,6 @@
   "Xoá": "Delete",
   "Huỷ": "Cancel",
   "Cách tham chiếu dữ liệu:<br/>• <b>Cột của dòng hiện tại</b> → <code>data.&lt;tên_cột&gt;</code> (vd <code>data.subtotal</code>).<br/>• <b>Qua quan hệ</b> → <code>data.&lt;tên_quan_hệ&gt;.&lt;cột&gt;</code> (vd <code>SUM(data.items.line_amount)</code>, <code>data.product.unit_price</code>).<br/>• <b>Bảng tra cứu</b> (một collection khác) → gõ thẳng <code>&lt;tên_collection&gt;.&lt;cột&gt;</code> — KHÔNG có <code>data.</code> (vd <code>bang_gia.he_so</code>).<br/>Nối chuỗi dùng <b>&amp;</b>. Tên hàm HOA/thường đều được.": "How to reference data:<br/>• <b>A column of the current row</b> → <code>data.&lt;column_name&gt;</code> (e.g. <code>data.subtotal</code>).<br/>• <b>Through a relation</b> → <code>data.&lt;relation_name&gt;.&lt;column&gt;</code> (e.g. <code>SUM(data.items.line_amount)</code>, <code>data.product.unit_price</code>).<br/>• <b>Lookup table</b> (another collection) → type <code>&lt;collection_name&gt;.&lt;column&gt;</code> directly — WITHOUT <code>data.</code> (e.g. <code>bang_gia.he_so</code>).<br/>Concatenate with <b>&amp;</b>. Function names are case-insensitive.",
-  "Bấm 1 ví dụ để chèn vào ô công thức. Xem đầy đủ trong COMPUTED-FIELD.md §4b.": "Click an example to insert it into the formula field. See the full list in COMPUTED-FIELD.md §4b.",
   "Chạy thử lỗi": "Test failed",
   "lần": "times",
   "Chạy thử OK": "Test OK",

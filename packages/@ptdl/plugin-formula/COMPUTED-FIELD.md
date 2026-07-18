@@ -102,7 +102,8 @@ Ví dụ đủ 3 loại: `data.quantity * data.product.unit_price` (local + look
 | **Bảng tra cứu 2 khoá** (≈ VLOOKUP nhiều điều kiện) | `data.metric * SUMIFS(bang_hs.he_so, bang_hs.a, data.parent.region, bang_hs.b, data.grade)` | table + lookup + local |
 | Cấu hình toàn cục (bảng 1 dòng) | `data.total * cfg.vat_rate` (hoặc `INDEX(cfg.vat_rate,1)`) | table |
 | **Số thứ tự trong nhóm** (OR-123.1, .2, .3) | `data.order.code & "." & (COUNTIFS(order_item.order_id, data.order_id, order_item.id, "<" & data.id) + 1)` | table (self) + lookup |
-| Nhãn điều kiện | `IF(data.total>1000000, "VIP", "Thường")` · `IFS(...)` · `SWITCH(...)` | local |
+| Nhãn điều kiện | `IF(data.total>1000000, "VIP", "Thường")` · `SWITCH(...)` | local |
+| **Phân loại nhiều bậc** (IFS) | `IFS(data.total >= 1000000, "VIP", data.total >= 500000, "Bạc", TRUE, "Thường")` | local |
 | **Đếm / TB dòng con** | `COUNT(FILTER(data.items.id, data.items.status == "pending"))` · `AVERAGE(data.items.line_amount)` | aggregate |
 | **Tỉ lệ %** | `data.done_qty / data.total_qty * 100` | local |
 | **Cờ boolean** (output boolean) | `data.total > data.credit_limit` | local |

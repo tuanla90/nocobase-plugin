@@ -342,7 +342,6 @@ export function ComputedRulesManager({ api }: { api: any }) {
           <code style={{ fontSize: 11.5, color: 'var(--colorTextSecondary)' }}>{f}</code>
         </div>
       ))}
-      <div style={{ fontSize: 11, color: 'var(--colorTextQuaternary, #aaa)', marginTop: 4 }}>{t('Bấm 1 ví dụ để chèn vào ô công thức. Xem đầy đủ trong COMPUTED-FIELD.md §4b.')}</div>
     </div>
   );
   const testBadge = (tr: any, tries?: number) => !tr ? null : (tr.error

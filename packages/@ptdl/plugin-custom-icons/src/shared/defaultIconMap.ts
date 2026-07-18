@@ -232,4 +232,9 @@ export const DEFAULT_ICON_REMAPS: IconRemapRow[] = [
   { sourceKey: 'solutionoutlined', lucideKey: 'lucide-badge-check' },
   { sourceKey: 'apartmentoutlined', lucideKey: 'lucide-waypoints' },
   { sourceKey: 'cloudsyncoutlined', lucideKey: 'lucide-cloud-cog' },
+  // Icons drawn by flow-engine / client-v2 chrome that were previously unmapped (would leak as antd):
+  { sourceKey: 'translationoutlined', lucideKey: 'lucide-languages' },
+  { sourceKey: 'javascriptoutlined', lucideKey: 'lucide-code' },
+  { sourceKey: 'nodeexpandoutlined', lucideKey: 'lucide-unfold-horizontal' },
+  { sourceKey: 'nodecollapseoutlined', lucideKey: 'lucide-fold-horizontal' },
 ];

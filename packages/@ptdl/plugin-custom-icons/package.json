@@ -6,7 +6,7 @@
   "description": "Adds the full Lucide icon set to the NocoBase icon picker (both clients) and remaps built-in Ant Design icons to Lucide everywhere they appear — menus, buttons, fields, header chrome. Ships a default mapping plus a per-icon editor with CSV import/export.",
   "description.zh-CN": "将完整 Lucide 图标集注册到 NocoBase 图标选择器（classic 与 client-v2），并把内置 Ant Design 图标替换为 Lucide。内置默认 antd→lucide 映射，安装时自动写入（设置 → Icon remap 可编辑）。已合并 @ptdl/plugin-icon-remap。",
   "description.vi-VN": "Thêm toàn bộ bộ icon Lucide vào trình chọn icon NocoBase (cả hai client) và thay các icon Ant Design mặc định bằng Lucide ở mọi nơi — menu, nút, field, thanh tiêu đề. Kèm bộ mapping mặc định và trình sửa từng icon có nhập/xuất CSV.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "license": "AGPL-3.0",
   "main": "./dist/server/index.js",
   "peerDependencies": {

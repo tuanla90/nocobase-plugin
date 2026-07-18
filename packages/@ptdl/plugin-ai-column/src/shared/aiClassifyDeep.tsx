@@ -256,7 +256,8 @@ function aiClassifyDeepFlowConfig(te: (s: string) => any, relationMode?: boolean
 
 const CONF_COLOR: Record<string, string> = { high: 'green', medium: 'orange', low: 'red' };
 const CONF_DOT: Record<string, string> = { high: '#52c41a', medium: '#faad14', low: '#ff4d4f' };
-const CONF_LABEL: Record<string, string> = { high: 'cao', medium: 'vừa', low: 'thấp' };
+// Confidence label goes through t() (was a hardcoded VN map → English users saw "cao/vừa/thấp").
+const confLabel = (c: string) => (c === 'high' ? t('cao') : c === 'medium' ? t('vừa') : c === 'low' ? t('thấp') : c);
 const scoreStyle = (s: number) =>
   s >= 80 ? { bg: '#f6ffed', bd: '#b7eb8f', fg: '#389e0d' } : s >= 55 ? { bg: '#fffbe6', bd: '#ffe58f', fg: '#d48806' } : { bg: '#fff1f0', bd: '#ffa39e', fg: '#cf1322' };
 
@@ -332,7 +333,7 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayRoles, writeField
         <Tooltip title={t('Độ tin cậy')}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#666' }}>
             <i style={{ width: 8, height: 8, borderRadius: 4, background: CONF_DOT[c.confidence] || '#bbb', display: 'inline-block' }} />
-            {CONF_LABEL[c.confidence] || c.confidence}
+            {confLabel(c.confidence)}
           </span>
         </Tooltip>
         <Button type="primary" size="small" style={{ background: '#7c3aed', borderColor: '#7c3aed' }} onClick={() => onPick(c)}>{t('Chọn')}</Button>

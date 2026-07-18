@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Select, Input, Button, Avatar, Switch } from 'antd';
+import { Select, Input, Button, Avatar, Switch, Space, Divider } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { bindDisplayField } from './displayBinding';
@@ -81,6 +81,15 @@ function interpolateHtml(tpl: string, record: any): string {
     return v == null ? '' : String(typeof v === 'object' ? (v.label ?? v.name ?? v.id ?? '') : v);
   });
 }
+
+// Self-contained "+" glyph — @ptdl/shared deliberately avoids @ant-design/icons so consumer plugin
+// builds don't have to externalize it; keep the same rule here.
+const PlusGlyph = () => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false" style={{ verticalAlign: '-0.125em', display: 'inline-block' }}>
+    <rect x="11" y="5" width="2" height="14" fill="currentColor" />
+    <rect x="5" y="11" width="14" height="2" fill="currentColor" />
+  </svg>
+);
 
 // Row hiển thị 1 record — dùng chung option dropdown + tag đã chọn.
 function RichRow({ record, cfg, fieldNames }: { record: any; cfg: RSCfg; fieldNames: FN }) {
@@ -206,7 +215,18 @@ export function registerRichSelectModel(deps: {
       }
 
       const realOptions = resolveOptions(p.options, p.value, isMultiple);
-      return (
+      // "Quick create" (add-new) — inherited from core RecordSelectFieldModel: onMount wires
+      // p.onModalAddClick / p.onDropdownAddClick (→ the openView / dropdownAdd flows) and the setting
+      // sets p.quickCreate = 'modalAdd' (Pop-up) | 'quickAdd' (Dropdown). Because we override render()
+      // with a bespoke Select, we must draw these affordances ourselves — otherwise the toggle has no
+      // button and clicking does nothing (the bug this fixes).
+      const t = model.context?.t || ((s: string) => s);
+      const quickCreate = p.quickCreate;
+      const canAdd = p.allowCreate !== false && p.allowEdit !== false;
+      const isConfigMode = !!model.context?.flowSettingsEnabled;
+      const searchText = p.searchText;
+
+      const select = (
         <Select
           style={{ width: '100%' }}
           allowClear
@@ -230,8 +250,38 @@ export function registerRichSelectModel(deps: {
           optionRender={({ data }: any) => <RichRow record={data} cfg={cfg} fieldNames={fieldNames} />}
           labelRender={(data: any) => data.label}
           listHeight={320}
+          dropdownRender={(menu: any) => {
+            // Dropdown quick-add: inline "Add «typed text»" row → creates the record via onDropdownAddClick.
+            if (quickCreate === 'quickAdd' && canAdd && searchText) {
+              const isFullMatch = realOptions.some((v: any) => v?.[fieldNames.label] === searchText);
+              return (
+                <>
+                  {!(realOptions.length === 0 && searchText) && menu}
+                  {realOptions.length > 0 && !isFullMatch && <Divider style={{ margin: 0 }} />}
+                  {!isFullMatch && (
+                    <div onClick={() => p.onDropdownAddClick?.(searchText)} style={{ cursor: 'pointer', padding: '5px 12px' }}>
+                      <PlusGlyph /><span style={{ paddingLeft: 6 }}>{`${t('Add')} “${searchText}”`}</span>
+                    </div>
+                  )}
+                </>
+              );
+            }
+            return menu;
+          }}
         />
       );
+
+      // Pop-up add-new: an "Add new" button beside the Select — opens the create popup (inherited
+      // openView flow) and appends the created record. Also shown in config mode so the designer sees it.
+      if (quickCreate === 'modalAdd' && (canAdd || isConfigMode)) {
+        return (
+          <Space.Compact style={{ width: '100%' }}>
+            {select}
+            <Button onClick={(e: any) => p.onModalAddClick?.(e)} disabled={!canAdd}>{t('Add new')}</Button>
+          </Space.Compact>
+        );
+      }
+      return select;
     }
   }
 
