@@ -37,6 +37,7 @@ export function setEnhancedTableDeps(d: Partial<typeof injected>) {
 }
 import { observer, useFieldSchema } from '@formily/react';
 import { useTranslation } from 'react-i18next';
+import { theme } from 'antd';
 
 const wrapperCss = css`
   position: relative;
@@ -151,6 +152,7 @@ function sanitizeFontSize(s: any): number | null {
 // shared `String(s ?? '')` handles differently is never reached).
 
 export const EnhancedTableWrapper = observer(({ model, children }: { model?: any; children: React.ReactNode }) => {
+  const { token } = theme.useToken();
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectionStats, setSelectionStats] = useState<{
     sum: number;
@@ -494,8 +496,8 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
 
     const updateDOM = () => {
       const valueColor = sanitizeColor((summaryStyle as any)?.valueColor) || '#1890ff';
-      const labelColor = sanitizeColor((summaryStyle as any)?.labelColor) || '#8c8c8c';
-      const bgColor = sanitizeColor((summaryStyle as any)?.backgroundColor) || '#fafafa';
+      const labelColor = sanitizeColor((summaryStyle as any)?.labelColor) || token.colorTextSecondary;
+      const bgColor = sanitizeColor((summaryStyle as any)?.backgroundColor) || token.colorFillQuaternary;
       const valueWeight = (summaryStyle as any)?.valueFontWeight === 'normal' ? 'normal' : 'bold';
       const valueSize = sanitizeFontSize((summaryStyle as any)?.valueFontSize) || 14;
       const showLabel = (summaryStyle as any)?.showLabel !== false;
@@ -634,8 +636,8 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
         if (td.dataset.summaryBg !== bgKey) {
           td.dataset.summaryBg = bgKey;
           td.style.backgroundColor = bgColor;
-          td.style.borderTop = posTop ? '1px solid #e8e8e8' : '2px solid #e8e8e8';
-          td.style.borderBottom = posTop ? '2px solid #e8e8e8' : '1px solid #e8e8e8';
+          td.style.borderTop = posTop ? `1px solid ${token.colorBorderSecondary}` : `2px solid ${token.colorBorderSecondary}`;
+          td.style.borderBottom = posTop ? `2px solid ${token.colorBorderSecondary}` : `1px solid ${token.colorBorderSecondary}`;
           td.style.padding = '8px 4px';
         }
 
@@ -843,20 +845,20 @@ export const EnhancedTableWrapper = observer(({ model, children }: { model?: any
             top: mousePos.y + 15,
             pointerEvents: 'none',
             zIndex: 9999,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backgroundColor: token.colorBgElevated,
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            border: '1px solid #d9d9d9',
+            border: `1px solid ${token.colorBorderSecondary}`,
             borderRadius: '4px',
             padding: '8px 12px',
             fontSize: '13px',
-            color: '#333',
+            color: token.colorText,
             display: 'flex',
             flexDirection: 'column',
             gap: '4px',
           }}
         >
           <div
-            style={{ fontWeight: 'bold', marginBottom: '4px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}
+            style={{ fontWeight: 'bold', marginBottom: '4px', borderBottom: `1px solid ${token.colorBorderSecondary}`, paddingBottom: '4px' }}
           >
             {t('Selection stats (contains {{num}} cells)', {
               ns: '@ptdl/plugin-enhanced-table-block/client',

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EditableItemModel, DisplayItemModel } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { Button, Input, Switch, Slider, Space, Segmented, message } from 'antd';
+import { Button, Input, Switch, Slider, Space, Segmented, message, theme } from 'antd';
 import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS } from '@ptdl/shared';
 import { getCurrentFix, formatFix, mapsUrl, parseLocation, accuracyBucket, type GeoFix } from './geo';
 import { reverseGeocode } from './geocode';
@@ -77,6 +77,7 @@ function nowSafe(): number { try { return Date.now(); } catch (_) { return 0; } 
 
 // ---- editable widget ----------------------------------------------------------------------------
 const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => void; disabled?: boolean }> = ({ cfg, value, onChange, disabled }) => {
+  const { token } = theme.useToken();
   const [busy, setBusy] = useState(false);
   const [addrBusy, setAddrBusy] = useState(false);
   const [manual, setManual] = useState('');
@@ -139,26 +140,26 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
             href={mapsUrl(fix)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, fontVariantNumeric: 'tabular-nums',
-              padding: '3px 10px', borderRadius: 999, border: '1px solid var(--colorBorder, #e5e5e5)',
-              background: 'var(--colorFillQuaternary, #fafafa)', fontSize: 13, textDecoration: 'none',
+              padding: '3px 10px', borderRadius: 999, border: `1px solid ${token.colorBorder}`,
+              background: token.colorFillQuaternary, fontSize: 13, textDecoration: 'none',
             }}
           >
             <span style={{ width: 9, height: 9, borderRadius: '50%', background: DOT_COLORS[bucket], flex: 'none' }} />
-            <span style={{ color: 'var(--colorText, #333)' }}>{formatFix(fix, { showAccuracy: cfg.showAccuracy })}</span>
+            <span style={{ color: token.colorText }}>{formatFix(fix, { showAccuracy: cfg.showAccuracy })}</span>
           </a>
         ) : (
-          <span style={{ color: '#bfbfbf', fontSize: 13 }}>{t('Chưa có vị trí')}</span>
+          <span style={{ color: token.colorTextQuaternary, fontSize: 13 }}>{t('Chưa có vị trí')}</span>
         )}
         {cfg.addrMode === 'manual' && fix && !disabled && (
           <Button size="small" type="link" loading={addrBusy} onClick={() => fetchAddr(fix)} style={{ padding: 0, height: 'auto' }}>
             🏠 {fix.address ? t('Cập nhật địa chỉ') : t('Lấy địa chỉ')}
           </Button>
         )}
-        {cfg.addrMode === 'auto' && addrBusy && <span style={{ fontSize: 12, color: '#8c8c8c' }}>🏠 {t('Đang lấy địa chỉ…')}</span>}
+        {cfg.addrMode === 'auto' && addrBusy && <span style={{ fontSize: 12, color: token.colorTextSecondary }}>🏠 {t('Đang lấy địa chỉ…')}</span>}
       </div>
 
       {fix?.address && (
-        <div style={{ fontSize: 12.5, color: 'var(--colorTextSecondary, #666)', display: 'flex', gap: 4 }}>
+        <div style={{ fontSize: 12.5, color: token.colorTextSecondary, display: 'flex', gap: 4 }}>
           <span>🏠</span><span>{fix.address}</span>
         </div>
       )}
@@ -168,7 +169,7 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
       {cfg.mapInput && !disabled && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <PickMap lat={fix?.lat} lng={fix?.lng} height={cfg.mapHeight} editable onPick={pickOnMap} />
-          <span style={{ fontSize: 11.5, color: '#8c8c8c' }}>💡 {t('Bấm hoặc kéo ghim trên bản đồ để chọn vị trí.')}</span>
+          <span style={{ fontSize: 11.5, color: token.colorTextSecondary }}>💡 {t('Bấm hoặc kéo ghim trên bản đồ để chọn vị trí.')}</span>
         </div>
       )}
 
@@ -179,7 +180,7 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
             <Button size="small" onClick={applyManual}>{t('Áp dụng')}</Button>
           </Space.Compact>
         ) : (
-          <a style={{ fontSize: 12, color: '#8c8c8c', alignSelf: 'flex-start' }} onClick={() => setShowManual(true)}>{t('Nhập tay / dán link')}</a>
+          <a style={{ fontSize: 12, color: token.colorTextSecondary, alignSelf: 'flex-start' }} onClick={() => setShowManual(true)}>{t('Nhập tay / dán link')}</a>
         )
       )}
     </div>
@@ -188,8 +189,9 @@ const LocationInput: React.FC<{ cfg: LCfg; value?: any; onChange?: (v: any) => v
 
 // ---- display widget -----------------------------------------------------------------------------
 const LocationDisplay: React.FC<{ cfg: LCfg; value?: any }> = ({ cfg, value }) => {
+  const { token } = theme.useToken();
   const fix = asFix(value);
-  if (!fix) return <span style={{ color: '#bfbfbf' }}>—</span>;
+  if (!fix) return <span style={{ color: token.colorTextQuaternary }}>—</span>;
   const bucket = accuracyBucket(fix.accuracy, cfg.good, cfg.ok);
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, maxWidth: 420 }}>
@@ -200,7 +202,7 @@ const LocationDisplay: React.FC<{ cfg: LCfg; value?: any }> = ({ cfg, value }) =
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: DOT_COLORS[bucket], flex: 'none' }} />
         📍 {formatFix(fix, { showAccuracy: cfg.showAccuracy })}
       </a>
-      {fix.address && <span style={{ fontSize: 12.5, color: 'var(--colorTextSecondary, #666)' }}>🏠 {fix.address}</span>}
+      {fix.address && <span style={{ fontSize: 12.5, color: token.colorTextSecondary }}>🏠 {fix.address}</span>}
       {cfg.mapDisplay && <PickMap lat={fix.lat} lng={fix.lng} height={cfg.mapHeight} />}
     </span>
   );
@@ -209,11 +211,12 @@ const LocationDisplay: React.FC<{ cfg: LCfg; value?: any }> = ({ cfg, value }) =
 // ---- settings live preview (also FORCES @formily/react to externalize — see file header) --------
 const LocationSettingsPreview: any = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const cfg = lcfgFromForm(form?.values || {});
   const sample: GeoFix = { lat: 16.047079, lng: 108.20623, accuracy: 12, ts: nowSafe(), src: 'gps' };
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
-      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>{t('Xem trước (hiển thị)')}</div>
+    <div style={{ padding: '10px 12px', background: token.colorFillQuaternary, borderRadius: 6, border: `1px dashed ${token.colorBorder}` }}>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 6 }}>{t('Xem trước (hiển thị)')}</div>
       <LocationDisplay cfg={cfg} value={sample} />
     </div>
   );
@@ -222,20 +225,22 @@ const LocationSettingsPreview: any = observer(() => {
 // ---- settings components ------------------------------------------------------------------------
 const L_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const L_Meters = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : (props.defaultValue ?? 25);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
       <Slider min={5} max={300} step={5} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 44, textAlign: 'right', color: '#888' }}>{v}m</span>
+      <span style={{ width: 44, textAlign: 'right', color: token.colorTextTertiary }}>{v}m</span>
     </div>
   );
 };
 const L_Height = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : 220;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
       <Slider min={140} max={400} step={10} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 44, textAlign: 'right', color: '#888' }}>{v}px</span>
+      <span style={{ width: 44, textAlign: 'right', color: token.colorTextTertiary }}>{v}px</span>
     </div>
   );
 };

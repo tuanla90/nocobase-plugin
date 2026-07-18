@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Modal, Button, Spin, Tooltip } from 'antd';
+import { Modal, Button, Spin, Tooltip, theme } from 'antd';
 import { captureToBlob, fileToImage, type WatermarkCfg, type CaptureResult } from './watermark';
 import { getCurrentFix, formatFix, type GeoFix } from './geo';
 import { PermissionHelp } from './permissionHelp';
@@ -27,6 +27,7 @@ type Phase = 'starting' | 'live' | 'preview' | 'error';
 export const CameraCaptureModal: React.FC<CameraModalProps> = ({
   open, onClose, onCapture, watermark, maxDim, quality, wantGps, title,
 }) => {
+  const { token } = theme.useToken();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -212,11 +213,11 @@ export const CameraCaptureModal: React.FC<CameraModalProps> = ({
               aria-label={t('Chụp')}
               style={{
                 width: 66, height: 66, borderRadius: '50%', cursor: 'pointer',
-                border: '3px solid var(--colorPrimary, #1677ff)', background: 'var(--colorPrimary, #1677ff)',
+                border: `3px solid ${token.colorPrimary}`, background: token.colorPrimary,
                 boxShadow: '0 0 0 4px rgba(22,119,255,.15)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <span style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff', boxShadow: 'inset 0 0 0 2px var(--colorPrimary, #1677ff)' }} />
+              <span style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff', boxShadow: `inset 0 0 0 2px ${token.colorPrimary}` }} />
             </button>
             <div style={{ justifySelf: 'end' }}>
               <IconBtn onClick={() => fileInputRef.current?.click()} title={t('Chọn/chụp bằng camera hệ thống')}>🖼️</IconBtn>

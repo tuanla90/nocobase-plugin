@@ -26,7 +26,7 @@ import {
   tExpr,
 } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
-import { Collapse, Spin, Tabs } from 'antd';
+import { Collapse, Spin, Tabs, theme } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import React from 'react';
 import { ColorField, CollapsibleSection, SEG_PROPS, visibleWhen, SegmentedGroup } from '@ptdl/shared';
@@ -77,17 +77,25 @@ export function buildTabCss(
   kind: TabStyleKind,
   opts: TabStyleOpts = {},
   position: 'top' | 'bottom' | 'left' | 'right' = 'top',
+  // Resolved antd theme token (from `theme.useToken()` in a live component, or `context.themeToken`
+  // in a detached flow-model method) — NocoBase does NOT expose these as real CSS custom properties,
+  // so a `var(--colorX, <fallback>)` string always resolves to its hardcoded fallback regardless of
+  // theme. Passing the real token here lets every "theme default" fall back to the LIVE value instead.
+  token?: any,
 ): string {
   const s = scope;
   const active = opts.activeColor || DEFAULTS.activeColor;
   const hover = opts.hoverColor || active;
-  const tray = opts.containerColor || 'var(--colorFillTertiary, rgba(0,0,0,0.04))';
+  const tray = opts.containerColor || token?.colorFillTertiary || 'rgba(0,0,0,0.04)';
   const border = opts.borderColor;
-  const segBorder = border || 'var(--colorBorder, #d9d9d9)';
-  // Card active fill defaults to the current page background (theme var, auto-adapts incl. dark mode)
-  // so the folder tab blends into the content; an explicit bgColor overrides it.
-  const cardActiveBg = opts.bgColor || 'var(--colorBgLayout, #fff)';
-  const textMuted = opts.normalColor || 'var(--colorText, rgba(0,0,0,0.65))';
+  const segBorder = border || token?.colorBorder || '#d9d9d9';
+  // Card active fill defaults to the current page background (real theme token when available) so
+  // the folder tab blends into the content; an explicit bgColor overrides it.
+  const cardActiveBg = opts.bgColor || token?.colorBgLayout || '#fff';
+  const textMuted = opts.normalColor || token?.colorText || 'rgba(0,0,0,0.65)';
+  const hoverFill = token?.colorFillSecondary || 'rgba(0,0,0,0.06)';
+  const stepLine = token?.colorSplit || '#e5e5e5';
+  const cardTabBg = token?.colorFillQuaternary || 'rgba(0,0,0,0.02)';
   // Vertical (Position = Left/Right) needs orientation-flipped CSS for the bordered/folder/stepped
   // looks; `endSide` is the content-facing edge of the tab column (right for Left, left for Right).
   const vertical = position === 'left' || position === 'right';
@@ -112,7 +120,7 @@ ${s} .ant-tabs-ink-bar{display:none!important}
 ${s} .ant-tabs-nav .ant-tabs-nav-list{gap:4px;padding:4px;background:${tray};border-radius:${vertical ? '14px' : '999px'}}
 ${s} .ant-tabs-tab{margin:0!important;padding:4px 16px!important;border:none!important;border-radius:999px!important;justify-content:center;transition:background .2s,color .2s}${vertical ? `\n${s} .ant-tabs-tab{align-self:stretch}` : ''}
 ${s} .ant-tabs-tab .ant-tabs-tab-btn{color:${textMuted}}
-${s} .ant-tabs-tab:hover:not(.ant-tabs-tab-active){background:var(--colorFillSecondary, rgba(0,0,0,0.06))!important}
+${s} .ant-tabs-tab:hover:not(.ant-tabs-tab-active){background:${hoverFill}!important}
 ${s} .ant-tabs-tab:hover:not(.ant-tabs-tab-active) .ant-tabs-tab-btn{color:${hover}!important}
 ${s} .ant-tabs-tab-active{background:${active}!important}
 ${s} .ant-tabs-tab-active .ant-tabs-tab-btn{color:#fff!important;font-weight:600}
@@ -141,7 +149,7 @@ ${s} .ant-tabs-ink-bar{display:none!important}
 ${s} .ant-tabs-nav-list{counter-reset:nbstep}
 ${s} .ant-tabs-tab{position:relative;counter-increment:nbstep;margin:0 0 20px 0!important;padding:4px 8px 4px 40px!important;justify-content:flex-start}
 ${s} .ant-tabs-tab::before{content:counter(nbstep);position:absolute;inset-inline-start:0;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;background:${tray};color:${textMuted};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;z-index:1;transition:all .2s}
-${s} .ant-tabs-tab:not(:nth-last-child(2))::after{content:'';position:absolute;inset-inline-start:12px;top:calc(50% + 13px);height:calc(100% + 20px - 26px);width:2px;background:var(--colorSplit, #e5e5e5)}
+${s} .ant-tabs-tab:not(:nth-last-child(2))::after{content:'';position:absolute;inset-inline-start:12px;top:calc(50% + 13px);height:calc(100% + 20px - 26px);width:2px;background:${stepLine}}
 ${s} .ant-tabs-tab .ant-tabs-tab-btn{color:${textMuted}}
 ${s} .ant-tabs-tab:hover .ant-tabs-tab-btn{color:${hover}!important}
 ${s} .ant-tabs-tab:hover::before{color:${hover}}
@@ -154,7 +162,7 @@ ${s} .ant-tabs-ink-bar{display:none!important}
 ${s} .ant-tabs-nav-list{counter-reset:nbstep}
 ${s} .ant-tabs-tab{position:relative;counter-increment:nbstep;margin:0 28px 0 0!important;padding:4px 8px 4px 36px!important}
 ${s} .ant-tabs-tab::before{content:counter(nbstep);position:absolute;left:0;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;background:${tray};color:${textMuted};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;transition:all .2s}
-${s} .ant-tabs-tab:not(:nth-last-child(2))::after{content:'';position:absolute;right:-28px;top:50%;width:28px;height:2px;background:var(--colorSplit, #e5e5e5)}
+${s} .ant-tabs-tab:not(:nth-last-child(2))::after{content:'';position:absolute;right:-28px;top:50%;width:28px;height:2px;background:${stepLine}}
 ${s} .ant-tabs-tab .ant-tabs-tab-btn{color:${textMuted}}
 ${s} .ant-tabs-tab:hover .ant-tabs-tab-btn{color:${hover}!important}
 ${s} .ant-tabs-tab:hover::before{color:${hover}}
@@ -176,7 +184,7 @@ ${s} .ant-tabs-tab-active .ant-tabs-tab-btn{color:${active}!important;font-weigh
 ${s} .ant-tabs-nav{margin-inline-${endSide}:0!important}
 ${s} .ant-tabs-nav::before{border:none!important}
 ${s} .ant-tabs-ink-bar{display:none!important}
-${s} .ant-tabs-tab{align-self:stretch;justify-content:flex-start;margin:0 0 4px 0!important;padding:6px 16px!important;border:1px solid ${segBorder}!important;border-inline-${endSide}:none!important;border-radius:${position === 'right' ? '0 8px 8px 0' : '8px 0 0 8px'}!important;background:var(--colorFillQuaternary, rgba(0,0,0,0.02))!important;transition:all .2s}
+${s} .ant-tabs-tab{align-self:stretch;justify-content:flex-start;margin:0 0 4px 0!important;padding:6px 16px!important;border:1px solid ${segBorder}!important;border-inline-${endSide}:none!important;border-radius:${position === 'right' ? '0 8px 8px 0' : '8px 0 0 8px'}!important;background:${cardTabBg}!important;transition:all .2s}
 ${s} .ant-tabs-tab .ant-tabs-tab-btn{color:${textMuted}}
 ${s} .ant-tabs-tab:hover .ant-tabs-tab-btn{color:${hover}!important}
 ${s} .ant-tabs-tab-active{background:${cardActiveBg}!important;z-index:1}
@@ -189,7 +197,7 @@ ${s} .ant-tabs-tabpane{padding:10px!important}
 ${s} .ant-tabs-nav{margin-top:0!important}
 ${s} .ant-tabs-nav::before{border-top:1px solid ${segBorder}!important;border-bottom:none!important}
 ${s} .ant-tabs-ink-bar{display:none!important}
-${s} .ant-tabs-tab{margin:-1px 4px 0 0!important;padding:6px 16px!important;border:1px solid ${segBorder}!important;border-radius:0 0 8px 8px!important;background:var(--colorFillQuaternary, rgba(0,0,0,0.02))!important;transition:all .2s}
+${s} .ant-tabs-tab{margin:-1px 4px 0 0!important;padding:6px 16px!important;border:1px solid ${segBorder}!important;border-radius:0 0 8px 8px!important;background:${cardTabBg}!important;transition:all .2s}
 ${s} .ant-tabs-tab .ant-tabs-tab-btn{color:${textMuted}}
 ${s} .ant-tabs-tab:hover .ant-tabs-tab-btn{color:${hover}!important}
 ${s} .ant-tabs-tab-active{background:${cardActiveBg}!important;border-top-color:${cardActiveBg}!important;z-index:1}
@@ -201,7 +209,7 @@ ${s} .ant-tabs-tabpane{padding:10px!important}
 ${s} .ant-tabs-nav{margin-bottom:0!important}
 ${s} .ant-tabs-nav::before{border-bottom:1px solid ${segBorder}!important}
 ${s} .ant-tabs-ink-bar{display:none!important}
-${s} .ant-tabs-tab{margin:0 4px -1px 0!important;padding:6px 16px!important;border:1px solid ${segBorder}!important;border-radius:8px 8px 0 0!important;background:var(--colorFillQuaternary, rgba(0,0,0,0.02))!important;transition:all .2s}
+${s} .ant-tabs-tab{margin:0 4px -1px 0!important;padding:6px 16px!important;border:1px solid ${segBorder}!important;border-radius:8px 8px 0 0!important;background:${cardTabBg}!important;transition:all .2s}
 ${s} .ant-tabs-tab .ant-tabs-tab-btn{color:${textMuted}}
 ${s} .ant-tabs-tab:hover .ant-tabs-tab-btn{color:${hover}!important}
 ${s} .ant-tabs-tab-active{background:${cardActiveBg}!important;border-bottom-color:${cardActiveBg}!important;z-index:1}
@@ -267,11 +275,12 @@ export const TabCss: React.FC<{
   kind: TabStyleKind;
   opts: TabStyleOpts;
   position?: 'top' | 'bottom' | 'left' | 'right';
-}> = ({ uid, kind, opts, position }) => (
+}> = ({ uid, kind, opts, position }) => {
+  const { token } = theme.useToken();
   // Double the scope class (`.nb-bt-x.nb-bt-x`) so every block rule is 3-specificity and beats a
   // surrounding PAGE tab style's 2-specificity `.nb-ptab-<uid> .ant-tabs-*` leak, regardless of order.
-  <style dangerouslySetInnerHTML={{ __html: buildTabCss(`.nb-bt-${uid}.nb-bt-${uid}`, kind, opts, position) }} />
-);
+  return <style dangerouslySetInnerHTML={{ __html: buildTabCss(`.nb-bt-${uid}.nb-bt-${uid}`, kind, opts, position, token) }} />;
+};
 
 /**
  * Live preview of the tab bar for the settings dialog. Reads the dialog's current form values
@@ -280,6 +289,7 @@ export const TabCss: React.FC<{
  */
 export const TabStylePreview: React.FC = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const v = (form && form.values) || {};
   const kind: TabStyleKind | 'default' = v.style || DEFAULTS.style;
   const opts: TabStyleOpts = {
@@ -298,7 +308,7 @@ export const TabStylePreview: React.FC = observer(() => {
   const centered = !!v.centered;
   if (kind === 'default') {
     return (
-      <div style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 12, padding: '4px 0' }}>
+      <div style={{ color: token.colorTextTertiary, fontSize: 12, padding: '4px 0' }}>
         Preview: giữ kiểu mặc định (không đổi).
       </div>
     );
@@ -316,14 +326,14 @@ export const TabStylePreview: React.FC = observer(() => {
   const content = (
     <div
       style={{
-        background: '#fff',
-        border: '1px solid var(--colorBorderSecondary, #f0f0f0)',
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 6,
         minHeight: vertical ? vMinHeight : 56,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'var(--colorTextQuaternary, #bfbfbf)',
+        color: token.colorTextQuaternary,
         fontSize: 12,
       }}
     >
@@ -332,16 +342,16 @@ export const TabStylePreview: React.FC = observer(() => {
   );
   const items = ['Tab 1', 'Tab 2', 'Tab 3'].map((t, i) => ({ key: String(i), label: t, children: content }));
   const css =
-    buildTabCss(`.${scope}`, kind as TabStyleKind, opts, tabPosition as any) +
+    buildTabCss(`.${scope}`, kind as TabStyleKind, opts, tabPosition as any, token) +
     (centered && vertical ? `\n.${scope} .ant-tabs-nav{justify-content:center}` : '');
   return (
     <div
       className={scope}
       style={{
-        border: '1px dashed var(--colorBorder, #e8e8e8)',
+        border: `1px dashed ${token.colorBorder}`,
         borderRadius: 8,
         padding: 12,
-        background: 'var(--colorBgLayout, #fafafa)',
+        background: token.colorBgLayout,
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: css }} />
@@ -847,6 +857,7 @@ export function tabStyleFlowStep() {
 /** Live preview of the Collapse/Sections look for its settings dialog (reads form values reactively). */
 export const CollapsePreview: React.FC = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const v = (form && form.values) || {};
   const scope = 'nb-clp-preview';
   let css = '';
@@ -862,7 +873,7 @@ export const CollapsePreview: React.FC = observer(() => {
   }
   if (v.borderColor)
     css += `\n.${scope} .ant-collapse,.${scope} .ant-collapse > .ant-collapse-item,.${scope} .ant-collapse-content{border-color:${v.borderColor}!important}`;
-  const body = (t: string) => <div style={{ color: 'var(--colorTextQuaternary, #bfbfbf)', fontSize: 12 }}>{t}</div>;
+  const body = (t: string) => <div style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{t}</div>;
   const items = [
     { key: '1', label: 'Section 1', children: body('Nội dung mục') },
     { key: '2', label: 'Section 2', children: body('Nội dung mục') },
@@ -872,10 +883,10 @@ export const CollapsePreview: React.FC = observer(() => {
     <div
       className={scope}
       style={{
-        border: '1px dashed var(--colorBorder, #e8e8e8)',
+        border: `1px dashed ${token.colorBorder}`,
         borderRadius: 8,
         padding: 12,
-        background: 'var(--colorBgLayout, #fafafa)',
+        background: token.colorBgLayout,
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: css }} />
@@ -1526,7 +1537,7 @@ function patchPageTabStyle(fe: any, pageHint?: any): void {
               bgColor: styleCfg.bgColor,
               fontSize: styleCfg.fontSize,
               topSpacing: styleCfg.topSpacing,
-            });
+            }, undefined, this.context?.themeToken);
             if (styleCfg.centered) css += `\n${scope} .ant-tabs-nav-wrap{justify-content:center}`;
           }
           if (hideSingle) {

@@ -92,12 +92,12 @@ function ensureSplitterHandle(): HTMLElement {
     top: '0',
     width: '2px',
     height: '100%',
-    background: 'var(--colorSplit, rgba(0,0,0,0.12))',
+    background: 'rgba(128,128,128,0.25)',
     transition: 'background 0.15s',
   } as CSSStyleDeclaration);
   h.appendChild(grip);
   h.addEventListener('mouseenter', () => (grip.style.background = 'var(--colorPrimary, #6f56cf)'));
-  h.addEventListener('mouseleave', () => (grip.style.background = 'var(--colorSplit, rgba(0,0,0,0.12))'));
+  h.addEventListener('mouseleave', () => (grip.style.background = 'rgba(128,128,128,0.25)'));
 
   const onDown = (downEv: MouseEvent) => {
     downEv.preventDefault();
@@ -120,7 +120,7 @@ function ensureSplitterHandle(): HTMLElement {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.body.style.userSelect = prevUserSelect;
-      grip.style.background = 'var(--colorSplit, rgba(0,0,0,0.12))';
+      grip.style.background = 'rgba(128,128,128,0.25)';
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, ColorPicker, Input, Spin, Typography, Upload, message } from 'antd';
+import { Button, ColorPicker, Input, Spin, Typography, Upload, message, theme } from 'antd';
 import { COLOR_PRESETS, colorToString } from '@ptdl/shared';
 import { t } from './i18n';
 
@@ -235,12 +235,12 @@ const DEFAULTS: any = {
   icon: '',
 };
 
+// background/border are theme tokens applied at the usage site (see PwaSettings) — this fixed
+// part only carries the structural (non-color) shell.
 const panel: React.CSSProperties = {
   padding: 20,
   maxWidth: 1200,
   margin: '8px auto 16px',
-  background: 'var(--colorBgContainer, #fff)',
-  border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)',
   borderRadius: 8,
 };
 const fieldLabel: React.CSSProperties = { fontWeight: 500, marginBottom: 6, fontSize: 13 };
@@ -259,6 +259,7 @@ const Field: React.FC<{ label: React.ReactNode; children: React.ReactNode; grow?
 
 export function createPwaSettings({ useApiClient }: { useApiClient: () => any }): React.FC {
   const PwaSettings: React.FC = () => {
+    const { token } = theme.useToken();
     const api = useApiClient();
     const [cfg, setCfg] = useState<any>(DEFAULTS);
     const [loading, setLoading] = useState(true);
@@ -333,14 +334,14 @@ export function createPwaSettings({ useApiClient }: { useApiClient: () => any })
 
     if (loading) {
       return (
-        <div style={panel}>
+        <div style={{ ...panel, background: token.colorBgContainer, border: `0.8px solid ${token.colorBorderSecondary}` }}>
           <Spin />
         </div>
       );
     }
 
     return (
-      <div style={panel}>
+      <div style={{ ...panel, background: token.colorBgContainer, border: `0.8px solid ${token.colorBorderSecondary}` }}>
         <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
           {t('PWA')}
         </Typography.Title>
@@ -388,19 +389,19 @@ export function createPwaSettings({ useApiClient }: { useApiClient: () => any })
                 width: 72,
                 height: 72,
                 borderRadius: 16,
-                border: '1px dashed #d9d9d9',
+                border: `1px dashed ${token.colorBorder}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
                 flex: 'none',
-                background: cfg.icon ? cfg.backgroundColor || '#fff' : '#fafafa',
+                background: cfg.icon ? cfg.backgroundColor || '#fff' : token.colorFillQuaternary,
               }}
             >
               {cfg.icon ? (
                 <img src={cfg.icon} alt="icon" width={72} height={72} style={{ objectFit: 'contain' }} />
               ) : (
-                <span style={{ color: '#bbb', fontSize: 12 }}>{t('no icon')}</span>
+                <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{t('no icon')}</span>
               )}
             </div>
             <div>
@@ -419,7 +420,7 @@ export function createPwaSettings({ useApiClient }: { useApiClient: () => any })
                   {t('Remove')}
                 </Button>
               ) : null}
-              <div style={{ color: '#999', fontSize: 12, marginTop: 6, maxWidth: 320 }}>
+              <div style={{ color: token.colorTextTertiary, fontSize: 12, marginTop: 6, maxWidth: 320 }}>
                 {t('No image → the first letter of the app name on the theme color.')}
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Select, Space, Tabs, Tag, Tooltip } from 'antd';
+import { Select, Space, Tabs, Tag, Tooltip, theme } from 'antd';
 import { BrandingSkinPage } from './skin';
 import { BrandingHeaderPage } from './headerNav';
 import { BrandingTypographyPage } from './typography';
@@ -51,6 +51,7 @@ function themeLabel(icon: React.ReactNode, text: string, isDefault?: boolean) {
  */
 export function BrandingPage({ t, apiClient }: { t?: (s: string) => string; apiClient?: any }): React.ReactElement {
   const tr = t || ((s: string) => s);
+  const { token } = theme.useToken();
   const [themes, setThemes] = React.useState<ThemeInfo[]>([]);
   const [scope, setScope] = React.useState<string>(() => currentThemeUid());
   const active = currentThemeUid();
@@ -67,7 +68,7 @@ export function BrandingPage({ t, apiClient }: { t?: (s: string) => string; apiC
   // The theme-scope picker lives on the right of the tab bar (compact, shared across all tabs).
   const scopeSelector = (
     <Space size={6} align="center" style={{ paddingRight: 12 }}>
-      <span style={{ fontSize: 12, color: 'var(--colorTextTertiary, #999)' }}>{tr('Editing for')}:</span>
+      <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{tr('Editing for')}:</span>
       <Select size="small" value={scope} onChange={setScope} options={options} style={{ minWidth: 190 }} />
       {scope && scope === active ? (
         <Tag color="blue" style={{ margin: 0 }}>{tr('current theme')}</Tag>
@@ -85,8 +86,8 @@ export function BrandingPage({ t, apiClient }: { t?: (s: string) => string; apiC
     <div style={{ padding: '8px 16px 16px' }}>
       <div
         style={{
-          background: 'var(--colorBgContainer, #fff)',
-          border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)',
+          background: token.colorBgContainer,
+          border: `0.8px solid ${token.colorBorderSecondary}`,
           borderRadius: 8,
         }}
       >

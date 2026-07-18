@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import { theme } from 'antd';
 import { LEAFLET_CSS } from './leafletCss';
 
 /**
@@ -43,6 +44,7 @@ export interface PickMapProps {
 }
 
 export const PickMap: React.FC<PickMapProps> = ({ lat, lng, height = 220, zoom = 16, editable = false, onPick }) => {
+  const { token } = theme.useToken();
   const elRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -115,7 +117,7 @@ export const PickMap: React.FC<PickMapProps> = ({ lat, lng, height = 220, zoom =
   return (
     <div
       ref={elRef}
-      style={{ width: '100%', height, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--colorBorder, #e5e5e5)' }}
+      style={{ width: '100%', height, borderRadius: 8, overflow: 'hidden', border: `1px solid ${token.colorBorder}` }}
     />
   );
 };

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Input, Cascader } from 'antd';
+import { Input, Cascader, theme } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
@@ -145,9 +145,9 @@ function searchCss(cfg: any): string | undefined {
  *  outside it. Full height comes from the parent affix being stretched in `searchCss`. Fill = background +
  *  rounded outer corner (per Shape); Border = a full-height divider on the text-facing edge (pos right → line
  *  on the left, pos left → on the right). */
-function buildSearchIcon(cfg: any): React.ReactNode {
+function buildSearchIcon(cfg: any, token: any): React.ReactNode {
   const container = cfg.ptdlSearchIconContainer || 'none';
-  const iconColor = cfg.ptdlSearchIconColor || (container === 'fill' ? '#fff' : 'var(--colorTextQuaternary, #bfbfbf)');
+  const iconColor = cfg.ptdlSearchIconColor || (container === 'fill' ? '#fff' : token.colorTextQuaternary);
   const icon = <SearchOutlined style={{ color: iconColor, fontSize: 14 }} />;
   if (container === 'none') return icon;
   const pos = cfg.ptdlSearchIconPos || 'left';
@@ -169,7 +169,7 @@ function buildSearchIcon(cfg: any): React.ReactNode {
     box.background = cfg.ptdlSearchIconBoxColor || '#8c8c8c';
     box.borderRadius = pos === 'right' ? `0 ${r}px ${r}px 0` : `${r}px 0 0 ${r}px`;
   } else {
-    const lineColor = cfg.ptdlSearchIconBoxColor || 'rgba(0,0,0,0.15)';
+    const lineColor = cfg.ptdlSearchIconBoxColor || token.colorBorderSecondary;
     if (pos === 'right') box.borderInlineStart = `1px solid ${lineColor}`;
     else box.borderInlineEnd = `1px solid ${lineColor}`;
   }
@@ -179,13 +179,14 @@ function buildSearchIcon(cfg: any): React.ReactNode {
 /** The search input, styled per config. Icon `position` (left=`prefix` / right=`suffix`, both INSIDE the box)
  *  + icon `container` (none/border/fill). Shared by the live action and the config preview. */
 function SearchBox({ cfg, ...rest }: { cfg: any; [k: string]: any }) {
+  const { token } = theme.useToken();
   const common: any = {
     variant: cfg.ptdlSearchVariant || 'outlined',
     style: { width: WIDTH_PX[cfg.ptdlSearchWidth] || 220 },
     className: searchCss(cfg),
     ...rest,
   };
-  const icon = buildSearchIcon(cfg);
+  const icon = buildSearchIcon(cfg, token);
   return (cfg.ptdlSearchIconPos || 'left') === 'right' ? <Input {...common} suffix={icon} /> : <Input {...common} prefix={icon} />;
 }
 
@@ -194,6 +195,7 @@ function SearchBox({ cfg, ...rest }: { cfg: any; [k: string]: any }) {
  *  form.values object to a child would only track the object identity, not the individual keys. */
 const SearchBarPreview: any = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const v = (form && form.values) || {};
   const cfg = {
     ptdlSearchIconPos: v.ptdlSearchIconPos,
@@ -207,7 +209,7 @@ const SearchBarPreview: any = observer(() => {
     ptdlSearchWidth: v.ptdlSearchWidth,
   };
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9', display: 'flex' }}>
+    <div style={{ padding: '10px 12px', background: token.colorFillQuaternary, borderRadius: 6, border: `1px dashed ${token.colorBorder}`, display: 'flex' }}>
       <SearchBox cfg={cfg} allowClear placeholder={v.ptdlSearchPlaceholder || t('Search...')} />
     </div>
   );

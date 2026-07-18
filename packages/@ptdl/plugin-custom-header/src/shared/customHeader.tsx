@@ -1,5 +1,5 @@
 import React from 'react';
-import { Slider, Switch } from 'antd';
+import { Slider, Switch, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import {
   colorToString, ColorField, IconByKey, RegistryIconPicker, setIconRegistry,
@@ -279,10 +279,11 @@ const previewLabel = (defaults: any) => (
 const HeaderPreview: any = observer(() => {
   const form: any = useForm();
   const s = readStyle(form?.values || {});
+  const { token } = theme.useToken();
   return (
     <PreviewBox style={{ marginBottom: 12 }} label={previewLabel(HEADER_DEFAULTS)}>
       <div style={{ background: s.bgCss || 'transparent', borderRadius: 6, padding: '10px 14px' }}>
-        <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--colorText, rgba(0,0,0,0.88))' }}>{styledTitleSpan(tt('Page title'), s)}</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: token.colorText }}>{styledTitleSpan(tt('Page title'), s)}</div>
       </div>
     </PreviewBox>
   );
@@ -292,10 +293,11 @@ const HeaderPreview: any = observer(() => {
 const FieldPreview: any = observer(() => {
   const form: any = useForm();
   const s = readStyle(form?.values || {});
+  const { token } = theme.useToken();
   return (
     <PreviewBox style={{ marginBottom: 12 }} label={previewLabel(FIELD_DEFAULTS)}>
       <div style={{ background: s.bgCss || 'transparent', borderRadius: 6, padding: '6px 10px' }}>
-        <div style={{ fontWeight: 600, color: 'var(--colorText, rgba(0,0,0,0.88))' }}>{styledTitleSpan(tt('Field label'), s)}</div>
+        <div style={{ fontWeight: 600, color: token.colorText }}>{styledTitleSpan(tt('Field label'), s)}</div>
       </div>
     </PreviewBox>
   );
@@ -336,10 +338,11 @@ function registerSharedComponents(flowSettings: any) {
   );
   const SizeSlider = (props: any) => {
     const v = typeof props.value === 'number' ? props.value : 0;
+    const { token } = theme.useToken();
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
         <Slider min={0} max={40} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-        <span style={{ width: 52, textAlign: 'right', color: '#888', fontVariantNumeric: 'tabular-nums' }}>{v <= 0 ? tt('Default') : `${v}px`}</span>
+        <span style={{ width: 52, textAlign: 'right', color: token.colorTextTertiary, fontVariantNumeric: 'tabular-nums' }}>{v <= 0 ? tt('Default') : `${v}px`}</span>
       </div>
     );
   };

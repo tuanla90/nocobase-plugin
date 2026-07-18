@@ -1,5 +1,5 @@
 import React from 'react';
-import { Empty, Tag, Tooltip } from 'antd';
+import { Empty, Tag, Tooltip, theme } from 'antd';
 import { IconByKey, TAG_HEX } from '@ptdl/shared';
 import { ChangeLogEntry, SOURCE_META, formatDuration } from './types';
 import { exactTime, initialsOf, makeFieldResolvers, relativeTime, t, timeInValue } from './changeLogClient';
@@ -63,6 +63,7 @@ export const ChangeLogTimeline: React.FC<{ entries: ChangeLogEntry[]; fields?: a
   fields,
   compact,
 }) => {
+  const { token } = theme.useToken();
   const { labelOf, valueOf } = makeFieldResolvers(fields || []);
   if (!entries?.length) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('No history yet')} />;
@@ -150,7 +151,7 @@ export const ChangeLogTimeline: React.FC<{ entries: ChangeLogEntry[]; fields?: a
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: 11,
-                  boxShadow: '0 0 0 3px var(--nb-body-bg, #fff)',
+                  boxShadow: `0 0 0 3px ${token.colorBgElevated}`,
                 }}
               >
                 {e.toMeta?.icon ? <IconByKey type={e.toMeta.icon} /> : null}

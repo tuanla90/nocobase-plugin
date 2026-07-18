@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Select, Switch, Space, Tooltip } from 'antd';
+import { Button, Select, Switch, Space, Tooltip, theme } from 'antd';
 import {
   ColorField, colorToString, RegistryIconPicker, IconByKey, setIconRegistry,
   evalConditionOp, get, SettingCard, SettingRow, ConditionRow, SegmentedGroup,
@@ -207,7 +207,9 @@ type PickerCtx = { api?: any; collectionName?: string; dataSourceKey?: string };
 
 // Visual language borrowed from plugin-global-search / layout-containers settings panels:
 // white card + subtle shadow, fixed muted label column, tidy label-rows.
-const LABEL: React.CSSProperties = { width: 74, color: 'rgba(0,0,0,0.45)', fontSize: 12, flex: 'none' };
+// color is a theme token applied at the usage site (see RuleCard) — this fixed part only carries
+// the structural (non-color) shell.
+const LABEL: React.CSSProperties = { width: 74, fontSize: 12, flex: 'none' };
 const ROW_H = 32; // default antd controls are 32px tall — align labels/connectors to this
 
 // IconByKey only forwards `type`; wrap it to control size/color (lucide glyphs inherit fontSize/currentColor).
@@ -255,6 +257,7 @@ const RuleCard: React.FC<{
   rule: Rule; idx: number; ctx: PickerCtx; columns: { value: string; label: string }[];
   onChange: (r: Rule) => void; onRemove: () => void;
 }> = ({ rule, idx, ctx, columns, onChange, onRemove }) => {
+  const { token } = theme.useToken();
   const conds = rule.conditions && rule.conditions.length ? rule.conditions : [{}];
   const patch = (p: Partial<Rule>) => onChange({ ...rule, ...p });
   const setCond = (i: number, c: Cond) => patch({ conditions: conds.map((x, j) => (j === i ? c : x)) });
@@ -304,7 +307,7 @@ const RuleCard: React.FC<{
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {mode === 'condition' && (
             <>
-              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Khớp')}</span>
+              <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Khớp')}</span>
               <SegmentedGroup value={rule.match || 'all'} onChange={(v: any) => patch({ match: v })}
                 options={[{ label: rt('Tất cả'), value: 'all' }, { label: rt('Bất kỳ'), value: 'any' }]} />
             </>
@@ -321,14 +324,14 @@ const RuleCard: React.FC<{
         <>
           {/* Conditions */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-            <span style={{ ...LABEL, width: 84, height: ROW_H, display: 'flex', alignItems: 'center', alignSelf: 'flex-start' }}>{rt('Điều kiện')}</span>
+            <span style={{ ...LABEL, color: token.colorTextTertiary, width: 84, height: ROW_H, display: 'flex', alignItems: 'center', alignSelf: 'flex-start' }}>{rt('Điều kiện')}</span>
             <div style={{ flex: 1 }}>
               {conds.map((c, i) => (
                 <CondRow key={i} cond={c} ctx={ctx} connector={i === 0 ? rt('khi') : rule.match === 'any' ? rt('hoặc') : rt('và')}
                   onChange={(nc) => setCond(i, nc)} onRemove={() => removeCond(i)} />
               ))}
               <Button size="small" type="link" style={{ padding: 0, height: 'auto', marginLeft: 42, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={addCond}>
-                <LIcon name="lucide-plus" size={13} color="#1677ff" /> {rt('Thêm điều kiện')}
+                <LIcon name="lucide-plus" size={13} color={token.colorPrimary} /> {rt('Thêm điều kiện')}
               </Button>
             </div>
           </div>
@@ -344,11 +347,11 @@ const RuleCard: React.FC<{
           <SettingRow label={rt('Định dạng')} labelWidth={84} style={{ gap: 10, marginBottom: 0 }}>
             <div style={{ flex: 1, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Chữ')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Chữ')}</span>
                 <ColorField value={rule.color} onChange={(v: any) => patch({ color: v })} size="small" />
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Nền')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Nền')}</span>
                 <ColorField value={rule.background} onChange={(v: any) => patch({ background: v })} size="small" />
               </span>
               <Space.Compact size="small">
@@ -356,21 +359,21 @@ const RuleCard: React.FC<{
                 <Button size="small" type={rule.italic ? 'primary' : 'default'} onClick={() => patch({ italic: !rule.italic })} style={{ fontStyle: 'italic', width: 30 }}>I</Button>
               </Space.Compact>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Viền ô')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Viền ô')}</span>
                 <Switch size="small" checked={!!rule.border} onChange={(v) => patch({ border: v })} />
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Viền chữ')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Viền chữ')}</span>
                 <Switch size="small" checked={!!rule.textOutline} onChange={(v) => patch({ textOutline: v })} />
               </span>
               {rule.textOutline && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Màu viền')}</span>
+                  <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Màu viền')}</span>
                   <ColorField value={rule.outlineColor ?? '#ffffff'} onChange={(v: any) => patch({ outlineColor: v })} size="small" />
                 </span>
               )}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Biểu tượng')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Biểu tượng')}</span>
                 <RegistryIconPicker value={rule.icon} onChange={(k: string) => patch({ icon: k })} placeholder={rt('Chọn')} />
               </span>
               <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#bbb' }}>
@@ -395,21 +398,21 @@ const RuleCard: React.FC<{
           {mode === 'colorScale' ? (
             <SettingRow label={rt('Thang màu')} labelWidth={84} style={{ gap: 10, marginBottom: 0, flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Thấp')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Thấp')}</span>
                 <ColorField value={rule.colorMin} onChange={(v: any) => patch({ colorMin: v })} size="small" />
               </span>
               {rule.useMid && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Giữa')}</span>
+                  <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Giữa')}</span>
                   <ColorField value={rule.colorMid} onChange={(v: any) => patch({ colorMid: v })} size="small" />
                 </span>
               )}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Cao')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Cao')}</span>
                 <ColorField value={rule.colorMax} onChange={(v: any) => patch({ colorMax: v })} size="small" />
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('3 màu')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('3 màu')}</span>
                 <Switch size="small" checked={!!rule.useMid} onChange={(v) => patch({ useMid: v })} />
               </span>
               <span style={{ width: 120, height: 16, borderRadius: 4, background: gradCss, border: '1px solid #eee', marginLeft: 4 }} />
@@ -428,16 +431,16 @@ const RuleCard: React.FC<{
           {/* Text colour + outline (shared by both scale modes) */}
           <SettingRow label={rt('Chữ')} labelWidth={84} style={{ gap: 12, marginTop: 12, marginBottom: 0, flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Màu')}</span>
+              <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Màu')}</span>
               <ColorField value={rule.textColor} onChange={(v: any) => patch({ textColor: v })} size="small" />
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Viền chữ')}</span>
+              <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Viền chữ')}</span>
               <Switch size="small" checked={!!rule.textOutline} onChange={(v) => patch({ textOutline: v })} />
             </span>
             {rule.textOutline && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{rt('Màu viền')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Màu viền')}</span>
                 <ColorField value={rule.outlineColor ?? '#ffffff'} onChange={(v: any) => patch({ outlineColor: v })} size="small" />
               </span>
             )}
@@ -456,6 +459,7 @@ const CondRulesEditor: React.FC<{
   value?: Rule[]; onChange?: (v: Rule[]) => void;
   api?: any; collectionName?: string; dataSourceKey?: string; columns?: { value: string; label: string }[];
 }> = (props) => {
+  const { token } = theme.useToken();
   const rules: Rule[] = Array.isArray(props.value) ? props.value : [];
   const columns = props.columns || [];
   const ctx: PickerCtx = { api: injectedApi || props.api, collectionName: props.collectionName, dataSourceKey: props.dataSourceKey };
@@ -463,7 +467,7 @@ const CondRulesEditor: React.FC<{
   const addRule = () => set([...rules, { mode: 'condition', match: 'all', conditions: [{}], targets: [], color: '', background: '' }]);
   return (
     <div>
-      <div style={{ fontSize: 12.5, color: 'rgba(0,0,0,0.45)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12.5, color: token.colorTextTertiary, marginBottom: 12 }}>
         {rt('Tô định dạng ô theo giá trị. Mỗi quy tắc có 3 kiểu:')} <b>{rt('Điều kiện')}</b> (rule if–then), <b>{rt('Thang màu')}</b>{' '}
         {rt('(heatmap theo min–max của cột) hoặc')} <b>{rt('Thanh dữ liệu')}</b> {rt('(data bar trong ô).')}
       </div>
@@ -479,7 +483,7 @@ const CondRulesEditor: React.FC<{
         ))
       )}
       <Button type="dashed" block onClick={addRule} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-        <LIcon name="lucide-plus" size={14} color="#1677ff" /> {rt('Thêm quy tắc')}
+        <LIcon name="lucide-plus" size={14} color={token.colorPrimary} /> {rt('Thêm quy tắc')}
       </Button>
     </div>
   );

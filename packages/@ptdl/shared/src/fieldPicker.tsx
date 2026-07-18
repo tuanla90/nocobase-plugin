@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Cascader, Input, Select } from 'antd';
+import { Cascader, Input, Select, theme } from 'antd';
 import { st } from './i18n';
 
 // Small leading DATA-TYPE icon for a field/column option — inline Lucide-style SVGs (currentColor) so
@@ -215,6 +215,7 @@ export const FieldPickerCascader: React.FC<FieldPickerCascaderProps> = ({
   includeToMany = false,
   disabled,
 }) => {
+  const { token } = theme.useToken();
   const [fetched, setFetched] = useState<any[]>([]);
   const [sel, setSel] = useState<any[]>([]);
   const lazy = !options && !!collectionName;
@@ -271,7 +272,7 @@ export const FieldPickerCascader: React.FC<FieldPickerCascaderProps> = ({
       placement="bottomLeft"
     >
       <a
-        style={{ fontSize: 12.5, userSelect: 'none', cursor: off ? 'not-allowed' : 'pointer', color: off ? '#bbb' : undefined, display: 'inline-flex', alignItems: 'center' }}
+        style={{ fontSize: 12.5, userSelect: 'none', cursor: off ? 'not-allowed' : 'pointer', color: off ? token.colorTextDisabled : undefined, display: 'inline-flex', alignItems: 'center' }}
         onClick={(e) => e.preventDefault()}
       >
         {label}
@@ -315,6 +316,7 @@ export const FieldTokenTextArea: React.FC<FieldTokenTextAreaProps> = ({
   style,
 }) => {
   const taRef = useRef<any>(null);
+  const { token } = theme.useToken();
 
   const insert = (path: string[]) => {
     insertAtCaret(getCaretElement(taRef.current), format(path), value || '', (v) => onChange?.(v));
@@ -341,7 +343,7 @@ export const FieldTokenTextArea: React.FC<FieldTokenTextAreaProps> = ({
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
       />
-      {hint ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{hint}</div> : null}
+      {hint ? <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 4 }}>{hint}</div> : null}
     </div>
   );
 };
@@ -390,17 +392,20 @@ export async function getCollectionTitles(api: any, dataSourceKey?: string): Pro
 
 /** THE standard two-line option: friendly title on top, raw name (monospace) underneath. Reused by both
  *  the flat ColumnSelect and the multi-level FieldPickerCascader so every field picker looks identical. */
-export const TwoLineOption: React.FC<{ title: React.ReactNode; sub?: string; icon?: React.ReactNode }> = ({ title, sub, icon }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.25, padding: '1px 0' }}>
-    {icon != null && <span style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 13, flexShrink: 0, display: 'inline-flex' }}>{icon}</span>}
-    <div style={{ minWidth: 0 }}>
-      <div>{title}</div>
-      {sub != null && sub !== '' && String(title) !== String(sub) && (
-        <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #999)', fontFamily: 'monospace' }}>{sub}</div>
-      )}
+export const TwoLineOption: React.FC<{ title: React.ReactNode; sub?: string; icon?: React.ReactNode }> = ({ title, sub, icon }) => {
+  const { token } = theme.useToken();
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.25, padding: '1px 0' }}>
+      {icon != null && <span style={{ color: token.colorTextTertiary, fontSize: 13, flexShrink: 0, display: 'inline-flex' }}>{icon}</span>}
+      <div style={{ minWidth: 0 }}>
+        <div>{title}</div>
+        {sub != null && sub !== '' && String(title) !== String(sub) && (
+          <div style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace' }}>{sub}</div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 // Select.optionRender receives {label,value,data}; Cascader.optionRender receives the raw option.
 const colOptionRender = (o: any) => <TwoLineOption title={o.data?.label} sub={o.value} icon={fieldTypeIcon(o.data?.type, o.data?.iface)} />;
 const cascaderOptionRender = (o: any) => <TwoLineOption title={o?.title || o?.label} sub={o?.value === '__empty' ? undefined : o?.value} icon={o?.value === '__empty' ? null : fieldTypeIcon(o?.type, o?.iface)} />;

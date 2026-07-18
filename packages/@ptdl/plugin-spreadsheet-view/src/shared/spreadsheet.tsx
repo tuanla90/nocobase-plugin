@@ -59,6 +59,7 @@ import {
   Select as AntSelect,
   Space as AntSpace,
   Switch as AntSwitch,
+  theme,
 } from 'antd';
 import {
   CopyOutlined,
@@ -462,9 +463,11 @@ const dotOf = (color?: string) =>
     />
   ) : null;
 
+// background is a theme token applied at each usage site (PtdlChoiceEditor / PtdlMultiChoiceEditor) —
+// this fixed part only carries the structural (non-color) shell.
 const choiceListStyle: React.CSSProperties = {
   minWidth: 170, maxHeight: 280, overflowY: 'auto', padding: 4, borderRadius: 8,
-  background: 'var(--colorBgElevated, #fff)', boxShadow: '0 6px 16px rgba(0,0,0,0.14)',
+  boxShadow: '0 6px 16px rgba(0,0,0,0.14)',
 };
 const choiceItemStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
@@ -473,6 +476,7 @@ const choiceItemStyle: React.CSSProperties = {
 
 /** Select đơn / radio: click option → commit trực tiếp + đóng editor. */
 function PtdlChoiceEditor(props: any) {
+  const { token } = theme.useToken();
   const { data, colDef } = props;
   const options: any[] = props.options || [];
   const cur = props.value;
@@ -481,23 +485,23 @@ function PtdlChoiceEditor(props: any) {
     props.commit?.(data, colDef?.field, v);
   };
   return (
-    <div style={choiceListStyle}>
+    <div style={{ ...choiceListStyle, background: token.colorBgElevated }}>
       {cur !== null && cur !== undefined ? (
-        <div style={{ ...choiceItemStyle, color: '#999' }} onClick={() => pick(null)}>✕&nbsp; {t('Bỏ chọn')}</div>
+        <div style={{ ...choiceItemStyle, color: token.colorTextTertiary }} onClick={() => pick(null)}>✕&nbsp; {t('Bỏ chọn')}</div>
       ) : null}
       {options.map((o: any) => {
         const active = String(o?.value) === String(cur);
         return (
           <div
             key={String(o?.value)}
-            style={{ ...choiceItemStyle, background: active ? 'var(--colorPrimaryBg, #e6f4ff)' : undefined }}
-            onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--colorFillTertiary, #f5f5f5)'; }}
+            style={{ ...choiceItemStyle, background: active ? token.colorPrimaryBg : undefined }}
+            onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = token.colorFillTertiary; }}
             onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = ''; }}
             onClick={() => pick(o.value)}
           >
             {dotOf(o?.color)}
             <span style={{ flex: 1 }}>{String(o?.label ?? o?.value)}</span>
-            {active ? <span style={{ color: 'var(--colorPrimary, #1677ff)' }}>✓</span> : null}
+            {active ? <span style={{ color: token.colorPrimary }}>✓</span> : null}
           </div>
         );
       })}
@@ -507,6 +511,7 @@ function PtdlChoiceEditor(props: any) {
 
 /** Multi-select / checkbox group: tick nhiều mục, đóng editor (click ra ngoài/Enter) là commit; Esc = huỷ. */
 function PtdlMultiChoiceEditor(props: any) {
+  const { token } = theme.useToken();
   const { data, colDef } = props;
   const options: any[] = props.options || [];
   const init = Array.isArray(props.value) ? props.value : props.value != null ? [props.value] : [];
@@ -528,7 +533,7 @@ function PtdlMultiChoiceEditor(props: any) {
     setSel((s) => (s.some((x) => String(x) === String(v)) ? s.filter((x) => String(x) !== String(v)) : [...s, v]));
   };
   return (
-    <div style={choiceListStyle}>
+    <div style={{ ...choiceListStyle, background: token.colorBgElevated }}>
       {options.map((o: any) => {
         const active = sel.some((x) => String(x) === String(o?.value));
         return (
@@ -537,8 +542,8 @@ function PtdlMultiChoiceEditor(props: any) {
               style={{
                 width: 14, height: 14, marginRight: 8, borderRadius: 3, flex: 'none',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                border: active ? 'none' : '1px solid var(--colorBorder, #d9d9d9)',
-                background: active ? 'var(--colorPrimary, #1677ff)' : 'transparent',
+                border: active ? 'none' : `1px solid ${token.colorBorder}`,
+                background: active ? token.colorPrimary : 'transparent',
                 color: '#fff', fontSize: 10, lineHeight: 1,
               }}
             >
@@ -549,13 +554,14 @@ function PtdlMultiChoiceEditor(props: any) {
           </div>
         );
       })}
-      <div style={{ ...choiceItemStyle, color: '#999', fontSize: 12 }}>{t('Click ra ngoài để lưu · Esc huỷ')}</div>
+      <div style={{ ...choiceItemStyle, color: token.colorTextTertiary, fontSize: 12 }}>{t('Click ra ngoài để lưu · Esc huỷ')}</div>
     </div>
   );
 }
 
 /** Boolean: KHÔNG cần edit mode — click checkbox trên ô là toggle + lưu luôn (nếu có quyền). */
 function PtdlBoolCell(props: any) {
+  const { token } = theme.useToken();
   if (props.data?.__ptdlSummary) return <SummaryCellText v={props.value} align={props.getAlign?.()} />;
   const v = !!props.value;
   const can = props.canUpdate ? props.canUpdate(props.data) : true;
@@ -568,8 +574,8 @@ function PtdlBoolCell(props: any) {
       style={{
         cursor: 'pointer', display: 'inline-flex', width: 16, height: 16, verticalAlign: 'middle',
         alignItems: 'center', justifyContent: 'center', borderRadius: 4,
-        border: v ? 'none' : '1px solid var(--colorBorder, #d9d9d9)',
-        background: v ? 'var(--colorPrimary, #1677ff)' : 'transparent',
+        border: v ? 'none' : `1px solid ${token.colorBorder}`,
+        background: v ? token.colorPrimary : 'transparent',
         color: '#fff', fontSize: 11, lineHeight: 1,
       }}
     >
@@ -591,6 +597,7 @@ const SINGLE_PICK_IFACES = new Set(['m2o', 'o2o', 'oho', 'obo', 'datetime', 'dat
  * single-pick chọn xong là stopEditing → commit ngay, không cần click ra ngoài.
  */
 function PtdlCellEditor(props: any) {
+  const { token } = theme.useToken();
   const { value, onValueChange, data } = props;
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const host = React.useMemo(() => props.getHost?.(), []); // 1 host / cột, cache trên block model
@@ -663,7 +670,7 @@ function PtdlCellEditor(props: any) {
         minWidth: 200,
         width: '100%',
         position: 'relative',
-        background: 'var(--colorBgElevated, #fff)',
+        background: token.colorBgElevated,
         boxShadow: '0 6px 16px rgba(0,0,0,0.14)',
         padding: 4,
         borderRadius: 8,
@@ -867,6 +874,7 @@ const GROUP_KEY_SEP = String.fromCharCode(0);
 
 /** Cột số dòng kiểu NocoBase: hiện số thứ tự (chỉ đếm dòng data), hover/tick → checkbox chọn dòng. */
 function PtdlRowNumCell(p: any) {
+  const { token } = theme.useToken();
   const model = p.model;
   const d = p.data;
   // Dòng NHÁP: hiện dấu ＋ (giống Airtable) khi setting add-new bật hiển thị dòng ＋ — báo "gõ để thêm dòng".
@@ -874,7 +882,7 @@ function PtdlRowNumCell(p: any) {
     const dm = model?.props?.ptdlAddNewDisplay || 'both';
     if (dm !== 'row' && dm !== 'both') return null;
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'var(--colorPrimary, #1677ff)' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: token.colorPrimary }}>
         <PlusOutlined style={{ fontSize: 13 }} />
       </span>
     );
@@ -900,6 +908,7 @@ function PtdlRowNumCell(p: any) {
   );
 }
 function PtdlSelHeader(p: any) {
+  const { token } = theme.useToken();
   const [, force] = React.useReducer((x: number) => x + 1, 0);
   React.useEffect(() => {
     const f = () => force();
@@ -979,11 +988,11 @@ const PtdlGroupLabelCell = observer(function PtdlGroupLabelCell({ model, p }: an
         whiteSpace: 'nowrap',
       }}
     >
-      <span style={{ color: 'var(--colorTextTertiary, #8c8c8c)', display: 'inline-flex', flex: 'none' }}>
+      <span style={{ color: token.colorTextTertiary, display: 'inline-flex', flex: 'none' }}>
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </span>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.__lbl}</span>
-      <span style={{ color: 'var(--colorTextTertiary, #999)', fontWeight: 400, flex: 'none' }}>({d.__count})</span>
+      <span style={{ color: token.colorTextTertiary, fontWeight: 400, flex: 'none' }}>({d.__count})</span>
       {model.props.ptdlAllowAdd !== false ? (
         <span
           className="ptdl-gadd"
@@ -1059,17 +1068,17 @@ const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, col
               height: rowHeight, flex: 'none', display: 'flex', alignItems: 'center', gap: 6,
               paddingLeft: 90 + lvl * 18, paddingRight: 12,
               fontWeight: 600, fontSize: 12.5, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
-              borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)',
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
               position: 'relative', zIndex: chain.length - lvl,
-              background: 'var(--colorBgElevated, #fff)',
+              background: token.colorBgElevated,
               boxShadow: '0 1px 3px rgba(0,0,0,.05)',
             }}
           >
-            <span style={{ color: 'var(--colorTextTertiary, #8c8c8c)', display: 'inline-flex', flex: 'none' }}>
+            <span style={{ color: token.colorTextTertiary, display: 'inline-flex', flex: 'none' }}>
               {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.__lbl}</span>
-            <span style={{ color: 'var(--colorTextTertiary, #999)', fontWeight: 400, flex: 'none' }}>({g.__count})</span>
+            <span style={{ color: token.colorTextTertiary, fontWeight: 400, flex: 'none' }}>({g.__count})</span>
             {model.props.ptdlAllowAdd !== false ? (
               <span
                 className="ptdl-gadd"
@@ -1092,7 +1101,7 @@ const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, col
                   display: 'flex', alignItems: 'center',
                   justifyContent: c.align === 'right' ? 'flex-end' : c.align === 'center' ? 'center' : 'flex-start',
                   padding: '0 6px', fontWeight: 600, fontSize: 12,
-                  color: 'var(--colorTextSecondary, #595959)',
+                  color: token.colorTextSecondary,
                   overflow: 'hidden', whiteSpace: 'nowrap', pointerEvents: 'none',
                 }}
               >
@@ -1129,6 +1138,7 @@ function displayedDataColIds(api: any): string[] {
 /** Bọc cellRenderer 1 cột để render dòng nhóm (__ptdlGroup): cột data ĐẦU (theo AG) = nhãn, cột có Summary = subtotal, còn lại rỗng. */
 function groupCellRenderer(base: any, model: any, coll: any, colId: string, defAlign: string | undefined) {
   return (p: any) => {
+    const { token } = theme.useToken();
     if (p.data?.__ptdlGroup) {
       const cols = displayedDataColIds(p.api);
       if (cols[0] === colId) return <PtdlGroupLabelCell model={model} p={p} />;
@@ -1136,7 +1146,7 @@ function groupCellRenderer(base: any, model: any, coll: any, colId: string, defA
       if (!cfg.summary) return null;
       const align = cfg.align || defAlign; // khớp ĐÚNG align của data cell (formula→trái, số/ngày→phải)
       return (
-        <div style={{ textAlign: align as any, fontWeight: 600, fontSize: 12, color: 'var(--colorTextSecondary, #595959)' }}>
+        <div style={{ textAlign: align as any, fontWeight: 600, fontSize: 12, color: token.colorTextSecondary }}>
           {groupSubtotalText(model, coll, colId, p.data.__rows)}
         </div>
       );
@@ -1145,24 +1155,28 @@ function groupCellRenderer(base: any, model: any, coll: any, colId: string, defA
   };
 }
 
-const SummaryCellText = ({ v, align }: { v: any; align?: string }) => (
+const SummaryCellText = ({ v, align }: { v: any; align?: string }) => {
+  const { token } = theme.useToken();
+  return (
   <div
     style={{
       width: '100%',
       textAlign: (align as any) || 'left',
       fontWeight: 600,
       fontSize: 12,
-      color: 'var(--colorTextSecondary, #595959)',
+      color: token.colorTextSecondary,
     }}
   >
     {v ?? ''}
   </div>
-);
+  );
+};
 
 /** Renderer thống nhất cho mọi cột data: align + number format + Format rules + summary — đọc cfg LIVE. */
 function condCellRenderer(model: any, fieldName: string, cf: any, defaultAlign?: string) {
   const numeric = ['integer', 'number', 'percent'].includes(cf?.interface);
   return (p: any) => {
+    const { token } = theme.useToken();
     const c = model.getColCfg(fieldName);
     if (p.data?.__ptdlSummary) return <SummaryCellText v={p.value} align={c.align || defaultAlign} />;
     // Dòng NHÁP (thêm mới): ô EDITABLE đầu (đọc live model._firstEditableCol) + đang trống → gợi ý
@@ -1171,7 +1185,7 @@ function condCellRenderer(model: any, fieldName: string, cf: any, defaultAlign?:
       const dm = model.props.ptdlAddNewDisplay || 'both';
       const rawV = p.value;
       if ((dm === 'row' || dm === 'both') && (rawV === null || rawV === undefined || rawV === '')) {
-        return <span style={{ color: 'var(--colorTextPlaceholder, #bfbfbf)' }}>{model.translate?.('Thêm dòng mới…') || 'Thêm dòng mới…'}</span>;
+        return <span style={{ color: token.colorTextPlaceholder }}>{model.translate?.('Thêm dòng mới…') || 'Thêm dòng mới…'}</span>;
       }
     }
     // Widget hiển thị enhancement — đọc LIVE (không structural) → đổi widget/config KHÔNG rebuild colDefs →
@@ -1522,6 +1536,7 @@ function PtdlColStylePanel({ model, fieldName }: any) {
 
 /** Thanh "‹ Back + tiêu đề" cho các trang con trong PtdlColMenu. */
 function PtdlColMenuBack({ onBack, title }: any) {
+  const { token } = theme.useToken();
   return (
     <div
       style={{
@@ -1530,17 +1545,17 @@ function PtdlColMenuBack({ onBack, title }: any) {
         gap: 4,
         marginBottom: 10,
         paddingBottom: 8,
-        borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)',
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
       <span
         onClick={onBack}
-        style={{ cursor: 'pointer', color: 'var(--colorPrimary, #1677ff)', fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
+        style={{ cursor: 'pointer', color: token.colorPrimary, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
       >
         <ChevronLeft size={15} />
         {t('Quay lại')}
       </span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--colorText, rgba(0,0,0,0.88))' }}>{title}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{title}</span>
     </div>
   );
 }
@@ -1586,6 +1601,7 @@ function ptdlFormulaSamples(coll: any): Array<{ label: string; formula: string }
  * (bẫy cũ: portal ra body = "ngoài" → đóng cả cụm).
  */
 function PtdlFormulaField({ model, value, onChange, onCommit, rows = 3, autoFocus, showAi = true, containPopups = false }: any) {
+  const { token } = theme.useToken();
   const coll = model.context.collection;
   const api = model.context?.api || model.flowEngine?.context?.api;
   const collName = coll?.name;
@@ -1649,16 +1665,16 @@ function PtdlFormulaField({ model, value, onChange, onCommit, rows = 3, autoFocu
   };
   const codeChip: React.CSSProperties = {
     cursor: 'pointer', fontSize: 12, fontFamily: 'var(--fontFamilyCode, monospace)',
-    background: 'var(--colorFillQuaternary, #f5f5f5)', padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap',
+    background: token.colorFillQuaternary, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap',
   };
   const fnHelp = (
     <div style={{ width: 430, maxHeight: 320, overflow: 'auto' }}>
-      <div style={{ fontSize: 12, color: 'var(--colorTextSecondary, #666)', marginBottom: 8 }}>
+      <div style={{ fontSize: 12, color: token.colorTextSecondary, marginBottom: 8 }}>
         {t('Bấm để chèn hàm. Gõ thẳng tên field như Excel:')} <code>qty * price</code>.
       </div>
       {FORMULA_FN_GROUPS.map(([title, fns]) => (
         <div key={title} style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--colorTextTertiary, #8c8c8c)', marginBottom: 3 }}>{t(title)}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, marginBottom: 3 }}>{t(title)}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {fns.map((fn) => (
               <code key={fn} style={codeChip} onClick={() => insertAt(`${fn}()`, true)}>{fn}</code>
@@ -1666,20 +1682,20 @@ function PtdlFormulaField({ model, value, onChange, onCommit, rows = 3, autoFocu
           </div>
         </div>
       ))}
-      <div style={{ fontSize: 11, color: 'var(--colorTextQuaternary, #aaa)', marginTop: 6 }}>
+      <div style={{ fontSize: 11, color: token.colorTextQuaternary, marginTop: 6 }}>
         {t('~400 hàm Excel (formulajs) + helper HTML. Cộng dồn quan hệ: SUM(order_ids.amount).')}
       </div>
     </div>
   );
   const fieldHelp = (
     <div style={{ width: 260, maxHeight: 300, overflow: 'auto' }}>
-      <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #8c8c8c)', marginBottom: 6 }}>{t('Bấm để chèn tên trường')}</div>
+      <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 6 }}>{t('Bấm để chèn tên trường')}</div>
       {fields.map((f: any) => (
         <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
           <code style={codeChip} onClick={() => insertAt(f.name)}>{f.name}</code>
-          {enumOf(f).length ? <code style={{ ...codeChip, color: 'var(--colorPrimary, #1677ff)' }} onClick={() => insertAt(`${f.name}_label`)}>{f.name}_label</code> : null}
+          {enumOf(f).length ? <code style={{ ...codeChip, color: token.colorPrimary }} onClick={() => insertAt(`${f.name}_label`)}>{f.name}_label</code> : null}
           {typeof f.title === 'string' && f.title && f.title !== f.name ? (
-            <span style={{ fontSize: 11, color: 'var(--colorTextQuaternary, #aaa)' }}>{f.title}</span>
+            <span style={{ fontSize: 11, color: token.colorTextQuaternary }}>{f.title}</span>
           ) : null}
         </div>
       ))}
@@ -1693,11 +1709,11 @@ function PtdlFormulaField({ model, value, onChange, onCommit, rows = 3, autoFocu
           key={i}
           onClick={() => { onChange?.(s.formula); onCommit?.(s.formula); requestAnimationFrame(() => domTa()?.focus?.()); }}
           style={{ cursor: 'pointer', padding: '5px 8px', borderRadius: 4, marginBottom: 2 }}
-          onMouseEnter={(e: any) => (e.currentTarget.style.background = 'var(--colorFillQuaternary, #f5f5f5)')}
+          onMouseEnter={(e: any) => (e.currentTarget.style.background = token.colorFillQuaternary)}
           onMouseLeave={(e: any) => (e.currentTarget.style.background = 'transparent')}
         >
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--colorText, #333)' }}>{s.label}</div>
-          <code style={{ fontSize: 11, color: 'var(--colorTextTertiary, #888)', fontFamily: 'var(--fontFamilyCode, monospace)' }}>{s.formula}</code>
+          <div style={{ fontSize: 12, fontWeight: 500, color: token.colorText }}>{s.label}</div>
+          <code style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'var(--fontFamilyCode, monospace)' }}>{s.formula}</code>
         </div>
       ))}
     </div>
@@ -1706,14 +1722,14 @@ function PtdlFormulaField({ model, value, onChange, onCommit, rows = 3, autoFocu
   const f = (value || '').trim();
   let preview: React.ReactNode = null;
   if (f) {
-    if (!sample) preview = <span style={{ color: 'var(--colorTextQuaternary, #aaa)' }}>{t('(chưa có dữ liệu để xem trước)')}</span>;
+    if (!sample) preview = <span style={{ color: token.colorTextQuaternary }}>{t('(chưa có dữ liệu để xem trước)')}</span>;
     else {
       const out = evalViewFormula(f, sample, coll);
       const so = out == null ? '' : String(out);
       if (so.startsWith('⚠')) preview = <span style={{ color: '#cf1322', fontFamily: 'var(--fontFamilyCode, monospace)', fontSize: 12 }}>{so}</span>;
-      else if (so === '') preview = <span style={{ color: 'var(--colorTextQuaternary, #aaa)' }}>{t('(trống)')}</span>;
+      else if (so === '') preview = <span style={{ color: token.colorTextQuaternary }}>{t('(trống)')}</span>;
       else if (so.startsWith('<')) preview = <span dangerouslySetInnerHTML={{ __html: so }} />;
-      else preview = <span style={{ color: 'var(--colorText, #333)' }}>{so}</span>;
+      else preview = <span style={{ color: token.colorText }}>{so}</span>;
     }
   }
   return (
@@ -1753,7 +1769,7 @@ function PtdlFormulaField({ model, value, onChange, onCommit, rows = 3, autoFocu
       </div>
       {preview != null ? (
         <div style={{ marginTop: 6, fontSize: 12, display: 'flex', gap: 6, alignItems: 'baseline' }}>
-          <span style={{ fontSize: 11, color: 'var(--colorTextTertiary, #8c8c8c)', flex: 'none' }}>{t('Xem trước:')}</span>
+          <span style={{ fontSize: 11, color: token.colorTextTertiary, flex: 'none' }}>{t('Xem trước:')}</span>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}</span>
         </div>
       ) : null}
@@ -1789,6 +1805,7 @@ function PtdlFormulaMiniForm({ model, title: initTitle, formula: initFormula, su
  * Trang: menu → { settings (bọc PtdlColStylePanel) | insertLeft | insertRight | edit }.
  */
 const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }: any) {
+  const { token } = theme.useToken();
   // mode cũng để trên model (cùng _ptdlColMenu) → đổi Pin/Width rebuild header vẫn giữ đúng trang settings.
   const cm = model.props._ptdlColMenu;
   const mode: 'menu' | 'settings' | 'insertLeft' | 'insertRight' | 'edit' =
@@ -1808,9 +1825,9 @@ const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }:
         borderRadius: 6,
         cursor: 'pointer',
         fontSize: 13,
-        color: danger ? 'var(--colorErrorText, #ff4d4f)' : 'var(--colorText, rgba(0,0,0,0.88))',
+        color: danger ? 'var(--colorErrorText, #ff4d4f)' : token.colorText,
       }}
-      onMouseEnter={(e: any) => (e.currentTarget.style.background = danger ? 'var(--colorErrorBg, #fff1f0)' : 'var(--colorFillTertiary, #f5f5f5)')}
+      onMouseEnter={(e: any) => (e.currentTarget.style.background = danger ? 'var(--colorErrorBg, #fff1f0)' : token.colorFillTertiary)}
       onMouseLeave={(e: any) => (e.currentTarget.style.background = 'transparent')}
     >
       <span
@@ -1818,7 +1835,7 @@ const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }:
           display: 'inline-flex',
           width: 16,
           flex: 'none',
-          color: danger ? 'var(--colorError, #ff4d4f)' : 'var(--colorTextTertiary, #8c8c8c)',
+          color: danger ? 'var(--colorError, #ff4d4f)' : token.colorTextTertiary,
         }}
       >
         {icon}
@@ -1826,7 +1843,7 @@ const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }:
       {children}
     </div>
   );
-  const Sep = () => <div style={{ height: 1, background: 'var(--colorBorderSecondary, #f0f0f0)', margin: '4px 0' }} />;
+  const Sep = () => <div style={{ height: 1, background: token.colorBorderSecondary, margin: '4px 0' }} />;
 
   if (mode === 'settings') {
     return (
@@ -1975,7 +1992,7 @@ const PtdlColHeader = observer(function PtdlColHeader(props: any) {
           {displayName}
         </span>
         {sortDir ? (
-          <span style={{ color: 'var(--colorPrimary, #1677ff)', display: 'inline-flex', flex: 'none' }}>
+          <span style={{ color: token.colorPrimary, display: 'inline-flex', flex: 'none' }}>
             {sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
           </span>
         ) : null}
@@ -2497,6 +2514,7 @@ function PtdlActionsCell(props: any) {
 
 /** Manager row-action NATIVE — thêm/xoá action (native + MỌI plugin qua defineChildren). House style. */
 function PtdlActionsNativeManager({ model }: any) {
+  const { token } = theme.useToken();
   const _rev = model.props.ptdlActionsRev; // reactive: re-render khi thêm/bớt action
   void _rev;
   const [addable, setAddable] = React.useState<any[]>([]);
@@ -2532,7 +2550,7 @@ function PtdlActionsNativeManager({ model }: any) {
     tLabel(a?.props?.title) || String(a?.constructor?.name || '').replace(/ActionModel$/, '') || t('Thao tác');
   return (
     <div style={{ width: 300 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--colorTextSecondary, #8c8c8c)', marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, marginBottom: 8 }}>
         {t('Thao tác dòng — {{n}}', { n: actions.length })}
       </div>
       {actions.length ? (
@@ -2547,7 +2565,7 @@ function PtdlActionsNativeManager({ model }: any) {
               padding: '4px 6px',
               borderRadius: 6,
               marginBottom: 2,
-              background: 'var(--colorFillQuaternary, #f5f5f5)',
+              background: token.colorFillQuaternary,
             }}
           >
             <span style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{actLabel(a)}</span>
@@ -2573,10 +2591,10 @@ function PtdlActionsNativeManager({ model }: any) {
           </div>
         ))
       ) : (
-        <div style={{ fontSize: 12, color: 'var(--colorTextTertiary, #999)', marginBottom: 6 }}>{t('Chưa có action — thêm bên dưới ↓')}</div>
+        <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 6 }}>{t('Chưa có action — thêm bên dưới ↓')}</div>
       )}
-      <div style={{ borderTop: '1px solid var(--colorBorderSecondary, #f0f0f0)', paddingTop: 8, marginTop: 6 }}>
-        <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #8c8c8c)', marginBottom: 6 }}>{t('＋ Thêm action (native + plugin):')}</div>
+      <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 8, marginTop: 6 }}>
+        <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 6 }}>{t('＋ Thêm action (native + plugin):')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
           {addable.map((item: any) => (
             <Button key={item.key} size="small" onClick={() => model.addRowAction(item.createModelOptions || { use: item.useModel })}>
@@ -2585,7 +2603,7 @@ function PtdlActionsNativeManager({ model }: any) {
           ))}
         </div>
       </div>
-      <div style={{ marginTop: 8, fontSize: 11, color: 'var(--colorTextTertiary, #999)', lineHeight: 1.5 }}>
+      <div style={{ marginTop: 8, fontSize: 11, color: token.colorTextTertiary, lineHeight: 1.5 }}>
         {t('Cấu hình từng action (template Print nào, Workflow nào…): bấm')} <b>⚙</b> {t('trên nút action ở dòng khi bật UI editor.')}
       </div>
     </div>
@@ -2597,6 +2615,7 @@ function PtdlActionsNativeManager({ model }: any) {
  * Gõ chỉ đổi STATE CỤC BỘ — persist khi blur/Apply (persist mỗi phím sẽ rebuild cả grid → mất phím gõ).
  */
 function PtdlFormulaManager({ model }: any) {
+  const { token } = theme.useToken();
   const [list, setList] = React.useState<any[]>(() => (model.props.ptdlFormulas || []).map((f: any) => ({ ...f })));
   const apply = (next?: any[]) => model.saveFormulas(next || list);
   const patch = (i: number, p: any) => {
@@ -2609,7 +2628,7 @@ function PtdlFormulaManager({ model }: any) {
   return (
     <div style={{ width: 460 }}>
       {list.map((f, i) => (
-        <div key={f.key || i} style={{ marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)' }}>
+        <div key={f.key || i} style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
           <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
             <AntInput
               size="small"
@@ -2650,7 +2669,7 @@ function PtdlFormulaManager({ model }: any) {
           {t('Áp dụng')}
         </Button>
       </div>
-      <div style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 11, marginTop: 8 }}>
+      <div style={{ color: token.colorTextTertiary, fontSize: 11, marginTop: 8 }}>
         {t('Cột ảo tính lúc hiển thị — không tạo field DB, không sort/filter server.')}
       </div>
     </div>
@@ -2663,6 +2682,7 @@ const PtdlToolDivider = () => (
 );
 
 const SheetGrid = observer(({ model }: { model: any }) => {
+  const { token } = theme.useToken();
   const coll = model.context.collection;
   const raw = model.resource?.getData?.();
   const dirtyRev = model.props.ptdlDirtyRev || 0;
@@ -3430,9 +3450,9 @@ const SheetGrid = observer(({ model }: { model: any }) => {
           }
           getRowStyle={(p: any) =>
             p.data?.__ptdlSummary
-              ? { background: 'var(--colorFillQuaternary, #f5f7fa)', fontStyle: 'normal' }
+              ? { background: token.colorFillQuaternary, fontStyle: 'normal' }
               : p.data?.__ptdlGroup
-                ? { background: 'var(--colorFillQuaternary, #f7f8fa)', fontWeight: 600 }
+                ? { background: token.colorFillQuaternary, fontWeight: 600 }
                 : undefined
           }
           loading={loading && rowData.length === 0}
@@ -3686,6 +3706,7 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
 
     render() {
       const values = (this.props as any).ptdlValues || {};
+      const labelColor = this.context?.themeToken?.colorTextSecondary || '#666';
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {this.mapSubModels('fields', (field: any) => {
@@ -3693,7 +3714,7 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
             if (field.__ptdlBroken) return null;
             return (
               <div key={field.uid}>
-                <div style={{ fontSize: 12, color: 'var(--colorTextSecondary, #666)', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: labelColor, marginBottom: 4 }}>
                   {field.__ptdlFieldTitle}
                 </div>
                 <PtdlFieldErrorBoundary name={name}>

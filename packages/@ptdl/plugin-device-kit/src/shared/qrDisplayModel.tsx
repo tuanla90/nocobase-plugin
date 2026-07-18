@@ -1,6 +1,6 @@
 import React from 'react';
 import { DisplayItemModel } from '@nocobase/flow-engine';
-import { QRCode, Input, Slider, Segmented } from 'antd';
+import { QRCode, Input, Slider, Segmented, theme } from 'antd';
 import { SettingsGrid, fi, ResetButton, SEG_PROPS } from '@ptdl/shared';
 import { te, t } from './i18n';
 
@@ -41,17 +41,19 @@ function resolveValue(cfg: QCfg, value: any, record: any): string {
 }
 
 const QrView: React.FC<{ cfg: QCfg; value?: any; record?: any }> = ({ cfg, value, record }) => {
+  const { token } = theme.useToken();
   const text = resolveValue(cfg, value, record);
-  if (!text) return <span style={{ color: '#bfbfbf' }}>—</span>;
+  if (!text) return <span style={{ color: token.colorTextQuaternary }}>—</span>;
   return <QRCode value={text} size={cfg.size} errorLevel={cfg.level} bordered={false} style={{ padding: 0 }} />;
 };
 
 const Q_Size = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : 96;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
       <Slider min={48} max={220} step={4} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 44, textAlign: 'right', color: '#888' }}>{v}px</span>
+      <span style={{ width: 44, textAlign: 'right', color: token.colorTextTertiary }}>{v}px</span>
     </div>
   );
 };

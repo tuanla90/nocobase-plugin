@@ -1,6 +1,6 @@
 {
   "name": "@ptdl/shared",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Shared source library bundled into each @ptdl plugin (NOT a runtime dependency).",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

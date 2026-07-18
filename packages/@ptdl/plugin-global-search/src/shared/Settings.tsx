@@ -1,5 +1,5 @@
 import { SearchOutlined } from '@ant-design/icons';
-import { Alert, Button, Input, InputNumber, Select, Slider, Space, Switch, Tabs, Typography, message } from 'antd';
+import { Alert, Button, Input, InputNumber, Select, Slider, Space, Switch, Tabs, Typography, message, theme } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ColorField, FieldPickerCascader, getCaretElement, insertAtCaret, SettingRow, ControlGrid, SaveBar, PreviewPane, SegmentedGroup, ColumnSelect } from '@ptdl/shared';
 import {
@@ -26,11 +26,11 @@ import {
 
 const SHORTCUT = SHORTCUT_LABEL;
 
+// border/background are theme tokens applied at each usage site (see GlobalSearchSettings) —
+// this fixed part only carries the structural (non-color) shell.
 const card: React.CSSProperties = {
-  border: '1px solid #f0f0f0',
   borderRadius: 8,
   padding: '14px 16px',
-  background: '#fff',
   boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 2px 10px rgba(0,0,0,0.04)',
 };
 
@@ -133,6 +133,7 @@ const identityT = (s: string, opts?: Record<string, any>): string =>
 
 export function createGlobalSearchSettings({ useApiClient, t = identityT }: GlobalSearchSettingsDeps): React.FC {
   const GlobalSearchSettings: React.FC = () => {
+    const { token } = theme.useToken();
     const apiClient = useApiClient();
     const [cols, setCols] = useState<CollectionFull[]>([]);
     const [pages, setPages] = useState<PageInfo[]>([]);
@@ -291,8 +292,8 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
           padding: 20,
           maxWidth: 1200,
           margin: '8px auto 16px',
-          background: 'var(--colorBgContainer, #fff)',
-          border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)',
+          background: token.colorBgContainer,
+          border: `0.8px solid ${token.colorBorderSecondary}`,
           borderRadius: 8,
         }}
       >
@@ -336,7 +337,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
           <>
             <Space direction="vertical" size={14} style={{ display: 'flex' }}>
               {scopeRows.map((r, i) => (
-                <div key={i} style={card}>
+                <div key={i} style={{ ...card, border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}>
                   <SettingRow label={t('Collection')} labelWidth={84} style={{ gap: 10, marginBottom: 10 }}>
                     {cols.length ? (
                       <Select
@@ -401,7 +402,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                         { label: t('Template'), value: 'template' },
                       ]}
                     />
-                    <span style={{ width: 'auto', marginLeft: 'auto', color: 'rgba(0,0,0,0.45)', fontSize: 12, flex: 'none' }}>{t('Max results')}</span>
+                    <span style={{ width: 'auto', marginLeft: 'auto', color: token.colorTextTertiary, fontSize: 12, flex: 'none' }}>{t('Max results')}</span>
                     <InputNumber
                       min={1}
                       max={50}
@@ -461,7 +462,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
           {linkRows.map((r, i) => {
             const tpl = templatizeViewUrl(r.url);
             return (
-              <div key={i} style={card}>
+              <div key={i} style={{ ...card, border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}>
                 <SettingRow label={t('Collection')} labelWidth={84} style={{ gap: 10, marginBottom: 10 }}>
                   {collectionSelect(r.collection, (v) => setLinkRow(i, { collection: v }))}
                   <Button
@@ -652,7 +653,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                       style={{ flex: 1, maxWidth: 300 }}
                       disabled={!appearance.label && !appearance.showShortcut}
                     />
-                    <span style={{ width: 74, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                    <span style={{ width: 74, color: token.colorTextTertiary, fontSize: 12 }}>
                       {!appearance.label && !appearance.showShortcut ? t('circle') : `${appearance.width}px`}
                     </span>
                   </SettingRow>
@@ -666,7 +667,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                       style={{ flex: 1, maxWidth: 300 }}
                       disabled={!appearance.label && !appearance.showShortcut}
                     />
-                    <span style={{ width: 74, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                    <span style={{ width: 74, color: token.colorTextTertiary, fontSize: 12 }}>
                       {!appearance.label && !appearance.showShortcut ? t('circle') : `${appearance.radius ?? 16}px`}
                     </span>
                   </SettingRow>
@@ -694,7 +695,7 @@ export function createGlobalSearchSettings({ useApiClient, t = identityT }: Glob
                       onChange={(v) => setAppear({ autoIconBelow: Number(v) })}
                       style={{ flex: 1, maxWidth: 300 }}
                     />
-                    <span style={{ width: 74, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                    <span style={{ width: 74, color: token.colorTextTertiary, fontSize: 12 }}>
                       {(appearance.autoIconBelow ?? 820) > 0 ? `≤ ${appearance.autoIconBelow ?? 820}px` : t('Off')}
                     </span>
                   </SettingRow>

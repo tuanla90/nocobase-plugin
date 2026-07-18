@@ -117,11 +117,12 @@ const SigmaSvg = ({ size = 14 }: { size?: number }) => (
 
 /** Totals-row label: the Lucide "sigma" icon (falls back to an inline Σ) + row count, localized tooltip. */
 function TotalsLabel({ count }: { count: number }) {
+  const { token } = theme.useToken();
   const useLucide = _Icon && _icons?.has?.('lucide-sigma');
   return (
     <span
       title={_t('Tổng')}
-      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--colorTextSecondary,#8c8c8c)', fontWeight: 600 }}
+      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5, color: token.colorTextSecondary, fontWeight: 600 }}
     >
       {useLucide ? <_Icon type="lucide-sigma" style={{ fontSize: 14 }} /> : <SigmaSvg />}
       <span style={{ fontVariantNumeric: 'tabular-nums' }}>{count}</span>
@@ -159,6 +160,7 @@ function QtyStepper({
   const v = num(value);
   const h = size === 'small' ? 24 : 30;
   const acc = usePrimary(accent);
+  const { token } = theme.useToken();
   const justify = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
   // textAlign must target the inner <input> — the wrapper style doesn't reach it.
   const inputCls = css`
@@ -197,10 +199,10 @@ function QtyStepper({
       minWidth: h,
       flexShrink: 0,
       borderRadius: '50%',
-      border: `1px solid ${off ? 'var(--colorBorderSecondary,#f0f0f0)' : isPrimary ? acc : 'var(--colorBorder,#d9d9d9)'}`,
+      border: `1px solid ${off ? token.colorBorderSecondary : isPrimary ? acc : token.colorBorder}`,
       background: 'transparent',
       cursor: off ? 'not-allowed' : 'pointer',
-      color: off ? 'var(--colorTextDisabled,#bbb)' : isPrimary ? acc : 'var(--colorText,#555)',
+      color: off ? token.colorTextDisabled : isPrimary ? acc : token.colorText,
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -229,7 +231,7 @@ function QtyStepper({
     border: 'none',
     background: 'transparent',
     cursor: disabled || (dir < 0 && v <= 0) ? 'not-allowed' : 'pointer',
-    color: disabled || (dir < 0 && v <= 0) ? 'var(--colorTextDisabled,#bbb)' : isPrimary ? acc : 'var(--colorText,#333)',
+    color: disabled || (dir < 0 && v <= 0) ? token.colorTextDisabled : isPrimary ? acc : token.colorText,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -243,10 +245,10 @@ function QtyStepper({
         alignItems: 'center',
         height: h,
         width: fullWidth ? '100%' : 'auto',
-        border: '1px solid var(--colorBorder,#d9d9d9)',
+        border: `1px solid ${token.colorBorder}`,
         borderRadius: h / 2,
         overflow: 'hidden',
-        background: 'var(--colorBgContainer,#fff)',
+        background: token.colorBgContainer,
       }}
     >
       <button
@@ -254,7 +256,7 @@ function QtyStepper({
         style={stepBtn(-1)}
         disabled={disabled || v <= 0}
         onClick={() => onChange(Math.max(0, v - 1))}
-        onMouseEnter={(e) => !(disabled || v <= 0) && (e.currentTarget.style.background = 'var(--colorFillTertiary,#f5f5f5)')}
+        onMouseEnter={(e) => !(disabled || v <= 0) && (e.currentTarget.style.background = token.colorFillTertiary)}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
         <MinusOutlined />
@@ -265,7 +267,7 @@ function QtyStepper({
         style={stepBtn(1, true)}
         disabled={disabled}
         onClick={() => onChange(v + 1)}
-        onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = 'var(--colorPrimaryBg,#e6f4ff)')}
+        onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = token.colorPrimaryBg)}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
         <PlusOutlined />
@@ -276,6 +278,7 @@ function QtyStepper({
 
 // ---- delete affordance --------------------------------------------------------------------------
 function DeleteBtn({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  const { token } = theme.useToken();
   const [hover, setHover] = React.useState(false);
   if (disabled) return null;
   return (
@@ -297,7 +300,7 @@ function DeleteBtn({ onClick, disabled }: { onClick: () => void; disabled?: bool
         height: 24,
         borderRadius: '50%',
         cursor: 'pointer',
-        color: hover ? 'var(--colorError,#ff4d4f)' : 'var(--colorTextTertiary,#bbb)',
+        color: hover ? 'var(--colorError,#ff4d4f)' : token.colorTextTertiary,
         background: hover ? 'var(--colorErrorBg,#fff1f0)' : 'transparent',
         transition: 'all .15s',
       }}
@@ -494,6 +497,7 @@ function ProFooter({ props, ops }: { props: any; ops: any }) {
 // ---- TABLE view ---------------------------------------------------------------------------------
 function TableView(props: any) {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const ops = useRowOps(props);
   const { columns, disabled, allowDisassociation, filterTargetKey = 'id', parentFieldIndex, parentItem } = props;
   const { currentPage, currentPageSize, currentValue } = ops;
@@ -592,7 +596,7 @@ function TableView(props: any) {
         const labelSpan = rawFirstSumIdx > 0 ? rawFirstSumIdx : Math.max(1, finalColumns.length - sumFields.length);
         return (
           <Table.Summary fixed>
-            <Table.Summary.Row style={{ fontWeight: 600, background: 'var(--colorFillQuaternary, #fafafa)' }}>
+            <Table.Summary.Row style={{ fontWeight: 600, background: token.colorFillQuaternary }}>
               <Table.Summary.Cell index={0} colSpan={labelSpan}>
                 <TotalsLabel count={currentValue.length} />
               </Table.Summary.Cell>
@@ -651,6 +655,7 @@ function ProEmpty({ props }: { props: any }) {
 
 // ---- CARD / LIST view ---------------------------------------------------------------------------
 function CardListView(props: any) {
+  const { token } = theme.useToken();
   const ops = useRowOps(props);
   const { currentValue } = ops;
   const mode = props.ptdlViewMode === 'list' ? 'list' : 'cards';
@@ -691,18 +696,18 @@ function CardListView(props: any) {
     ) : null;
     const priceEls = (
       <>
-        {price != null && props.ptdlPriceField && <span style={{ color: 'var(--colorTextTertiary,#999)', fontSize: 13 }}>{formatNumber(price, undefined)}</span>}
-        {lineTotal != null && <span style={{ color: 'var(--colorPrimary,#1677ff)', fontWeight: 600 }}>{formatNumber(lineTotal, undefined)}</span>}
+        {price != null && props.ptdlPriceField && <span style={{ color: token.colorTextTertiary, fontSize: 13 }}>{formatNumber(price, undefined)}</span>}
+        {lineTotal != null && <span style={{ color: token.colorPrimary, fontWeight: 600 }}>{formatNumber(lineTotal, undefined)}</span>}
       </>
     );
 
     if (mode === 'list') {
       return (
-        <div key={absIdx} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderBottom: '1px dashed var(--colorBorderSecondary,#f0f0f0)' }}>
+        <div key={absIdx} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderBottom: `1px dashed ${token.colorBorderSecondary}` }}>
           {img && <img src={img} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title || '—'}</div>
-            {subtitle && <div style={{ fontSize: 12, color: 'var(--colorTextTertiary,#999)' }}>{subtitle}</div>}
+            {subtitle && <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{subtitle}</div>}
           </div>
           <Space size={12}>{priceEls}</Space>
           {stepper}
@@ -711,11 +716,11 @@ function CardListView(props: any) {
       );
     }
     return (
-      <div key={absIdx} style={{ position: 'relative', border: '1px solid var(--colorBorderSecondary,#f0f0f0)', borderRadius: 10, padding: 12, background: 'var(--colorBgContainer,#fff)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div key={absIdx} style={{ position: 'relative', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 10, padding: 12, background: token.colorBgContainer, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {remove && <span style={{ position: 'absolute', top: 8, right: 8 }}>{remove}</span>}
         {img && <img src={img} alt="" style={{ width: '100%', height: 96, objectFit: 'cover', borderRadius: 8 }} />}
         <div style={{ fontWeight: 500, lineHeight: 1.3, paddingRight: 20 }}>{title || '—'}</div>
-        {subtitle && <div style={{ fontSize: 12, color: 'var(--colorTextTertiary,#999)' }}>{subtitle}</div>}
+        {subtitle && <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{subtitle}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
           <Space direction="vertical" size={0}>{priceEls}</Space>
           {stepper}
@@ -728,9 +733,9 @@ function CardListView(props: any) {
 
   return (
     <Form.Item>
-      <div style={{ border: '1px solid var(--colorBorderSecondary,#f0f0f0)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 10, overflow: 'hidden' }}>
         {currentValue.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--colorTextQuaternary,#bbb)' }}>
+          <div style={{ padding: 24, textAlign: 'center', color: token.colorTextQuaternary }}>
             <ProEmpty props={props} />
           </div>
         ) : mode === 'cards' ? (
@@ -739,14 +744,14 @@ function CardListView(props: any) {
           <div>{rows}</div>
         )}
         {showTotals && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '10px 14px', borderTop: '1px solid var(--colorBorderSecondary,#f0f0f0)', background: 'var(--colorFillQuaternary,#fafafa)', fontWeight: 600 }}>
-            <span style={{ color: 'var(--colorTextSecondary,#666)' }}><TotalsLabel count={currentValue.length} /></span>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '10px 14px', borderTop: `1px solid ${token.colorBorderSecondary}`, background: token.colorFillQuaternary, fontWeight: 600 }}>
+            <span style={{ color: token.colorTextSecondary }}><TotalsLabel count={currentValue.length} /></span>
             {sumFields.map((f) => (
               <span key={f}>{formatNumber(totals[f], undefined)}</span>
             ))}
           </div>
         )}
-        <div style={{ padding: '4px 10px', borderTop: '1px solid var(--colorBorderSecondary,#f0f0f0)' }}>
+        <div style={{ padding: '4px 10px', borderTop: `1px solid ${token.colorBorderSecondary}` }}>
           <ProFooter props={props} ops={ops} />
         </div>
       </div>
@@ -833,6 +838,7 @@ function SubtableProField(props: any) {
 function PlusMinusPill({ qty, showCount, size, minusDisabled, onMinus, onPlus, layout = 'pill', accent }: any) {
   const h = size === 'default' ? 32 : 24;
   const acc = usePrimary(accent);
+  const { token } = theme.useToken();
   const numTxt = showCount ? (
     <span style={{ minWidth: size === 'default' ? 40 : 34, padding: '0 8px', textAlign: 'center', fontWeight: 600, fontSize: size === 'default' ? 14 : 13, fontVariantNumeric: 'tabular-nums', lineHeight: `${h}px` }}>
       {groupThousands(qty)}
@@ -845,10 +851,10 @@ function PlusMinusPill({ qty, showCount, size, minusDisabled, onMinus, onPlus, l
       height: h,
       minWidth: h,
       borderRadius: '50%',
-      border: `1px solid ${off ? 'var(--colorBorderSecondary,#f0f0f0)' : isPrimary ? acc : 'var(--colorBorder,#d9d9d9)'}`,
+      border: `1px solid ${off ? token.colorBorderSecondary : isPrimary ? acc : token.colorBorder}`,
       background: 'transparent',
       cursor: off ? 'not-allowed' : 'pointer',
-      color: off ? 'var(--colorTextDisabled,#bbb)' : isPrimary ? acc : 'var(--colorText,#555)',
+      color: off ? token.colorTextDisabled : isPrimary ? acc : token.colorText,
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -875,19 +881,19 @@ function PlusMinusPill({ qty, showCount, size, minusDisabled, onMinus, onPlus, l
     border: 'none',
     background: 'transparent',
     cursor: isDisabled ? 'not-allowed' : 'pointer',
-    color: isDisabled ? 'var(--colorTextDisabled,#bbb)' : isPrimary ? acc : 'var(--colorText,#333)',
+    color: isDisabled ? token.colorTextDisabled : isPrimary ? acc : token.colorText,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: size === 'default' ? 15 : 13,
   });
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', height: h, border: '1px solid var(--colorBorder,#d9d9d9)', borderRadius: h / 2, overflow: 'hidden', background: 'var(--colorBgContainer,#fff)' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', height: h, border: `1px solid ${token.colorBorder}`, borderRadius: h / 2, overflow: 'hidden', background: token.colorBgContainer }}>
       <button type="button" style={stepBtn(false, minusDisabled)} disabled={minusDisabled} onClick={onMinus}>
         <MinusOutlined />
       </button>
       {showCount && (
-        <span style={{ minWidth: size === 'default' ? 44 : 36, padding: '0 8px', textAlign: 'center', fontWeight: 600, fontSize: size === 'default' ? 14 : 13, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid var(--colorBorderSecondary,#f0f0f0)', borderRight: '1px solid var(--colorBorderSecondary,#f0f0f0)', lineHeight: `${h}px` }}>
+        <span style={{ minWidth: size === 'default' ? 44 : 36, padding: '0 8px', textAlign: 'center', fontWeight: 600, fontSize: size === 'default' ? 14 : 13, fontVariantNumeric: 'tabular-nums', borderLeft: `1px solid ${token.colorBorderSecondary}`, borderRight: `1px solid ${token.colorBorderSecondary}`, lineHeight: `${h}px` }}>
           {groupThousands(qty)}
         </span>
       )}
@@ -944,12 +950,13 @@ function BridgeActionControl({ model }: { model: any }) {
 // Live preview for the action settings dialog — reads the form values, renders the chosen control.
 const PtdlActionPreview: any = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const v = form?.values || {};
   const display = v.ptdlDisplay || 'plusminus';
   const size = v.ptdlSize === 'default' ? 'default' : 'small';
   const [qty, setQty] = React.useState(1234);
-  const box: React.CSSProperties = { padding: '12px 14px', background: 'var(--colorFillQuaternary,#fafafa)', borderRadius: 8, border: '1px dashed #d9d9d9', display: 'inline-flex', gap: 12, alignItems: 'center' };
-  const hint = <span style={{ color: '#999', fontSize: 12 }}>{_t('Ví dụ')}</span>;
+  const box: React.CSSProperties = { padding: '12px 14px', background: token.colorFillQuaternary, borderRadius: 8, border: `1px dashed ${token.colorBorder}`, display: 'inline-flex', gap: 12, alignItems: 'center' };
+  const hint = <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>{_t('Ví dụ')}</span>;
   if (display === 'button') {
     return (
       <div style={box}>
@@ -979,6 +986,7 @@ const PtdlActionPreview: any = observer(() => {
 // Live preview for the Sub-table Pro settings dialog — shows the qty stepper in the chosen style + totals.
 const PtdlSubtablePreview: any = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const v = form?.values || {};
   const [qty, setQty] = React.useState(12);
   const hasQty = !!v.qtyField;
@@ -986,20 +994,20 @@ const PtdlSubtablePreview: any = observer(() => {
   const full = v.stepperFullWidth !== false;
   const hasTotals = v.showTotals !== false && Array.isArray(v.sumFields) && v.sumFields.length > 0;
   return (
-    <div style={{ padding: '14px 16px', background: 'var(--colorFillQuaternary,#fafafa)', borderRadius: 8, border: '1px dashed #d9d9d9' }}>
+    <div style={{ padding: '14px 16px', background: token.colorFillQuaternary, borderRadius: 8, border: `1px dashed ${token.colorBorder}` }}>
       {hasQty ? (
         <div>
-          <div style={{ fontSize: 11, color: '#999', marginBottom: 6 }}>{_t('Nút số lượng')}{full ? ` (${_t('full-width theo cột')})` : ''}</div>
-          <div style={{ width: full ? 200 : 'auto', border: full ? '1px dashed var(--colorBorderSecondary,#e0e0e0)' : 'none', borderRadius: 6, padding: full ? 4 : 0 }}>
+          <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 6 }}>{_t('Nút số lượng')}{full ? ` (${_t('full-width theo cột')})` : ''}</div>
+          <div style={{ width: full ? 200 : 'auto', border: full ? `1px dashed ${token.colorBorderSecondary}` : 'none', borderRadius: 6, padding: full ? 4 : 0 }}>
             <QtyStepper size="small" layout={style} fullWidth={full} align={v.stepperAlign || 'center'} accent={v.stepperColor} value={qty} onChange={setQty} />
           </div>
         </div>
       ) : (
-        <span style={{ color: '#999', fontSize: 12 }}>{_t('Chọn "Cột số lượng" để bật nút +/−')}</span>
+        <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>{_t('Chọn "Cột số lượng" để bật nút +/−')}</span>
       )}
       {hasTotals && (
-        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 16, fontWeight: 600, borderTop: '1px solid var(--colorBorderSecondary,#eee)', paddingTop: 8 }}>
-          <span style={{ color: '#888' }}><TotalsLabel count={3} /></span>
+        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 16, fontWeight: 600, borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 8 }}>
+          <span style={{ color: token.colorTextSecondary }}><TotalsLabel count={3} /></span>
           <span>1.680.000</span>
         </div>
       )}

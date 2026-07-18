@@ -1,5 +1,5 @@
 import { SearchOutlined } from '@ant-design/icons';
-import { Button, Descriptions, Drawer, Empty, Input, Modal, Select, Spin, Typography } from 'antd';
+import { Button, Descriptions, Drawer, Empty, Input, Modal, Select, Spin, Typography, theme } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { interpolate } from '@ptdl/shared';
@@ -549,6 +549,7 @@ export function createGlobalSearch({ useApiClient, t = (s) => s }: GlobalSearchD
     onClose,
     onOpen,
   }) => {
+    const { token } = theme.useToken();
     const apiClient = useApiClient();
     const [targets, setTargets] = useState<SearchTarget[]>([]);
     const [targetsReady, setTargetsReady] = useState(false);
@@ -700,7 +701,7 @@ export function createGlobalSearch({ useApiClient, t = (s) => s }: GlobalSearchD
                     onMouseEnter={() => setSel(i)}
                     style={{
                       cursor: 'pointer',
-                      background: active ? 'rgba(0,0,0,0.06)' : undefined,
+                      background: active ? token.colorFillTertiary : undefined,
                       borderRadius: 6,
                       padding: '6px 8px',
                     }}

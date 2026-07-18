@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, ConfigProvider } from 'antd';
+import { Button, ConfigProvider, theme } from 'antd';
 import { StarOutlined } from '@ant-design/icons';
 import { observer, useForm } from '@formily/react';
 import { ColorField, SettingsGrid } from '@ptdl/shared';
@@ -88,13 +88,14 @@ function buildButtonTokens(s: BtnStyle): Record<string, any> {
 const ButtonColourPreview: any = observer(() => {
   const form: any = useForm();
   const v: BtnStyle = (form && form.values) || {};
+  const { token } = theme.useToken();
   return (
     <div
       style={{
         padding: '10px 12px',
-        background: 'var(--colorFillQuaternary, #fafafa)',
+        background: token.colorFillQuaternary,
         borderRadius: 6,
-        border: '1px dashed #d9d9d9',
+        border: `1px dashed ${token.colorBorder}`,
         display: 'flex',
         gap: 12,
         alignItems: 'center',

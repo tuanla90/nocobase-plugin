@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Space, Tooltip, theme } from 'antd';
 import { useForm, observer } from '@formily/react';
 import { ChevronRight, Info } from 'lucide-react';
 import { ColorField } from './colorField';
@@ -45,12 +45,13 @@ export function ConfigContainer({
   style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
+  const { token } = theme.useToken();
   return (
     <div style={{ padding: '8px 16px 16px', maxWidth, margin: '0 auto' }}>
       <div
         style={{
-          background: 'var(--colorBgContainer, #fff)',
-          border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)',
+          background: token.colorBgContainer,
+          border: `0.8px solid ${token.colorBorderSecondary}`,
           borderRadius: 8,
           padding: padded ? 16 : 0,
           ...style,
@@ -133,15 +134,16 @@ export function ResetButton(props: any) {
 /** Preview chrome — a "Preview" label + a dashed bordered box (unifies the drifted per-plugin boxes). */
 export function PreviewBox(props: any) {
   const { label = 'Preview', children, style } = props;
+  const { token } = theme.useToken();
   return (
     <div style={style}>
-      <div style={{ fontSize: 12, color: 'var(--colorTextTertiary, #8c8c8c)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>{label}</div>
       <div
         style={{
-          border: '1px dashed var(--colorBorder, #d9d9d9)',
+          border: `1px dashed ${token.colorBorder}`,
           borderRadius: 6,
           padding: 12,
-          background: 'var(--colorBgLayout, #fafafa)',
+          background: token.colorBgLayout,
         }}
       >
         {children}
@@ -157,8 +159,9 @@ export function PreviewBox(props: any) {
 export function CollapsibleSection(props: any) {
   const { title, defaultOpen = true, children, style } = props;
   const [open, setOpen] = React.useState(!!defaultOpen);
+  const { token } = theme.useToken();
   return (
-    <div style={{ borderTop: '1px solid var(--colorBorderSecondary, #f0f0f0)', ...style }}>
+    <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, ...style }}>
       <div
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -238,11 +241,12 @@ export function colorStrip(
 /** Muted info icon with a hover tooltip — surface per-control detail without wrapping inline text
  *  (replaces the drifted `InfoCircleOutlined` / `ⓘ`-glyph copies). */
 export function Hint(props: { tip: React.ReactNode }) {
+  const { token } = theme.useToken();
   return (
     <Tooltip title={props.tip}>
       <Info
         size={13}
-        style={{ color: 'var(--colorTextQuaternary, rgba(0,0,0,0.3))', cursor: 'help', flex: 'none', verticalAlign: 'middle' }}
+        style={{ color: token.colorTextQuaternary, cursor: 'help', flex: 'none', verticalAlign: 'middle' }}
       />
     </Tooltip>
   );
@@ -260,6 +264,7 @@ export function SettingRow(props: {
   children?: React.ReactNode;
 }) {
   const { label, hint, layout = 'horizontal', labelWidth = 96, align = 'center', children, style } = props;
+  const { token } = theme.useToken();
   if (layout === 'vertical') {
     return (
       <div style={{ marginBottom: 12, ...style }}>
@@ -277,7 +282,7 @@ export function SettingRow(props: {
         style={{
           width: labelWidth,
           flex: 'none',
-          color: 'var(--colorTextTertiary, rgba(0,0,0,0.45))',
+          color: token.colorTextTertiary,
           fontSize: 12,
           paddingTop: align === 'start' ? 6 : undefined,
         }}
@@ -316,13 +321,14 @@ export function ControlGrid(props: {
 
 /** Card shell for one row of a repeating-list editor (rules / conditions / targets). */
 export function SettingCard(props: { style?: React.CSSProperties; children?: React.ReactNode }) {
+  const { token } = theme.useToken();
   return (
     <div
       style={{
-        border: '1px solid var(--colorBorderSecondary, #f0f0f0)',
+        border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 8,
         padding: '14px 16px',
-        background: 'var(--colorBgContainer, #fff)',
+        background: token.colorBgContainer,
         boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         ...props.style,
       }}
@@ -366,15 +372,16 @@ export function PreviewPane(props: {
   children?: React.ReactNode;
 }) {
   const { label = 'Preview', boxStyle, style, children } = props;
+  const { token } = theme.useToken();
   return (
     <div style={style}>
-      <div style={{ fontSize: 12, color: 'var(--colorTextTertiary, #8c8c8c)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 6 }}>{label}</div>
       <div
         style={{
-          border: '1px dashed var(--colorBorder, #d9d9d9)',
+          border: `1px dashed ${token.colorBorder}`,
           borderRadius: 8,
           padding: 14,
-          background: 'var(--colorBgLayout, #fafafa)',
+          background: token.colorBgLayout,
           ...boxStyle,
         }}
       >

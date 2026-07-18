@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Modal, Button, Space } from 'antd';
+import { Modal, Button, Space, theme } from 'antd';
 import { PermissionHelp } from './permissionHelp';
 import { t } from './i18n';
 
@@ -38,6 +38,7 @@ function fmt(sec: number): string {
 }
 
 export const AudioRecorderModal: React.FC<AudioRecorderProps> = ({ open, onClose, onDone, maxSec, title }) => {
+  const { token } = theme.useToken();
   const streamRef = useRef<MediaStream | null>(null);
   const recRef = useRef<any>(null);
   const chunksRef = useRef<BlobData[]>([] as any);
@@ -137,11 +138,11 @@ export const AudioRecorderModal: React.FC<AudioRecorderProps> = ({ open, onClose
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center', padding: '8px 0' }}>
         {phase === 'error' ? (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {denied ? <PermissionHelp kind="microphone" compact onRetry={start} /> : <div style={{ textAlign: 'center', color: '#8c8c8c' }}>{errMsg}</div>}
+            {denied ? <PermissionHelp kind="microphone" compact onRetry={start} /> : <div style={{ textAlign: 'center', color: token.colorTextSecondary }}>{errMsg}</div>}
           </div>
         ) : phase === 'recorded' ? (
           <>
-            <div style={{ fontSize: 13, color: '#8c8c8c' }}>{t('Thời lượng')}: <b>{fmt(elapsed)}</b></div>
+            <div style={{ fontSize: 13, color: token.colorTextSecondary }}>{t('Thời lượng')}: <b>{fmt(elapsed)}</b></div>
             <audio src={blobUrl} controls style={{ width: '100%' }} />
             <Space style={{ justifyContent: 'space-between', width: '100%' }}>
               <Button onClick={() => { reset(); }}>↺ {t('Ghi lại')}</Button>
@@ -152,11 +153,11 @@ export const AudioRecorderModal: React.FC<AudioRecorderProps> = ({ open, onClose
           <>
             <div style={{
               width: 84, height: 84, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 34, background: phase === 'recording' ? 'rgba(245,34,45,.12)' : 'var(--colorFillQuaternary, #f5f5f5)',
-              border: phase === 'recording' ? '3px solid #f5222d' : '3px solid var(--colorBorder, #d9d9d9)',
+              fontSize: 34, background: phase === 'recording' ? 'rgba(245,34,45,.12)' : token.colorFillQuaternary,
+              border: phase === 'recording' ? '3px solid #f5222d' : `3px solid ${token.colorBorder}`,
               animation: phase === 'recording' ? 'ptdlPulse 1.2s ease-in-out infinite' : 'none',
             }}>🎙️</div>
-            <div style={{ fontVariantNumeric: 'tabular-nums', fontSize: 20, fontWeight: 600 }}>{fmt(elapsed)} <span style={{ fontSize: 12, color: '#bfbfbf', fontWeight: 400 }}>/ {fmt(maxSec)}</span></div>
+            <div style={{ fontVariantNumeric: 'tabular-nums', fontSize: 20, fontWeight: 600 }}>{fmt(elapsed)} <span style={{ fontSize: 12, color: token.colorTextQuaternary, fontWeight: 400 }}>/ {fmt(maxSec)}</span></div>
             {phase === 'recording'
               ? <Button danger type="primary" size="large" onClick={stop}>⏹ {t('Dừng')}</Button>
               : <Button type="primary" size="large" onClick={start}>● {t('Bắt đầu ghi')}</Button>}

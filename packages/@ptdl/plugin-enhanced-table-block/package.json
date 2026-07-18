@@ -5,7 +5,7 @@
   "displayName.zh-CN": "区块：增强表格",
   "description": "Enhanced table block with an aggregate summary row (sum, average, count, distinct, min, max; bottom or sticky-top), instant stats when you drag-select cells, and a responsive card mode that stacks rows as cards on narrow screens. Works on V1 and V2 pages.",
   "description.zh-CN": "增强表格区块，支持汇总行和圈选求和功能",
-  "version": "2.1.0-beta.16",
+  "version": "2.1.0-beta.17",
   "homepage": "https://tuanla90.github.io/nocobase-plugin/#enhanced-table-block",
   "homepage.zh-CN": "https://github.com/OneTwoSmall/nocobase-custom-plugins/blob/main/plugins/%40nocobase/plugin-enhanced-table-block/README.zh-CN.md",
   "license": "AGPL-3.0",

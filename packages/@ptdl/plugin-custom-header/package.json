@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Tiêu đề tùy biến",
   "displayName.zh-CN": "自定义页头",
   "description": "Style titles and labels across both clients — page header, table column headers, form/detail field labels, and block titles. Set a prefix icon, text color, size, bold, background (solid or gradient), and alignment. Field-level defaults show the style in every view.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

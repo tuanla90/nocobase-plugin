@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Select, DatePicker, Space, Input } from 'antd';
+import { Select, DatePicker, Space, Input, theme } from 'antd';
 import { Filter as FilterIcon, Calendar as CalendarIcon, ChevronDown as ChevronIcon } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
@@ -181,6 +181,7 @@ function applyFilter(actionModel: any) {
 /** The live inline filter bar rendered by the action. Values live ON THE MODEL (survive remounts, like the
  *  search bar); a ref-held debounce applies them; nothing is cleared on unmount. */
 function FilterBarInline({ actionModel }: { actionModel: any }) {
+  const { token } = theme.useToken();
   const [meta, setMeta] = useState<Record<string, FieldMeta>>({});
   const [relOpts, setRelOpts] = useState<Record<string, Array<{ label: string; value: any }>>>({});
   const [, force] = useState(0);
@@ -269,9 +270,9 @@ function FilterBarInline({ actionModel }: { actionModel: any }) {
           gap: 6,
           height: 32,
           padding: '0 12px',
-          border: '1px dashed var(--colorBorder, #d9d9d9)',
+          border: `1px dashed ${token.colorBorder}`,
           borderRadius: 8,
-          color: 'var(--colorTextTertiary, #8c8c8c)',
+          color: token.colorTextTertiary,
           fontSize: 13,
           whiteSpace: 'nowrap',
         }}
@@ -419,6 +420,7 @@ function defaultControl(m: FieldMeta | undefined, value: any, onChange: (v: any)
  *  `{ [field]: { default, placeholder } }`. Reactive to the field picker above. */
 const FilterColumnsEditor: any = observer((p: any) => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const names: string[] = Array.isArray(form?.values?.ptdlFilterFields) ? form.values.ptdlFilterFields : [];
   let model: any = null;
   try {
@@ -459,10 +461,10 @@ const FilterColumnsEditor: any = observer((p: any) => {
     else delete next[name];
     p.onChange && p.onChange(next);
   };
-  if (!names.length) return <span style={{ color: '#999', fontSize: 12 }}>{t('Pick columns first')}</span>;
+  if (!names.length) return <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>{t('Pick columns first')}</span>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--colorTextQuaternary, #aaa)' }}>
+      <div style={{ display: 'flex', gap: 8, fontSize: 11, color: token.colorTextQuaternary }}>
         <span style={{ width: 116, flex: 'none' }} />
         <span style={{ flex: 1 }}>{t('Default values')}</span>
         <span style={{ flex: 1 }}>{t('Custom placeholders')}</span>
@@ -474,7 +476,7 @@ const FilterColumnsEditor: any = observer((p: any) => {
           <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span
               title={(m && m.title) || name}
-              style={{ width: 116, flex: 'none', color: 'var(--colorTextTertiary, #8c8c8c)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              style={{ width: 116, flex: 'none', color: token.colorTextTertiary, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {(m && m.title) || name}
             </span>
@@ -497,6 +499,7 @@ const FilterColumnsEditor: any = observer((p: any) => {
 /** Live preview — reactive disabled controls mirroring the picked columns (fetches meta for the kind labels). */
 const FilterBarPreview: any = observer(() => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const v = (form && form.values) || {};
   const names: string[] = Array.isArray(v.ptdlFilterFields) ? v.ptdlFilterFields : [];
   let model: any = null;
@@ -521,7 +524,7 @@ const FilterBarPreview: any = observer(() => {
   }, [model]);
   const w = WIDTH_PX[v.ptdlControlWidth] || 180;
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <div style={{ padding: '10px 12px', background: token.colorFillQuaternary, borderRadius: 6, border: `1px dashed ${token.colorBorder}` }}>
       {names.length ? (
         <Space wrap size={8}>
           {names.map((name) => {

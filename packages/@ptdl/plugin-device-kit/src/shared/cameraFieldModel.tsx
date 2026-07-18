@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Button, Select, Slider, Switch, Input, message } from 'antd';
+import { Button, Select, Slider, Switch, Input, message, theme } from 'antd';
 import { SettingsGrid, fi, ResetButton, CollapsibleSection, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
 import { CameraCaptureModal } from './cameraModal';
 import { getCurrentUserName, currentUserNameSync } from './user';
@@ -215,11 +215,12 @@ const C_DimSel = (props: any) => (
   />
 );
 const C_Quality = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : 0.72;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
       <Slider min={0.4} max={0.95} step={0.01} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 34, textAlign: 'right', color: '#888' }}>{Math.round(v * 100)}%</span>
+      <span style={{ width: 34, textAlign: 'right', color: token.colorTextTertiary }}>{Math.round(v * 100)}%</span>
     </div>
   );
 };

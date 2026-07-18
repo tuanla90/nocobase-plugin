@@ -18,6 +18,7 @@ import {
   Tooltip,
   Typography,
   message,
+  theme,
 } from 'antd';
 import { DatabaseOutlined, FileExcelOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import { ColumnSelect } from '@ptdl/shared';
@@ -167,12 +168,12 @@ const EMPTY: Conn = {
 };
 
 // Card container matching the other @ptdl settings screens (global-search / html-template).
+// background/border are theme tokens applied at the usage site (see ConnectionManager) — this
+// fixed part only carries the structural (non-color) shell.
 const CONTAINER: React.CSSProperties = {
   padding: 20,
   maxWidth: 1200,
   margin: '8px auto 16px',
-  background: 'var(--colorBgContainer, #fff)',
-  border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)',
   borderRadius: 8,
 };
 const LOGO: React.CSSProperties = {
@@ -242,6 +243,7 @@ export function createConnectionManager({ useApiClient }: { useApiClient: () => 
   );
 
   return function ConnectionManager() {
+    const { token } = theme.useToken();
     const api = useApiClient();
     const [rows, setRows] = useState<Conn[]>([]);
     const [loading, setLoading] = useState(false);
@@ -776,7 +778,7 @@ export function createConnectionManager({ useApiClient }: { useApiClient: () => 
     const errCount = rows.filter((r) => r.lastStatus === 'error').length;
 
     return (
-      <div style={CONTAINER}>
+      <div style={{ ...CONTAINER, background: token.colorBgContainer, border: `0.8px solid ${token.colorBorderSecondary}` }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 240 }}>
             <Typography.Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>

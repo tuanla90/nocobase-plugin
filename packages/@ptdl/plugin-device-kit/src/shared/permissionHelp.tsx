@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from 'antd';
+import { Button, theme } from 'antd';
 import { getPlatform, type PlatformKind } from './deviceInfo';
 import { t } from './i18n';
 
@@ -46,6 +46,7 @@ function steps(kind: PermKind, platform: PlatformKind): string[] {
 }
 
 export const PermissionHelp: React.FC<{ kind: PermKind; onRetry?: () => void; compact?: boolean }> = ({ kind, onRetry, compact }) => {
+  const { token } = theme.useToken();
   const platform = getPlatform();
   const list = steps(kind, platform);
   const title = kind === 'camera'
@@ -70,7 +71,7 @@ export const PermissionHelp: React.FC<{ kind: PermKind; onRetry?: () => void; co
         <span style={{ fontSize: 18, lineHeight: 1 }}>{kind === 'camera' ? '📷' : kind === 'microphone' ? '🎙️' : '📍'}</span>
         <span>{title}</span>
       </div>
-      <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--colorText, #555)', fontSize: 13, lineHeight: 1.5 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4, color: token.colorText, fontSize: 13, lineHeight: 1.5 }}>
         {list.map((s, i) => <li key={i}>{s}</li>)}
       </ol>
       {onRetry && (

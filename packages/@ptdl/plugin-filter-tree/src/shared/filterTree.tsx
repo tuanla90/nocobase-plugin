@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge, Button, Cascader, DatePicker, Empty, Input, InputNumber, Select, Space, Spin, Switch, Tabs } from 'antd';
+import { Badge, Button, Cascader, DatePicker, Empty, Input, InputNumber, Select, Space, Spin, Switch, Tabs, theme } from 'antd';
 import dayjs from 'dayjs';
 import { observer, useForm, RecursionField, useFieldSchema } from '@formily/react';
 import { ColorField, getFields, IconByKey, RegistryIconPicker, setIconRegistry, SettingsGrid, rx, onLiveRefresh, SegmentedGroup } from '@ptdl/shared';
@@ -488,6 +488,7 @@ const isVarValue = (v: any) => typeof v === 'string' && /^\{\{[\s\S]*\}\}$/.test
 // A value input for a scope condition, adapting to the field's type/enum, the operator (date presets),
 // and a variable toggle (blue 𝑥) to filter by e.g. the current user.
 function ScopeValueInput({ meta, op, value, onChange }: { meta: any; op: string; value: any; onChange: (v: any) => void }) {
+  const { token } = theme.useToken();
   const m = SCOPE_OP_META[op];
   if (m?.noValue) return null;
   // Date operators → relative-preset / exact-date picker (server resolves the descriptor).
@@ -531,7 +532,7 @@ function ScopeValueInput({ meta, op, value, onChange }: { meta: any; op: string;
     input = (
       <Space size={6}>
         <Switch size="small" checked={value === 'true'} onChange={(c: boolean) => onChange(c ? 'true' : 'false')} />
-        <span style={{ fontSize: 12, color: '#888' }}>{value === 'true' ? 'true' : 'false'}</span>
+        <span style={{ fontSize: 12, color: token.colorTextSecondary }}>{value === 'true' ? 'true' : 'false'}</span>
       </Space>
     );
   } else if (NUMERIC_TYPES.has(type)) {
@@ -626,6 +627,7 @@ function decodeScope(json?: string): { conj: string; conds: ScopeCond[] } | null
 
 const PtdlScopeBuilder = observer((props: any) => {
   const { value, onChange } = props;
+  const { token } = theme.useToken();
   const form: any = useForm();
   const collection = form?.values?.collectionName;
   const dataSourceKey = form?.values?.dataSourceKey || 'main';
@@ -710,13 +712,13 @@ const PtdlScopeBuilder = observer((props: any) => {
       </div>
     );
   }
-  if (!collection) return <span style={{ color: '#999', fontSize: 12 }}>Pick a collection first.</span>;
+  if (!collection) return <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>Pick a collection first.</span>;
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 12, color: '#888', marginRight: 8 }}>Meet</span>
+        <span style={{ fontSize: 12, color: token.colorTextTertiary, marginRight: 8 }}>Meet</span>
         <Select size="small" value={conj} style={{ width: 110 }} onChange={(v: any) => apply(v, conds)} options={[{ value: '$and', label: 'All' }, { value: '$or', label: 'Any' }]} />
-        <span style={{ fontSize: 12, color: '#888', marginLeft: 8 }}>conditions</span>
+        <span style={{ fontSize: 12, color: token.colorTextTertiary, marginLeft: 8 }}>conditions</span>
       </div>
       <Space direction="vertical" style={{ width: '100%' }} size={6}>
         {conds.map((c, i) => {
@@ -769,6 +771,7 @@ type ValueStyle = { icon?: string; color?: string };
 
 const PtdlValueStyles = observer((props: any) => {
   const { value, onChange } = props;
+  const { token } = theme.useToken();
   const form: any = useForm();
   const collection = form?.values?.collectionName;
   const field = form?.values?.fieldPath;
@@ -802,9 +805,9 @@ const PtdlValueStyles = observer((props: any) => {
   const map: Record<string, ValueStyle> = value || {};
   const setOne = (key: string, patch: ValueStyle) => onChange?.({ ...map, [key]: { ...(map[key] || {}), ...patch } });
 
-  if (!collection || !field) return <span style={{ color: '#999', fontSize: 12 }}>Pick a collection + group field first.</span>;
+  if (!collection || !field) return <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>Pick a collection + group field first.</span>;
   if (loading && !values.length) return <Spin size="small" />;
-  if (!values.length) return <span style={{ color: '#999', fontSize: 12 }}>No values found to style.</span>;
+  if (!values.length) return <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>No values found to style.</span>;
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size={6}>
@@ -1201,6 +1204,7 @@ function FilterSearchBox({ model, cfg, size = 'middle', value, onChange, style }
 // A small "reset" button — clears both the group selection and the search text. Always shown (icon
 // always visible); DISABLED when there's nothing to reset. Shared by both views.
 function ResetFilterButton({ label, onReset, size, disabled }: { label?: string; onReset: () => void; size?: 'small' | 'middle' | 'large'; disabled?: boolean }) {
+  const { token } = theme.useToken();
   return (
     <Button
       size={size === 'small' ? 'small' : 'middle'}
@@ -1208,7 +1212,7 @@ function ResetFilterButton({ label, onReset, size, disabled }: { label?: string;
       disabled={disabled}
       onClick={onReset}
       icon={<span style={{ fontSize: 13, display: 'inline-block', lineHeight: 1 }}>↺</span>}
-      style={{ color: disabled ? undefined : 'var(--colorTextSecondary, #666)', paddingInline: 8, flex: 'none' }}
+      style={{ color: disabled ? undefined : token.colorTextSecondary, paddingInline: 8, flex: 'none' }}
     >
       {label || rt('Reset')}
     </Button>
@@ -1216,6 +1220,7 @@ function ResetFilterButton({ label, onReset, size, disabled }: { label?: string;
 }
 
 function FilterTreeView({ model, cfg }: { model: any; cfg: TreeCfg }) {
+  const { token } = theme.useToken();
   const [, force] = React.useReducer((x) => x + 1, 0);
   const gf = groupFieldsOf(cfg);
   const nested = gf.length > 1;
@@ -1289,7 +1294,7 @@ function FilterTreeView({ model, cfg }: { model: any; cfg: TreeCfg }) {
       />
     );
 
-  const GREY = 'var(--colorFillSecondary, #f0f0f0)';
+  const GREY = token.colorFillSecondary;
   const styles = cfg.valueStyles || {};
   const total = reduceMetric(cfg.metric, roots.map((r) => r.metric).filter((x): x is number => typeof x === 'number'));
   // Accent: mono → one color; colorful → level-1 value color (deeper levels have no per-value color).
@@ -1320,13 +1325,13 @@ function FilterTreeView({ model, cfg }: { model: any; cfg: TreeCfg }) {
 
   const RowInner = ({ label, badgeText, active, icon, color, accent, depth, hasChildren, open, onToggle, onClick }: any) => {
     const badgeBg = accent || GREY;
-    const activeBg = active ? tint(accent) || 'var(--colorPrimaryBg, #e6f4ff)' : 'transparent';
+    const activeBg = active ? tint(accent) || token.colorPrimaryBg : 'transparent';
     return (
       <div
         style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%', minWidth: 0, boxSizing: 'border-box', borderRadius: 6, background: activeBg, paddingLeft: 4 + depth * 14 }}
       >
         {hasChildren ? (
-          <span onClick={(e: any) => { e.stopPropagation(); onToggle(); }} style={{ cursor: 'pointer', width: 16, textAlign: 'center', color: '#999', flex: 'none', userSelect: 'none' }}>
+          <span onClick={(e: any) => { e.stopPropagation(); onToggle(); }} style={{ cursor: 'pointer', width: 16, textAlign: 'center', color: token.colorTextTertiary, flex: 'none', userSelect: 'none' }}>
             {open ? '▾' : '▸'}
           </span>
         ) : (
@@ -1335,10 +1340,10 @@ function FilterTreeView({ model, cfg }: { model: any; cfg: TreeCfg }) {
         <div onClick={(e: any) => onClick?.(e)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 auto', minWidth: 0, cursor: 'pointer', padding: '6px 8px 6px 0', fontWeight: active ? 600 : 400 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, overflow: 'hidden', minWidth: 0, flex: '1 1 auto' }}>
             {icon ? <StyledIcon type={icon} style={{ color: color || undefined, fontSize: 15, flex: 'none' }} /> : null}
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, color: color || (active ? 'var(--colorPrimary, #1677ff)' : undefined) }}>{label}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, color: color || (active ? token.colorPrimary : undefined) }}>{label}</span>
           </span>
           {badgeText !== '' && badgeText != null && (
-            <Badge count={badgeText} style={{ backgroundColor: badgeBg, color: accent ? '#fff' : 'var(--colorText, #333)', boxShadow: 'none', flex: 'none' }} />
+            <Badge count={badgeText} style={{ backgroundColor: badgeBg, color: accent ? '#fff' : token.colorText, boxShadow: 'none', flex: 'none' }} />
           )}
         </div>
       </div>
@@ -1381,7 +1386,7 @@ function FilterTreeView({ model, cfg }: { model: any; cfg: TreeCfg }) {
       ) : null}
       <RowInner label={rt('All')} badgeText={fmtValue(total, cfg)} active={selectedPaths.length === 0} accent={accentOf(-1, undefined)} depth={0} hasChildren={false} onClick={() => apply([])} />
       {visRoots.map((n) => renderNode(n, 0))}
-      {visibleFlat.length > 1 ? <div style={{ fontSize: 11, color: 'var(--colorTextTertiary, #999)', padding: '4px 8px' }}>{rt('Ctrl/⌘ or Shift-click to select multiple')}</div> : null}
+      {visibleFlat.length > 1 ? <div style={{ fontSize: 11, color: token.colorTextTertiary, padding: '4px 8px' }}>{rt('Ctrl/⌘ or Shift-click to select multiple')}</div> : null}
     </div>
   );
 }
@@ -1394,10 +1399,11 @@ function hasChildrenAnywhere(roots: TreeNode[]): boolean {
 // Same data engine as the tree (one GROUP BY :query → counts; pushFilterMulti to connected blocks),
 // but SINGLE level rendered as a horizontal row of items. Three skins (user-chosen in settings):
 // pill (rounded chips, like the screenshot), segmented (antd Segmented), tab (antd Tabs underline).
-const BAR_GREY = 'var(--colorFillSecondary, #f0f0f0)';
 const ALL_KEY = '__all__';
 
 function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
+  const { token } = theme.useToken();
+  const BAR_GREY = token.colorFillSecondary;
   const [, force] = React.useReducer((x) => x + 1, 0);
   const field = cfg.fieldPath as string;
   const gf = React.useMemo(() => [field], [field]);
@@ -1509,7 +1515,7 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
           lineHeight: '18px',
           textAlign: 'center',
           background: accentOf(it.value) || BAR_GREY,
-          color: accentOf(it.value) ? '#fff' : 'var(--colorTextSecondary, #666)',
+          color: accentOf(it.value) ? '#fff' : token.colorTextSecondary,
         }}
       >
         {fmtValue(it.metric, cfg)}
@@ -1536,9 +1542,9 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
     // the active underline follows accentOf() (mono colour / per-value colour) instead of the theme primary.
     const fontSize = size === 'small' ? 12 : 13;
     control = (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: justify, alignItems: 'flex-end', borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)', width: '100%' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: justify, alignItems: 'flex-end', borderBottom: `1px solid ${token.colorBorderSecondary}`, width: '100%' }}>
         {items.map((it) => {
-          const accent = accentOf(it.value) || 'var(--colorPrimary, #1677ff)';
+          const accent = accentOf(it.value) || token.colorPrimary;
           return (
             <div
               key={it.key}
@@ -1554,7 +1560,7 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
                 fontSize,
                 marginBottom: -1,
                 borderBottom: `2px solid ${it.active ? accent : 'transparent'}`,
-                color: it.active ? accent : it.color || 'var(--colorText, #333)',
+                color: it.active ? accent : it.color || token.colorText,
                 fontWeight: it.active ? 600 : 400,
               }}
             >
@@ -1573,7 +1579,7 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
     control = (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: justify, alignItems: 'center', width: '100%' }}>
         {items.map((it) => {
-          const accent = accentOf(it.value) || 'var(--colorPrimary, #1677ff)';
+          const accent = accentOf(it.value) || token.colorPrimary;
           return (
             <div
               key={it.key}
@@ -1589,9 +1595,9 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
                 borderRadius: 999,
                 whiteSpace: 'nowrap',
                 transition: 'all .15s',
-                border: `1px solid ${it.active ? accent : 'var(--colorBorder, #d9d9d9)'}`,
-                background: it.active ? accent : 'var(--colorBgContainer, #fff)',
-                color: it.active ? '#fff' : it.color || 'var(--colorText, #333)',
+                border: `1px solid ${it.active ? accent : token.colorBorder}`,
+                background: it.active ? accent : token.colorBgContainer,
+                color: it.active ? '#fff' : it.color || token.colorText,
                 fontWeight: it.active ? 600 : 400,
               }}
             >
@@ -1608,7 +1614,7 @@ function FilterBarView({ model, cfg }: { model: any; cfg: TreeCfg }) {
                     lineHeight: '18px',
                     textAlign: 'center',
                     background: it.active ? 'rgba(255,255,255,0.26)' : accentOf(it.value) || BAR_GREY,
-                    color: it.active ? '#fff' : accentOf(it.value) ? '#fff' : 'var(--colorTextSecondary, #666)',
+                    color: it.active ? '#fff' : accentOf(it.value) ? '#fff' : token.colorTextSecondary,
                   }}
                 >
                   {fmtValue(it.metric, cfg)}
@@ -1861,6 +1867,7 @@ function normalizeCfg(params: any, bar = false): TreeCfg {
 // re-reads form.values on every settings change → the preview updates live.
 const PtdlPreview = observer((props: any) => {
   const bar = !!props.bar;
+  const { token } = theme.useToken();
   const form: any = useForm();
   const cfg = normalizeCfg(form?.values || {}, bar);
   const modelRef = React.useRef<any>(null);
@@ -1873,8 +1880,8 @@ const PtdlPreview = observer((props: any) => {
   }, []);
   const ready = cfg.collectionName && cfg.fieldPath;
   return (
-    <div style={{ marginBottom: 12, border: '1px solid var(--colorBorderSecondary, #eee)', borderRadius: 8, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--colorTextTertiary, #999)', padding: '3px 6px 3px 10px', background: 'var(--colorFillQuaternary, #fafafa)', borderBottom: '1px solid var(--colorBorderSecondary, #eee)' }}>
+    <div style={{ marginBottom: 12, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: token.colorTextTertiary, padding: '3px 6px 3px 10px', background: token.colorFillQuaternary, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
         <span>{rt('Preview')}</span>
         <Button size="small" type="text" disabled={!ready} onClick={() => setRunKey((k) => k + 1)} style={{ fontSize: 11, height: 22, paddingInline: 8 }}>
           ↻ {rt('Run test')}
@@ -1884,7 +1891,7 @@ const PtdlPreview = observer((props: any) => {
         {ready ? (
           bar ? <FilterBarView key={runKey} model={modelRef.current} cfg={cfg} /> : <FilterTreeView key={runKey} model={modelRef.current} cfg={cfg} />
         ) : (
-          <div style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 12, textAlign: 'center' }}>{rt('Pick a collection + group field to preview.')}</div>
+          <div style={{ color: token.colorTextTertiary, fontSize: 12, textAlign: 'center' }}>{rt('Pick a collection + group field to preview.')}</div>
         )}
       </div>
     </div>

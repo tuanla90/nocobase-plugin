@@ -10,12 +10,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // antd import, rspack tries to bundle antd from @ptdl/shared and fails on the framework stub.
 import 'antd';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
+import { theme } from 'antd';
 import { renderCustomHtml, HELPERS_REF, SAMPLE_DATA, DEFAULT_JS, getCachedData } from './render';
 import { PRESETS } from './presets';
 import { FieldPickerCascader, getCaretElement, insertAtCaret, AiCodegenButton, st } from '@ptdl/shared';
 import { t } from './i18n';
 
 export const HtmlCodeEditor: React.FC<any> = (props) => {
+  const { token } = theme.useToken();
   const { value, onChange } = props;
 
   // The settings context gives the block model being configured.
@@ -110,7 +112,7 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
   return (
     <div>
       <div style={{ marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: '#888' }}>{t('Mẫu:')}</span>
+        <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{t('Mẫu:')}</span>
         {PRESETS.map((p) => (
           <button
             key={p.key}
@@ -122,11 +124,11 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
             style={{
               fontSize: 12,
               padding: '3px 10px',
-              border: '1px solid #e3e6ea',
+              border: `1px solid ${token.colorBorderSecondary}`,
               borderRadius: 6,
-              background: '#fff',
+              background: token.colorBgContainer,
               cursor: 'pointer',
-              color: '#1f272e',
+              color: token.colorText,
             }}
           >
             {t(p.label)}
@@ -150,7 +152,7 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
       </div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <div style={box}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('JavaScript — return chuỗi HTML')}</div>
+          <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>{t('JavaScript — return chuỗi HTML')}</div>
           <textarea
             ref={codeTaRef}
             value={code}
@@ -164,15 +166,17 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
               fontSize: 13,
               lineHeight: 1.5,
               padding: 10,
-              border: '1px solid #e3e6ea',
+              border: `1px solid ${token.colorBorderSecondary}`,
               borderRadius: 8,
               resize: 'vertical',
               tabSize: 2,
+              background: token.colorBgContainer,
+              color: token.colorText,
             }}
           />
         </div>
         <div style={box}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>
             {t('Xem trước')}{' '}
             {usingSample
               ? t('(dữ liệu mẫu — chạy Run query để lấy dữ liệu thật)')
@@ -182,7 +186,7 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
             style={{
               height: 300,
               boxSizing: 'border-box',
-              border: '1px solid #e3e6ea',
+              border: `1px solid ${token.colorBorderSecondary}`,
               borderRadius: 8,
               padding: 14,
               overflow: 'auto',

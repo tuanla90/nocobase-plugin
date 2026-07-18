@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Button, Slider, message } from 'antd';
+import { Button, Slider, message, theme } from 'antd';
 import { SettingsGrid, fi, ResetButton } from '@ptdl/shared';
 import { AudioRecorderModal } from './audioRecorder';
 import { te, t } from './i18n';
@@ -63,11 +63,12 @@ const AudioLauncher: React.FC<{ model: any; cfg: AUCfg }> = ({ model, cfg }) => 
 };
 
 const AU_Sec = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : 120;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
       <Slider min={10} max={600} step={10} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 48, textAlign: 'right', color: '#888' }}>{v}s</span>
+      <span style={{ width: 48, textAlign: 'right', color: token.colorTextTertiary }}>{v}s</span>
     </div>
   );
 };

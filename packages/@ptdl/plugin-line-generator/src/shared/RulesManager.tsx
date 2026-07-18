@@ -6,7 +6,7 @@
 //  - key auto-slugs from the title; runVersionSource only shows for the 'version' policy
 //  - 5 sections instead of 7; rarely-touched knobs live under "Nâng cao" (collapsed)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip, message } from 'antd';
+import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip, message, theme } from 'antd';
 import { CollapsibleSection, SettingRow, RelationAppendsPicker, FieldPickerCascader, getFields, SegmentedGroup } from '@ptdl/shared';
 import { previewInline, RunResult } from './api';
 import { TEMPLATES } from './templates';
@@ -248,16 +248,20 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
   };
 
   /** Compact JSON viewer for the step-by-step debug panels (scrolls both axes, never wraps the page). */
-  const JsonBlock: React.FC<{ value: any }> = ({ value }) => (
-    <pre style={{ margin: 0, padding: 8, fontSize: 11.5, lineHeight: 1.5, maxHeight: 280, overflow: 'auto', background: '#fff', border: '1px solid #eee', borderRadius: 4, whiteSpace: 'pre' }}>
-      {JSON.stringify(value ?? null, null, 2)}
-    </pre>
-  );
+  const JsonBlock: React.FC<{ value: any }> = ({ value }) => {
+    const { token } = theme.useToken();
+    return (
+      <pre style={{ margin: 0, padding: 8, fontSize: 11.5, lineHeight: 1.5, maxHeight: 280, overflow: 'auto', background: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 4, whiteSpace: 'pre' }}>
+        {JSON.stringify(value ?? null, null, 2)}
+      </pre>
+    );
+  };
 
   /** Reduced table for the debug panels: first few columns of a row list (src / rules / grouped). */
   const MiniTable: React.FC<{ rows: any[]; maxCols?: number }> = ({ rows, maxCols = 6 }) => {
+    const { token } = theme.useToken();
     const list = rows || [];
-    if (!list.length) return <div style={{ color: '#999', fontSize: 12 }}>{tt('(không có dòng)')}</div>;
+    if (!list.length) return <div style={{ color: token.colorTextTertiary, fontSize: 12 }}>{tt('(không có dòng)')}</div>;
     const keys = Array.from(list.reduce((s, r) => { Object.keys(r || {}).forEach((k) => s.add(k)); return s; }, new Set<string>())).slice(0, maxCols);
     const cols = keys.map((k) => ({ title: k, dataIndex: k, key: k, ellipsis: true, render: (v: any) => disp(v) }));
     return <Table size="small" bordered rowKey={(_: any, i: number) => String(i)} columns={cols} dataSource={list} pagination={list.length > 10 ? { pageSize: 10 } : false} scroll={{ x: true }} />;
@@ -316,6 +320,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
   const EditorDrawer: React.FC<{
     api: any; open: boolean; initial: LineGenConfig; collections: any[]; existingKeys: Set<string>; onClose: () => void; onSaved: () => void;
   }> = ({ api, open, initial, collections, existingKeys, onClose, onSaved }) => {
+    const { token } = theme.useToken();
     const [cfg, setCfg] = useState<LineGenConfig>(initial);
     const [saving, setSaving] = useState(false);
     const [records, setRecords] = useState<any[]>([]);
@@ -372,7 +377,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
     // Prominent shared formula toolbar (point 5): inserts a parent./src./rule. column token into whatever
     // formula input was last focused — used by sections 2 (skipIf), 3 (rule filter value) and 4 (all formulas).
     const FormulaToolbar = (
-      <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--colorBgContainer, #fff)', border: '1px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8, padding: '10px 14px', marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 5, background: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>{tt('Công cụ công thức — chèn cột vào ô đang chọn')}</div>
         <Space size={12} wrap>
           <FieldPickerCascader api={api} collectionName={cfg.sourceCollection || undefined} includeToMany
@@ -384,7 +389,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
           <FieldPickerCascader api={api} collectionName={cfg.ruleCollection || undefined} includeToMany
             label={tt('＋ Cột quy tắc (rule)')} onPick={(path: string[]) => insertToken('rule.' + path.join('.'))} />
         </Space>
-        <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>{tt('Bấm vào ô công thức bất kỳ, rồi chọn cột — token dạng parent.responsible_staff.direct_manager.id được chèn tại con trỏ (null giữa đường tự ra null).')}</div>
+        <div style={{ fontSize: 11.5, color: token.colorTextTertiary, marginTop: 6 }}>{tt('Bấm vào ô công thức bất kỳ, rồi chọn cột — token dạng parent.responsible_staff.direct_manager.id được chèn tại con trỏ (null giữa đường tự ra null).')}</div>
       </div>
     );
 
@@ -485,7 +490,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
             {FormulaToolbar}
 
             <CollapsibleSection title={tt('1. Kích hoạt — bảng cha (parent), khi nào chạy')}>
-              <div style={{ fontSize: 12, color: '#888', margin: '0 0 10px' }}>{tt('Bảng cha = bản ghi đặt nút / lắng trigger. Trong mọi công thức, bản ghi này được gọi là parent (vd parent.shipping_type).')}</div>
+              <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '0 0 10px' }}>{tt('Bảng cha = bản ghi đặt nút / lắng trigger. Trong mọi công thức, bản ghi này được gọi là parent (vd parent.shipping_type).')}</div>
               <SettingRow label={tt('Tên')} hint={tt('Tên hiển thị trong danh sách và trên menu nút.')}><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} placeholder={tt('VD: Tính hoa hồng đơn hàng')} /></SettingRow>
               <SettingRow label={tt('Bảng kích hoạt (cha)')} hint={tt('Nơi đặt nút / lắng trigger. Mỗi bản ghi của bảng này là một "cha" — công thức đọc nó qua parent.*')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.sourceCollection || undefined} onChange={(v) => set({ sourceCollection: v, targetPath: '', targetForeignKey: '', sourceLinesPath: null })} placeholder={tt('Chọn bảng')} /></SettingRow>
               <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng cha (preload)')} hint={tt('Quan hệ của BẢNG CHA mà công thức cần đọc (parent.*). Chọn quan hệ (xổ nhiều cấp) — nạp toàn bộ cột của các object trên đường đi.')}>
@@ -495,7 +500,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
               <SettingRow label={tt('Kích hoạt')} hint={tt('Bấm nút: người dùng chủ động chạy trên từng bản ghi. Tự động: server tự chạy ngay khi bản ghi đạt điều kiện (lưu là chạy, không cần nút — kiểu AI Column).')}>
                 <SegmentedGroup
                   block
-                  style={{ border: '1px solid var(--colorBorder, #d9d9d9)', width: '100%' }}
+                  style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }}
                   value={cfg.trigger || 'manual'}
                   onChange={(v: any) => set({ trigger: v })}
                   options={[
@@ -578,7 +583,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                     { title: tt('Công thức'), key: 'formula', render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.formula} onChange={(e) => patch({ formula: e.target.value })} onFocus={trackFocus} placeholder={tt('công thức')} /> },
                   ]} />
               </SettingRow>
-              <div style={{ fontSize: 12, color: '#888', margin: '4px 0 8px' }}>{tt('Mỗi dòng = 1 cột trên bảng con. Viết điều kiện như CASE WHEN trong SQL: IF(đk, a, b) · IFS(đk1, kq1, đk2, kq2, …) · SWITCH(giá_trị, khớp1, kq1, …, mặc_định). Biến: parent / src / rule + biến trung gian + REL / NUM / YMONTH. "Bắt buộc" = null thì bỏ cả dòng.')}</div>
+              <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '4px 0 8px' }}>{tt('Mỗi dòng = 1 cột trên bảng con. Viết điều kiện như CASE WHEN trong SQL: IF(đk, a, b) · IFS(đk1, kq1, đk2, kq2, …) · SWITCH(giá_trị, khớp1, kq1, …, mặc_định). Biến: parent / src / rule + biến trung gian + REL / NUM / YMONTH. "Bắt buộc" = null thì bỏ cả dòng.')}</div>
               <EditTable rows={cfg.lineOutputs} onChange={(v) => set({ lineOutputs: v })} addLabel={tt('Thêm cột')} newRow={() => ({ targetField: '', formula: '', required: false })}
                 columns={[
                   { title: tt('Cột đích'), key: 'targetField', width: 240, render: (row, patch) => <FieldSelect api={api} collection={targetCollection} value={row.targetField} onChange={(v) => patch({ targetField: v })} placeholder={tt('cột đích')} size="middle" style={{ width: '100%' }} /> },
@@ -616,13 +621,13 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
           {/* right: live preview */}
           <div style={{ flex: 1, borderLeft: '1px solid #e8e8e8', display: 'flex', flexDirection: 'column', background: '#f7f8fa', minWidth: 0 }}>
             <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, color: '#666' }}>{tt('Chạy thử với:')}</span>
+              <span style={{ fontSize: 12.5, color: token.colorTextSecondary }}>{tt('Chạy thử với:')}</span>
               <Select size="small" style={{ flex: 1, minWidth: 150 }} showSearch optionFilterProp="label" placeholder={tt('Chọn bản ghi')} value={sampleTk}
                 onChange={setSampleTk} options={records.map((r) => ({ value: r.id, label: `#${r.id} ${r.code || r.name || r.title || ''}` }))} notFoundContent={tt('Chưa có bản ghi')} />
               <Button size="small" type="primary" loading={previewing} disabled={!cfg.sourceCollection} onClick={runPreview}>{tt('Chạy thử')}</Button>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-              {!preview ? <div style={{ color: '#999', fontSize: 13 }}>{tt('Bấm "Chạy thử" để xem các dòng sẽ sinh (dry-run, không ghi).')}</div>
+              {!preview ? <div style={{ color: token.colorTextTertiary, fontSize: 13 }}>{tt('Bấm "Chạy thử" để xem các dòng sẽ sinh (dry-run, không ghi).')}</div>
                 : !preview.ok ? <div style={{ color: '#a8071a', fontSize: 13 }}>{preview.detail || preview.error}</div>
                 : <Space direction="vertical" style={{ width: '100%' }} size="small">
                     {preview.guardOk === false ? (
@@ -653,14 +658,14 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                                   label: <span>#{(p.index ?? i) + 1} {p.dropped ? <Tag color="red">{tt('Bỏ qua')}{p.reason ? `: ${p.reason}` : ''}</Tag> : <Tag color="green">{tt('Giữ')}</Tag>}</span>,
                                   children: (
                                     <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                                      <div style={{ fontSize: 12, color: '#888' }}>{tt('Biến suy ra (derived)')}</div>
+                                      <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{tt('Biến suy ra (derived)')}</div>
                                       <JsonBlock value={p.derived || {}} />
-                                      <div style={{ fontSize: 12, color: '#888' }}>{tt('Kết quả cột (outputs)')}</div>
+                                      <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{tt('Kết quả cột (outputs)')}</div>
                                       <JsonBlock value={p.outputs || {}} />
                                     </Space>
                                   ),
                                 }))} />
-                              ) : <div style={{ color: '#999', fontSize: 12 }}>{tt('(không có cặp)')}</div>
+                              ) : <div style={{ color: token.colorTextTertiary, fontSize: 12 }}>{tt('(không có cặp)')}</div>
                             ) },
                             { key: '5', label: <span>{tt('Bước 5 — Kết quả sau gộp')} <Tag>{tt('{{n}} dòng', { n: preview.trace.grouped?.length || 0 })}</Tag></span>, children: <MiniTable rows={preview.trace.grouped || []} /> },
                             ...(preview.trace.parentUpdates && preview.trace.parentUpdates.length ? [{
@@ -702,6 +707,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
   };
 
   return function RulesManager() {
+    const { token } = theme.useToken();
     const api = useApiClient();
     const [rows, setRows] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -735,9 +741,9 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
     };
 
     return (
-      <div style={{ padding: 20, maxWidth: 1280, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
+      <div style={{ padding: 20, maxWidth: 1280, margin: '8px auto 16px', background: token.colorBgContainer, border: `0.8px solid ${token.colorBorderSecondary}`, borderRadius: 8 }}>
         <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ color: '#666' }}>{tt('Bộ sinh dòng theo quy tắc. Gắn nút vào block qua action')} <b>{tt('Sinh dòng theo quy tắc')}</b>.</div>
+          <div style={{ color: token.colorTextSecondary }}>{tt('Bộ sinh dòng theo quy tắc. Gắn nút vào block qua action')} <b>{tt('Sinh dòng theo quy tắc')}</b>.</div>
           <Button type="primary" onClick={() => openEdit()}>+ {tt('Bộ sinh mới')}</Button>
         </div>
         <Table rowKey="id" size="small" loading={loading} dataSource={rows} pagination={false}

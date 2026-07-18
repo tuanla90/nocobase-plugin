@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Switch, InputNumber } from 'antd';
+import { Switch, InputNumber, theme } from 'antd';
 
 // Settings-dialog controls (registered via flowSettings.registerComponents in each lane entry, so the
 // responsive settings step doesn't depend on a bare 'Switch'/'InputNumber' being globally available).
@@ -48,8 +48,8 @@ function getByPath(obj: any, path: any): any {
   return String(path).split('.').reduce((a: any, k: string) => (a == null ? undefined : a[k]), obj);
 }
 
-function simpleFormat(v: any): React.ReactNode {
-  if (v == null || v === '') return <span style={{ color: '#bfbfbf' }}>—</span>;
+function simpleFormat(v: any, emptyColor?: string): React.ReactNode {
+  if (v == null || v === '') return <span style={{ color: emptyColor || '#bfbfbf' }}>—</span>;
   if (typeof v === 'boolean') return v ? '✓' : '—';
   if (Array.isArray(v)) return v.map((x) => (x && typeof x === 'object' ? (x.title ?? x.name ?? x.label ?? x.id) : x)).filter((x) => x != null).join(', ');
   if (typeof v === 'object') return v.title ?? v.name ?? v.label ?? v.nickname ?? v.id ?? '';
@@ -69,21 +69,22 @@ function colTitleText(col: any): string {
   return typeof tt === 'string' ? tt : '';
 }
 
-function renderCell(col: any, record: any, index: number): React.ReactNode {
+function renderCell(col: any, record: any, index: number, emptyColor?: string): React.ReactNode {
   const val = getByPath(record, col?.dataIndex);
   try {
     if (typeof col?.render === 'function') {
       const out = col.render(val, record, index);
       // antd render may return { children, props } for cell-merging — unwrap.
-      if (out && typeof out === 'object' && 'children' in out && !React.isValidElement(out)) return (out as any).children ?? simpleFormat(val);
+      if (out && typeof out === 'object' && 'children' in out && !React.isValidElement(out)) return (out as any).children ?? simpleFormat(val, emptyColor);
       return out;
     }
   } catch (_) { /* fall through to plain value */ }
-  return simpleFormat(val);
+  return simpleFormat(val, emptyColor);
 }
 
 // ---- the card list -----------------------------------------------------------------------------
 const CardList: React.FC<{ model: any }> = ({ model }) => {
+  const { token } = theme.useToken();
   let columns: any[] = [];
   try { columns = model?.getColumns?.() || []; } catch (_) { columns = []; }
   const rows: any[] = (() => { try { return model?.resource?.getData?.() || []; } catch (_) { return []; } })();
@@ -93,7 +94,7 @@ const CardList: React.FC<{ model: any }> = ({ model }) => {
   const actionCols = columns.filter((c) => !hasDataIndex(c) && !isSelectionCol(c) && typeof c.render === 'function' && colTitleText(c));
 
   if (!rows.length) {
-    return <div style={{ padding: '24px 8px', textAlign: 'center', color: '#bfbfbf' }}>—</div>;
+    return <div style={{ padding: '24px 8px', textAlign: 'center', color: token.colorTextQuaternary }}>—</div>;
   }
 
   return (
@@ -106,32 +107,32 @@ const CardList: React.FC<{ model: any }> = ({ model }) => {
           <div
             key={key}
             style={{
-              border: '1px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 10,
-              background: 'var(--colorBgContainer, #fff)', boxShadow: '0 1px 2px rgba(0,0,0,.04)', overflow: 'hidden',
+              border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 10,
+              background: token.colorBgContainer, boxShadow: '0 1px 2px rgba(0,0,0,.04)', overflow: 'hidden',
             }}
           >
             {head && (
-              <div style={{ padding: '10px 12px', borderBottom: rest.length ? '1px solid var(--colorFillQuaternary, #f5f5f5)' : 'none', fontWeight: 600, fontSize: 15 }}>
-                {renderCell(head, rec, idx)}
+              <div style={{ padding: '10px 12px', borderBottom: rest.length ? `1px solid ${token.colorFillQuaternary}` : 'none', fontWeight: 600, fontSize: 15 }}>
+                {renderCell(head, rec, idx, token.colorTextQuaternary)}
               </div>
             )}
             {rest.length > 0 && (
               <div style={{ padding: '6px 12px' }}>
                 {rest.map((col, ci) => (
-                  <div key={ci} style={{ display: 'flex', gap: 10, padding: '5px 0', borderTop: ci ? '1px dashed var(--colorFillQuaternary, #f5f5f5)' : 'none', alignItems: 'baseline' }}>
-                    <span style={{ flex: '0 0 40%', maxWidth: 160, color: 'var(--colorTextSecondary, #888)', fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div key={ci} style={{ display: 'flex', gap: 10, padding: '5px 0', borderTop: ci ? `1px dashed ${token.colorFillQuaternary}` : 'none', alignItems: 'baseline' }}>
+                    <span style={{ flex: '0 0 40%', maxWidth: 160, color: token.colorTextSecondary, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {col.title}
                     </span>
                     <span style={{ flex: 1, minWidth: 0, textAlign: 'right', wordBreak: 'break-word' }}>
-                      {renderCell(col, rec, idx)}
+                      {renderCell(col, rec, idx, token.colorTextQuaternary)}
                     </span>
                   </div>
                 ))}
               </div>
             )}
             {actionCols.length > 0 && (
-              <div style={{ padding: '8px 12px', borderTop: '1px solid var(--colorFillQuaternary, #f5f5f5)', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-                {actionCols.map((col, ai) => <span key={ai}>{renderCell(col, rec, idx)}</span>)}
+              <div style={{ padding: '8px 12px', borderTop: `1px solid ${token.colorFillQuaternary}`, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                {actionCols.map((col, ai) => <span key={ai}>{renderCell(col, rec, idx, token.colorTextQuaternary)}</span>)}
               </div>
             )}
           </div>

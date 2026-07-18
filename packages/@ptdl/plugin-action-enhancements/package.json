@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Nút thao tác nâng cao",
   "displayName.zh-CN": "操作按钮增强",
   "description": "Customize action buttons and toolbars: per-button colours (background/text/border/hover) and per-block action-bar layout (stacking, alignment, pin). Adds two inline table toolbar actions — a Search bar and a Filter bar (dropdown, relation, date-range). Works on /admin and /v/.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

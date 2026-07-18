@@ -5,7 +5,7 @@
   "displayName.zh-CN": "设备套件（拍照·定位）",
   "description": "Use device hardware for on-site data entry: a camera field (live capture + GPS/time watermark), a GPS location field (map pick, reverse geocode, no API key), signature-pad and audio fields, QR/barcode scan-to-fill and scan-to-lookup, and a GPS check-in action.",
   "description.vi-VN": "Dùng phần cứng thiết bị để nhập liệu hiện trường: field Chụp ảnh (chụp sống + đóng dấu GPS/giờ), field Định vị GPS (chọn trên bản đồ, reverse geocode, không cần API key), field Chữ ký và Ghi âm, quét QR/barcode để điền hoặc tra cứu, và hành động Check-in kèm GPS.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, ColorPicker, Divider, Input, Slider, Space, Switch, message } from 'antd';
+import { Button, Card, ColorPicker, Divider, Input, Slider, Space, Switch, message, theme } from 'antd';
 import { COLOR_PRESETS, colorToString, SegmentedGroup } from '@ptdl/shared';
 import { currentThemeUid, scopedType } from './themeScope';
 
@@ -158,9 +158,10 @@ export function initTypographyUi(deps: { apiClient: any; t?: (s: string) => stri
 }
 
 function ColorBtn({ value, onChange, label }: { value?: string; onChange: (v: string) => void; label: string }) {
+  const { token } = theme.useToken();
   return (
     <Space size={4}>
-      <span style={{ fontSize: 12, color: '#888' }}>{label}</span>
+      <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{label}</span>
       <ColorPicker
         size="small"
         value={value || undefined}
@@ -177,11 +178,12 @@ function ColorBtn({ value, onChange, label }: { value?: string; onChange: (v: st
 // Self-contained preview: a sample paragraph + a mini table styled from the config (inline, so it
 // reflects the settings even before Save). The Google font link is injected live, so text shows it.
 function TypographyPreview({ cfg }: { cfg: TypographyCfg }) {
+  const { token } = theme.useToken();
   const fam = (cfg.fontFamily || '').trim();
   const fontFamily = fam ? `${quoteFamily(fam)}, ${SANS_FALLBACK}` : undefined;
   const tb = cfg.table || {};
   const fs = tb.fontSize && tb.fontSize > 0 ? tb.fontSize : 13;
-  const border = tb.border || 'var(--colorBorderSecondary, #f0f0f0)';
+  const border = tb.border || token.colorBorderSecondary;
   const rows = [
     ['Nguyễn Văn A', 'Đang mở', '1.250.000'],
     ['Trần Thị B', 'Hoàn tất', '980.000'],
@@ -191,15 +193,15 @@ function TypographyPreview({ cfg }: { cfg: TypographyCfg }) {
     <div
       style={{
         fontFamily,
-        border: '1px solid var(--colorBorder,#e5e5e5)',
+        border: `1px solid ${token.colorBorder}`,
         borderRadius: 8,
         padding: 14,
         marginBottom: 16,
-        background: 'var(--colorBgContainer,#fff)',
+        background: token.colorBgContainer,
       }}
     >
       <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 2 }}>{_t('The quick brown fox')} — Xin chào</div>
-      <div style={{ color: '#8c8c8c', fontSize: 13, marginBottom: 12 }}>0123456789 · Aa Bb Cc Đđ · abcdefghijk</div>
+      <div style={{ color: token.colorTextTertiary, fontSize: 13, marginBottom: 12 }}>0123456789 · Aa Bb Cc Đđ · abcdefghijk</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs }}>
         <thead>
           <tr>
@@ -209,8 +211,8 @@ function TypographyPreview({ cfg }: { cfg: TypographyCfg }) {
                 style={{
                   textAlign: i === 2 ? 'right' : 'left',
                   padding: tb.compact ? '6px 10px' : '9px 12px',
-                  background: tb.headBg || 'var(--colorFillQuaternary,#fafafa)',
-                  color: tb.headText || 'var(--colorTextSecondary,#8c8c8c)',
+                  background: tb.headBg || token.colorFillQuaternary,
+                  color: tb.headText || token.colorTextSecondary,
                   fontWeight: tb.headWeight || 500,
                   borderBottom: `1px solid ${border}`,
                 }}
@@ -245,6 +247,7 @@ function TypographyPreview({ cfg }: { cfg: TypographyCfg }) {
 }
 
 export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {}): React.ReactElement {
+  const { token } = theme.useToken();
   const [cfg, setCfg] = React.useState<TypographyCfg>(DEFAULT_TYPOGRAPHY);
   const savedRef = React.useRef<TypographyCfg>(DEFAULT_TYPOGRAPHY);
   const [loading, setLoading] = React.useState(true);
@@ -305,7 +308,7 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
   return (
     <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0, marginBottom: 4 }}>{_t('Typography & tables')}</h2>
-      <p style={{ color: '#888', margin: '0 0 16px' }}>
+      <p style={{ color: token.colorTextTertiary, margin: '0 0 16px' }}>
         {_t('Load a Google Font and apply it app-wide (code editors stay monospace), and style every table. Changes preview live; press Save to apply for everyone.')}
       </p>
 
@@ -327,7 +330,7 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
           <Card size="small" title={_t('Font')} style={{ marginBottom: 12 }}>
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <div>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{_t('Google Fonts link (or URL)')}</div>
+                <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>{_t('Google Fonts link (or URL)')}</div>
                 <Input.TextArea
                   value={cfg.fontUrl}
                   autoSize={{ minRows: 2, maxRows: 3 }}
@@ -335,12 +338,12 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
                   onChange={(e) => set({ fontUrl: e.target.value })}
                   style={{ fontFamily: MONO_STACK, fontSize: 12 }}
                 />
-                <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: token.colorTextQuaternary, marginTop: 4 }}>
                   {_t('Paste the <link> from fonts.google.com — the family fills in automatically.')}
                 </div>
               </div>
               <Space wrap align="center" size={10} style={{ width: '100%' }}>
-                <span style={{ fontSize: 12, color: '#888', flex: 'none' }}>{_t('Font family')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, flex: 'none' }}>{_t('Font family')}</span>
                 <Input
                   value={cfg.fontFamily}
                   placeholder={suggested || 'Inter'}
@@ -355,7 +358,7 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
               </Space>
               <Space size={8}>
                 <Switch size="small" checked={cfg.antialias !== false} onChange={(v) => set({ antialias: v })} />
-                <span style={{ fontSize: 12, color: '#888' }}>{_t('Smooth text (antialiasing)')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{_t('Smooth text (antialiasing)')}</span>
               </Space>
             </Space>
           </Card>
@@ -363,7 +366,7 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
           <Card size="small" title={_t('Tables')}>
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <Space size={10} align="center" style={{ width: '100%' }}>
-                <span style={{ fontSize: 12, color: '#888', width: 70, flex: 'none' }}>{_t('Font size')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Font size')}</span>
                 <Slider
                   min={0}
                   max={18}
@@ -371,17 +374,17 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
                   onChange={(v) => setTable({ fontSize: v })}
                   style={{ flex: 1, minWidth: 150 }}
                 />
-                <span style={{ fontSize: 12, color: '#888', width: 56, textAlign: 'right' }}>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 56, textAlign: 'right' }}>
                   {tb.fontSize && tb.fontSize > 0 ? `${tb.fontSize}px` : _t('Default')}
                 </span>
               </Space>
               <Space size={10} align="center" wrap>
-                <span style={{ fontSize: 12, color: '#888', width: 70, flex: 'none' }}>{_t('Header row')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Header row')}</span>
                 <ColorBtn label={_t('Fill')} value={tb.headBg} onChange={(headBg) => setTable({ headBg })} />
                 <ColorBtn label={_t('Text')} value={tb.headText} onChange={(headText) => setTable({ headText })} />
               </Space>
               <Space size={10} align="center">
-                <span style={{ fontSize: 12, color: '#888', width: 70, flex: 'none' }}>{_t('Header weight')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Header weight')}</span>
                 <SegmentedGroup
                   value={tb.headWeight || 0}
                   onChange={(v) => setTable({ headWeight: v as number })}
@@ -394,14 +397,14 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
                 />
               </Space>
               <Space size={10} align="center" wrap>
-                <span style={{ fontSize: 12, color: '#888', width: 70, flex: 'none' }}>{_t('Rows')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Rows')}</span>
                 <ColorBtn label={_t('Border')} value={tb.border} onChange={(border) => setTable({ border })} />
                 <ColorBtn label={_t('Zebra')} value={tb.zebra} onChange={(zebra) => setTable({ zebra })} />
                 <ColorBtn label={_t('Hover')} value={tb.rowHover} onChange={(rowHover) => setTable({ rowHover })} />
               </Space>
               <Space size={8}>
                 <Switch size="small" checked={!!tb.compact} onChange={(v) => setTable({ compact: v })} />
-                <span style={{ fontSize: 12, color: '#888' }}>{_t('Compact rows')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{_t('Compact rows')}</span>
               </Space>
             </Space>
           </Card>

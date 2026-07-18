@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Cascader, Space, Tag } from 'antd';
+import { Cascader, Space, Tag, theme } from 'antd';
 import { getFields } from './fieldPicker';
 import { st } from './i18n';
 
@@ -67,6 +67,7 @@ export const RelationAppendsPicker: React.FC<RelationAppendsPickerProps> = ({
   dataSourceKey,
   hint,
 }) => {
+  const { token } = theme.useToken();
   const [opts, setOpts] = useState<any[]>([]);
   useEffect(() => {
     let live = true;
@@ -105,12 +106,12 @@ export const RelationAppendsPicker: React.FC<RelationAppendsPickerProps> = ({
             }
           }}
         >
-          <a style={{ fontSize: 12.5, cursor: opts.length ? 'pointer' : 'not-allowed', color: opts.length ? undefined : '#bbb' }}>
+          <a style={{ fontSize: 12.5, cursor: opts.length ? 'pointer' : 'not-allowed', color: opts.length ? undefined : token.colorTextDisabled }}>
             {st('＋ Thêm quan hệ ▾')}
           </a>
         </Cascader>
       </Space>
-      {hint ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{hint}</div> : null}
+      {hint ? <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 4 }}>{hint}</div> : null}
     </div>
   );
 };

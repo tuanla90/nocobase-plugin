@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, ColorPicker, Divider, Modal, Slider, Space, Switch, Tooltip, Upload, message } from 'antd';
+import { Button, Card, ColorPicker, Divider, Modal, Slider, Space, Switch, Tooltip, Upload, message, theme } from 'antd';
 import { COLOR_PRESETS, colorToString, SegmentedGroup } from '@ptdl/shared';
 import { currentThemeUid, scopedType } from './themeScope';
 
@@ -496,6 +496,7 @@ export const PRESET_ACCENTS: Record<string, string> = Object.fromEntries(
 // One preset chip: a mini admin mockup (sidebar bar + header strip + container fill) so the swatch
 // shows the preset covers all three areas, not just the sidebar colour.
 function PresetSwatch({ pr, active, onClick }: { pr: { key: string; label: string; group?: string; cfg: SkinCfg }; active: boolean; onClick: () => void }) {
+  const { token } = theme.useToken();
   const s = pr.cfg;
   const vLabel = pr.group === 'dark' ? 'Dark' : pr.group === 'mix' ? 'Mix' : 'Light';
   return (
@@ -509,7 +510,7 @@ function PresetSwatch({ pr, active, onClick }: { pr: { key: string; label: strin
           cursor: 'pointer',
           overflow: 'hidden',
           display: 'flex',
-          border: active ? '2px solid #1677ff' : '1px solid #d9d9d9',
+          border: active ? '2px solid #1677ff' : `1px solid ${token.colorBorder}`,
           background: grad(s.container) || grad(s.sidebar) || '#eee',
         }}
       >
@@ -531,9 +532,10 @@ export function initSkinUi(deps: { apiClient: any; t?: (s: string) => string }) 
 }
 
 function ColorBtn({ value, onChange, label }: { value?: string; onChange: (v: string) => void; label: string }) {
+  const { token } = theme.useToken();
   return (
     <Space size={4}>
-      <span style={{ fontSize: 12, color: '#888' }}>{label}</span>
+      <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{label}</span>
       <ColorPicker
         size="small"
         value={value || undefined}
@@ -563,6 +565,7 @@ function GradientSection({
   onChange: (p: GradPart) => void;
 }) {
   const set = (patch: Partial<GradPart>) => onChange({ ...part, ...patch });
+  const { token } = theme.useToken();
   return (
     <Card size="small" title={<Space><Switch checked={!!part.on} onChange={(on) => set({ on })} size="small" />{title}</Space>} style={{ marginBottom: 0, height: '100%' }}>
       {part.on ? (
@@ -574,20 +577,20 @@ function GradientSection({
             {withBorder ? <ColorBtn label={_t('Border')} value={part.border} onChange={(border) => set({ border })} /> : null}
             {withShadow ? (
               <Space size={4}>
-                <span style={{ fontSize: 12, color: '#888' }}>{_t('Shadow')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{_t('Shadow')}</span>
                 <Switch size="small" checked={!!part.shadow} onChange={(shadow) => set({ shadow })} />
               </Space>
             ) : null}
           </Space>
           <Space size={10} style={{ width: '100%' }} align="center">
-            <span style={{ fontSize: 12, color: '#888', flex: 'none' }}>{_t('Angle')}</span>
+            <span style={{ fontSize: 12, color: token.colorTextTertiary, flex: 'none' }}>{_t('Angle')}</span>
             <Slider min={0} max={360} value={part.angle ?? 180} onChange={(angle) => set({ angle })} style={{ flex: 1, minWidth: 160 }} />
-            <span style={{ fontSize: 12, color: '#888', width: 40 }}>{part.angle ?? 180}°</span>
+            <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 40 }}>{part.angle ?? 180}°</span>
           </Space>
-          <div style={{ height: 26, borderRadius: 6, background: grad(part) || '#eee' }} />
+          <div style={{ height: 26, borderRadius: 6, background: grad(part) || token.colorFillSecondary }} />
         </Space>
       ) : (
-        <span style={{ color: '#999', fontSize: 12 }}>{_t('Off')}</span>
+        <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{_t('Off')}</span>
       )}
     </Card>
   );
@@ -596,6 +599,7 @@ function GradientSection({
 // Self-contained mini-admin mockup — shows sidebar/header/card exactly as configured, so the preview
 // works even on the Settings page (whose own left nav is a DIFFERENT element from the app sidebar).
 function SkinPreview({ cfg }: { cfg: SkinCfg }) {
+  const { token } = theme.useToken();
   const sb = cfg.sidebar || {};
   const hd = cfg.header || {};
   const cd = cfg.card || {};
@@ -604,20 +608,20 @@ function SkinPreview({ cfg }: { cfg: SkinCfg }) {
   const accent = cfg.accent || '#1677ff';
   const rad = cfg.radius ?? 6;
   return (
-    <div style={{ display: 'flex', border: '1px solid var(--colorBorder,#e5e5e5)', borderRadius: 8, overflow: 'hidden', height: 156, marginBottom: 16 }}>
+    <div style={{ display: 'flex', border: `1px solid ${token.colorBorder}`, borderRadius: 8, overflow: 'hidden', height: 156, marginBottom: 16 }}>
       <div style={{ width: 128, flex: 'none', background: sb.on && sb.from ? grad(sb) : '#1f1f24', color: txt, padding: '10px 8px', fontSize: 11.5 }}>
         <div style={{ fontWeight: 700, marginBottom: 10, opacity: 0.95 }}>◆ Logo</div>
         <div style={{ padding: '5px 8px', borderRadius: 5, marginBottom: 3 }}>{_t('Menu')} 1</div>
         <div style={{ padding: '5px 8px', borderRadius: 5, marginBottom: 3, background: sb.selBg || 'rgba(255,255,255,.16)' }}>{_t('Menu')} 2</div>
         <div style={{ padding: '5px 8px', borderRadius: 5 }}>{_t('Menu')} 3</div>
       </div>
-      <div style={{ flex: 1, background: ct.on && ct.from ? grad(ct) : 'var(--colorBgLayout,#f5f5f5)', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <div style={{ height: 34, flex: 'none', background: hd.on && hd.from ? grad(hd) : '#fff', color: hd.text || '#333', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 11.5, borderBottom: '1px solid var(--colorBorderSecondary,#eee)' }}>
+      <div style={{ flex: 1, background: ct.on && ct.from ? grad(ct) : token.colorBgLayout, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ height: 34, flex: 'none', background: hd.on && hd.from ? grad(hd) : '#fff', color: hd.text || '#333', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 11.5, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
           {_t('Header')}
         </div>
         <div style={{ padding: '8px 12px 0', fontSize: 11.5, fontWeight: 600, color: ct.on && ct.from ? containerText(ct) : '#555' }}>{_t('Page')}</div>
         <div style={{ flex: 1, padding: '6px 12px 12px' }}>
-          <div style={{ height: '100%', borderRadius: rad, background: cd.on && cd.from ? grad(cd) : '#fff', border: `1px solid ${cd.on && cd.border ? cd.border : 'var(--colorBorderSecondary,#eee)'}`, boxShadow: cd.on && cd.shadow ? '0 4px 14px rgba(0,0,0,.18)' : 'none', padding: 10, fontSize: 11.5, color: cd.on && cd.from ? containerText(cd) : '#888', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ height: '100%', borderRadius: rad, background: cd.on && cd.from ? grad(cd) : '#fff', border: `1px solid ${cd.on && cd.border ? cd.border : token.colorBorderSecondary}`, boxShadow: cd.on && cd.shadow ? '0 4px 14px rgba(0,0,0,.18)' : 'none', padding: 10, fontSize: 11.5, color: cd.on && cd.from ? containerText(cd) : '#888', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <span>{_t('Card')}</span>
             <span style={{ alignSelf: 'flex-start', background: accent, color: '#fff', fontSize: 10.5, padding: '3px 10px', borderRadius: rad, fontWeight: 600 }}>{_t('Button')}</span>
           </div>
@@ -628,6 +632,7 @@ function SkinPreview({ cfg }: { cfg: SkinCfg }) {
 }
 
 export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): React.ReactElement {
+  const { token } = theme.useToken();
   const [cfg, setCfg] = React.useState<SkinCfg>({});
   const savedRef = React.useRef<SkinCfg>({});
   const [loading, setLoading] = React.useState(true);
@@ -739,16 +744,16 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
   return (
     <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0, marginBottom: 4 }}>{_t('Admin skin')}</h2>
-      <p style={{ color: '#888', margin: '0 0 16px' }}>{_t('Gradient/colour the sidebar, header and cards. Changes preview live; press Save to apply for everyone.')}</p>
+      <p style={{ color: token.colorTextTertiary, margin: '0 0 16px' }}>{_t('Gradient/colour the sidebar, header and cards. Changes preview live; press Save to apply for everyone.')}</p>
 
       {/* Generate from logo — pull the brand colours out of an uploaded image (client-side canvas, no
           upload/AI) and offer a matched Light / Mix / Dark trio + accent for each, via the same generator. */}
-      <div style={{ marginBottom: 16, padding: 12, border: '1px dashed var(--colorBorder, #d9d9d9)', borderRadius: 8 }}>
+      <div style={{ marginBottom: 16, padding: 12, border: `1px dashed ${token.colorBorder}`, borderRadius: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <Upload accept="image/*" showUploadList={false} beforeUpload={onLogoFile}>
             <Button>{_t('Generate from logo…')}</Button>
           </Upload>
-          <span style={{ fontSize: 12, color: '#888', flex: '1 1 260px' }}>
+          <span style={{ fontSize: 12, color: token.colorTextTertiary, flex: '1 1 260px' }}>
             {_t('Upload a logo — we suggest matching gradient themes + accent from its brand colours. Read in your browser only; nothing is uploaded.')}
           </span>
         </div>
@@ -759,7 +764,7 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
               return (
                 <div key={hex + idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span title={hex} style={{ width: 18, height: 18, flex: 'none', borderRadius: 4, background: hex, border: '1px solid rgba(0,0,0,.15)' }} />
-                  <span style={{ width: 66, flex: 'none', fontSize: 12, color: '#666', fontFamily: 'monospace' }}>{hex}</span>
+                  <span style={{ width: 66, flex: 'none', fontSize: 12, color: token.colorTextSecondary, fontFamily: 'monospace' }}>{hex}</span>
                   {vOrder.map((v) => {
                     const pr = { key: `logo-${idx}-${v}`, label: hex, group: v, cfg: { preset: `logo-${idx}-${v}`, ...tri[v] } };
                     return <PresetSwatch key={pr.key} pr={pr} active={cfg.preset === pr.key} onClick={() => applyPreset(pr, hex)} />;
@@ -774,14 +779,14 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
       {/* Presets — one row per base colour, its Light / Mix / Dark variants aligned so the shared
           gradients line up (Mix = Dark's sidebar + Light's container). */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>
+        <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '0 0 8px' }}>
           {_t('Each row = one colour →')} <b>{vName[vOrder[0]]}</b> · <b>{vName[vOrder[1]]}</b> · <b>{vName[vOrder[2]]}</b>{'  '}
-          <span style={{ color: '#aaa' }}>({_t('Mix shares its sidebar with Dark, its container with Light')})</span>
+          <span style={{ color: token.colorTextQuaternary }}>({_t('Mix shares its sidebar with Dark, its container with Light')})</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px 18px' }}>
           {BASE_COLORS.map((b) => (
             <div key={b.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 52, flex: 'none', fontSize: 12, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ width: 52, flex: 'none', fontSize: 12, color: token.colorTextSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {_t(b.label)}
               </span>
               {vOrder.map((v) => {
@@ -818,13 +823,13 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
               <Space wrap size={20} align="center">
                 <ColorBtn label={_t('Accent')} value={cfg.accent} onChange={(v) => setCfg((c) => ({ ...c, accent: v || undefined, preset: 'custom' }))} />
                 <Space size={8} align="center">
-                  <span style={{ fontSize: 12, color: '#888', flex: 'none' }}>{_t('Corners')}</span>
+                  <span style={{ fontSize: 12, color: token.colorTextTertiary, flex: 'none' }}>{_t('Corners')}</span>
                   <Slider min={0} max={20} value={cfg.radius ?? 6} onChange={(v) => setCfg((c) => ({ ...c, radius: v }))} style={{ width: 150 }} />
-                  <span style={{ fontSize: 12, color: '#888', width: 34 }}>{cfg.radius ?? 6}px</span>
+                  <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 34 }}>{cfg.radius ?? 6}px</span>
                 </Space>
               </Space>
               <Space size={8} align="center" wrap>
-                <span style={{ fontSize: 12, color: '#888', flex: 'none' }}>{_t('Density')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, flex: 'none' }}>{_t('Density')}</span>
                 <SegmentedGroup
                   value={cfg.density || 'default'}
                   onChange={(v) => setCfg((c) => ({ ...c, density: v as SkinCfg['density'] }))}

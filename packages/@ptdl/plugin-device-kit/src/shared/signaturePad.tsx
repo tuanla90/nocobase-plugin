@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Modal, Button, Space } from 'antd';
+import { Modal, Button, Space, theme } from 'antd';
 import { t } from './i18n';
 
 /**
@@ -31,6 +31,7 @@ export function nowStamp(): string {
 }
 
 export const SignatureModal: React.FC<SignatureModalProps> = ({ open, onClose, onDone, cfg, title }) => {
+  const { token } = theme.useToken();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -125,7 +126,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ open, onClose, o
       maskClosable={false}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div ref={wrapRef} style={{ width: '100%', border: '1px solid var(--colorBorder, #d9d9d9)', borderRadius: 10, overflow: 'hidden', position: 'relative', background: cfg.white ? '#fff' : 'repeating-conic-gradient(#f2f2f2 0% 25%, #fff 0% 50%) 50% / 16px 16px' }}>
+        <div ref={wrapRef} style={{ width: '100%', border: `1px solid ${token.colorBorder}`, borderRadius: 10, overflow: 'hidden', position: 'relative', background: cfg.white ? '#fff' : 'repeating-conic-gradient(#f2f2f2 0% 25%, #fff 0% 50%) 50% / 16px 16px' }}>
           <canvas
             ref={canvasRef}
             onPointerDown={onDown}

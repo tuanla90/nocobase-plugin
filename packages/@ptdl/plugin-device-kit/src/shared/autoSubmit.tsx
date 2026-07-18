@@ -1,5 +1,5 @@
 import React from 'react';
-import { Switch, Select } from 'antd';
+import { Switch, Select, theme } from 'antd';
 import { message } from 'antd';
 import { SettingsGrid, fi, CollapsibleSection } from '@ptdl/shared';
 import { getCurrentFix, type GeoFix } from './geo';
@@ -132,13 +132,16 @@ const ADK_Field = (props: any) => {
     />
   );
 };
-const ADK_Hint = () => (
-  <div style={{ fontSize: 12, color: '#8c8c8c', lineHeight: 1.5 }}>
+const ADK_Hint = () => {
+  const { token } = theme.useToken();
+  return (
+  <div style={{ fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.5 }}>
     {t('Khi bật: lúc Lưu form này, các field "Vị trí (GPS)" sẽ tự lấy toạ độ (theo cấu hình từng field), và field "Chụp ảnh" đặt bắt buộc sẽ chặn lưu nếu chưa có ảnh. Giờ & người ghi tự động dùng trường hệ thống (createdAt/updatedAt/createdBy).')}
     <br />
     {t('Thông tin thiết bị ghi được: hệ điều hành, trình duyệt, dòng máy (Android; iOS chỉ "iPhone"), độ phân giải, ID-giả. KHÔNG lấy được IMEI/ID phần cứng; IP cần lấy phía máy chủ.')}
   </div>
-);
+  );
+};
 
 /** Fields of the form's collection that can hold device info (json preferred; any text ok). */
 function deviceFieldOptions(model: any): any[] {

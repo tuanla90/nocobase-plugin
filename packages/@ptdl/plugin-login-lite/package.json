@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Trang đăng nhập tùy biến",
   "description": "Theme the sign-in page: background (gradient presets, image, HTML or embedded webpage), form layout (side panel or floating card) and position, color/light/dark/system themes, logo, input icons, Markdown footer, and a post-login landing page. Live preview; both clients.",
   "description.vi-VN": "Tùy biến trang đăng nhập: nền (gradient dựng sẵn, ảnh, HTML hoặc nhúng trang web), bố cục form (panel bên hoặc thẻ nổi) và vị trí, chủ đề màu sáng/tối/theo hệ thống, logo, icon ô nhập, chân trang Markdown, và trang đích sau đăng nhập. Có xem trước; cả hai client.",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "main": "dist/server/index.js",
   "dependencies": {
     "markdown-it": "14.1.0"

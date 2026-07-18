@@ -27,28 +27,32 @@ import {
   useAPIClient,
 } from '@nocobase/client';
 import { css } from '@emotion/css';
+import { theme } from 'antd';
 import { usePluginTranslation } from './locale';
 import { CustomSignInPage } from './CustomSignInPage';
 import { AuthLayoutRender } from './CustomAuthLayout';
 import { CustomColorPicker } from './components/CustomColorPicker';
 import { PercentageInput } from './components/PercentageInput';
 
-const SectionHeader = ({ title }: { title?: React.ReactNode }) => (
+const SectionHeader = ({ title }: { title?: React.ReactNode }) => {
+  const { token } = theme.useToken();
+  return (
   <div
     style={{
       margin: '14px 0 8px',
       paddingBottom: 4,
-      borderBottom: '1px solid #f0f0f0',
+      borderBottom: `1px solid ${token.colorBorderSecondary}`,
       fontSize: 12,
       fontWeight: 600,
       letterSpacing: 0.4,
       textTransform: 'uppercase',
-      color: '#8c8c8c',
+      color: token.colorTextTertiary,
     }}
   >
     {title}
   </div>
-);
+  );
+};
 
 // Two-column grid wrapper for compact fields (e.g. the color pickers).
 const Grid2 = ({ children }: { children?: React.ReactNode }) => (
@@ -79,6 +83,7 @@ const compactPanelCss = css`
 `;
 
 export const LoginConfigDesigner = (props: any) => {
+  const { token } = theme.useToken();
   const { t } = usePluginTranslation();
   const { schema, config } = props;
   const form = useForm();
@@ -100,7 +105,7 @@ export const LoginConfigDesigner = (props: any) => {
         style={{
           flex: 1,
           position: 'relative',
-          borderRight: '1px solid #f0f0f0',
+          borderRight: `1px solid ${token.colorBorderSecondary}`,
           overflow: 'hidden',
           background: '#f0f2f5',
         }}
@@ -132,7 +137,7 @@ export const LoginConfigDesigner = (props: any) => {
       {/* 右侧配置区域 */}
       <div
         className={compactPanelCss}
-        style={{ width: 400, padding: '16px 20px', overflowY: 'auto', background: '#fff', borderLeft: '1px solid #f0f0f0' }}
+        style={{ width: 400, padding: '16px 20px', overflowY: 'auto', background: token.colorBgContainer, borderLeft: `1px solid ${token.colorBorderSecondary}` }}
       >
         <SchemaComponent
           schema={schema}

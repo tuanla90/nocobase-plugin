@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Panel bên",
   "displayName.zh-CN": "详情侧栏",
   "description": "AppSheet-style master–detail split view for /v/. Adds a ‘Side panel’ open mode (a 4th choice beside Drawer / Dialog / Page) that docks the configured record popup to the right, shrinking the content beside it. A row-click option opens records in the panel, with a drag splitter to resize.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

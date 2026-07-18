@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, Popover, Button, Space } from 'antd';
+import { Input, Popover, Button, Space, theme } from 'antd';
 
 /**
  * Shared icon utilities (consumer of the custom-icons registry) — one canonical copy for all @ptdl plugins.
@@ -36,6 +36,7 @@ const CAP_GROUP = 60; // per library when NOT searching (avoid rendering 1739 ic
  */
 export function RegistryIconPicker(props: any) {
   const { value, onChange, disabled } = props;
+  const { token } = theme.useToken();
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState('');
   const allKeys = iconsMap ? Array.from(iconsMap.keys()) : [];
@@ -71,7 +72,7 @@ export function RegistryIconPicker(props: any) {
       />
       <div style={{ maxHeight: 300, overflow: 'auto', paddingRight: 2 }}>
         {order.length === 0 ? (
-          <div style={{ color: '#999', padding: 8 }}>No icons found</div>
+          <div style={{ color: token.colorTextTertiary, padding: 8 }}>No icons found</div>
         ) : (
           order.map((g) => {
             const list = groups[g];
@@ -80,14 +81,14 @@ export function RegistryIconPicker(props: any) {
             const more = list.length - shown.length;
             return (
               <div key={g} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#8c8c8c', padding: '2px 2px 4px' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: token.colorTextTertiary, padding: '2px 2px 4px' }}>
                   {g} ({list.length})
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 4 }}>
                   {shown.map(IconBtn)}
                 </div>
                 {more > 0 ? (
-                  <div style={{ fontSize: 11, color: '#bbb', padding: '4px 2px 0' }}>
+                  <div style={{ fontSize: 11, color: token.colorTextQuaternary, padding: '4px 2px 0' }}>
                     +{more} more — search to narrow
                   </div>
                 ) : null}
@@ -104,12 +105,12 @@ export function RegistryIconPicker(props: any) {
       <Popover open={open} onOpenChange={(v: boolean) => !disabled && setOpen(v)} trigger="click" placement="bottomLeft" content={content}>
         <Button size="small" disabled={disabled} title={value ? cleanName(value) : props.placeholder || 'Select icon'}
           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, padding: '0 8px', fontSize: 16 }}>
-          {value ? <IconByKey type={value} /> : <span style={{ color: '#8c8c8c', fontSize: 13, lineHeight: 1 }}>{props.placeholder || 'Select'}</span>}
+          {value ? <IconByKey type={value} /> : <span style={{ color: token.colorTextTertiary, fontSize: 13, lineHeight: 1 }}>{props.placeholder || 'Select'}</span>}
         </Button>
       </Popover>
       {value && !disabled ? (
         <Button size="small" onClick={() => onChange?.(undefined)} title="Clear"
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', color: '#8c8c8c' }}>
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', color: token.colorTextTertiary }}>
           ✕
         </Button>
       ) : null}

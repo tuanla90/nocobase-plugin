@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Input, Space, Switch, Typography, Upload, message } from 'antd';
+import { Button, Card, Input, Space, Switch, Typography, Upload, message, theme } from 'antd';
 import { SegmentedGroup } from '@ptdl/shared';
 import { currentThemeUid, scopedType } from './themeScope';
 
@@ -304,9 +304,10 @@ function LogoField({
   uploading: boolean;
   bg: string;
 }) {
+  const { token } = theme.useToken();
   return (
     <div>
-      <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>{label}</div>
       <Space.Compact style={{ width: '100%' }}>
         <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={'https://…  /storage/…'} allowClear />
         <Upload
@@ -341,6 +342,7 @@ function LogoField({
 }
 
 export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): React.ReactElement {
+  const { token } = theme.useToken();
   const [cfg, setCfg] = React.useState<NavCfg>({});
   const savedRef = React.useRef<NavCfg>({});
   const [loading, setLoading] = React.useState(true);
@@ -447,12 +449,12 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
 
   if (loading) return <div style={{ padding: 24 }}>{_t('Loading…')}</div>;
 
-  const hint: React.CSSProperties = { fontSize: 12, color: '#888', margin: '2px 0 6px' };
+  const hint: React.CSSProperties = { fontSize: 12, color: token.colorTextTertiary, margin: '2px 0 6px' };
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>{_t('Header & Logo')}</h2>
-      <p style={{ color: '#888', marginTop: -6 }}>
+      <p style={{ color: token.colorTextTertiary, marginTop: -6 }}>
         {_t('Tweak the top header: hide the horizontal menu and make the logo clickable. Saved for everyone.')}
       </p>
 
@@ -463,7 +465,7 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
       <Card size="small" title={_t('App name & favicon')} style={{ marginBottom: 12, breakInside: 'avoid' }}>
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <div>
-            <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{_t('App name')}</div>
+            <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>{_t('App name')}</div>
             <Input value={appTitle} onChange={(e) => setAppTitle(e.target.value)} placeholder="NocoBase" allowClear />
             <p style={hint}>{_t('The system title — one value shared by the browser tab, the login page and the PWA name.')}</p>
           </div>
@@ -509,7 +511,7 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
             />
           </Space>
         ) : (
-          <span style={{ color: '#999', fontSize: 12 }}>{_t('Off')}</span>
+          <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{_t('Off')}</span>
         )}
       </Card>
 
@@ -531,7 +533,7 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
           {cfg.logoLink ? (
             <>
               <Space align="center">
-                <span style={{ fontSize: 12, color: '#888' }}>{_t('Open in')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{_t('Open in')}</span>
                 <SegmentedGroup
                   value={cfg.logoTarget || '_self'}
                   onChange={(v) => set({ logoTarget: v as any })}

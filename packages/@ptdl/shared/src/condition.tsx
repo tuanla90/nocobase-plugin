@@ -1,5 +1,5 @@
 import React from 'react';
-import { Select, Input, InputNumber, Switch, Space, DatePicker, Cascader, Button } from 'antd';
+import { Select, Input, InputNumber, Switch, Space, DatePicker, Cascader, Button, theme } from 'antd';
 import dayjs from 'dayjs';
 import { getFields, buildLevelOptions } from './fieldPicker';
 import { st } from './i18n';
@@ -144,6 +144,7 @@ function resolvePresetRange(preset: string): { start: Date; end: Date } | null {
 
 // ---- adaptive value input ----------------------------------------------------------------------
 export const ConditionValueInput: React.FC<{ meta?: CondMeta; op?: string; value: any; onChange: (v: any) => void; size?: 'small' | 'middle' | 'large' }> = ({ meta, op, value, onChange, size = 'small' }) => {
+  const { token } = theme.useToken();
   if (opNeedsNoValue(op)) return null;
   const common = { size, style: { width: 160 } };
   const switchSize: 'small' | 'default' = size === 'small' ? 'small' : 'default';
@@ -180,7 +181,7 @@ export const ConditionValueInput: React.FC<{ meta?: CondMeta; op?: string; value
     return (
       <Space size={6}>
         <Switch size={switchSize} checked={on} onChange={(c: boolean) => onChange(c ? 'true' : 'false')} />
-        <span style={{ fontSize: 12, color: '#888' }}>{on ? st('Có') : st('Không')}</span>
+        <span style={{ fontSize: 12, color: token.colorTextSecondary }}>{on ? st('Có') : st('Không')}</span>
       </Space>
     );
   }

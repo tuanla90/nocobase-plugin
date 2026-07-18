@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Button, Slider, Switch, message } from 'antd';
+import { Button, Slider, Switch, message, theme } from 'antd';
 import { SettingsGrid, fi, ResetButton, CollapsibleSection, ColorField } from '@ptdl/shared';
 import { SignatureModal, nowStamp, type SignatureCfg } from './signaturePad';
 import { getCurrentUserName, currentUserNameSync } from './user';
@@ -96,20 +96,22 @@ const SignatureLauncher: React.FC<{ model: any; cfg: GCfg }> = ({ model, cfg }) 
 // ---- settings components ------------------------------------------------------------------------
 const G_Switch = (props: any) => <Switch checked={!!props.value} onChange={(c: any) => props.onChange?.(c)} />;
 const G_Width = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : 2.5;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
       <Slider min={1} max={6} step={0.5} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 32, textAlign: 'right', color: '#888' }}>{v}</span>
+      <span style={{ width: 32, textAlign: 'right', color: token.colorTextTertiary }}>{v}</span>
     </div>
   );
 };
 const G_Height = (props: any) => {
+  const { token } = theme.useToken();
   const v = typeof props.value === 'number' ? props.value : 180;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
       <Slider min={120} max={300} step={10} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
-      <span style={{ width: 40, textAlign: 'right', color: '#888' }}>{v}px</span>
+      <span style={{ width: 40, textAlign: 'right', color: token.colorTextTertiary }}>{v}px</span>
     </div>
   );
 };

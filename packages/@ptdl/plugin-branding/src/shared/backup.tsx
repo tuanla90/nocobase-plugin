@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Input, Modal, Space, Upload, message } from 'antd';
+import { Button, Card, Input, Modal, Space, Upload, message, theme } from 'antd';
 
 /**
  * @ptdl/plugin-branding — Import / Export. One portable JSON bundle carrying every branding config
@@ -32,6 +32,7 @@ function download(name: string, text: string) {
 }
 
 export function BrandingBackupPage() {
+  const { token } = theme.useToken();
   const [exported, setExported] = React.useState('');
   const [importText, setImportText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -117,7 +118,7 @@ export function BrandingBackupPage() {
   return (
     <div style={{ padding: 20, maxWidth: 1440, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0, marginBottom: 4 }}>{_t('Import / export')}</h2>
-      <p style={{ color: '#888', margin: '0 0 16px' }}>
+      <p style={{ color: token.colorTextTertiary, margin: '0 0 16px' }}>
         {_t('Back up or move a full look between instances: the branding tabs (skin, typography, header/logo) and the Theme Editor themes travel together in one JSON file.')}
       </p>
 
@@ -138,7 +139,7 @@ export function BrandingBackupPage() {
           <Upload accept="application/json,.json" beforeUpload={onPickFile} showUploadList={false}>
             <Button>{_t('Choose file…')}</Button>
           </Upload>
-          <span style={{ color: '#aaa', fontSize: 12 }}>{_t('…or paste the exported JSON below')}</span>
+          <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{_t('…or paste the exported JSON below')}</span>
         </Space>
         <Input.TextArea
           value={importText}

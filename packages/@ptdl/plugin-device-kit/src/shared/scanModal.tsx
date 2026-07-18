@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Modal, Button, Spin, Tag } from 'antd';
+import { Modal, Button, Spin, Tag, theme } from 'antd';
 import { Html5Qrcode } from 'html5-qrcode';
 import { PermissionHelp } from './permissionHelp';
 import { t } from './i18n';
@@ -41,6 +41,7 @@ function doBeep() {
 }
 
 export const ScanModal: React.FC<ScanModalProps> = ({ open, onClose, onDecode, continuous, beep = true, vibrate = true, title, count }) => {
+  const { token } = theme.useToken();
   const regionId = useRef<string>('ptdl-scan-' + (++_uid));
   const scannerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -146,7 +147,7 @@ export const ScanModal: React.FC<ScanModalProps> = ({ open, onClose, onDecode, c
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 26 }}>
-          <span style={{ fontSize: 12.5, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 12.5, color: token.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {last ? <>{t('Vừa quét:')} <Tag color="green" style={{ margin: 0 }}>{last}</Tag></> : t('Đưa mã vào khung để quét…')}
             {continuous && typeof count === 'number' ? <span style={{ marginLeft: 8 }}>· {t('Đã quét')}: <b>{count}</b></span> : null}
           </span>

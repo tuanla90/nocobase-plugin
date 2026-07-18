@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from 'antd';
+import { Button, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { rx } from '@ptdl/shared';
 import { NS, t } from './i18n';
@@ -25,9 +25,10 @@ const TARGET_BLOCKS: Array<{ name: string; kind: string }> = [
 const ActionBarPreview: any = observer(() => {
   const form: any = useForm();
   const v = (form && form.values) || {};
+  const { token } = theme.useToken();
   const { container, item } = previewBarStyle({ direction: v.direction, hArrange: v.hArrange, vArrange: v.vArrange });
   return (
-    <div style={{ padding: 12, background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <div style={{ padding: 12, background: token.colorFillQuaternary, borderRadius: 6, border: `1px dashed ${token.colorBorder}` }}>
       <div style={container}>
         <Button type="primary" style={item}>
           {t('Save')}
