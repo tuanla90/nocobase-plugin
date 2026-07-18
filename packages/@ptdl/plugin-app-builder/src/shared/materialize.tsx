@@ -131,23 +131,31 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   // carrying options.ptdlMenuKind) followed by its pages. Created in visual order so they sort correctly.
   const appLabel = spec.meta?.name?.trim() || 'Ứng dụng';
   const topId = await createMenuGroup(app, appLabel, spec.menu?.icon || 'lucide-layout-dashboard');
+  // Section style depends on @ptdl/plugin-menu-enhancements: if enabled, each spec group renders as a
+  // NON-CLICKABLE "divider" LABEL (a childless group carrying options.ptdlMenuKind) with its pages flat
+  // beside it. Without the plugin those markers would render as broken empty menu items, so FALL BACK to
+  // native NESTED groups (a real group with its pages nested → collapsible sidebar sub-menu). Either way:
+  // one top-level entry, everything grouped in the left sidebar.
+  const hasMenuEnh = (() => { try { return !!app?.pm?.get?.('@ptdl/plugin-menu-enhancements'); } catch { return false; } })();
   const DIVIDER = { ptdlMenuKind: 'divider', ptdlMenuStyle: { lineOn: false, align: 'left' } };
   const cspecOf = (coll: string) => (spec.collections || []).find((c) => c.name === coll);
   const groups: MaterializeResult['groups'] = [{ label: appLabel, id: topId }];
   const pages: MaterializeResult['pages'] = [];
-  const mkPage = async (p: any) => { pages.push(await createPage(app, { ...p, parentId: topId }, cspecOf(p.collection), quickCreateTemplates)); };
+  const mkPage = async (p: any, parentId: number | null) => { pages.push(await createPage(app, { ...p, parentId }, cspecOf(p.collection), quickCreateTemplates)); };
 
   // section labels in spec order (menu.groups first, then any referenced only by pages)
   const labels: string[] = [];
   (spec.menu?.groups || []).forEach((g) => { if (!labels.includes(g.label)) labels.push(g.label); });
   (spec.pages || []).forEach((p) => { if (p.menuGroup && !labels.includes(p.menuGroup)) labels.push(p.menuGroup); });
 
-  for (const p of (spec.pages || []).filter((p) => !p.menuGroup)) await mkPage(p); // ungrouped → directly under app
+  for (const p of (spec.pages || []).filter((p) => !p.menuGroup)) await mkPage(p, topId); // ungrouped → under the app
   for (const label of labels) {
     const icon = (spec.menu?.groups || []).find((g) => g.label === label)?.icon;
-    const id = await createMenuGroup(app, label, icon, topId, DIVIDER); // childless section label
-    groups.push({ label, id });
-    for (const p of (spec.pages || []).filter((p) => p.menuGroup === label)) await mkPage(p);
+    const groupId = await createMenuGroup(app, label, icon, topId, hasMenuEnh ? DIVIDER : undefined);
+    groups.push({ label, id: groupId });
+    // divider label → pages sit flat beside it (under the app); native group → pages nest inside it.
+    const pageParent = hasMenuEnh ? topId : groupId;
+    for (const p of (spec.pages || []).filter((p) => p.menuGroup === label)) await mkPage(p, pageParent);
   }
   return { pages, groups };
 }
