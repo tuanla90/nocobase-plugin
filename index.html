@@ -86,6 +86,10 @@ a:hover{text-decoration:underline}
       <input class="search" id="q" type="search" placeholder="Tìm plugin… · Search plugins…" autocomplete="off">
       <div id="nav">
     <div class="nav-group">
+      <div class="nav-cat"><span class="lang lang-vi">📘 Tham khảo</span><span class="lang lang-en" hidden>📘 Reference</span></div>
+      <a class="nav-link" href="#reference" data-text="reference tham khảo hàm helper functions helpers handlebars excel formula sum if vlookup"><span class="lang lang-vi">Hàm &amp; Helper dùng chung</span><span class="lang lang-en" hidden>Shared functions &amp; helpers</span></a>
+    </div>
+    <div class="nav-group">
       <div class="nav-cat"><span class="lang lang-vi">Trường / Field</span><span class="lang lang-en" hidden>Fields</span></div>
       <a class="nav-link" href="#formula" data-text="công thức &amp; trường tự tính formula &amp; computed fields excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing. excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing."><span class="lang lang-vi">Công thức &amp; Trường tự tính</span><span class="lang lang-en" hidden>Formula &amp; Computed Fields</span></a>
       <a class="nav-link" href="#ai-column" data-text="cột ai ai column airtable-style ai columns: generate text, read images/pdf/audio (ocr, stt), classify a value against a master collection, turn a document into sub-table rows, create images, or text-to-speech. adds bulk table actions, a per-record ai function button, and server-side auto-run on save. airtable-style ai columns: generate text, read images/pdf/audio (ocr, stt), classify a value against a master collection, turn a document into sub-table rows, create images, or text-to-speech. adds bulk table actions, a per-record ai function button, and server-side auto-run on save."><span class="lang lang-vi">Cột AI</span><span class="lang lang-en" hidden>AI Column</span></a>
@@ -165,6 +169,833 @@ a:hover{text-decoration:underline}
       <div class="meta"><span class="lang lang-vi">Chọn plugin ở thanh bên, hoặc dùng ô tìm kiếm. Nội dung sinh tự động từ tài liệu của từng plugin.</span><span class="lang lang-en" hidden>Pick a plugin in the sidebar, or use the search box. Content is generated from each plugin&#39;s docs.</span></div>
     </div>
     
+    <section class="plugin" id="reference" data-text="reference tham khảo hàm helper functions helpers handlebars excel formula sum if vlookup">
+      <div class="plugin-head"><h2><span class="lang lang-vi">📘 Tham khảo: Hàm &amp; Helper dùng chung</span><span class="lang lang-en" hidden>📘 Reference: Shared functions &amp; helpers</span></h2></div>
+      <div class="prose lang lang-vi"><blockquote>
+<p>Trang <strong>tham khảo</strong> liệt kê đầy đủ các hàm/helper <strong>dùng chung</strong> của bộ plugin @ptdl, chia 3 họ: <strong>Công thức Excel-like</strong> (dùng ở plugin <em>Formula</em> + <em>Spreadsheet View</em>), <strong>Handlebars helper</strong> (dùng ở plugin <em>Print Template</em>) và <strong>helper khối HTML</strong> (dùng ở plugin <em>Block: Custom HTML</em>). Danh sách sinh trực tiếp từ code — không có hàm nào nằm ngoài mã nguồn.</p>
+</blockquote>
+<h3>1. 🧮 Công thức Excel-like (Formula DSL) · dùng ở: Formula, Spreadsheet View</h3>
+<p>Engine bọc <strong><code>@formulajs/formulajs</code></strong> (~400 hàm Excel) nên đa số hàm Excel đều chạy; bảng dưới là danh sách <strong>được hỗ trợ / khuyến nghị chính thức</strong> (AI viết công thức chỉ dùng trong danh sách này, không bịa hàm). Công thức <strong>không phân biệt hoa/thường</strong> (<code>SUM</code> = <code>sum</code>), và có thể <strong>xuất HTML</strong> qua nhóm hàm hiển thị ở dưới.</p>
+<h4>Cú pháp</h4>
+<ul>
+<li>Dòng hiện tại: <code>data.&lt;field&gt;</code>. Quan hệ to-one: <code>data.&lt;relation&gt;.&lt;field&gt;</code>. Quan hệ to-many tự gộp: <code>SUM(data.&lt;relation&gt;.&lt;field&gt;)</code>.</li>
+<li>Bảng tra cứu / config (collection <strong>rời</strong>, không phải quan hệ): gõ <strong>thẳng</strong> tên collection, <strong>không</strong> có <code>data.</code> → <code>&lt;tenBang&gt;.&lt;cot&gt;</code> (là <strong>mảng</strong> cột đó của <strong>mọi</strong> dòng bảng).</li>
+<li>Nối chuỗi dùng <code>&amp;</code> (vd <code>data.a &amp; &quot; &quot; &amp; data.b</code>). So sánh: <code>==</code> (hoặc <code>===</code>), <code>!=</code> hoặc <code>&lt;&gt;</code>, <code>&gt; &lt; &gt;= &lt;=</code>. VÀ = <code>&amp;&amp;</code> (hoặc <code>AND(...)</code>). <strong>Không</strong> dùng <code>=</code> đơn (là gán) hay <code>&amp;</code> đơn cho VÀ.</li>
+<li><strong>Chỉ</strong> dùng hàm có trong danh sách bên dưới. Không bịa hàm (không có <code>XLOOKUP</code>, không có mảng-động Excel kiểu <code>FILTER(arr, boolArr)</code>).</li>
+<li>Quan hệ lồng 2+ tầng <strong>không</strong> nạp được (<code>data.a.b.c</code> hay <code>bang.quan_he.cot</code> ra rỗng) → so theo <strong>khoá id</strong>: <code>bang.rel_id == data.x_id</code>.</li>
+<li>Cột đích có thể là số / text / date / boolean — trả <strong>đúng kiểu</strong> (so sánh → boolean, ghép chuỗi / <code>IF</code> → text, <code>EDATE</code> / <code>TODAY</code> → date).</li>
+</ul>
+<h4>Hàm theo nhóm</h4>
+<table>
+<thead>
+<tr>
+<th>Nhóm</th>
+<th>Hàm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Số</td>
+<td><code>SUM</code> · <code>AVERAGE</code> · <code>MIN</code> · <code>MAX</code> · <code>COUNT</code> · <code>ROUND</code> · <code>ROUNDUP</code> · <code>ABS</code> · <code>MOD</code> · <code>CEILING</code> · <code>FLOOR</code></td>
+</tr>
+<tr>
+<td>Lọc/gộp có điều kiện (≈ SELECT/FILTER AppSheet)</td>
+<td><code>SUMIF</code> · <code>SUMIFS</code> · <code>COUNTIF</code> · <code>COUNTIFS</code> · <code>AVERAGEIF</code> · <code>AVERAGEIFS</code> — vd <code>SUMIFS(data.items.line_amount, data.items.status, &quot;active&quot;)</code></td>
+</tr>
+<tr>
+<td>FILTER / SELECT — lọc <strong>danh sách</strong> theo điều kiện (bọc SUM/COUNT/INDEX…)</td>
+<td><code>FILTER</code> · <code>SELECT</code> — vd <code>SUM(FILTER(data.items.amt, data.items.status == &quot;active&quot; &amp;&amp; data.items.amt &gt; 40))</code>, <code>INDEX(SELECT(bang.ten, bang.a == data.x &amp;&amp; bang.b == data.y), 1)</code>. Dùng <code>==</code>, <code>&amp;&amp;</code> cho VÀ, và <code>&gt; &lt; &gt;= &lt;= &lt;&gt;</code></td>
+</tr>
+<tr>
+<td>Bảng tra cứu 2 khoá (gõ thẳng tên bảng, không có <code>data.</code>)</td>
+<td><code>SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b)</code> — <code>bang_hs</code> = tên collection config</td>
+</tr>
+<tr>
+<td>Lookup khác</td>
+<td><code>INDEX</code> · <code>MATCH</code> · <code>CHOOSE</code> · <code>SWITCH</code> · <code>VLOOKUP</code> (VLOOKUP cần mảng 2D trong 1 field JSON, không dùng cho bảng collection)</td>
+</tr>
+<tr>
+<td>Logic</td>
+<td><code>IF</code> · <code>IFS</code> · <code>AND</code> · <code>OR</code> · <code>NOT</code> · <code>IFERROR</code> · <code>ISBLANK</code> · <code>ISNUMBER</code></td>
+</tr>
+<tr>
+<td>Text</td>
+<td><code>CONCATENATE</code> · <code>LEFT</code> · <code>RIGHT</code> · <code>MID</code> · <code>UPPER</code> · <code>LOWER</code> · <code>TRIM</code> · <code>LEN</code> · <code>TEXT</code></td>
+</tr>
+<tr>
+<td>Ngày</td>
+<td><code>TODAY</code> · <code>NOW</code> · <code>YEAR</code> · <code>MONTH</code> · <code>DAY</code> · <code>DATEDIF</code> · <code>EDATE</code> · <code>DAYS</code></td>
+</tr>
+</tbody>
+</table>
+<h4>Hàm hiển thị HTML</h4>
+<p>Các hàm formulajs không có, thêm riêng để công thức <strong>xuất HTML</strong> vào ô hiển thị:</p>
+<table>
+<thead>
+<tr>
+<th>Hàm</th>
+<th>Ý nghĩa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>B(x)</code></td>
+<td>In đậm → <code>&lt;b&gt;x&lt;/b&gt;</code></td>
+</tr>
+<tr>
+<td><code>I(x)</code></td>
+<td>In nghiêng → <code>&lt;i&gt;x&lt;/i&gt;</code></td>
+</tr>
+<tr>
+<td><code>U(x)</code></td>
+<td>Gạch chân → <code>&lt;u&gt;x&lt;/u&gt;</code></td>
+</tr>
+<tr>
+<td><code>BR()</code></td>
+<td>Xuống dòng → <code>&lt;br/&gt;</code></td>
+</tr>
+<tr>
+<td><code>COLOR(x, màu)</code></td>
+<td>Đổi màu chữ (vd <code>COLOR(data.status, &quot;red&quot;)</code>)</td>
+</tr>
+<tr>
+<td><code>BG(x, màu)</code></td>
+<td>Tô nền + bo góc cho chữ (dạng “pill”)</td>
+</tr>
+<tr>
+<td><code>TAG(text, màu?)</code></td>
+<td>Thẻ nhãn bo tròn (viền + nền nhạt). <code>màu</code> nhận tên antd (<code>red</code> <code>volcano</code> <code>orange</code> <code>gold</code> <code>yellow</code> <code>lime</code> <code>green</code> <code>cyan</code> <code>blue</code> <code>geekblue</code> <code>purple</code> <code>magenta</code> <code>gray</code> <code>default</code>) hoặc mã màu; mặc định <code>default</code></td>
+</tr>
+<tr>
+<td><code>DOT(màu?, size?)</code></td>
+<td>Chấm tròn trạng thái; mặc định màu <code>#16a34a</code>, size <code>8</code>px</td>
+</tr>
+<tr>
+<td><code>LINK(href, text?)</code></td>
+<td>Liên kết mở tab mới; bỏ <code>text</code> thì hiện <code>href</code></td>
+</tr>
+<tr>
+<td><code>IMG(src, size?)</code></td>
+<td>Ảnh vuông bo góc; mặc định <code>20</code>px</td>
+</tr>
+<tr>
+<td><code>ESCAPE(x)</code></td>
+<td>Escape HTML (an toàn hoá chuỗi)</td>
+</tr>
+</tbody>
+</table>
+<h4>Ví dụ (ý muốn → công thức)</h4>
+<table>
+<thead>
+<tr>
+<th>Ý muốn</th>
+<th>Công thức</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cùng dòng</td>
+<td><code>data.subtotal - data.discount</code></td>
+</tr>
+<tr>
+<td>Nhân đơn giá (kéo quan hệ)</td>
+<td><code>data.quantity * data.product.unit_price</code></td>
+</tr>
+<tr>
+<td>Gộp quan hệ (roll-up)</td>
+<td><code>SUM(data.items.line_amount)</code></td>
+</tr>
+<tr>
+<td>Gộp <strong>có điều kiện</strong> (≈ SELECT AppSheet)</td>
+<td><code>SUMIFS(data.items.line_amount, data.items.status, &quot;active&quot;)</code></td>
+</tr>
+<tr>
+<td>Bảng tra cứu 2 khoá (≈ VLOOKUP nhiều ĐK)</td>
+<td><code>data.metric * SUMIFS(bang_hs.he_so, bang_hs.a, data.parent.region, bang_hs.b, data.grade)</code></td>
+</tr>
+<tr>
+<td>Số thứ tự trong nhóm (OR-123.1, .2…)</td>
+<td><code>data.order.code &amp; &quot;.&quot; &amp; (COUNTIFS(order_item.order_id, data.order_id, order_item.id, &quot;&lt;&quot; &amp; data.id) + 1)</code></td>
+</tr>
+<tr>
+<td>Lọc danh sách có điều kiện (FILTER)</td>
+<td><code>SUM(FILTER(data.items.line_amount, data.items.status == &quot;active&quot; &amp;&amp; data.items.line_amount &gt; 0))</code></td>
+</tr>
+<tr>
+<td>Tra bảng 2 khoá ra <strong>chữ</strong> (SELECT + INDEX)</td>
+<td><code>INDEX(SELECT(bang_hs.ten, bang_hs.a == data.parent.region &amp;&amp; bang_hs.b == data.grade), 1)</code></td>
+</tr>
+<tr>
+<td>Nhãn điều kiện</td>
+<td><code>IF(data.total&gt;1000000, &quot;VIP&quot;, &quot;Thường&quot;)</code></td>
+</tr>
+<tr>
+<td>Đếm dòng con theo ĐK (COUNT + FILTER)</td>
+<td><code>COUNT(FILTER(data.items.id, data.items.status == &quot;pending&quot;))</code></td>
+</tr>
+<tr>
+<td>Trung bình / lớn nhất dòng con</td>
+<td><code>AVERAGE(data.items.line_amount)</code></td>
+</tr>
+<tr>
+<td>Tỉ lệ % hoàn thành</td>
+<td><code>data.done_qty / data.total_qty * 100</code></td>
+</tr>
+<tr>
+<td>Cờ vượt hạn mức (boolean)</td>
+<td><code>data.total &gt; data.credit_limit</code></td>
+</tr>
+<tr>
+<td>Ghép chuỗi (họ tên → text)</td>
+<td><code>data.first_name &amp; &quot; &quot; &amp; data.last_name</code></td>
+</tr>
+<tr>
+<td>Phân loại nhiều bậc (IFS)</td>
+<td><code>IFS(data.total &gt;= 1000000, &quot;VIP&quot;, data.total &gt;= 500000, &quot;Bạc&quot;, TRUE, &quot;Thường&quot;)</code></td>
+</tr>
+<tr>
+<td>Ngày đến hạn +1 tháng (date)</td>
+<td><code>EDATE(data.order_date, 1)</code></td>
+</tr>
+<tr>
+<td>Số ngày giữa 2 mốc</td>
+<td><code>DAYS(data.end_date, data.start_date)</code></td>
+</tr>
+<tr>
+<td>Tra đơn giá theo <strong>khoá quan hệ</strong> (so id — thay cho nested)</td>
+<td><code>INDEX(SELECT(bang_gia.don_gia, bang_gia.product_id == data.product_id), 1)</code></td>
+</tr>
+</tbody>
+</table>
+<h3>2. 🖨 Handlebars helper · dùng ở: Print Template</h3>
+<p>Cú pháp Handlebars gốc (<code>{{field}}</code> <code>#each</code> <code>#if</code>…) cộng bộ helper riêng bên dưới. Ví dụ <strong>copy dán được</strong> ngay vào mẫu in.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Mô tả</th>
+<th>Ví dụ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{{field}}</code></td>
+<td>Giá trị 1 trường; quan hệ dùng dấu chấm</td>
+<td><code>{{client.name}}</code></td>
+</tr>
+<tr>
+<td><code>{{#each}}</code></td>
+<td>Lặp danh sách dòng con (appends)</td>
+<td><code>&lt;table&gt;{{#each items}}&lt;tr&gt;&lt;td&gt;{{this.product.name}}&lt;/td&gt;&lt;td&gt;{{this.qty}}&lt;/td&gt;&lt;/tr&gt;{{/each}}&lt;/table&gt;</code></td>
+</tr>
+<tr>
+<td><code>{{#if}}</code> / <code>{{#unless}}</code></td>
+<td>Điều kiện (kết hợp <code>eq</code>/<code>gt</code>/<code>and</code>…)</td>
+<td><code>{{#if (eq status &quot;paid&quot;)}}ĐÃ THANH TOÁN{{else}}CHƯA THU{{/if}}</code></td>
+</tr>
+<tr>
+<td><code>@index</code></td>
+<td>Số thứ tự trong <code>#each</code> (bắt đầu từ 0)</td>
+<td><code>{{#each items}}&lt;tr&gt;&lt;td&gt;{{add @index 1}}&lt;/td&gt;&lt;/tr&gt;{{/each}}</code></td>
+</tr>
+<tr>
+<td><code>formatNumber</code></td>
+<td>Định dạng số / tiền tệ / %. <code>format=&quot;#,##0₫&quot;</code> (₫ $ € £), có <code>%</code>, kèm <code>locale</code></td>
+<td><code>{{formatNumber total format=&quot;#,##0₫&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>add</code> <code>subtract</code> <code>multiply</code> <code>divide</code> <code>mod</code></td>
+<td>Toán tử 2 ngôi</td>
+<td><code>{{multiply qty price}}</code></td>
+</tr>
+<tr>
+<td><code>docso</code> / <code>docsoHoa</code></td>
+<td>Đọc số thành chữ tiếng Việt (<code>docsoHoa</code> = viết hoa chữ đầu)</td>
+<td><code>Bằng chữ: {{docsoHoa total}} đồng</code></td>
+</tr>
+<tr>
+<td><code>qr</code></td>
+<td>Sinh mã QR (SVG). <code>size</code>=px, <code>level</code>=L/M/Q/H</td>
+<td><code>{{qr code size=110}}</code></td>
+</tr>
+<tr>
+<td>Ngắt trang</td>
+<td>Ép sang trang mới ở vị trí này khi in</td>
+<td><code>&lt;div style=&quot;break-before:page&quot;&gt;&lt;/div&gt;</code></td>
+</tr>
+<tr>
+<td>Khối chung (partial)</td>
+<td>Nhúng template “khối chung” theo slug (tạo ở tab Chung)</td>
+<td><code>{{&gt; header_chung}}</code></td>
+</tr>
+<tr>
+<td><code>formatDate</code></td>
+<td>Định dạng ngày. Token: <code>DD MM YYYY HH mm ss DDDD MMMM A</code>…</td>
+<td><code>{{formatDate createdAt &quot;DD/MM/YYYY HH:mm&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>Thời điểm in</td>
+<td><code>In lúc {{now &quot;HH:mm DD/MM/YYYY&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>eq</code> <code>ne</code> <code>gt</code> <code>lt</code> <code>gte</code> <code>lte</code></td>
+<td>So sánh — dùng trong <code>#if</code></td>
+<td><code>{{#if (gte total 1000000)}}&lt;b&gt;Khách VIP&lt;/b&gt;{{/if}}</code></td>
+</tr>
+<tr>
+<td><code>and</code> / <code>or</code></td>
+<td>Logic nhiều điều kiện</td>
+<td><code>{{#if (and paid (gt total 0))}}✔{{/if}}</code></td>
+</tr>
+<tr>
+<td><code>uppercase</code> <code>lowercase</code> <code>capitalize</code> <code>proper</code></td>
+<td>Đổi hoa–thường</td>
+<td><code>{{uppercase client.name}}</code></td>
+</tr>
+<tr>
+<td><code>concat</code></td>
+<td>Nối chuỗi</td>
+<td><code>{{concat code &quot; - &quot; client.name}}</code></td>
+</tr>
+<tr>
+<td><code>regexReplace</code></td>
+<td>Thay theo regex (cờ <code>g</code>)</td>
+<td><code>{{regexReplace phone &quot;^84&quot; &quot;0&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>regexExtract</code></td>
+<td>Trích theo regex (chỉ số group)</td>
+<td><code>{{regexExtract email &quot;^[^@]+&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>sql</code> (giá trị đơn)</td>
+<td>Query trả 1 dòng 1 cột → ra thẳng giá trị. <code>FROM ?</code> = mảng truyền vào</td>
+<td><code>{{formatNumber (sql &quot;SELECT SUM(total_cost) FROM ?&quot; items) format=&quot;#,##0₫&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>#sql</code> (lặp dòng)</td>
+<td>Query trả nhiều dòng → lặp như <code>#each</code> (có <code>@index</code>/<code>@first</code>/<code>@last</code>). Aggregate + <code>GROUP BY</code></td>
+<td><code>{{#sql &quot;SELECT document_name, SUM(quantity) AS qty, SUM(total_cost) AS total FROM ? GROUP BY document_name&quot; items}}&lt;tr&gt;&lt;td&gt;{{add @index 1}}&lt;/td&gt;&lt;td&gt;{{document_name}}&lt;/td&gt;&lt;td&gt;{{qty}}&lt;/td&gt;&lt;td&gt;{{formatNumber total format=&quot;#,##0₫&quot;}}&lt;/td&gt;&lt;/tr&gt;{{/sql}}</code></td>
+</tr>
+<tr>
+<td><code>#sql</code> (lọc + sắp xếp)</td>
+<td><code>WHERE</code> / <code>ORDER BY</code> / <code>LIMIT</code> như SQL thường</td>
+<td><code>{{#sql &quot;SELECT * FROM ? WHERE fee_type = 'Solicitor Fees' ORDER BY total_cost DESC&quot; items}}&lt;tr&gt;&lt;td&gt;{{document_name}}&lt;/td&gt;&lt;/tr&gt;{{/sql}}</code></td>
+</tr>
+<tr>
+<td><code>sql</code> (CASE WHEN…)</td>
+<td>Biến đổi giá trị, nối chuỗi, <code>NOW()</code>…</td>
+<td><code>{{sql &quot;SELECT CASE WHEN SUM(amount)&gt;=1000000 THEN 'VIP' ELSE 'Thường' END FROM ?&quot; items}}</code></td>
+</tr>
+<tr>
+<td><code>pluck</code></td>
+<td>Rút 1 cột từ danh sách object → mảng</td>
+<td><code>{{arraySum (pluck items &quot;amount&quot;)}}</code></td>
+</tr>
+<tr>
+<td><code>arraySum</code> <code>arrayAvg</code> <code>arrayMax</code> <code>arrayMin</code></td>
+<td>Tổng hợp trên mảng số</td>
+<td><code>Tổng: {{formatNumber (arraySum (pluck items &quot;amount&quot;)) format=&quot;#,##0₫&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>arrayLength</code></td>
+<td>Số phần tử</td>
+<td><code>{{arrayLength items}} dòng</code></td>
+</tr>
+<tr>
+<td><code>arrayJoin</code></td>
+<td>Nối mảng thành chuỗi</td>
+<td><code>{{arrayJoin (pluck items &quot;product.name&quot;) &quot;, &quot;}}</code></td>
+</tr>
+<tr>
+<td><code>arrayUnique</code> <code>arrayReverse</code> <code>arrayGet</code> <code>arrayIncludes</code></td>
+<td>Khử trùng / đảo / lấy phần tử thứ i / kiểm tra chứa</td>
+<td><code>{{arrayGet (pluck items &quot;sku&quot;) 0}}</code></td>
+</tr>
+</tbody>
+</table>
+<h3>3. 🧱 Helper khối HTML (Custom HTML block) · dùng ở: Block: Custom HTML</h3>
+<p>Ô JS của khối nhận <code>(data, rows, helpers)</code> và <strong>trả về chuỗi HTML</strong> (<code>data</code> = mảng dòng kết quả query). Gõ <code>return helpers.table(data);</code> để xem tên cột.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Mô tả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>helpers.table(data)</code></td>
+<td>Hiện toàn bộ dữ liệu dạng bảng</td>
+</tr>
+<tr>
+<td><code>helpers.json(data)</code></td>
+<td>Xem cấu trúc thô (debug)</td>
+</tr>
+<tr>
+<td><code>helpers.keys(data)</code></td>
+<td>Mảng tên cột</td>
+</tr>
+<tr>
+<td><code>helpers.first(data,'col')</code></td>
+<td>Giá trị 1 cột ở dòng đầu</td>
+</tr>
+<tr>
+<td><code>helpers.sum(data,'col')</code></td>
+<td>Tổng 1 cột</td>
+</tr>
+<tr>
+<td><code>helpers.avg(data,'col')</code></td>
+<td>Trung bình 1 cột</td>
+</tr>
+<tr>
+<td><code>helpers.count(data)</code></td>
+<td>Số dòng</td>
+</tr>
+<tr>
+<td><code>helpers.min/max(data,'col')</code></td>
+<td>Nhỏ nhất / lớn nhất</td>
+</tr>
+<tr>
+<td><code>helpers.groupBy(data,'col')</code></td>
+<td>Gom nhóm theo cột → <code>{ key: rows[] }</code></td>
+</tr>
+<tr>
+<td><code>helpers.fmt(số)</code></td>
+<td>Định dạng nghìn (vi-VN). <code>fmt(n, {locale, …})</code></td>
+</tr>
+<tr>
+<td><code>helpers.date(v,'DD/MM/YYYY HH:mm')</code></td>
+<td>Định dạng ngày giờ (token <code>YYYY MM DD HH mm ss</code>)</td>
+</tr>
+<tr>
+<td><code>helpers.timeAgo(v)</code></td>
+<td>Thời gian tương đối — “2 giờ trước”</td>
+</tr>
+<tr>
+<td><code>helpers.icon('shopping-cart',{size:22,color:'#2490ef'})</code></td>
+<td>Icon Lucide bất kỳ (kebab-case) qua registry của icon-kit</td>
+</tr>
+</tbody>
+</table>
+<p>Ngoài ra còn <code>helpers.esc(x)</code> để escape HTML.</p>
+<hr>
+<p><em>Nguồn sinh từ code — cập nhật tại: <code>plugin-formula/src/shared/formulaKnowledge.ts</code> + <code>formulaEngine.ts</code> (họ 1), <code>plugin-print-template/src/shared/HelperDocs.tsx</code> + <code>helpers.ts</code> (họ 2), <code>plugin-block-custom-html/src/client/render.ts</code> (họ 3).</em></p>
+</div>
+      <div class="prose lang lang-en" hidden><blockquote>
+<p>A <strong>reference</strong> page listing every <strong>shared</strong> function/helper across the @ptdl plugins, in 3 families: <strong>Excel-like formulas</strong> (used by <em>Formula</em> + <em>Spreadsheet View</em>), <strong>Handlebars helpers</strong> (used by <em>Print Template</em>), and <strong>HTML-block helpers</strong> (used by <em>Block: Custom HTML</em>). The list is generated straight from the code — nothing here is outside the source.</p>
+</blockquote>
+<h3>1. 🧮 Excel-like formulas (Formula DSL) · used by: Formula, Spreadsheet View</h3>
+<p>The engine wraps <strong><code>@formulajs/formulajs</code></strong> (~400 Excel functions), so most Excel functions work; the table below is the <strong>officially supported / recommended</strong> set (the formula-writing AI only uses names from this list and never invents functions). Formulas are <strong>case-insensitive</strong> (<code>SUM</code> = <code>sum</code>) and can <strong>emit HTML</strong> via the display functions further down.</p>
+<h4>Syntax</h4>
+<ul>
+<li>Current row: <code>data.&lt;field&gt;</code>. To-one relation: <code>data.&lt;relation&gt;.&lt;field&gt;</code>. To-many relation auto-aggregates: <code>SUM(data.&lt;relation&gt;.&lt;field&gt;)</code>.</li>
+<li>Lookup / config table (a <strong>standalone</strong> collection, not a relation): type the collection name <strong>directly</strong>, <strong>without</strong> <code>data.</code> → <code>&lt;tableName&gt;.&lt;column&gt;</code> (the <strong>array</strong> of that column across <strong>every</strong> row of the table).</li>
+<li>Concatenate with <code>&amp;</code> (e.g. <code>data.a &amp; &quot; &quot; &amp; data.b</code>). Comparisons: <code>==</code> (or <code>===</code>), <code>!=</code> or <code>&lt;&gt;</code>, <code>&gt; &lt; &gt;= &lt;=</code>. AND = <code>&amp;&amp;</code> (or <code>AND(...)</code>). Do <strong>not</strong> use a single <code>=</code> (assignment) or a single <code>&amp;</code> for AND.</li>
+<li>Use <strong>only</strong> functions from the list below. Don’t invent functions (no <code>XLOOKUP</code>, no Excel dynamic-array <code>FILTER(arr, boolArr)</code>).</li>
+<li>Relations nested 2+ levels <strong>can’t</strong> be loaded (<code>data.a.b.c</code> or <code>bang.quan_he.cot</code> come back empty) → match by <strong>id key</strong>: <code>bang.rel_id == data.x_id</code>.</li>
+<li>The target column may be number / text / date / boolean — return the <strong>right type</strong> (comparison → boolean, concat / <code>IF</code> → text, <code>EDATE</code> / <code>TODAY</code> → date).</li>
+</ul>
+<h4>Functions by group</h4>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Numbers</td>
+<td><code>SUM</code> · <code>AVERAGE</code> · <code>MIN</code> · <code>MAX</code> · <code>COUNT</code> · <code>ROUND</code> · <code>ROUNDUP</code> · <code>ABS</code> · <code>MOD</code> · <code>CEILING</code> · <code>FLOOR</code></td>
+</tr>
+<tr>
+<td>Conditional filter/aggregate (≈ SELECT/FILTER in AppSheet)</td>
+<td><code>SUMIF</code> · <code>SUMIFS</code> · <code>COUNTIF</code> · <code>COUNTIFS</code> · <code>AVERAGEIF</code> · <code>AVERAGEIFS</code> — e.g. <code>SUMIFS(data.items.line_amount, data.items.status, &quot;active&quot;)</code></td>
+</tr>
+<tr>
+<td>FILTER / SELECT — filter a <strong>list</strong> by condition (wrap in SUM/COUNT/INDEX…)</td>
+<td><code>FILTER</code> · <code>SELECT</code> — e.g. <code>SUM(FILTER(data.items.amt, data.items.status == &quot;active&quot; &amp;&amp; data.items.amt &gt; 40))</code>, <code>INDEX(SELECT(bang.ten, bang.a == data.x &amp;&amp; bang.b == data.y), 1)</code>. Use <code>==</code>, <code>&amp;&amp;</code> for AND, and <code>&gt; &lt; &gt;= &lt;= &lt;&gt;</code></td>
+</tr>
+<tr>
+<td>Two-key lookup table (type the table name directly, no <code>data.</code>)</td>
+<td><code>SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b)</code> — <code>bang_hs</code> = the config collection name</td>
+</tr>
+<tr>
+<td>Other lookup</td>
+<td><code>INDEX</code> · <code>MATCH</code> · <code>CHOOSE</code> · <code>SWITCH</code> · <code>VLOOKUP</code> (VLOOKUP needs a 2D array in one JSON field, not for a collection table)</td>
+</tr>
+<tr>
+<td>Logic</td>
+<td><code>IF</code> · <code>IFS</code> · <code>AND</code> · <code>OR</code> · <code>NOT</code> · <code>IFERROR</code> · <code>ISBLANK</code> · <code>ISNUMBER</code></td>
+</tr>
+<tr>
+<td>Text</td>
+<td><code>CONCATENATE</code> · <code>LEFT</code> · <code>RIGHT</code> · <code>MID</code> · <code>UPPER</code> · <code>LOWER</code> · <code>TRIM</code> · <code>LEN</code> · <code>TEXT</code></td>
+</tr>
+<tr>
+<td>Date</td>
+<td><code>TODAY</code> · <code>NOW</code> · <code>YEAR</code> · <code>MONTH</code> · <code>DAY</code> · <code>DATEDIF</code> · <code>EDATE</code> · <code>DAYS</code></td>
+</tr>
+</tbody>
+</table>
+<h4>HTML display functions</h4>
+<p>Functions formulajs lacks, added so a formula can <strong>emit HTML</strong> into the display cell:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>B(x)</code></td>
+<td>Bold → <code>&lt;b&gt;x&lt;/b&gt;</code></td>
+</tr>
+<tr>
+<td><code>I(x)</code></td>
+<td>Italic → <code>&lt;i&gt;x&lt;/i&gt;</code></td>
+</tr>
+<tr>
+<td><code>U(x)</code></td>
+<td>Underline → <code>&lt;u&gt;x&lt;/u&gt;</code></td>
+</tr>
+<tr>
+<td><code>BR()</code></td>
+<td>Line break → <code>&lt;br/&gt;</code></td>
+</tr>
+<tr>
+<td><code>COLOR(x, color)</code></td>
+<td>Set text color (e.g. <code>COLOR(data.status, &quot;red&quot;)</code>)</td>
+</tr>
+<tr>
+<td><code>BG(x, color)</code></td>
+<td>Background highlight + rounded corners (a “pill”)</td>
+</tr>
+<tr>
+<td><code>TAG(text, color?)</code></td>
+<td>Rounded label tag (border + soft fill). <code>color</code> accepts an antd name (<code>red</code> <code>volcano</code> <code>orange</code> <code>gold</code> <code>yellow</code> <code>lime</code> <code>green</code> <code>cyan</code> <code>blue</code> <code>geekblue</code> <code>purple</code> <code>magenta</code> <code>gray</code> <code>default</code>) or a color code; defaults to <code>default</code></td>
+</tr>
+<tr>
+<td><code>DOT(color?, size?)</code></td>
+<td>Status dot; defaults to color <code>#16a34a</code>, size <code>8</code>px</td>
+</tr>
+<tr>
+<td><code>LINK(href, text?)</code></td>
+<td>Link opening a new tab; omit <code>text</code> to show the <code>href</code></td>
+</tr>
+<tr>
+<td><code>IMG(src, size?)</code></td>
+<td>Square rounded image; defaults to <code>20</code>px</td>
+</tr>
+<tr>
+<td><code>ESCAPE(x)</code></td>
+<td>Escape HTML (make a string safe)</td>
+</tr>
+</tbody>
+</table>
+<h4>Examples (intent → formula)</h4>
+<table>
+<thead>
+<tr>
+<th>Intent</th>
+<th>Formula</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Same row</td>
+<td><code>data.subtotal - data.discount</code></td>
+</tr>
+<tr>
+<td>Multiply unit price (across a relation)</td>
+<td><code>data.quantity * data.product.unit_price</code></td>
+</tr>
+<tr>
+<td>Aggregate a relation (roll-up)</td>
+<td><code>SUM(data.items.line_amount)</code></td>
+</tr>
+<tr>
+<td><strong>Conditional</strong> aggregate (≈ AppSheet SELECT)</td>
+<td><code>SUMIFS(data.items.line_amount, data.items.status, &quot;active&quot;)</code></td>
+</tr>
+<tr>
+<td>Two-key lookup (≈ multi-condition VLOOKUP)</td>
+<td><code>data.metric * SUMIFS(bang_hs.he_so, bang_hs.a, data.parent.region, bang_hs.b, data.grade)</code></td>
+</tr>
+<tr>
+<td>Sequence number within a group (OR-123.1, .2…)</td>
+<td><code>data.order.code &amp; &quot;.&quot; &amp; (COUNTIFS(order_item.order_id, data.order_id, order_item.id, &quot;&lt;&quot; &amp; data.id) + 1)</code></td>
+</tr>
+<tr>
+<td>Filter a list by condition (FILTER)</td>
+<td><code>SUM(FILTER(data.items.line_amount, data.items.status == &quot;active&quot; &amp;&amp; data.items.line_amount &gt; 0))</code></td>
+</tr>
+<tr>
+<td>Two-key lookup returning <strong>text</strong> (SELECT + INDEX)</td>
+<td><code>INDEX(SELECT(bang_hs.ten, bang_hs.a == data.parent.region &amp;&amp; bang_hs.b == data.grade), 1)</code></td>
+</tr>
+<tr>
+<td>Conditional label</td>
+<td><code>IF(data.total&gt;1000000, &quot;VIP&quot;, &quot;Thường&quot;)</code></td>
+</tr>
+<tr>
+<td>Count child rows by condition (COUNT + FILTER)</td>
+<td><code>COUNT(FILTER(data.items.id, data.items.status == &quot;pending&quot;))</code></td>
+</tr>
+<tr>
+<td>Average / max of child rows</td>
+<td><code>AVERAGE(data.items.line_amount)</code></td>
+</tr>
+<tr>
+<td>Completion percentage</td>
+<td><code>data.done_qty / data.total_qty * 100</code></td>
+</tr>
+<tr>
+<td>Over-limit flag (boolean)</td>
+<td><code>data.total &gt; data.credit_limit</code></td>
+</tr>
+<tr>
+<td>Concatenate (full name → text)</td>
+<td><code>data.first_name &amp; &quot; &quot; &amp; data.last_name</code></td>
+</tr>
+<tr>
+<td>Multi-tier classification (IFS)</td>
+<td><code>IFS(data.total &gt;= 1000000, &quot;VIP&quot;, data.total &gt;= 500000, &quot;Bạc&quot;, TRUE, &quot;Thường&quot;)</code></td>
+</tr>
+<tr>
+<td>Due date +1 month (date)</td>
+<td><code>EDATE(data.order_date, 1)</code></td>
+</tr>
+<tr>
+<td>Days between two dates</td>
+<td><code>DAYS(data.end_date, data.start_date)</code></td>
+</tr>
+<tr>
+<td>Unit price by <strong>relation key</strong> (match id — instead of nesting)</td>
+<td><code>INDEX(SELECT(bang_gia.don_gia, bang_gia.product_id == data.product_id), 1)</code></td>
+</tr>
+</tbody>
+</table>
+<h3>2. 🖨 Handlebars helpers · used by: Print Template</h3>
+<p>Native Handlebars syntax (<code>{{field}}</code> <code>#each</code> <code>#if</code>…) plus the custom helper set below. Examples are <strong>copy-paste ready</strong> into a print template.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{{field}}</code></td>
+<td>Value of one field; dot notation for relations</td>
+<td><code>{{client.name}}</code></td>
+</tr>
+<tr>
+<td><code>{{#each}}</code></td>
+<td>Loop over child rows (appends)</td>
+<td><code>&lt;table&gt;{{#each items}}&lt;tr&gt;&lt;td&gt;{{this.product.name}}&lt;/td&gt;&lt;td&gt;{{this.qty}}&lt;/td&gt;&lt;/tr&gt;{{/each}}&lt;/table&gt;</code></td>
+</tr>
+<tr>
+<td><code>{{#if}}</code> / <code>{{#unless}}</code></td>
+<td>Condition (combine with <code>eq</code>/<code>gt</code>/<code>and</code>…)</td>
+<td><code>{{#if (eq status &quot;paid&quot;)}}ĐÃ THANH TOÁN{{else}}CHƯA THU{{/if}}</code></td>
+</tr>
+<tr>
+<td><code>@index</code></td>
+<td>Index within <code>#each</code> (starts at 0)</td>
+<td><code>{{#each items}}&lt;tr&gt;&lt;td&gt;{{add @index 1}}&lt;/td&gt;&lt;/tr&gt;{{/each}}</code></td>
+</tr>
+<tr>
+<td><code>formatNumber</code></td>
+<td>Format number / currency / %. <code>format=&quot;#,##0₫&quot;</code> (₫ $ € £), supports <code>%</code> and <code>locale</code></td>
+<td><code>{{formatNumber total format=&quot;#,##0₫&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>add</code> <code>subtract</code> <code>multiply</code> <code>divide</code> <code>mod</code></td>
+<td>Binary math operators</td>
+<td><code>{{multiply qty price}}</code></td>
+</tr>
+<tr>
+<td><code>docso</code> / <code>docsoHoa</code></td>
+<td>Vietnamese “number to words” (<code>docsoHoa</code> = capitalize first letter)</td>
+<td><code>Bằng chữ: {{docsoHoa total}} đồng</code></td>
+</tr>
+<tr>
+<td><code>qr</code></td>
+<td>Generate a QR code (SVG). <code>size</code>=px, <code>level</code>=L/M/Q/H</td>
+<td><code>{{qr code size=110}}</code></td>
+</tr>
+<tr>
+<td>Page break</td>
+<td>Force a new page at this position when printing</td>
+<td><code>&lt;div style=&quot;break-before:page&quot;&gt;&lt;/div&gt;</code></td>
+</tr>
+<tr>
+<td>Shared block (partial)</td>
+<td>Embed a “shared block” template by slug (created in the Shared tab)</td>
+<td><code>{{&gt; header_chung}}</code></td>
+</tr>
+<tr>
+<td><code>formatDate</code></td>
+<td>Format a date. Tokens: <code>DD MM YYYY HH mm ss DDDD MMMM A</code>…</td>
+<td><code>{{formatDate createdAt &quot;DD/MM/YYYY HH:mm&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>Time of printing</td>
+<td><code>In lúc {{now &quot;HH:mm DD/MM/YYYY&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>eq</code> <code>ne</code> <code>gt</code> <code>lt</code> <code>gte</code> <code>lte</code></td>
+<td>Comparison — use inside <code>#if</code></td>
+<td><code>{{#if (gte total 1000000)}}&lt;b&gt;Khách VIP&lt;/b&gt;{{/if}}</code></td>
+</tr>
+<tr>
+<td><code>and</code> / <code>or</code></td>
+<td>Multi-condition logic</td>
+<td><code>{{#if (and paid (gt total 0))}}✔{{/if}}</code></td>
+</tr>
+<tr>
+<td><code>uppercase</code> <code>lowercase</code> <code>capitalize</code> <code>proper</code></td>
+<td>Change letter case</td>
+<td><code>{{uppercase client.name}}</code></td>
+</tr>
+<tr>
+<td><code>concat</code></td>
+<td>Concatenate strings</td>
+<td><code>{{concat code &quot; - &quot; client.name}}</code></td>
+</tr>
+<tr>
+<td><code>regexReplace</code></td>
+<td>Replace by regex (<code>g</code> flag)</td>
+<td><code>{{regexReplace phone &quot;^84&quot; &quot;0&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>regexExtract</code></td>
+<td>Extract by regex (group index)</td>
+<td><code>{{regexExtract email &quot;^[^@]+&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>sql</code> (scalar)</td>
+<td>Query returning 1 row × 1 col → returns the value directly. <code>FROM ?</code> = the array passed in</td>
+<td><code>{{formatNumber (sql &quot;SELECT SUM(total_cost) FROM ?&quot; items) format=&quot;#,##0₫&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>#sql</code> (row loop)</td>
+<td>Query returning many rows → loops like <code>#each</code> (with <code>@index</code>/<code>@first</code>/<code>@last</code>). Aggregate + <code>GROUP BY</code></td>
+<td><code>{{#sql &quot;SELECT document_name, SUM(quantity) AS qty, SUM(total_cost) AS total FROM ? GROUP BY document_name&quot; items}}&lt;tr&gt;&lt;td&gt;{{add @index 1}}&lt;/td&gt;&lt;td&gt;{{document_name}}&lt;/td&gt;&lt;td&gt;{{qty}}&lt;/td&gt;&lt;td&gt;{{formatNumber total format=&quot;#,##0₫&quot;}}&lt;/td&gt;&lt;/tr&gt;{{/sql}}</code></td>
+</tr>
+<tr>
+<td><code>#sql</code> (filter + sort)</td>
+<td><code>WHERE</code> / <code>ORDER BY</code> / <code>LIMIT</code> like normal SQL</td>
+<td><code>{{#sql &quot;SELECT * FROM ? WHERE fee_type = 'Solicitor Fees' ORDER BY total_cost DESC&quot; items}}&lt;tr&gt;&lt;td&gt;{{document_name}}&lt;/td&gt;&lt;/tr&gt;{{/sql}}</code></td>
+</tr>
+<tr>
+<td><code>sql</code> (CASE WHEN…)</td>
+<td>Transform values, concatenate, <code>NOW()</code>…</td>
+<td><code>{{sql &quot;SELECT CASE WHEN SUM(amount)&gt;=1000000 THEN 'VIP' ELSE 'Thường' END FROM ?&quot; items}}</code></td>
+</tr>
+<tr>
+<td><code>pluck</code></td>
+<td>Pull one column from a list of objects → array</td>
+<td><code>{{arraySum (pluck items &quot;amount&quot;)}}</code></td>
+</tr>
+<tr>
+<td><code>arraySum</code> <code>arrayAvg</code> <code>arrayMax</code> <code>arrayMin</code></td>
+<td>Aggregate over a numeric array</td>
+<td><code>Tổng: {{formatNumber (arraySum (pluck items &quot;amount&quot;)) format=&quot;#,##0₫&quot;}}</code></td>
+</tr>
+<tr>
+<td><code>arrayLength</code></td>
+<td>Element count</td>
+<td><code>{{arrayLength items}} dòng</code></td>
+</tr>
+<tr>
+<td><code>arrayJoin</code></td>
+<td>Join an array into a string</td>
+<td><code>{{arrayJoin (pluck items &quot;product.name&quot;) &quot;, &quot;}}</code></td>
+</tr>
+<tr>
+<td><code>arrayUnique</code> <code>arrayReverse</code> <code>arrayGet</code> <code>arrayIncludes</code></td>
+<td>Dedupe / reverse / get element i / contains?</td>
+<td><code>{{arrayGet (pluck items &quot;sku&quot;) 0}}</code></td>
+</tr>
+</tbody>
+</table>
+<h3>3. 🧱 HTML-block helpers (Custom HTML block) · used by: Block: Custom HTML</h3>
+<p>The block’s JS field receives <code>(data, rows, helpers)</code> and <strong>returns an HTML string</strong> (<code>data</code> = the array of query result rows). Type <code>return helpers.table(data);</code> to see the column names.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>helpers.table(data)</code></td>
+<td>Show all data as a table</td>
+</tr>
+<tr>
+<td><code>helpers.json(data)</code></td>
+<td>View the raw structure (debug)</td>
+</tr>
+<tr>
+<td><code>helpers.keys(data)</code></td>
+<td>Array of column names</td>
+</tr>
+<tr>
+<td><code>helpers.first(data,'col')</code></td>
+<td>Value of one column in the first row</td>
+</tr>
+<tr>
+<td><code>helpers.sum(data,'col')</code></td>
+<td>Sum of one column</td>
+</tr>
+<tr>
+<td><code>helpers.avg(data,'col')</code></td>
+<td>Average of one column</td>
+</tr>
+<tr>
+<td><code>helpers.count(data)</code></td>
+<td>Row count</td>
+</tr>
+<tr>
+<td><code>helpers.min/max(data,'col')</code></td>
+<td>Minimum / maximum</td>
+</tr>
+<tr>
+<td><code>helpers.groupBy(data,'col')</code></td>
+<td>Group by a column → <code>{ key: rows[] }</code></td>
+</tr>
+<tr>
+<td><code>helpers.fmt(number)</code></td>
+<td>Thousands formatting (vi-VN). <code>fmt(n, {locale, …})</code></td>
+</tr>
+<tr>
+<td><code>helpers.date(v,'DD/MM/YYYY HH:mm')</code></td>
+<td>Format date-time (tokens <code>YYYY MM DD HH mm ss</code>)</td>
+</tr>
+<tr>
+<td><code>helpers.timeAgo(v)</code></td>
+<td>Relative time — “2 giờ trước”</td>
+</tr>
+<tr>
+<td><code>helpers.icon('shopping-cart',{size:22,color:'#2490ef'})</code></td>
+<td>Any Lucide icon (kebab-case) via the icon-kit registry</td>
+</tr>
+</tbody>
+</table>
+<p>There is also <code>helpers.esc(x)</code> for HTML-escaping.</p>
+<hr>
+<p><em>Generated from code — update at: <code>plugin-formula/src/shared/formulaKnowledge.ts</code> + <code>formulaEngine.ts</code> (family 1), <code>plugin-print-template/src/shared/HelperDocs.tsx</code> + <code>helpers.ts</code> (family 2), <code>plugin-block-custom-html/src/client/render.ts</code> (family 3).</em></p>
+</div>
+    </section>
     <section class="plugin" id="formula" data-text="công thức &amp; trường tự tính formula &amp; computed fields excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing. excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing. fields">
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Công thức &amp; Trường tự tính</span><span class="lang lang-en" hidden>Formula &amp; Computed Fields</span></h2>
@@ -4805,7 +5636,7 @@ bash recipes/add-markers.sh storage/tar/@ptdl/plugin-detail-panel-0.1.0.tgz
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Dựng app từ mô tả</span><span class="lang lang-en" hidden>App Builder</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.3.1</span>
+        <span class="chip">v0.3.2</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
