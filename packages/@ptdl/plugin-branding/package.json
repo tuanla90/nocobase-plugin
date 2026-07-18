@@ -5,7 +5,7 @@
   "description": "App-wide branding: skin presets and gradient colors for the sidebar, header, cards and content; accent color and density; app-wide font and table styling; app name, favicon, logo (light/dark) and header tweaks. Theme-aware, with config import/export.",
   "version": "0.4.7",
   "license": "AGPL-3.0",
-  "homepage": "https://github.com/tuanla90/nocobase-plugin/blob/main/packages/@ptdl/plugin-branding/README.vi-VN.md",
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#branding",
   "main": "dist/server/index.js",
   "peerDependencies": {
     "@nocobase/client": "2.x",
