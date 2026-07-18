@@ -28,5 +28,7 @@
   "AI could not plan": "AI could not plan",
   "Plan ready — review then Run": "Plan ready — review then Run",
   "Delete the app I just built": "Delete the app I just built",
-  "Deleted": "Deleted"
+  "Deleted": "Deleted",
+  "Preview": "Preview",
+  "…or paste / load a demo App-Spec:": "…or paste / load a demo App-Spec:"
 }

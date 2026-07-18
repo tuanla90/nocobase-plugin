@@ -8,10 +8,11 @@
  */
 import React, { useState } from 'react';
 import { Plugin } from '@nocobase/client-v2';
-import { Button, Input, message, Modal, Space, Tooltip, Typography } from 'antd';
+import { Button, Input, message, Modal, Segmented, Space, Tooltip, Typography } from 'antd';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
+import SpecPreview from './SpecPreview';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
@@ -46,6 +47,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
   const AppBuilderLauncher: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     const [open, setOpen] = useState(false);
     const editMode = useFlowSettingsEnabled();
+    const [specView, setSpecView] = useState<'preview' | 'json'>('preview');
     const [text, setText] = useState(() => JSON.stringify(SAMPLE_BAN_HANG, null, 2));
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<{ pages: Array<{ title: string; collection: string; url: string; schemaUid: string }> } | null>(null);
@@ -204,10 +206,28 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
               </ol>
             </div>
           )}
-          <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 6, fontSize: 12 }}>
-            {t('…or paste / load a demo App-Spec (JSON):')}
-          </Typography.Paragraph>
-          <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={14} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          <Space style={{ marginTop: 0, marginBottom: 8, width: '100%', justifyContent: 'space-between' }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('…or paste / load a demo App-Spec:')}</Typography.Text>
+            <Segmented
+              size="small"
+              value={specView}
+              onChange={(v) => setSpecView(v as 'preview' | 'json')}
+              options={[{ label: `👁 ${t('Preview')}`, value: 'preview' }, { label: 'JSON', value: 'json' }]}
+            />
+          </Space>
+          {specView === 'json' ? (
+            <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={14} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          ) : (
+            <div style={{ maxHeight: 480, overflow: 'auto', paddingRight: 4 }}>
+              {(() => {
+                try {
+                  return <SpecPreview spec={JSON.parse(text)} />;
+                } catch (e: any) {
+                  return <Typography.Text type="danger">{t('Invalid JSON')}: {String(e?.message || e)}</Typography.Text>;
+                }
+              })()}
+            </div>
+          )}
           <Space style={{ marginTop: 12 }} wrap>
             <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))}>{t('Load demo')}</Button>
             <Button onClick={onValidate}>{t('Validate')}</Button>

@@ -28,5 +28,7 @@
   "AI could not plan": "AI chưa lập được kế hoạch",
   "Plan ready — review then Run": "Đã lập kế hoạch — xem lại rồi bấm Chạy",
   "Delete the app I just built": "Xoá app vừa tạo",
-  "Deleted": "Đã xoá"
+  "Deleted": "Đã xoá",
+  "Preview": "Xem trước",
+  "…or paste / load a demo App-Spec:": "…hoặc dán / nạp App-Spec mẫu:"
 }
