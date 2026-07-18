@@ -150,7 +150,20 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   // carrying options.ptdlMenuKind) followed by its pages. Created in visual order so they sort correctly.
   const rawAppLabel = spec.meta?.title?.trim() || spec.meta?.name?.trim() || 'Ứng dụng';
   const appLabel = looksMachineName(rawAppLabel) ? titleizeMachineName(rawAppLabel) : rawAppLabel;
-  const topId = await createMenuGroup(app, appLabel, spec.menu?.icon || 'lucide-layout-dashboard');
+  // PATCH / merge: reuse existing routes so re-applying a spec (or adding pages to an app that already has
+  // this top group / sections / pages) never creates DUPLICATES. Fetch once; groups are reused by
+  // title+parent, pages skipped by title.
+  let existingRoutes: any[] = [];
+  try { existingRoutes = (await app.apiClient.request({ url: 'desktopRoutes:list', params: { paginate: false } }))?.data?.data || []; } catch {}
+  const norm = (v: any) => v ?? null;
+  const findGroupId = (title: string, parentId?: number | null): number | null => {
+    const hit = existingRoutes.find((r: any) => r.type === 'group' && String(r.title || '').trim() === String(title).trim() && norm(r.parentId) === norm(parentId));
+    return hit ? (hit.id ?? null) : null;
+  };
+  const pageExists = (title: string) => existingRoutes.some((r: any) => r.type === 'flowPage' && String(r.title || '').trim() === String(title).trim());
+  const ensureGroup = async (label: string, icon?: string, parentId?: number | null, options?: any): Promise<number | null> =>
+    findGroupId(label, parentId) ?? (await createMenuGroup(app, label, icon, parentId, options));
+  const topId = await ensureGroup(appLabel, spec.menu?.icon || 'lucide-layout-dashboard');
   // Section style depends on @ptdl/plugin-menu-enhancements: if enabled, each spec group renders as a
   // NON-CLICKABLE "divider" LABEL (a childless group carrying options.ptdlMenuKind) with its pages flat
   // beside it. Without the plugin those markers would render as broken empty menu items, so FALL BACK to
@@ -161,7 +174,10 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   const cspecOf = (coll: string) => (spec.collections || []).find((c) => c.name === coll);
   const groups: MaterializeResult['groups'] = [{ label: appLabel, id: topId }];
   const pages: MaterializeResult['pages'] = [];
-  const mkPage = async (p: any, parentId: number | null) => { pages.push(await createPage(app, { ...p, parentId }, cspecOf(p.collection), quickCreateTemplates)); };
+  const mkPage = async (p: any, parentId: number | null) => {
+    if (pageExists(p.title)) return; // patch/merge: this page already exists — don't duplicate it
+    pages.push(await createPage(app, { ...p, parentId }, cspecOf(p.collection), quickCreateTemplates));
+  };
 
   // Tolerate two menu shapes the AI naturally emits: a group as {label|title, icon, pages?:[pageTitle]}
   // AND a page's own `menuGroup`. Resolve each page's section from either source.
@@ -179,7 +195,7 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   for (const p of (spec.pages || []).filter((p) => !menuOf(p))) await mkPage(p, topId); // ungrouped → under the app
   for (const label of labels) {
     const icon = specGroups.find((g) => glabel(g) === label)?.icon;
-    const groupId = await createMenuGroup(app, label, icon, topId, hasMenuEnh ? DIVIDER : undefined);
+    const groupId = await ensureGroup(label, icon, topId, hasMenuEnh ? DIVIDER : undefined);
     groups.push({ label, id: groupId });
     // divider label → pages sit flat beside it (under the app); native group → pages nest inside it.
     const pageParent = hasMenuEnh ? topId : groupId;

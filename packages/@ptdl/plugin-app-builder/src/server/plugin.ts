@@ -391,7 +391,14 @@ export class PluginAppBuilderServer extends Plugin {
   private async opCreateCollection(c: CollectionSpec, categoryName?: string): Promise<any> {
     const colRepo: any = this.db.getRepository('collections');
     if (!colRepo) throw new Error('collection-manager (collections repo) không có');
-    if (await colRepo.findOne({ filter: { name: c.name } })) return { name: c.name, skipped: 'exists' };
+    if (await colRepo.findOne({ filter: { name: c.name } })) {
+      // PATCH / merge: the collection already exists (e.g. a shared `customer` the new spec reuses, or a
+      // re-apply) — DON'T recreate it, but ADD any user fields it's missing so the spec's additions land.
+      // opAddField is idempotent per field, so existing fields (and their data) are left untouched.
+      const mergedFields: string[] = [];
+      for (const f of c.fields || []) { const r = await this.opAddField(c.name, f); if (r.field_status === 'created') mergedFields.push(f.name); }
+      return { name: c.name, skipped: 'exists', ...(mergedFields.length ? { mergedFields } : {}) };
+    }
     // System fields FIRST (visible id + created/updated at/by, proper `id` PK), then the user's fields.
     // autoGenId MUST be false since we supply the id field explicitly (else NocoBase adds a 2nd, clashing PK).
     const userFields = (c.fields || []).map(fieldDef);
@@ -623,7 +630,9 @@ export class PluginAppBuilderServer extends Plugin {
             for (const { coll, r } of rels) report.relations.push(await this.opAddRelation(coll, r));
             for (const name of created) { try { await (this.db.getCollection(name) as any)?.sync?.({ alter: true }); } catch {} }
             for (const c of spec.collections || []) { const cf = (c.fields || []).filter((f) => f.computed?.expression); if (cf.length) (await this.opAddComputedRules(c.name, cf)).forEach((x) => report.computed.push({ coll: c.name, ...x })); }
-            for (const c of spec.collections || []) { if (c.seed?.length) report.seeded.push(await this.opSeed(c.name, c.seed)); }
+            // Seed ONLY newly-created collections — re-applying a spec, or patching into an app whose
+            // collection already exists, must NOT duplicate its demo rows.
+            for (const c of spec.collections || []) { if (c.seed?.length && created.includes(c.name)) report.seeded.push(await this.opSeed(c.name, c.seed)); }
             ctx.body = { ok: true, ...report, note: 'Data tier xong (collections + relations + computed + seed). Trang = client tier.' };
           } catch (e: any) {
             for (const name of [...created].reverse()) { try { await colRepo.destroy({ filter: { name } }); } catch {} }
