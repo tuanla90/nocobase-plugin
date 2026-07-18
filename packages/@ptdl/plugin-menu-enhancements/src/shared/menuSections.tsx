@@ -1,5 +1,4 @@
 import React from 'react';
-import { theme } from 'antd';
 import { ColorField, registerSettingsKit, rx, fi, livePreview, previewField, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
 
 /**
@@ -117,17 +116,18 @@ li.ant-menu-item:has([data-ptdl-menu-kind="groupLabel"]) {
 }
 
 function DividerNode({ style, fallbackText }: { style?: SectionStyle; fallbackText?: any }) {
-  // NocoBase's antd v5 theme does NOT expose --colorSplit/--colorTextTertiary as CSS variables, so a
-  // hardcoded var(..., <black-rgba-fallback>) always fell through to that black default — unreadable on
-  // a dark theme. Resolve the REAL antd tokens here instead (theme.useToken() must run inside a React
-  // component render, which this is).
-  const { token } = theme.useToken();
+  // Section labels/dividers render INSIDE NocoBase's menu-item slot, whose text colour the ACTIVE theme
+  // already sets correctly (white on a dark sider, dark on a light one) — even for custom themes. Do NOT
+  // resolve an absolute colour here: theme.useToken() returns the WRONG algorithm in this subtree (the
+  // menu runs antd's `light` algorithm even when the sider is painted dark, so colorTextTertiary comes
+  // back near-black ≈ rgba(0,0,0,0.45) and is invisible on a dark sider — the "màu title chưa ăn" bug).
+  // Instead INHERIT the slot's themed colour and DIM the whole node (opacity) for the muted section look
+  // — theme-proof by construction. An explicit style.color (user chose one) wins at full strength.
   // onClick guard (not pointer-events:none) so the click is swallowed here instead of bubbling to
   // the surrounding menu <Link> and navigating.
-  const lineColor = style?.color || token.colorSplit;
-  // Caption follows the chosen line color so text + rule read as one unit; unset → muted tertiary
-  // (unchanged default look).
-  const textColor = style?.color || token.colorTextTertiary;
+  const lineColor = style?.color || 'currentColor';
+  const textColor = style?.color || 'inherit';
+  const dim = style?.color ? undefined : 0.62;
   const thickness = Math.max(1, Number(style?.thickness) || 1);
   const explicit = typeof style?.text === 'string' ? style.text.trim() : '';
   const lineOn = style?.lineOn !== false; // default: show the rule
@@ -209,7 +209,7 @@ function DividerNode({ style, fallbackText }: { style?: SectionStyle; fallbackTe
       aria-orientation="horizontal"
       aria-label={label || undefined}
       onClick={stopNav}
-      style={{ display: 'block', width: '100%', cursor: 'default' }}
+      style={{ display: 'block', width: '100%', cursor: 'default', opacity: dim }}
     >
       {body}
     </span>
@@ -217,8 +217,9 @@ function DividerNode({ style, fallbackText }: { style?: SectionStyle; fallbackTe
 }
 
 function GroupLabelNode({ text, style }: { text: any; style?: SectionStyle }) {
-  const { token } = theme.useToken();
+  // Inherit the menu slot's themed colour + dim (see DividerNode) — theme-proof, no absolute token.
   const size = Number(style?.size) > 0 ? Number(style?.size) : 11;
+  const dim = style?.color ? undefined : 0.62;
   return (
     <span
       data-ptdl-menu-kind="groupLabel"
@@ -233,7 +234,8 @@ function GroupLabelNode({ text, style }: { text: any; style?: SectionStyle }) {
         fontSize: size,
         fontWeight: style?.bold === false ? 500 : 600,
         letterSpacing: 0.6,
-        color: style?.color || token.colorTextTertiary,
+        color: style?.color || 'inherit',
+        opacity: dim,
         padding: '8px 0 2px',
         lineHeight: 1.4,
         whiteSpace: 'nowrap',
