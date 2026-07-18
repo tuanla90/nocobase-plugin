@@ -45,27 +45,66 @@ function scoreBlock(ds: string, coll: string, w: DashboardWidget, i: number, id:
 }
 
 // ── chart (core ECharts, custom raw option) ───────────────────────────────────────────────────────
-function chartRaw(w: DashboardWidget): string {
-  const dim = w.dimension!.field, mea = w.measure!.field;
+interface DimInfo { fieldPath: string[]; dataKey: string; format?: string; labels?: Record<string, string> }
+
+/** value→label map for an enum field (select / multipleSelect / radioGroup / statusFlow) from its uiSchema
+ *  enum, so a chart grouped on it shows the human label ("Đang giao") instead of the stored slug ("dang_giao"). */
+function enumLabels(field: any): Record<string, string> | undefined {
+  const opts = field?.uiSchema?.enum || field?.options?.uiSchema?.enum;
+  if (!Array.isArray(opts) || !opts.length) return undefined;
+  const m: Record<string, string> = {};
+  opts.forEach((o: any) => {
+    if (o && o.value != null) m[String(o.value)] = String(o.label != null ? o.label : o.value);
+  });
+  return Object.keys(m).length ? m : undefined;
+}
+/** Resolve a chart dimension to a QUERYABLE field path + the result-row key. A m2o RELATION can't be a
+ *  dimension by its bare name (SQL error) — it must group by the target's title field, whose result key is
+ *  the DOTTED path `<rel>.<title>` (so the raw reads `x['khach_hang.ho_ten']`, not `x.khach_hang`). */
+function resolveDimension(app: any, coll: string, w: DashboardWidget): DimInfo {
+  const dim = w.dimension!.field;
+  try {
+    const dsm = app?.dataSourceManager;
+    const getColl = (name: string) => dsm?.getDataSource?.('main')?.getCollection?.(name) || dsm?.getCollection?.('main', name);
+    const f = getColl(coll)?.getField?.(dim);
+    const target = f?.target || f?.options?.target;
+    if (target) {
+      const tcoll = getColl(target);
+      const titleField = tcoll?.titleField || tcoll?.options?.titleField;
+      if (titleField) return { fieldPath: [dim, titleField], dataKey: `${dim}.${titleField}` };   // group by name
+      return { fieldPath: [`${dim}_id`], dataKey: `${dim}_id` };                                    // fallback: FK id
+    }
+    // scalar dimension — attach the enum value→label map so a select/statusFlow shows labels, not slugs.
+    return { fieldPath: [dim], dataKey: dim, format: w.dimension!.format, labels: enumLabels(f) };
+  } catch { /* not resolvable → treat as scalar */ }
+  return { fieldPath: [dim], dataKey: dim, format: w.dimension!.format };
+}
+function chartRaw(w: DashboardWidget, dim: DimInfo): string {
+  const mx = `x[${JSON.stringify(w.measure!.field)}]`;
+  const rawDx = `x[${JSON.stringify(dim.dataKey)}]`;
+  // Category NAME: map the stored enum value → its label (select/statusFlow) when we have the map; else raw.
+  const nameExpr = dim.labels && Object.keys(dim.labels).length
+    ? `(function(v){var L=${JSON.stringify(dim.labels)};return v==null?'—':(L[v]!=null?L[v]:String(v));})(${rawDx})`
+    : `(${rawDx} == null ? '—' : String(${rawDx}))`;
   const axisText = "'#9ca3af'";
   // self-labelling title (block has no header) — mid-gray reads on both light & dark themes.
   const title = w.title ? `title:{text:'${esc(w.title)}',left:'left',top:4,textStyle:{fontSize:14,fontWeight:600,color:${axisText}}}, ` : '';
   if (w.chartType === 'pie') {
-    return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'item'}, legend:{top:${w.title ? 30 : 4},textStyle:{color:${axisText}}}, series:[{ type:'pie', radius:['42%','70%'], center:['50%','${w.title ? 60 : 54}%'], avoidLabelOverlap:true, itemStyle:{borderColor:'transparent',borderWidth:2}, label:{color:${axisText}}, data: data.map(function(x){ return { name:String(x.${dim}), value:x.${mea} }; }) }] };`;
+    return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'item'}, legend:{top:${w.title ? 30 : 4},textStyle:{color:${axisText}}}, series:[{ type:'pie', radius:['42%','70%'], center:['50%','${w.title ? 60 : 54}%'], avoidLabelOverlap:true, itemStyle:{borderColor:'transparent',borderWidth:2}, label:{color:${axisText},formatter:'{b}: {d}%'}, data: data.map(function(x){ return { name:${nameExpr}, value:${mx} }; }) }] };`;
   }
   if (w.chartType === 'bar') {
-    return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', data:data.map(function(x){return x.${dim};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'bar', barWidth:'55%', itemStyle:{color:'${ACCENT}', borderRadius:[6,6,0,0]}, data:data.map(function(x){return x.${mea};}) }] };`;
+    return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', data:data.map(function(x){return ${nameExpr};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'bar', barWidth:'55%', itemStyle:{color:'${ACCENT}', borderRadius:[6,6,0,0]}, data:data.map(function(x){return ${mx};}) }] };`;
   }
-  return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', boundaryGap:false, data:data.map(function(x){return x.${dim};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'line', smooth:true, showSymbol:false, data:data.map(function(x){return x.${mea};}), lineStyle:{width:3,color:'${ACCENT}'}, itemStyle:{color:'${ACCENT}'}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(124,58,237,0.4)'},{offset:1,color:'rgba(124,58,237,0)'}]}} }] };`;
+  return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', boundaryGap:false, data:data.map(function(x){return ${nameExpr};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'line', smooth:true, showSymbol:false, data:data.map(function(x){return ${mx};}), lineStyle:{width:3,color:'${ACCENT}'}, itemStyle:{color:'${ACCENT}'}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(124,58,237,0.4)'},{offset:1,color:'rgba(124,58,237,0)'}]}} }] };`;
 }
-function chartBlock(ds: string, coll: string, w: DashboardWidget, id: string) {
-  const raw = chartRaw(w);
-  const builder: any = { type: 'echarts.' + (w.chartType || 'line'), xField: w.dimension!.field, yField: w.measure!.field, yFields: [w.measure!.field], size: { type: 'ratio' }, lightTheme: 'walden', darkTheme: 'defaultDark', showLegend: true, legend: true, tooltip: true };
-  if (w.chartType === 'pie') Object.assign(builder, { colorField: w.dimension!.field, angleField: w.measure!.field, innerRadius: 42 });
+function chartBlock(ds: string, coll: string, w: DashboardWidget, id: string, dim: DimInfo) {
+  const raw = chartRaw(w, dim);
+  const builder: any = { type: 'echarts.' + (w.chartType || 'line'), xField: dim.dataKey, yField: w.measure!.field, yFields: [w.measure!.field], size: { type: 'ratio' }, lightTheme: 'walden', darkTheme: 'defaultDark', showLegend: true, legend: true, tooltip: true };
+  if (w.chartType === 'pie') Object.assign(builder, { colorField: dim.dataKey, angleField: w.measure!.field, innerRadius: 42 });
   return {
     uid: id, use: 'ChartBlockModel', props: { chart: { optionRaw: raw } },
     stepParams: { chartSettings: { configure: {
-      query: { mode: 'builder', collectionPath: [ds, coll], measures: [{ field: [w.measure!.field], aggregation: w.measure!.aggregation }], dimensions: [{ field: [w.dimension!.field], ...(w.dimension!.format ? { format: w.dimension!.format } : {}) }], orders: [], filter: { logic: '$and', items: [] } },
+      query: { mode: 'builder', collectionPath: [ds, coll], measures: [{ field: [w.measure!.field], aggregation: w.measure!.aggregation }], dimensions: [{ field: dim.fieldPath, ...(dim.format ? { format: dim.format } : {}) }], orders: [], filter: { logic: '$and', items: [] } },
       chart: { option: { mode: 'custom', builder, raw } },
     } } },
   };
@@ -77,10 +116,29 @@ function fieldMeta(collection: any, name: string) {
   const title = f?.uiSchema?.title || f?.options?.uiSchema?.title || f?.title || name;
   return { name, title: String(title).replace(/\{\{\s*t\(["']([^"']+)["']\)\s*\}\}/, '$1'), interface: f?.interface || 'input', type: f?.type || 'string' };
 }
-function filterBlock(ds: string, coll: string, fields: string[], collection: any, targetUid: string | undefined, id: string) {
+function filterBlock(engine: any, ds: string, coll: string, fields: string[], collection: any, targetUid: string | undefined, id: string) {
+  const FilterItem: any = engine?.getModelClass?.('FilterFormItemModel');
   const items = fields.map((fn) => {
     const meta = fieldMeta(collection, fn);
+    const fieldObj = collection?.getField?.(fn);
     const iid = uid();
+    // Every filter item MUST carry a `field` sub-model or it renders label-only with no value picker (the
+    // block reads `item.subModels.field.context.collectionField`). Resolve the input model + its default
+    // props the SAME way the native "add filter field" does — getDefaultBindingByField(ctx, field).
+    let fieldUse: string | undefined;
+    let fieldProps: any;
+    try {
+      const binding = FilterItem?.getDefaultBindingByField?.(engine?.context, fieldObj);
+      if (binding?.modelName) {
+        const isAssoc = typeof fieldObj?.isAssociationField === 'function' ? fieldObj.isAssociationField() : !!fieldObj?.target;
+        fieldUse = isAssoc && engine?.getModelClass?.('FilterFormRecordSelectFieldModel') ? 'FilterFormRecordSelectFieldModel' : binding.modelName;
+        fieldProps = typeof binding.defaultProps === 'function' ? binding.defaultProps(engine.context, fieldObj) : binding.defaultProps;
+      }
+    } catch (_) { /* fall through to the fallbacks */ }
+    if (!fieldUse && DATEISH.has(meta.interface)) fieldUse = 'DateTimeTzFilterFieldModel';
+    // Everything else (select / statusFlow / text / number …) → the base filter field model, which renders
+    // a suitable input (a select with the enum options for status/choice fields) from the collectionField.
+    if (!fieldUse) fieldUse = 'FilterFormFieldModel';
     const model: any = {
       uid: iid, use: 'FilterFormItemModel',
       stepParams: {
@@ -88,7 +146,7 @@ function filterBlock(ds: string, coll: string, fields: string[], collection: any
         filterFormItemSettings: { init: { filterField: { name: fn, title: meta.title, interface: meta.interface, type: meta.type }, ...(targetUid ? { defaultTargetUid: targetUid } : {}) } },
       },
     };
-    if (DATEISH.has(meta.interface)) model.subModels = { field: { use: 'DateTimeTzFilterFieldModel' } };
+    if (fieldUse) model.subModels = { field: { use: fieldUse, ...(fieldProps ? { props: fieldProps } : {}) } };
     return { uid: iid, model };
   });
   const layout = { version: 2, rows: [{ id: uid(), cells: items.map((it) => ({ id: uid(), items: [it.uid] })), sizes: items.map(() => Math.max(6, Math.floor(24 / Math.max(1, items.length)))) }] };
@@ -100,8 +158,9 @@ function filterBlock(ds: string, coll: string, fields: string[], collection: any
 
 const evenSizes = (n: number) => Array.from({ length: n }, () => Math.floor(24 / Math.max(1, n)));
 
-/** Build the whole dashboard page (route + RootPageModel + BlockGrid of widgets). Returns the schemaUid. */
-export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ pageSchemaUid: string; url: string }> {
+/** Build the whole dashboard page (route + RootPageModel + BlockGrid of widgets). Returns the schemaUid +
+ *  the chart uid↔widget map, so the launcher can offer per-chart AI refine right after generating. */
+export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ pageSchemaUid: string; url: string; charts: Array<{ uid: string; title?: string; chartType?: string }> }> {
   const engine = app?.flowEngine;
   if (!engine) throw new Error('flowEngine unavailable');
   const ds = 'main';
@@ -112,10 +171,10 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
   const charts = spec.widgets.filter((w) => w.kind === 'chart' && w.measure && w.dimension);
   const filters = spec.widgets.filter((w) => w.kind === 'filter' && (w.fields || []).length);
 
-  const chartBlocks = charts.map((w) => chartBlock(ds, coll, w, uid()));
+  const chartBlocks = charts.map((w) => chartBlock(ds, coll, w, uid(), resolveDimension(app, coll, w)));
   const firstChartUid = chartBlocks[0]?.uid;
   const scoreBlocks = scores.map((w, i) => scoreBlock(ds, coll, w, i, uid()));
-  const filterBlocks = filters.map((w) => filterBlock(ds, coll, w.fields || [], collection, firstChartUid, uid()));
+  const filterBlocks = filters.map((w) => filterBlock(engine, ds, coll, w.fields || [], collection, firstChartUid, uid()));
 
   const rows: any[] = [];
   filterBlocks.forEach((fb) => rows.push({ id: uid(), cells: [{ id: uid(), items: [fb.uid] }], sizes: [24] }));
@@ -137,5 +196,6 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
     subModels: { tabs: [{ uid: tabSchemaUid, use: 'RootPageTabModel', props: { route: { type: 'tabs', schemaUid: tabSchemaUid, tabSchemaName, hidden: true } }, subModels: { grid: { use: 'BlockGridModel', props: { layout }, stepParams: { gridSettings: { grid: { layout } } }, subModels: { items } } } }] },
   });
   await pageModel.save();
-  return { pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}` };
+  const chartsOut = charts.map((w, i) => ({ uid: chartBlocks[i].uid, title: w.title, chartType: w.chartType }));
+  return { pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}`, charts: chartsOut };
 }

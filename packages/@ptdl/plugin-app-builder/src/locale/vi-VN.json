@@ -46,5 +46,10 @@
   "Pick a collection first": "Hãy chọn bảng trước",
   "AI could not design a dashboard": "AI chưa thiết kế được dashboard",
   "Dashboard created": "Đã tạo dashboard",
-  "Filter": "Lọc"
+  "Filter": "Lọc",
+  "Edit a chart with AI": "Sửa biểu đồ bằng AI",
+  "e.g. turn into a bar chart, add data labels, green line": "vd đổi sang biểu đồ cột, thêm nhãn số liệu, đường màu xanh",
+  "The chart’s ECharts code is rewritten in place — open the dashboard above to see it (or edit it manually in the chart’s Configure panel).": "Code ECharts của biểu đồ được viết lại tại chỗ — mở dashboard bên trên để xem (hoặc tự sửa trong panel Cấu hình của biểu đồ).",
+  "AI could not edit the chart": "AI chưa sửa được biểu đồ",
+  "Chart updated — open/reload the dashboard to see it": "Đã sửa biểu đồ — mở/tải lại dashboard để xem"
 }

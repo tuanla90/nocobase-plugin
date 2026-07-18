@@ -339,6 +339,16 @@ function dashboardSystemPrompt(): string {
   ].join('\n');
 }
 
+/** System prompt for refining ONE chart's ECharts code from a NL instruction. */
+function chartRefineSystemPrompt(): string {
+  return [
+    'Bạn là chuyên gia ECharts. Sửa (hoặc viết lại) code option của MỘT biểu đồ NocoBase theo YÊU CẦU, GIỮ nguyên mọi thứ không liên quan.',
+    'Code chạy trong TRÌNH DUYỆT: có sẵn biến `ctx.data.objects` = MẢNG bản ghi (mỗi phần tử là 1 object, key = tên field trong query). Code PHẢI kết thúc bằng `return { …option ECharts… };`.',
+    'Khung ví dụ: `var data = ctx.data.objects || []; return { tooltip:{trigger:"axis"}, xAxis:{type:"category", data:data.map(function(x){return x.thang;})}, series:[{type:"bar", data:data.map(function(x){return x.doanh_thu;})}] };`',
+    'QUY TẮC: dùng ĐÚNG key data đã cho (`x.<field>`). KHÔNG require/import/khai báo hàm ngoài. Đổi ĐÚNG thứ user yêu cầu (loại chart line/bar/pie, màu, nhãn số liệu label, định dạng trục, legend, tooltip…), phần còn lại giữ nguyên. Trả về TOÀN BỘ code (cả `var data` lẫn `return`), KHÔNG markdown, KHÔNG giải thích ngoài trường explain.',
+  ].join('\n');
+}
+
 /** Light validate + coerce a DashboardSpec: force the collection, drop widgets referencing unknown fields. */
 function validateDashboardSpec(spec: any, coll: string, fieldNames: Set<string>): { ok: boolean; spec?: any; error?: string } {
   if (!spec || typeof spec !== 'object') return { ok: false, error: 'Không phải object' };
@@ -836,6 +846,58 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
+        // {chartUid, instruction} → AI viết lại code ECharts (raw) của MỘT Chart block theo yêu cầu, ghi thẳng
+        // vào flowModel (mode:custom). Chart đổi khi trang tải lại. Chart nào cũng sửa được (kể cả builder-mặc-định).
+        aiRefineChart: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const chartUid = String(v.chartUid || '').trim();
+          const instruction = String(v.instruction || '').trim();
+          if (!chartUid || !instruction) { ctx.body = { ok: false, error: 'Thiếu chartUid hoặc instruction' }; await next(); return; }
+          const repo = this.db.getRepository('flowModels');
+          const rec: any = await repo.findOne({ filter: { uid: chartUid } });
+          if (!rec) { ctx.body = { ok: false, error: 'Không thấy chart: ' + chartUid }; await next(); return; }
+          const options = typeof rec.options === 'string' ? JSON.parse(rec.options) : (rec.options || {});
+          if (options.use !== 'ChartBlockModel') { ctx.body = { ok: false, error: 'Không phải Chart block (' + options.use + ')' }; await next(); return; }
+          const cfg = (((options.stepParams = options.stepParams || {}).chartSettings = options.stepParams.chartSettings || {}).configure = options.stepParams.chartSettings.configure || {});
+          const opt = (cfg.chart = cfg.chart || {}).option || {};
+          const query = cfg.query || {};
+          const leaf = (f: any) => (Array.isArray(f) ? f[f.length - 1] : f);
+          const measures = (query.measures || []).map((m: any) => m.alias || leaf(m.field));
+          const dims = (query.dimensions || []).map((d: any) => leaf(d.field));
+          const dataKeys = [...dims, ...measures].filter(Boolean);
+          const { provider, error } = await getAiProvider(this.app);
+          if (error) { ctx.body = { ok: false, error }; await next(); return; }
+          const system = chartRefineSystemPrompt();
+          const schema = { type: 'object', properties: { raw: { type: 'string', description: 'Code ECharts MỚI (JS trả về option)' }, explain: { type: 'string' } }, required: ['raw'] };
+          const base = (extra = '') => [
+            'Code ECharts HIỆN TẠI của biểu đồ:', opt.raw || '(chưa có raw — chart đang dùng builder mặc định; hãy viết mới hoàn chỉnh)',
+            '', `Data: \`ctx.data.objects\` = mảng row, mỗi row có key: ${dataKeys.map((k) => 'x.' + k).join(', ') || '(theo query của chart)'}.`,
+            `Loại chart hiện tại: ${opt.builder?.type || '(tuỳ code)'}.`,
+            '', `YÊU CẦU SỬA: ${instruction}`,
+            '', 'Trả về TOÀN BỘ code mới.' + extra,
+          ].join('\n');
+          let human = base(); let raw = ''; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !raw; attempt++) {
+            let out = '';
+            try {
+              const r: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'chart', description: 'ECharts code + giải thích' } });
+              const p = r && typeof r === 'object' && 'parsed' in r ? r.parsed : r;
+              out = p?.raw || ''; explain = String(p?.explain || '');
+            } catch { /* fall back to plain text */ }
+            if (!out) { try { out = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả DUY NHẤT code JS.'], ['human', human]] })); } catch {} }
+            out = stripFences(out).trim();
+            if (!out || !/return/.test(out)) { lastError = 'Code không có return'; human = base('\n\nLần trước THIẾU câu return object.'); continue; }
+            try { new Function('ctx', out); } catch (e: any) { lastError = 'Lỗi cú pháp: ' + e?.message; human = base('\n\nLần trước LỖI cú pháp: ' + e?.message + '. Sửa cho chạy được.'); continue; }
+            raw = out;
+          }
+          if (!raw) { ctx.body = { ok: false, error: lastError || 'AI không sửa được code chart' }; await next(); return; }
+          cfg.chart.option = { ...opt, mode: 'custom', raw };
+          options.props = options.props || {}; options.props.chart = { ...(options.props.chart || {}), optionRaw: raw };
+          await repo.update({ filter: { uid: chartUid }, values: { options } });
+          ctx.body = { ok: true, raw, explain };
+          await next();
+        },
+
         // {instruction} → AGENTIC: AI lập plan gọi các primitive (dùng trạng thái hiện tại làm "mắt").
         // KHÔNG chạy — trả steps để client preview + execute (data→server tool, page→flowEngine).
         aiPlan: async (ctx: any, next: any) => {
@@ -888,7 +950,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 

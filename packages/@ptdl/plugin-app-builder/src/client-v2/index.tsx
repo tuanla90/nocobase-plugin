@@ -67,7 +67,9 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [dashColl, setDashColl] = useState<string | undefined>(undefined);
     const [dashDesc, setDashDesc] = useState('');
     const [dashBusy, setDashBusy] = useState(false);
-    const [dashResult, setDashResult] = useState<{ url: string; title: string; widgets: any[] } | null>(null);
+    const [dashResult, setDashResult] = useState<{ url: string; title: string; widgets: any[]; charts?: Array<{ uid: string; title?: string; chartType?: string }> } | null>(null);
+    const [chartRefine, setChartRefine] = useState<Record<string, string>>({}); // chartUid → instruction text
+    const [chartRefineBusy, setChartRefineBusy] = useState<string | null>(null); // chartUid currently refining
 
     // User data collections to offer as the dashboard source (skip system/hidden ones).
     const collections = React.useMemo(() => {
@@ -92,12 +94,32 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
           .then((r: any) => r?.data?.data ?? r?.data);
         if (!ai?.ok) { message.error(ai?.error || t('AI could not design a dashboard')); return; }
         const built = await createDashboard(app, ai.spec);
-        setDashResult({ url: built.url, title: ai.spec.title, widgets: ai.spec.widgets || [] });
+        setDashResult({ url: built.url, title: ai.spec.title, widgets: ai.spec.widgets || [], charts: built.charts });
+        setChartRefine({});
         message.success(ai.explain || t('Dashboard created'));
       } catch (e: any) {
         message.error(e?.message || String(e));
       } finally {
         setDashBusy(false);
+      }
+    };
+    // ✏️ Chat-refine ONE chart's ECharts code (server rewrites its `raw` in place). Change shows on next
+    // load of the dashboard — which the user opens via the link below, so no reload needed.
+    const onRefineChart = async (chartUid: string) => {
+      const instruction = (chartRefine[chartUid] || '').trim();
+      if (!instruction) { message.warning(t('Type what to change')); return; }
+      setChartRefineBusy(chartUid);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:aiRefineChart', method: 'post', data: { chartUid, instruction } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('AI could not edit the chart')); return; }
+        setChartRefine((m) => ({ ...m, [chartUid]: '' }));
+        message.success(res.explain || t('Chart updated — open/reload the dashboard to see it'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setChartRefineBusy(null);
       }
     };
 
@@ -357,6 +379,28 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                   </li>
                 ))}
               </ul>
+              {dashResult.charts && dashResult.charts.length > 0 && (
+                <div style={{ marginTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 10 }}>
+                  <Typography.Text strong style={{ fontSize: 12 }}>✏️ {t('Edit a chart with AI')}:</Typography.Text>
+                  {dashResult.charts.map((c) => (
+                    <Space.Compact key={c.uid} style={{ width: '100%', marginTop: 6 }}>
+                      <Input
+                        size="small"
+                        addonBefore={<span style={{ fontSize: 11, maxWidth: 130, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📈 {c.title || c.chartType || 'chart'}</span>}
+                        value={chartRefine[c.uid] || ''}
+                        onChange={(e) => setChartRefine((m) => ({ ...m, [c.uid]: e.target.value }))}
+                        onPressEnter={() => onRefineChart(c.uid)}
+                        placeholder={t('e.g. turn into a bar chart, add data labels, green line')}
+                        disabled={chartRefineBusy === c.uid}
+                      />
+                      <Button size="small" loading={chartRefineBusy === c.uid} onClick={() => onRefineChart(c.uid)}>✏️</Button>
+                    </Space.Compact>
+                  ))}
+                  <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+                    {t('The chart’s ECharts code is rewritten in place — open the dashboard above to see it (or edit it manually in the chart’s Configure panel).')}
+                  </Typography.Paragraph>
+                </div>
+              )}
             </div>
           )}
         </Modal>
@@ -410,6 +454,7 @@ export class PluginAppBuilderClientV2 extends Plugin {
         // dashboard tier (client) — build a /v/ analytics page (score cards + ECharts charts + filter)
         createDashboard: (spec) => createDashboard(app, spec),
         aiDashboard: (v) => api('aiDashboard', v),
+        aiRefineChart: (v) => api('aiRefineChart', v),
       };
       // Execute an AI-planned sequence of tool calls step-by-step (data tools → server, page tools → client).
       const runPlan = async (steps: Array<{ tool: string; args: any }>) => {
