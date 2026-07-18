@@ -4,7 +4,7 @@
 > form default values, **stored columns the server recomputes** across relations, and **sequential / window** calculations
 > like running balances or FIFO / average inventory costing — **no code**.
 
-**Group:** Blocks / Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.59
+**Group:** Blocks / Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.63
 
 ## What's new after installing?
 
