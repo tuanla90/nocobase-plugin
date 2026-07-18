@@ -106,6 +106,23 @@ function build(plugins) {
     </section>`).join('\n');
 
   const count = plugins.length;
+
+  // Pinned "Reference" entry (shared functions & helpers), sourced from docs-site/reference.*.md.
+  const refVi = renderReadme(path.join(REPO, 'docs-site', 'reference.vi-VN.md'));
+  const refEn = renderReadme(path.join(REPO, 'docs-site', 'reference.md')) || refVi;
+  const refDataText = 'reference tham khảo hàm helper functions helpers handlebars excel formula sum if vlookup';
+  const refNav = refVi ? `
+    <div class="nav-group">
+      <div class="nav-cat">${L('📘 Tham khảo', '📘 Reference')}</div>
+      <a class="nav-link" href="#reference" data-text="${refDataText}">${L('Hàm &amp; Helper dùng chung', 'Shared functions &amp; helpers')}</a>
+    </div>` : '';
+  const refSection = refVi ? `
+    <section class="plugin" id="reference" data-text="${refDataText}">
+      <div class="plugin-head"><h2>${L('📘 Tham khảo: Hàm &amp; Helper dùng chung', '📘 Reference: Shared functions &amp; helpers')}</h2></div>
+      <div class="prose lang lang-vi">${refVi}</div>
+      <div class="prose lang lang-en" hidden>${refEn}</div>
+    </section>` : '';
+
   return `<!doctype html>
 <html lang="vi" data-lang="vi">
 <head>
@@ -192,7 +209,7 @@ a:hover{text-decoration:underline}
     <button class="menu-btn" onclick="document.getElementById('navwrap').classList.toggle('collapsed')">☰ ${L('Danh mục', 'Menu')}</button>
     <div class="nav-wrap" id="navwrap">
       <input class="search" id="q" type="search" placeholder="Tìm plugin… · Search plugins…" autocomplete="off">
-      <div id="nav">${sidebar}
+      <div id="nav">${refNav}${sidebar}
         <div class="nav-empty" id="empty">${L('Không tìm thấy plugin phù hợp.', 'No matching plugin found.')}</div>
       </div>
     </div>
@@ -203,7 +220,7 @@ a:hover{text-decoration:underline}
       <p>${L('Cài plugin xong thì <b>đổi gì</b>, chỉnh <b>ở đâu</b>, dùng <b>thế nào</b> — từng bước.', 'What <b>changes</b> after installing, <b>where</b> to configure, <b>how</b> to use — step by step.')}</p>
       <div class="meta">${L('Chọn plugin ở thanh bên, hoặc dùng ô tìm kiếm. Nội dung sinh tự động từ tài liệu của từng plugin.', 'Pick a plugin in the sidebar, or use the search box. Content is generated from each plugin&#39;s docs.')}</div>
     </div>
-    ${sections}
+    ${refSection}${sections}
   </main>
 </div>
 <script>
