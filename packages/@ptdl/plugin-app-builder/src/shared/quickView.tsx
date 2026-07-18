@@ -328,6 +328,20 @@ function relationPopupColumns(engine: any, targetColl: any, sourceCollName: stri
   }));
 }
 
+/** Find the collection's @ptdl/plugin-status-flow field (if any), so generated pages can offer a
+ *  Change-status action. Mirrors that plugin's OWN server-side detection (statusFlowFields in
+ *  plugin-status-flow/src/server/plugin.ts): match by `interface === 'statusFlow'` OR — since a field
+ *  created programmatically doesn't always surface `interface` the same way on every shape — a
+ *  configured `options.statusFlow.initial`. Returns the field NAME (the action targets it by name so it
+ *  never reads as "ambiguous", even if a collection later grows a 2nd status field). */
+function findStatusFlowField(collection: any): string | undefined {
+  const fields = collection?.getFields?.() || [];
+  const hit = fields.find(
+    (f: any) => f?.interface === 'statusFlow' || !!(f?.options?.statusFlow && typeof f.options.statusFlow === 'object' && f.options.statusFlow.initial),
+  );
+  return hit?.name;
+}
+
 // ── small literal builders ─────────────────────────────────────────────────────────────────────
 const resInit = (ds: string, coll: string, filterByTk?: boolean) => ({
   resourceSettings: { init: { dataSourceKey: ds, collectionName: coll, ...(filterByTk ? { filterByTk: '{{ctx.view.inputArgs.filterByTk}}' } : {}) } },
@@ -361,8 +375,11 @@ function tableColumn(ds: string, coll: string, c: BuiltCol) {
   };
 }
 
-/** Read-only Details block (for View), one DetailsItemModel per picked column. */
-function detailsBlock(ds: string, coll: string, cols: BuiltCol[]) {
+/** Read-only Details block (for View), one DetailsItemModel per picked column, plus an optional action
+ *  bar (`actions` — an Edit button and/or a Change-status action; built by the caller, see
+ *  buildTableBlock). A relation display item gets the SAME `relPopup` fix as tableColumn(): without it,
+ *  clicking a relation field here also pops an EMPTY drawer (Phase 1 only fixed the table column). */
+function detailsBlock(ds: string, coll: string, cols: BuiltCol[], actions?: any[]) {
   return {
     use: 'DetailsBlockModel',
     stepParams: resInit(ds, coll, true),
@@ -377,12 +394,17 @@ function detailsBlock(ds: string, coll: string, cols: BuiltCol[]) {
               field: {
                 use: c.detailsUse,
                 stepParams: fieldStep(ds, coll, c.name),
-                ...(c.detailsSubCols && c.detailsSubCols.length ? { subModels: { columns: c.detailsSubCols } } : {}),
+                ...(c.detailsSubCols && c.detailsSubCols.length
+                  ? { subModels: { columns: c.detailsSubCols } }
+                  : c.relPopup
+                    ? { subModels: { page: c.relPopup } }
+                    : {}),
               },
             },
           })),
         },
       },
+      ...(actions && actions.length ? { actions } : {}),
     },
   };
 }
@@ -500,12 +522,58 @@ function popupShell(tabTitle: string, block: any) {
 
 const rowActionBtn = { buttonSettings: { general: { type: 'link', icon: null } } };
 
-/** The Table block: data columns (`cols`) + a row-actions column (View/Edit) + toolbar actions
- *  (Add/Refresh). The View/Edit/Add popups render `popupCols` (defaults to `cols`). */
-function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[], popupCols: BuiltCol[]) {
+/** Edit action (EditActionModel — the same mechanism NocoBase uses everywhere for row-level edit): opens
+ *  an Edit form over `cols`. ONE function builds both the row-level Edit button AND the View popup's own
+ *  Edit button (see buildTableBlock), so Add/row-Edit/View→Edit always render the exact same fields, in
+ *  the same order and with the same widgets — single source of truth is the `popupCols` array the caller
+ *  passes in, not three independently hand-built forms. (A live cross-referenced ReferenceBlockModel
+ *  template — like the quick-create Add-form reuse below — was considered for a still-tighter single
+ *  instance, but that mechanism is designed for a fixed template, not a per-row dynamic filterByTk; this
+ *  column-spec-level reuse is the safe, proven equivalent — see createAddFormTemplate/referenceFormGrid.) */
+function editAction(ds: string, coll: string, cols: BuiltCol[], asRowLink: boolean, tabTitle = 'Edit') {
+  return {
+    use: 'EditActionModel',
+    stepParams: asRowLink ? rowActionBtn : { buttonSettings: { general: { type: 'default' } } },
+    subModels: { page: popupShell(tabTitle, formBlock('EditFormModel', ds, coll, cols)) },
+  };
+}
+
+/** "Change status" action — @ptdl/plugin-status-flow's own StatusTransitionActionModel (a record-scene
+ *  action, same family as ViewActionModel/EditActionModel: it reads ctx.record/ctx.collection wherever
+ *  it's placed, e.g. a table row or a Details block's action bar). Emitted into BOTH the row actions and
+ *  the View popup (see buildTableBlock) for a collection that has a statusFlow field, so moving a record
+ *  through the flow designed in appSpec.ts (§statusFlow, fieldDef's rich compile) is one click away either
+ *  place — the transition itself stays enforced server-side by that plugin no matter where it's triggered.
+ *  `sfFieldName` is set explicitly so the action never reads as "ambiguous" if the collection ever grows a
+ *  2nd status field. Returns undefined (no-op) when the model isn't registered, i.e. an app without
+ *  @ptdl/plugin-status-flow installed just doesn't get the button. */
+function changeStatusAction(engine: any, statusFieldName: string, asRowLink: boolean): any | undefined {
+  try {
+    if (!engine?.getModelClass?.('StatusTransitionActionModel')) return undefined;
+  } catch {
+    return undefined;
+  }
+  return {
+    use: 'StatusTransitionActionModel',
+    stepParams: {
+      buttonSettings: { general: { type: asRowLink ? 'link' : 'default', title: 'Đổi trạng thái', ...(asRowLink ? { icon: null } : {}) } },
+      ptdlStatusTransition: { settings: { sfFieldName: statusFieldName, sfConfirm: true, sfAskNote: false } },
+    },
+  };
+}
+
+/** The Table block: data columns (`cols`) + a row-actions column (View/Edit[/Change-status]) + toolbar
+ *  actions (Add/Refresh). The View/Edit/Add popups render `popupCols` (defaults to `cols`). When the
+ *  collection has a statusFlow field (`statusFieldName`), a Change-status action joins the row actions AND
+ *  the View popup's action bar; the View popup ALSO always gets an Edit button (item 3), reusing the same
+ *  `popupCols` as Add-new/row-Edit. */
+function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[], popupCols: BuiltCol[], statusFieldName?: string, engine?: any) {
   const ds = p.dataSourceKey || 'main';
   const coll = p.collectionName;
   const labels = { view: 'View', edit: 'Edit', add: 'Add new' };
+  const rowStatusAction = statusFieldName ? changeStatusAction(engine, statusFieldName, true) : undefined;
+  const viewStatusAction = statusFieldName ? changeStatusAction(engine, statusFieldName, false) : undefined;
+  const viewActions = [editAction(ds, coll, popupCols, false, labels.edit), ...(viewStatusAction ? [viewStatusAction] : [])];
   return {
     use: p.blockUse || 'TableBlockModel',
     stepParams: resInit(ds, coll),
@@ -516,8 +584,9 @@ function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[], popupCols: 
           use: 'TableActionsColumnModel',
           subModels: {
             actions: [
-              { use: 'ViewActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.view, detailsBlock(ds, coll, popupCols)) } },
-              { use: 'EditActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.edit, formBlock('EditFormModel', ds, coll, popupCols)) } },
+              { use: 'ViewActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.view, detailsBlock(ds, coll, popupCols, viewActions)) } },
+              editAction(ds, coll, popupCols, true, labels.edit),
+              ...(rowStatusAction ? [rowStatusAction] : []),
             ],
           },
         },
@@ -605,13 +674,16 @@ export async function createQuickPage(app: any, params: CreateQuickPageParams): 
   const cols = buildCols(params.columns);
   // Popups reuse `columns` unless `popupColumns` is given (e.g. to add a hasMany sub-table not in the grid).
   const popupCols = params.popupColumns && params.popupColumns.length ? buildCols(params.popupColumns) : cols;
+  // A statusFlow field anywhere on the collection (not necessarily a picked column) → the generated page
+  // gets a Change-status action in the row actions AND the View popup (see buildTableBlock).
+  const statusFieldName = findStatusFlowField(collection);
 
   const pageSchemaUid = uid();
   const menuSchemaUid = uid();
   const tabSchemaUid = uid();
   const tabSchemaName = uid();
 
-  const tableBlock = buildTableBlock(params, cols, popupCols);
+  const tableBlock = buildTableBlock(params, cols, popupCols, statusFieldName, engine);
 
   // 1) Create the menu route FIRST. For a flowPage this also creates the RouteModel at `schemaUid`
   //    (verified live). We must NOT pre-create our own model at that uid — it would collide

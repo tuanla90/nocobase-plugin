@@ -10,7 +10,7 @@
  *   POST /api/appBuilder:apply   { spec }  → { ok, created[] }             (create collections + fields)
  */
 import { Plugin } from '@nocobase/server';
-import { AppSpec, CollectionSpec, FieldSpec, normalizeOptions, RelationSpec, validateAppSpec, ValidationIssue } from '../shared/appSpec';
+import { AppSpec, CollectionSpec, FieldSpec, normalizeOptions, RelationSpec, StatusFlowState, validateAppSpec, ValidationIssue } from '../shared/appSpec';
 
 /** Read the App-Spec from a custom-action call. The SDK wraps `resource().apply({values:{spec}})` as
  *  `ctx.action.params.values`; raw HTTP may put it top-level. Accept both. */
@@ -44,6 +44,23 @@ function resolveEnumSeedValue(enumOpts: Array<{ value: any; label?: any }>, raw:
   }
   return findOne(raw);
 }
+
+// ── rich statusFlow compile helpers ─────────────────────────────────────────────────────────────
+// @ptdl/plugin-status-flow's own Tag palette (types.ts TAG_HEX, unified on @ptdl/shared's primary-6
+// colors). Duplicated here (small, literal) rather than a runtime dep — this plugin is deliberately
+// self-contained (see run-app-builder-build.sh); it must stay in sync with that palette's KEY NAMES.
+const TAG_COLOR_SET = new Set(['default', 'magenta', 'red', 'volcano', 'orange', 'gold', 'yellow', 'lime', 'green', 'cyan', 'blue', 'geekblue', 'purple']);
+// Friendly, semantic names an AI/UX-designer naturally reaches for → a concrete Tag color, so the spec
+// vocabulary stays intuitive without needing the exact palette key names.
+const FRIENDLY_COLOR: Record<string, string> = { default: 'default', processing: 'blue', warning: 'gold', success: 'green', error: 'red' };
+function resolveStatusColor(color: string | undefined, fallback: string): string {
+  if (!color) return fallback;
+  if (TAG_COLOR_SET.has(color)) return color;
+  return FRIENDLY_COLOR[color] || fallback;
+}
+// AI-facing `kind` (init/doing/done/fail — a UX designer's vocabulary) → @ptdl/plugin-status-flow's own
+// StatusKind (init/processing/success/fail).
+const KIND_MAP: Record<string, string> = { init: 'init', doing: 'processing', done: 'success', fail: 'fail' };
 
 /**
  * Map an App-Spec FieldSpec → a NocoBase field definition `{name, type, interface, uiSchema, ...}`.
@@ -86,9 +103,43 @@ export function fieldDef(f: FieldSpec): any {
       return withUi({ type: 'array', interface: 'multipleSelect', uiSchema: { 'x-component': 'Select', 'x-component-props': { mode: 'multiple' }, enum: normalizeOptions(f.options) } });
     case 'statusFlow': {
       // Real @ptdl/plugin-status-flow field: interface 'statusFlow' + a `statusFlow` config that folds
-      // into options (server hooks enforce transitions by reading options.statusFlow). Derive a sequential
-      // flow from `states`: first = init, last = success, middle = processing; each → the next.
-      const states = f.states || [];
+      // into options (server hooks enforce transitions by reading options.statusFlow). `states` is EITHER
+      // a plain string[] (auto-derive a linear flow: first=init, last=success, each→next — kept for
+      // simple cases/back-compat) OR a richly AI-designed list ({label,color?,kind?}) paired with
+      // `transitions` (from-label → to-labels), letting the AI act as a UX designer: real colors, exactly
+      // one initial + at least one final (done/fail) status, branches and a cancel/fail path.
+      const rawStates = f.states || [];
+      const isRich = rawStates.some((s) => s && typeof s === 'object');
+      const hasTransitions = !!(f.transitions && Object.keys(f.transitions).length);
+      if (isRich || hasTransitions) {
+        const rows: StatusFlowState[] = rawStates.map((s) => (typeof s === 'string' ? { label: s } : (s as StatusFlowState) || { label: '' }));
+        const labels = rows.map((r) => r.label);
+        const keys = labels.map((l) => slugify(l));
+        const fallbackPalette = ['blue', 'gold', 'cyan', 'purple', 'geekblue', 'orange'];
+        const kinds: Record<string, string> = {};
+        rows.forEach((r, i) => { kinds[keys[i]] = (r.kind && KIND_MAP[r.kind]) || (i === 0 ? 'init' : i === rows.length - 1 ? 'success' : 'processing'); });
+        if (!Object.values(kinds).includes('init') && keys.length) kinds[keys[0]] = 'init'; // guarantee exactly one initial
+        const initialIdx = keys.findIndex((k) => kinds[k] === 'init');
+        const initial = keys[initialIdx >= 0 ? initialIdx : 0];
+        const defaultColorFor = (kind: string, i: number) => (kind === 'success' ? 'green' : kind === 'fail' ? 'red' : kind === 'init' ? 'default' : fallbackPalette[i % fallbackPalette.length]);
+        const enumOpts = rows.map((r, i) => ({ value: keys[i], label: r.label, color: resolveStatusColor(r.color, defaultColorFor(kinds[keys[i]], i)) }));
+        const labelToKey = new Map(labels.map((l, i) => [l, keys[i]]));
+        const transitions: Record<string, { to: string[] }> = {};
+        for (const [fromLabel, toLabels] of Object.entries(f.transitions || {})) {
+          const fromKey = labelToKey.get(fromLabel) || slugify(fromLabel);
+          const toKeys = Array.from(new Set((Array.isArray(toLabels) ? toLabels : []).map((tl) => labelToKey.get(tl) || slugify(tl)).filter((k) => keys.includes(k) && k !== fromKey)));
+          if (toKeys.length) transitions[fromKey] = { to: toKeys };
+        }
+        return withUi({
+          type: 'string',
+          interface: 'statusFlow',
+          defaultValue: initial,
+          uiSchema: { 'x-component': 'Select', enum: enumOpts },
+          statusFlow: { initial, kinds, transitions, openFrom: {} },
+        });
+      }
+      // Fallback: plain-string states, no transitions given → linear auto-derive (existing behavior).
+      const states = rawStates as string[];
       const keys = states.map((s) => slugify(s));
       const palette = ['default', 'blue', 'gold', 'cyan', 'orange', 'purple', 'geekblue'];
       const enumOpts = states.map((s, i) => ({ value: keys[i], label: s, color: i === states.length - 1 ? 'green' : palette[i % palette.length] }));
@@ -229,11 +280,15 @@ function appSpecSystemPrompt(): string {
     'App-Spec = { "meta": {"name","locale":"vi"}, "collections": [...], "pages": [...], "menu": {"groups": [...]} }.',
     'meta.name = TÊN HIỂN THỊ của cả app, tiếng Việt CÓ DẤU, viết hoa đầu câu (vd "Quản lý bán hàng", "Theo dõi dự án") — đây là nhãn hiển thị trên menu, TUYỆT ĐỐI KHÔNG phải tên máy/snake_case (SAI: "quan_ly_ban_hang").',
     'collection = { "name" (machine, ^[a-z][a-z0-9_]*), "title" (vi có dấu), "titleField", "fields": [...], "relations": [...], "seed": [...] }.',
-    'field = { "name", "title", "interface", "options"?, "required"?, "widget"?, "computed"?, "states"? }.',
+    'field = { "name", "title", "interface", "options"?, "required"?, "widget"?, "computed"?, "states"?, "transitions"? }.',
     '  interface ∈ input, textarea, markdown, phone, email, url, number, integer, percent, select, multipleSelect, checkbox, date, datetime, time, color, json, statusFlow.',
-    '  select/multipleSelect PHẢI có "options": ["A","B"]. statusFlow PHẢI có "states": ["Mới","Xong"]. computed = {"expression":"..."}:',
+    '  select/multipleSelect PHẢI có "options": ["A","B"]. computed = {"expression":"..."}:',
     '    · data.<field> = ô cùng dòng (vd "data.so_luong * data.don_gia");  · SUM(data.<quan_hệ_o2m>.<field>) = tổng con (rollup, vd "SUM(data.chi_tiet.thanh_tien)");',
     '    · data.<quan_hệ_m2o>.<field> = TRA CỨU (lookup) giá trị từ bản ghi liên quan/bảng cấu hình — VD đơn giá dòng chi tiết lấy từ bảng sản phẩm/dịch vụ: "data.san_pham.gia" (đơn giá tự điền khi chọn sản phẩm).',
+    '  statusFlow — bạn là UX designer THIẾT KẾ CẢ LUỒNG chứ không chỉ liệt kê tên: "states" = mảng object {"label","color"?,"kind"?} + "transitions": {"Nhãn A": ["Nhãn B","Nhãn C"]} (từ nhãn → các nhãn được phép chuyển tới).',
+    '    · "kind": "init" (bắt đầu — ĐÚNG 1 trạng thái), "doing" (đang xử lý), "done" (thành công — cuối), "fail" (thất bại/huỷ — cuối). "color": default/processing/warning/success/error (hoặc tên tag blue/gold/green/red/purple/cyan/geekblue/orange/magenta/volcano/yellow/lime).',
+    '    · THIẾT KẾ THẬT: đúng 1 "init"; ít nhất 1 trạng thái cuối (done và/hoặc fail — KHÔNG xuất hiện làm from-key trong transitions); rẽ nhánh khi hợp lý (vd "Chờ duyệt": ["Đang làm","Từ chối"] — vừa lùi vừa tiến); thêm đường huỷ/fail khi hợp lý (vd "Đang làm": ["Xong","Đã huỷ"]).',
+    '    · Vẫn chấp nhận dạng đơn giản "states": ["Mới","Xong"] (mảng string, không "transitions") — compiler tự suy luận tuyến tính; nhưng khi luồng có ý nghĩa nghiệp vụ rõ (đơn hàng, duyệt, ticket…) PHẢI thiết kế đầy đủ như trên.',
     '  widget (tùy chọn, cho đẹp): "Progress bar","Star rating","Value tag","Rich select","Input icon","Sub-table Pro".',
     'relation = { "name" (snake, không dấu), "title" (NHÃN tiếng Việt có dấu, vd "Khách hàng"), "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"?, "quickCreate"? (bool), "subColumns"? ([tên field bảng con hiện trong sub-table, o2m — theo thứ tự bạn thiết kế]) }.',
     '  quickCreate (chỉ m2o/o2o): thêm nút "＋ Thêm mới <target>" ngay trên form. BẬT (true) cho quan hệ tới thực thể người dùng hay tạo tại-chỗ (khách hàng, liên hệ, nhà cung cấp, đối tác). TẮT (bỏ trống) cho danh mục/master quản lý riêng (sản phẩm, phòng, dịch vụ, danh mục, trạng thái).',
@@ -268,7 +323,7 @@ function toolPlanSystemPrompt(state: string): string {
     '- addField {collection, field:{name,title,interface,...}}',
     '- addRelation {collection, relation:{name(snake),title(nhãn tiếng Việt vd "Khách hàng"),type:"m2o"|"o2m"|"o2o"|"m2m",target,reverseName?,quickCreate?(bool: BẬT cho quan hệ tới khách hàng/liên hệ/nhà cung cấp — tạo tại-chỗ; TẮT cho danh mục/master),subColumns?([field con cho sub-table o2m, theo thứ tự thiết kế])}}',
     '- addComputed {collection, field:{name,title,interface:"number",computed:{expression:"data.x * data.y"}}}',
-    '- addStatusFlow {collection, field:{name,title,states:["Mới","Đang làm","Xong"]}}',
+    '- addStatusFlow {collection, field:{name,title,states:(["Mới","Xong"] đơn giản HOẶC [{"label","color"?,"kind"?:"init"|"doing"|"done"|"fail"}] thiết kế đầy đủ),transitions?:{"Nhãn A":["Nhãn B",...]}}}',
     '- seed {collection, rows:[{...}]}  (giá trị quan hệ m2o = giá trị titleField của bản ghi target)',
     '- createMenuGroup {label, icon?}',
     '- createPage {collection, title, menuGroup?, icon?("lucide-users"), block?("EnhancedTableBlockModel"), columns:[tên field], popupColumns?}',
@@ -557,10 +612,10 @@ export class PluginAppBuilderServer extends Plugin {
           ctx.body = await this.opAddField(v.collection, { interface: 'number', ...f, computed: f.computed || { expression: v.expression } });
           await next();
         },
-        // {collection, field:{name,title,states:[...]}}  → a real @ptdl status-flow field
+        // {collection, field:{name,title,states:[...],transitions?:{...}}}  → a real @ptdl status-flow field
         addStatusFlow: async (ctx: any, next: any) => {
           const v = readVals(ctx); const f = v.field || v;
-          ctx.body = await this.opAddField(v.collection, { name: f.name, title: f.title, interface: 'statusFlow', states: f.states });
+          ctx.body = await this.opAddField(v.collection, { name: f.name, title: f.title, interface: 'statusFlow', states: f.states, transitions: f.transitions });
           await next();
         },
         // {collection, rows:[...]}

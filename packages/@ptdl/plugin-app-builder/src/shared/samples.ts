@@ -38,7 +38,23 @@ export const SAMPLE_BAN_HANG: AppSpec = {
       fields: [
         { name: 'code', title: 'Mã đơn', interface: 'input', required: true, unique: true },
         { name: 'orderDate', title: 'Ngày đặt', interface: 'datetime' },
-        { name: 'status', title: 'Trạng thái', interface: 'statusFlow', states: ['Nháp', 'Đã xác nhận', 'Đang giao', 'Hoàn tất'] },
+        {
+          name: 'status', title: 'Trạng thái', interface: 'statusFlow',
+          // Rich, AI-designed flow (item 1): explicit kind/color per status + a branching transitions map
+          // (confirm/ship forward, cancel from any in-flight status) instead of a naive linear chain.
+          states: [
+            { label: 'Nháp', kind: 'init', color: 'default' },
+            { label: 'Đã xác nhận', kind: 'doing', color: 'processing' },
+            { label: 'Đang giao', kind: 'doing', color: 'warning' },
+            { label: 'Hoàn tất', kind: 'done', color: 'success' },
+            { label: 'Đã huỷ', kind: 'fail', color: 'error' },
+          ],
+          transitions: {
+            'Nháp': ['Đã xác nhận', 'Đã huỷ'],
+            'Đã xác nhận': ['Đang giao', 'Đã huỷ'],
+            'Đang giao': ['Hoàn tất', 'Đã huỷ'],
+          },
+        },
         { name: 'total', title: 'Tổng tiền', interface: 'number' },
         { name: 'progress', title: 'Tiến độ (%)', interface: 'integer', widget: 'Progress bar' },
       ],

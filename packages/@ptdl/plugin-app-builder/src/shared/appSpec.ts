@@ -44,6 +44,19 @@ export interface ComputedSpec {
   kind?: 'display' | 'stored';
 }
 
+/** One richly-designed statusFlow status (the AI acting as a UX designer, not just naming states).
+ *  `kind` places it in the flow: 'init' = where new records start (exactly ONE per field), 'doing' =
+ *  in-progress, 'done' = a successful final status, 'fail' = a failed/cancelled final status (a status
+ *  with no outgoing `transitions` entry is final — 'done'/'fail' are the natural candidates but not
+ *  required to be final). `color` accepts either a friendly semantic name (default/processing/warning/
+ *  success/error) or a concrete @ptdl/plugin-status-flow Tag color (blue/gold/green/red/purple/cyan/
+ *  geekblue/orange/magenta/volcano/yellow/lime) — see fieldDef's statusFlow compile in the server plugin. */
+export interface StatusFlowState {
+  label: string;
+  color?: string;
+  kind?: 'init' | 'doing' | 'done' | 'fail';
+}
+
 export interface FieldSpec {
   /** machine name, [a-z][a-z0-9_]* (camelCase also accepted). */
   name: string;
@@ -60,8 +73,16 @@ export interface FieldSpec {
   widget?: string;
   /** deep per-widget config — P4; P0/P1 use each widget's defaults. */
   widgetConfig?: Record<string, any>;
-  /** statusFlow only: the ordered status names. */
-  states?: string[];
+  /** statusFlow only: EITHER plain status names (`["Mới","Xong"]` — auto-derives a linear flow: first is
+   *  the initial status, last is success, each moves to the next; kept for simple cases/back-compat) OR a
+   *  richly AI-designed list (`{label,color?,kind?}`) paired with `transitions` below — the AI acts as a
+   *  UX designer: meaningful colors, exactly one initial + at least one final (done/fail) status, and
+   *  realistic branches. */
+  states?: Array<string | StatusFlowState>;
+  /** statusFlow only, pairs with the rich `states` form: from-label → allowed to-labels (e.g.
+   *  `{"Chờ duyệt": ["Đang làm","Từ chối"]}`), letting the flow branch and include a cancel/fail path.
+   *  Ignored (linear auto-derive applies) when `states` is plain strings and this is omitted. */
+  transitions?: Record<string, string[]>;
   /** present → this is a formula column wired via @ptdl/plugin-formula (not a plain data field). */
   computed?: ComputedSpec;
 }
@@ -200,8 +221,22 @@ export function validateAppSpec(spec: AppSpec): ValidationResult {
       if (OPTION_INTERFACES.includes(f.interface) && !(f.options && f.options.length)) {
         err(`${fp}.options`, `Field "${f.name}" (${f.interface}) cần options`);
       }
-      if (f.interface === 'statusFlow' && !(f.states && f.states.length >= 2)) {
-        err(`${fp}.states`, `Field statusFlow "${f.name}" cần ≥ 2 states`);
+      if (f.interface === 'statusFlow') {
+        if (!(f.states && f.states.length >= 2)) {
+          err(`${fp}.states`, `Field statusFlow "${f.name}" cần ≥ 2 states`);
+        } else {
+          const labels = f.states.map((s) => (typeof s === 'string' ? s : s?.label));
+          labels.forEach((l, si) => { if (!l) err(`${fp}.states[${si}]`, `State thiếu "label"`); });
+          if (f.transitions) {
+            const labelSet = new Set(labels.filter(Boolean));
+            Object.entries(f.transitions).forEach(([from, tos]) => {
+              if (!labelSet.has(from)) warn(`${fp}.transitions`, `transitions "${from}" không khớp state nào trong "${f.name}"`);
+              (tos || []).forEach((to) => {
+                if (!labelSet.has(to)) warn(`${fp}.transitions`, `transitions "${from}" → "${to}": state đích không tồn tại trong "${f.name}"`);
+              });
+            });
+          }
+        }
       }
       if (f.computed && !(typeof f.computed.expression === 'string' && f.computed.expression.trim())) {
         err(`${fp}.computed.expression`, `Cột computed "${f.name}" cần expression`);
