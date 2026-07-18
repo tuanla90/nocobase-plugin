@@ -111,32 +111,63 @@ export function fieldDef(f: FieldSpec): any {
 }
 
 /**
- * Map a RelationSpec → a NocoBase relation field def (created on `sourceColl` via the fields repo with
- * `context:{}`). FK naming is deterministic so a m2o and its declared o2m reverse share ONE foreign key:
- *   m2o `x` → belongsTo, FK `${x}Id` on this collection.
- *   o2m `x` (reverseName `y`) → hasMany, FK `${y}Id` on the target (pairs with the m2o named `y`);
- *              without reverseName, FK `${sourceColl}Id`.
- * Shapes verified against live user-created relations (demo_item.order = belongsTo FK order_id, etc.).
+ * The 5 standard fields every NocoBase collection should carry: id + created/updated at/by. NocoBase's
+ * boolean flags (autoGenId/createdAt/…) create the runtime columns but NOT visible `fields` metadata —
+ * so a flag-only collection shows none of them in the field manager AND its `id` isn't a proper metadata
+ * PK, which is what breaks o2m/hasMany `sourceKey:'id'` resolution ("link ngược bị sai"). Mirrors
+ * NocoBase's own AI `defineCollections` tool, which pushes these as explicit field records (we use a
+ * classic bigInt auto-increment id rather than snowflakeId for continuity with seed/relation/computed).
+ * Vietnamese titles because app-builder is VN-first.
  */
+export function systemFieldDefs(): any[] {
+  const userAssoc = (name: string, title: string, foreignKey: string) => ({
+    name, type: 'belongsTo', interface: name, target: 'users', foreignKey, targetKey: 'id',
+    uiSchema: { type: 'object', title, 'x-component': 'AssociationField', 'x-component-props': { fieldNames: { value: 'id', label: 'nickname' } }, 'x-read-pretty': true },
+  });
+  const ts = (name: string, title: string, iface: string) => ({
+    name, type: 'date', field: name, interface: iface,
+    uiSchema: { type: 'datetime', title, 'x-component': 'DatePicker', 'x-component-props': {}, 'x-read-pretty': true },
+  });
+  return [
+    { name: 'id', type: 'bigInt', autoIncrement: true, primaryKey: true, allowNull: false, interface: 'integer',
+      uiSchema: { type: 'number', title: 'ID', 'x-component': 'InputNumber', 'x-read-pretty': true } },
+    ts('createdAt', 'Ngày tạo', 'createdAt'),
+    userAssoc('createdBy', 'Người tạo', 'createdById'),
+    ts('updatedAt', 'Ngày cập nhật', 'updatedAt'),
+    userAssoc('updatedBy', 'Người cập nhật', 'updatedById'),
+  ];
+}
+
+/**
+ * Map a RelationSpec → a NocoBase relation field def (created on `sourceColl` via the fields repo with
+ * `context:{}`). FK naming is deterministic AND snake_case so it stays consistent with the snake_case
+ * field names (NocoBase's own UI names user-relation FKs this way — e.g. demo_item.order → FK `order_id`),
+ * and so a m2o and its declared o2m reverse share ONE foreign key:
+ *   m2o `x` → belongsTo, FK `${x}_id` on this collection.
+ *   o2m `x` (reverseName `y`) → hasMany, FK `${y}_id` on the target (pairs with the m2o named `y`);
+ *              without reverseName, FK `${sourceColl}_id`.
+ * (System audit relations createdBy/updatedBy keep NocoBase's fixed camelCase FKs createdById/updatedById.)
+ */
+export const fkOf = (name: string) => `${name}_id`;
 export function relationDef(sourceColl: string, r: RelationSpec): any {
   const uiSchema: any = { title: r.title || r.name, 'x-component': 'AssociationField' };
   const base: any = { collectionName: sourceColl, name: r.name, target: r.target, uiSchema };
   switch (r.type) {
     case 'm2o':
-      return { ...base, type: 'belongsTo', interface: 'm2o', foreignKey: `${r.name}Id`, targetKey: 'id',
+      return { ...base, type: 'belongsTo', interface: 'm2o', foreignKey: fkOf(r.name), targetKey: 'id',
         uiSchema: { ...uiSchema, 'x-component-props': { multiple: false } } };
     case 'o2o':
-      return { ...base, type: 'belongsTo', interface: 'obo', foreignKey: `${r.name}Id`, targetKey: 'id',
+      return { ...base, type: 'belongsTo', interface: 'obo', foreignKey: fkOf(r.name), targetKey: 'id',
         uiSchema: { ...uiSchema, 'x-component-props': { multiple: false } } };
     case 'o2m':
-      return { ...base, type: 'hasMany', interface: 'o2m', foreignKey: `${r.reverseName || sourceColl}Id`,
+      return { ...base, type: 'hasMany', interface: 'o2m', foreignKey: fkOf(r.reverseName || sourceColl),
         sourceKey: 'id', targetKey: 'id', uiSchema: { ...uiSchema, 'x-component-props': { multiple: true } } };
     case 'm2m':
       return { ...base, type: 'belongsToMany', interface: 'm2m', through: r.through || `t_${sourceColl}_${r.target}`,
-        foreignKey: `${sourceColl}Id`, otherKey: `${r.target}Id`, sourceKey: 'id', targetKey: 'id',
+        foreignKey: fkOf(sourceColl), otherKey: fkOf(r.target), sourceKey: 'id', targetKey: 'id',
         uiSchema: { ...uiSchema, 'x-component-props': { multiple: true } } };
     default:
-      return { ...base, type: 'belongsTo', interface: 'm2o', foreignKey: `${r.name}Id`, targetKey: 'id' };
+      return { ...base, type: 'belongsTo', interface: 'm2o', foreignKey: fkOf(r.name), targetKey: 'id' };
   }
 }
 
@@ -186,7 +217,7 @@ function appSpecSystemPrompt(): string {
     '  interface ∈ input, textarea, markdown, phone, email, url, number, integer, percent, select, multipleSelect, checkbox, date, datetime, time, color, json, statusFlow.',
     '  select/multipleSelect PHẢI có "options": ["A","B"]. statusFlow PHẢI có "states": ["Mới","Xong"]. computed = {"expression":"data.qty * data.price"} (cú pháp data.<field>, SUM(data.rel.field) cho rollup).',
     '  widget (tùy chọn, cho đẹp): "Progress bar","Star rating","Value tag","Rich select","Input icon","Sub-table Pro".',
-    'relation = { "name", "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"? }.',
+    'relation = { "name" (snake, không dấu), "title" (NHÃN tiếng Việt có dấu, vd "Khách hàng"), "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"? }.',
     'page = { "title", "collection", "menuGroup"?, "icon"? ("lucide-users"…), "block"? ("TableBlockModel"|"EnhancedTableBlockModel"), "columns": [tên field], "popupColumns"? }.',
     '',
     'QUY TẮC:',
@@ -208,7 +239,7 @@ function toolPlanSystemPrompt(state: string): string {
     'TOOL (mỗi bước = {"tool":"...","args":{...}}):',
     '- createCollection {name(snake, không dấu), title(vi), titleField, fields:[{name,title,interface,options?,widget?,computed?,states?}]}',
     '- addField {collection, field:{name,title,interface,...}}',
-    '- addRelation {collection, relation:{name,type:"m2o"|"o2m"|"o2o"|"m2m",target,reverseName?}}',
+    '- addRelation {collection, relation:{name(snake),title(nhãn tiếng Việt vd "Khách hàng"),type:"m2o"|"o2m"|"o2o"|"m2m",target,reverseName?}}',
     '- addComputed {collection, field:{name,title,interface:"number",computed:{expression:"data.x * data.y"}}}',
     '- addStatusFlow {collection, field:{name,title,states:["Mới","Đang làm","Xong"]}}',
     '- seed {collection, rows:[{...}]}  (giá trị quan hệ m2o = giá trị titleField của bản ghi target)',
@@ -252,16 +283,19 @@ export class PluginAppBuilderServer extends Plugin {
     const colRepo: any = this.db.getRepository('collections');
     if (!colRepo) throw new Error('collection-manager (collections repo) không có');
     if (await colRepo.findOne({ filter: { name: c.name } })) return { name: c.name, skipped: 'exists' };
-    const fields = (c.fields || []).map(fieldDef);
+    // System fields FIRST (visible id + created/updated at/by, proper `id` PK), then the user's fields.
+    // autoGenId MUST be false since we supply the id field explicitly (else NocoBase adds a 2nd, clashing PK).
+    const userFields = (c.fields || []).map(fieldDef);
+    const fields = [...systemFieldDefs(), ...userFields];
     await colRepo.create({
       values: {
         name: c.name, title: c.title || c.name, ...(c.titleField ? { titleField: c.titleField } : {}),
-        autoGenId: true, createdAt: true, updatedAt: true, sortable: true, logging: true, fields,
+        autoGenId: false, createdAt: true, updatedAt: true, createdBy: true, updatedBy: true, sortable: true, logging: true, fields,
       },
       context: {}, // run collection-manager hooks → migrate the physical table
     });
     try { await (this.db.getCollection(c.name) as any)?.sync?.({ alter: true }); } catch {}
-    return { name: c.name, fields: fields.length };
+    return { name: c.name, fields: userFields.length };
   }
 
   /** Add one field to an existing collection (+ its computed rule if it's a computed field). Idempotent
@@ -298,13 +332,43 @@ export class PluginAppBuilderServer extends Plugin {
     return out;
   }
 
+  /** Plain-text title of a collection (unwraps system `{{t("...")}}` i18n templates). '' if unknown. */
+  private async collTitle(name: string): Promise<string> {
+    try {
+      const c = await this.db.getRepository('collections').findOne({ filter: { name } });
+      const raw = c && (c.get ? c.get('title') : (c as any).title);
+      return raw ? String(raw).replace(/\{\{\s*t\(["']([^"']+)["']\)\s*\}\}/, '$1') : '';
+    } catch { return ''; }
+  }
+
+  /** Ensure the CHILD of an o2m has a belongsTo back to the parent (sharing the SAME FK) so the reverse
+   *  relation is navigable — otherwise the child only carries a raw FK int ("link ngược bị sai"). Idempotent. */
+  private async ensureReverseBelongsTo(parentColl: string, r: RelationSpec, foreignKey: string): Promise<any> {
+    const childColl = r.target;
+    const revName = r.reverseName || parentColl;
+    const fieldRepo: any = this.db.getRepository('fields');
+    if (await fieldRepo.findOne({ filter: { collectionName: childColl, name: revName } })) return { name: revName, skipped: 'exists' };
+    const title = (await this.collTitle(parentColl)) || revName;
+    try {
+      await fieldRepo.create({ values: {
+        collectionName: childColl, name: revName, type: 'belongsTo', interface: 'm2o', target: parentColl, foreignKey, targetKey: 'id',
+        uiSchema: { title, 'x-component': 'AssociationField', 'x-component-props': { multiple: false } },
+      }, context: {} });
+      return { name: revName, target: parentColl, foreignKey };
+    } catch (e: any) { return { name: revName, error: e?.message || String(e) }; }
+  }
+
   /** Create one relation field on `coll`. Idempotent. (Both endpoint collections must already exist.) */
   private async opAddRelation(coll: string, r: RelationSpec): Promise<any> {
     const fieldRepo: any = this.db.getRepository('fields');
     if (await fieldRepo.findOne({ filter: { collectionName: coll, name: r.name } })) return { coll, name: r.name, skipped: 'exists' };
     const def = relationDef(coll, r);
+    // Friendly display label: AI-provided title > target collection's title > the machine name.
+    if (!r.title) { const t = await this.collTitle(r.target); if (t) def.uiSchema = { ...def.uiSchema, title: t }; }
     await fieldRepo.create({ values: def, context: {} });
-    return { coll, name: r.name, type: r.type, foreignKey: def.foreignKey };
+    // A parent-declared o2m: also give the child a belongsTo back to the parent (bidirectional).
+    const paired = r.type === 'o2m' ? await this.ensureReverseBelongsTo(coll, r, def.foreignKey) : undefined;
+    return { coll, name: r.name, type: r.type, foreignKey: def.foreignKey, ...(paired ? { paired } : {}) };
   }
 
   /** Seed rows into a collection. Self-contained: resolves m2o values (a string) against the target's
@@ -328,7 +392,7 @@ export class PluginAppBuilderServer extends Plugin {
           const tRepo: any = this.db.getRepository(rel.target);
           const hit = tRepo && (await tRepo.findOne({ filter: { [tTitle]: v } }));
           const id = hit && (hit.get ? hit.get('id') : hit.id);
-          if (id != null) values[rel.foreignKey || rel.options?.foreignKey || `${rel.name}Id`] = id;
+          if (id != null) values[rel.foreignKey || rel.options?.foreignKey || fkOf(rel.name)] = id;
         } else if (!rel) {
           values[k] = v;
         }
@@ -354,7 +418,7 @@ export class PluginAppBuilderServer extends Plugin {
 
   /** Drop one field from a collection (+ its computed rule). Refuses system fields. */
   private async opDropField(coll: string, field: string): Promise<any> {
-    if (['id', 'createdAt', 'updatedAt', 'createdById', 'updatedById'].includes(field)) return { coll, field, skipped: 'system field' };
+    if (['id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'createdById', 'updatedById', 'sort'].includes(field)) return { coll, field, skipped: 'system field' };
     const fieldRepo: any = this.db.getRepository('fields');
     const f = await fieldRepo.findOne({ filter: { collectionName: coll, name: field } });
     if (!f) return { coll, field, skipped: 'not found' };

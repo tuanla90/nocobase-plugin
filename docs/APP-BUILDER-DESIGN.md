@@ -241,12 +241,18 @@ Print** vào PageSpec. Vì đụng config-collection của plugin đó nên làm
 ## 5. Compiler
 
 ### 5.1 Server tier — `appBuilder:apply` / `appBuilder:dryRun` (ACL loggedIn)
-- **Collections**: cho mỗi `CollectionSpec` → `collections.create({values:{name,title,titleField,autoGenId:true,
-  createdAt:true,updatedAt:true, fields:[...fieldDefs]}, context:{}})`. `context:{}` = chạy hook migrate bảng.
+- **Collections**: cho mỗi `CollectionSpec` → `collections.create({values:{name,title,titleField,autoGenId:false,
+  createdAt/updatedAt/createdBy/updatedBy:true, fields:[...systemFieldDefs(), ...fieldDefs]}, context:{}})`.
+  `context:{}` = chạy hook migrate bảng. **`systemFieldDefs()`** = 5 field chuẩn (id bigInt autoinc PK +
+  createdAt/updatedAt + createdBy/updatedBy belongsTo→users) push THẲNG vào `fields[]` — vì boolean flag chỉ
+  tạo cột runtime, KHÔNG tạo metadata record (không hiện trong field manager, id không phải PK metadata → o2m
+  `sourceKey:'id'` không resolve). Mirror NocoBase AI `defineCollections.js`. `autoGenId:false` vì id tường minh (v0.2.0, §15).
 - **fieldDef(interface)**: map interface → NocoBase field def (`{name, type, interface, uiSchema:{title,...}}`).
   Grounded từ `gsheet-sync` `fieldDef` + `quickView` interface maps; `select` cần `uiSchema.enum` từ `options`.
 - **Relations**: tạo **sau** khi cả 2 collection tồn tại. m2o→`belongsTo`, o2m→`hasMany`, o2o→`hasOne`,
-  m2m→`belongsToMany` (+ through tự sinh). Set `foreignKey`/`targetKey` mặc định, `target`, `reverseField`.
+  m2m→`belongsToMany` (+ through tự sinh). FK **snake_case** `fkOf(n)=${n}_id` (khớp field snake; đúng convention
+  NocoBase UI `order_id`). Nhãn quan hệ = title collection target khi spec thiếu title. o2m auto tạo belongsTo
+  ngược trên bảng con (`ensureReverseBelongsTo`, chung FK) — reverse-link điều hướng được (v0.2.0, §15).
 - **Seed**: `db.getRepository(name).create({values})` sau khi bảng sẵn sàng; quan hệ trong seed resolve theo
   `titleField` của target (tra id).
 - **dryRun**: chỉ validate (tên hợp lệ / trùng? interface hợp lệ? relation.target tồn tại trong spec hoặc DB?
@@ -448,6 +454,33 @@ Hoàn thiện story "SỬA" (trước chỉ THÊM được) + độ tin cậy:
 - **Verify:** dropField/guard system-field, renameField, dropCollection guard `users`, aiPlan-remove, dropCollection
   → **11/11**; deleteApp: DB xác nhận metadata + bảng vật lý XOÁ (route trang/group xoá). **TRAP:** repo destroy OK
   nhưng client `collections:get` trả cache cũ → phải `reloadDataSource` để UI cập nhật.
+
+## 15. Chất lượng collection do AI dựng (v0.2.0, 2026-07-18, DONE + verify LIVE 18/18)
+
+3 lỗi user phát hiện khi thử app AI dựng (app khách sạn) — đều ở **tầng server tạo collection/relation**, KHÔNG phải client:
+
+1. **Thiếu 5 field hệ thống** (ID, Created At/By, Updated At/By) → collection trông "trần", và **link ngược (o2m) sai**.
+   *Gốc:* boolean flag (`autoGenId/createdAt/…:true`) tạo cột **runtime** nhưng KHÔNG tạo `fields` **metadata record** → không hiện
+   trong field manager, và `id` không phải PK metadata nên `belongsTo/hasMany targetKey/sourceKey:'id'` không resolve chuẩn.
+   *Fix:* `systemFieldDefs()` push 5 field THẲNG vào `fields[]` (id bigInt autoinc PK — dùng bigInt thay snowflakeId để liền
+   mạch seed/relation/computed; createdAt/updatedAt; createdBy/updatedBy belongsTo→users), `autoGenId:false`. **Mirror
+   NocoBase AI `defineCollections.js`** (`node_modules/@nocobase/plugin-data-source-manager/.../tools/`), nó cũng push
+   idField/createdAtField/… chứ không dựa flag. (gsheet-sync dùng flag-only + `HIDDEN_FIELD_NAMES` → cố tình ẩn; app-builder thì cần HIỆN.)
+2. **FK camelCase `khach_hangId`** lệch với field snake_case. *Fix:* `fkOf(n)=${n}_id` cho MỌI relation user (m2o/o2o/o2m/m2m);
+   `createdById/updatedById` GIỮ camelCase (tên hệ thống cố định của NocoBase). Khớp convention UI NocoBase (`order_id`).
+3. **Nhãn quan hệ = tên máy snake thô** (`khach_hang`) vì AI thường quên `title` cho relation. *Fix:* `opAddRelation` default
+   `uiSchema.title` = **title của collection TARGET** (unwrap `{{t()}}`) khi thiếu → m2o `khach`→"Khách hàng", o2m `dong`→"Dòng hàng";
+   + 2 prompt (appSpec/toolPlan) thêm trường relation `title`.
+
+**BONUS — reverse-link đúng nghĩa:** o2m khai ở bảng cha giờ **tự tạo belongsTo NGƯỢC** trên bảng con
+(`ensureReverseBelongsTo`, chung FK `<parent>_id`, nhãn = title cha) → con **điều hướng + lưu** về cha (trước chỉ có FK int thô).
+`opDropField` guard mở rộng: +createdBy/updatedBy/sort.
+
+**Verify (test-fixes.mjs, master-detail qua `apply` thật):** 18/18 — 5 sys field mỗi coll · FK `khach_id`/`don_id` snake (0 leak
+camelCase user-FK) · nhãn "Khách hàng"/"Dòng hàng"/"Đơn hàng" từ target-title (relation KHÔNG khai title) · belongsTo con auto ·
+seed m2o resolve theo titleField · **e2e**: thêm dòng qua FK snake → `thanh_tien`=sl×gia · con.don resolve về cha · cha.dong (hasMany)
+liệt kê con · **computed rollup** `tong`=SUM=150000. **App CŨ dựng trước fix giữ shape cũ → REBUILD để nhận fix (KHÔNG migrate
+in-place — quá rủi ro trên bảng đã có data).** tgz `0.2.0` build+deploy nb-local, pm2 restart.
 
 ## Files
 `packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
