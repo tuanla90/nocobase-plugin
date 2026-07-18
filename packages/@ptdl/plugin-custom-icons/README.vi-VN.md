@@ -4,7 +4,7 @@
 > Ant Design mặc định bằng Lucide** ở mọi nơi — menu, nút, field, thanh tiêu đề. Kèm **bộ mapping mặc định**
 > nạp sẵn khi cài và **trình sửa từng icon** có nhập/xuất CSV. Không cần code, không cần restart server.
 
-**Nhóm:** Giao diện (UI) · Icon · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.2
+**Nhóm:** Giao diện (UI) · Icon · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.3
 
 ## Sau khi cài, có gì mới?
 

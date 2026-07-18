@@ -224,9 +224,12 @@ function setLang(l){
   document.querySelectorAll('.langtoggle button').forEach(function(b){b.classList.toggle('active',b.dataset.lang===l);});
   try{localStorage.setItem('ptdlDocsLang',l);}catch(e){}
 }
-var saved='vi';try{saved=localStorage.getItem('ptdlDocsLang')||'vi';}catch(e){}
+var saved=null;try{saved=localStorage.getItem('ptdlDocsLang');}catch(e){}
+// No saved choice → default to the visitor's browser language (proxy for the NocoBase UI language):
+// Vietnamese browser → vi, anything else → en. A manual toggle click persists the choice.
+var def=saved||(((navigator.language||navigator.userLanguage||'').toLowerCase().indexOf('vi')===0)?'vi':'en');
 document.querySelectorAll('.langtoggle button').forEach(function(b){b.addEventListener('click',function(){setLang(b.dataset.lang);});});
-setLang(saved);
+setLang(def);
 var links={};document.querySelectorAll('.nav-link').forEach(function(a){links[a.getAttribute('href').slice(1)]=a;});
 var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var a=links[e.target.id];if(a){Object.values(links).forEach(function(x){x.classList.remove('active');});a.classList.add('active');}}});},{rootMargin:'-10% 0px -80% 0px'});
 document.querySelectorAll('.plugin').forEach(function(s){obs.observe(s);});
