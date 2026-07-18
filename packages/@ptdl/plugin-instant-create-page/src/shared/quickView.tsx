@@ -49,6 +49,7 @@ interface BuiltCol {
   tableUse: string;
   detailsUse: string;
   formUse: string;
+  relPopup?: any; // to-one relation → click-to-open Details popup of the TARGET (see relationPopupColumns)
 }
 
 // ── field interface → renderer model class ─────────────────────────────────────────────────────
@@ -179,17 +180,29 @@ const colTitleStep = (t?: string) => (t && t.trim() ? { tableColumnSettings: { t
 const formLabelStep = (t?: string) => (t && t.trim() ? { editItemSettings: { label: { label: t.trim() } } } : {});
 const detailLabelStep = (t?: string) => (t && t.trim() ? { detailItemSettings: { label: { label: t.trim() } } } : {});
 
-/** One data column: TableColumnModel + its (user-chosen or default) display renderer sub-model. */
+/** One data column: TableColumnModel + its (user-chosen or default) display renderer sub-model. A to-one
+ *  relation's `relPopup` (see relationPopupColumns) is attached at the field's own `page` subKey — exactly
+ *  where the framework's openView action loads the click-to-open popup's content — so clicking the relation
+ *  cell shows the related record's Details instead of opening an empty drawer. */
 function tableColumn(ds: string, coll: string, c: BuiltCol) {
   return {
     use: 'TableColumnModel',
     stepParams: { ...fieldStep(ds, coll, c.name), ...colTitleStep(c.title) },
-    subModels: { field: { use: c.tableUse, stepParams: fieldStep(ds, coll, c.name) } },
+    subModels: {
+      field: {
+        use: c.tableUse,
+        stepParams: fieldStep(ds, coll, c.name),
+        ...(c.relPopup ? { subModels: { page: c.relPopup } } : {}),
+      },
+    },
   };
 }
 
-/** Read-only Details block (for View), one DetailsItemModel per picked column. */
-function detailsBlock(ds: string, coll: string, cols: BuiltCol[]) {
+/** Read-only Details block (for View), one DetailsItemModel per picked column, plus an optional action bar
+ *  (`actions` — an Edit button and/or a Change-status action; built by buildTableBlock). A relation display
+ *  item gets the SAME `relPopup` fix as tableColumn(): without it, clicking a relation field here also pops
+ *  an empty drawer. */
+function detailsBlock(ds: string, coll: string, cols: BuiltCol[], actions?: any[]) {
   return {
     use: 'DetailsBlockModel',
     stepParams: resInit(ds, coll, true),
@@ -200,10 +213,17 @@ function detailsBlock(ds: string, coll: string, cols: BuiltCol[]) {
           items: cols.map((c) => ({
             use: 'DetailsItemModel',
             stepParams: { ...fieldStep(ds, coll, c.name), ...detailLabelStep(c.title) },
-            subModels: { field: { use: c.detailsUse, stepParams: fieldStep(ds, coll, c.name) } },
+            subModels: {
+              field: {
+                use: c.detailsUse,
+                stepParams: fieldStep(ds, coll, c.name),
+                ...(c.relPopup ? { subModels: { page: c.relPopup } } : {}),
+              },
+            },
           })),
         },
       },
+      ...(actions && actions.length ? { actions } : {}),
     },
   };
 }
@@ -248,11 +268,88 @@ function popupShell(tabTitle: string, block: any) {
 
 const rowActionBtn = { buttonSettings: { general: { type: 'link', icon: null } } };
 
-/** The Table block: data columns + a row-actions column (View/Edit) + toolbar actions (Add/Refresh). */
-function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[]) {
+/** Edit action (EditActionModel — the mechanism NocoBase uses everywhere for row-level edit): opens an Edit
+ *  form over `cols`. ONE function builds BOTH the row-level Edit button AND the View popup's own Edit button,
+ *  so row-Edit / View→Edit / Add always render the exact same fields, in the same order. */
+function editAction(ds: string, coll: string, cols: BuiltCol[], asRowLink: boolean, tabTitle = 'Edit') {
+  return {
+    use: 'EditActionModel',
+    stepParams: asRowLink ? rowActionBtn : { buttonSettings: { general: { type: 'default' } } },
+    subModels: { page: popupShell(tabTitle, formBlock('EditFormModel', ds, coll, cols)) },
+  };
+}
+
+/** "Change status" action — @ptdl/plugin-status-flow's own StatusTransitionActionModel (a record-scene
+ *  action, same family as View/Edit: it reads ctx.record/ctx.collection wherever it's placed). Emitted into
+ *  BOTH the row actions and the View popup for a collection that has a statusFlow field; the transition
+ *  itself stays enforced server-side. Returns undefined (no button) when the model isn't registered — i.e. a
+ *  site without @ptdl/plugin-status-flow simply doesn't get the button. */
+function changeStatusAction(engine: any, statusFieldName: string, asRowLink: boolean): any | undefined {
+  try {
+    if (!engine?.getModelClass?.('StatusTransitionActionModel')) return undefined;
+  } catch {
+    return undefined;
+  }
+  return {
+    use: 'StatusTransitionActionModel',
+    stepParams: {
+      buttonSettings: { general: { type: asRowLink ? 'link' : 'default', title: 'Đổi trạng thái', ...(asRowLink ? { icon: null } : {}) } },
+      ptdlStatusTransition: { settings: { sfFieldName: statusFieldName, sfConfirm: true, sfAskNote: false } },
+    },
+  };
+}
+
+/** Build the shallow display columns for a to-one relation's click-to-open Details popup (the TARGET's own
+ *  fields). Filters system fields, raw FK columns, to-many fields, and the back-ref to the source row —
+ *  no nested popups within this popup. */
+function relationPopupColumns(engine: any, targetColl: any, sourceCollName: string): BuiltCol[] {
+  if (!targetColl?.getFields) return [];
+  const resolveT = makeResolver(engine, targetColl);
+  const SYS = new Set(['id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'createdById', 'updatedById', 'sort']);
+  const all = targetColl.getFields() || [];
+  const fkNames = new Set<string>();
+  all.forEach((f: any) => {
+    [f.foreignKey, f.otherKey, f.options?.foreignKey, f.options?.otherKey].forEach((k) => k && fkNames.add(k));
+  });
+  const fields = all.filter((f: any) => {
+    const name = f?.name;
+    if (!name || SYS.has(name) || !f.interface) return false;
+    if (fkNames.has(name) || f.isForeignKey) return false;
+    const t = f.type || f.interface;
+    if (t === 'hasMany' || t === 'belongsToMany' || f.interface === 'o2m' || f.interface === 'm2m') return false;
+    const isToOne = f.interface === 'm2o' || t === 'belongsTo';
+    if (isToOne && f.target === sourceCollName) return false; // don't show the back-ref to the source row
+    return true;
+  });
+  return fields.map((f: any) => ({
+    name: f.name,
+    tableUse: resolveT(f.name, 'table'),
+    detailsUse: resolveT(f.name, 'details'),
+    formUse: resolveT(f.name, 'form'),
+  }));
+}
+
+/** Find the collection's @ptdl/plugin-status-flow field name (if any), so the page can offer a
+ *  Change-status action. Mirrors that plugin's own detection: `interface === 'statusFlow'` OR a configured
+ *  `options.statusFlow.initial` (a programmatically-created field doesn't always surface `interface`). */
+function findStatusFlowField(collection: any): string | undefined {
+  const fields = collection?.getFields?.() || [];
+  const hit = fields.find(
+    (f: any) => f?.interface === 'statusFlow' || !!(f?.options?.statusFlow && typeof f.options.statusFlow === 'object' && f.options.statusFlow.initial),
+  );
+  return hit?.name;
+}
+
+/** The Table block: data columns + a row-actions column (View/Edit[/Change-status]) + toolbar actions
+ *  (Add/Refresh). The View popup ALSO gets its own Edit button, and — when the collection has a statusFlow
+ *  field — a Change-status action joins both the row actions AND the View popup's action bar. */
+function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[], statusFieldName?: string, engine?: any) {
   const ds = p.dataSourceKey || 'main';
   const coll = p.collectionName;
   const labels = { view: 'View', edit: 'Edit', add: 'Add new' };
+  const rowStatusAction = statusFieldName ? changeStatusAction(engine, statusFieldName, true) : undefined;
+  const viewStatusAction = statusFieldName ? changeStatusAction(engine, statusFieldName, false) : undefined;
+  const viewActions = [editAction(ds, coll, cols, false, labels.edit), ...(viewStatusAction ? [viewStatusAction] : [])];
   return {
     use: p.blockUse || 'TableBlockModel',
     stepParams: resInit(ds, coll),
@@ -263,8 +360,9 @@ function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[]) {
           use: 'TableActionsColumnModel',
           subModels: {
             actions: [
-              { use: 'ViewActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.view, detailsBlock(ds, coll, cols)) } },
-              { use: 'EditActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.edit, formBlock('EditFormModel', ds, coll, cols)) } },
+              { use: 'ViewActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.view, detailsBlock(ds, coll, cols, viewActions)) } },
+              editAction(ds, coll, cols, true, labels.edit),
+              ...(rowStatusAction ? [rowStatusAction] : []),
             ],
           },
         },
@@ -296,21 +394,39 @@ export async function createQuickPage(app: any, params: CreateQuickPageParams): 
     app?.dataSourceManager?.getCollection?.(ds, params.collectionName);
   const resolve = makeResolver(engine, collection);
   // Resolve each column's display + edit model once (component picked by label stays paired across
-  // table / details / form; title is shared).
-  const cols: BuiltCol[] = (params.columns || []).map((c) => ({
-    name: c.name,
-    title: c.title,
-    tableUse: resolve(c.name, 'table', c.component),
-    detailsUse: resolve(c.name, 'details', c.component),
-    formUse: resolve(c.name, 'form', c.component),
-  }));
+  // table / details / form; title is shared). A to-one relation ALSO gets a `relPopup` — a read-only
+  // Details of the TARGET — so the relation cell/field is a working click-to-open link, not an empty drawer.
+  const cols: BuiltCol[] = (params.columns || []).map((c) => {
+    const bc: BuiltCol = {
+      name: c.name,
+      title: c.title,
+      tableUse: resolve(c.name, 'table', c.component),
+      detailsUse: resolve(c.name, 'details', c.component),
+      formUse: resolve(c.name, 'form', c.component),
+    };
+    const field = collection?.getField?.(c.name);
+    const relTarget = field?.target || field?.targetCollection?.name || field?.options?.target;
+    const relKind = field?.type || field?.interface;
+    const relIsToMany = relKind === 'hasMany' || relKind === 'belongsToMany' || field?.interface === 'o2m' || field?.interface === 'm2m';
+    if (relTarget && !relIsToMany) {
+      const targetColl =
+        field?.targetCollection ||
+        app?.dataSourceManager?.getDataSource?.(ds)?.getCollection?.(relTarget) ||
+        app?.dataSourceManager?.getCollection?.(ds, relTarget);
+      const relCols = relationPopupColumns(engine, targetColl, params.collectionName);
+      if (relCols.length) bc.relPopup = popupShell('Details', detailsBlock(ds, relTarget, relCols));
+    }
+    return bc;
+  });
+  // A statusFlow column (if any) enables a Change-status action in both the row actions + the View popup.
+  const statusFieldName = findStatusFlowField(collection);
 
   const pageSchemaUid = uid();
   const menuSchemaUid = uid();
   const tabSchemaUid = uid();
   const tabSchemaName = uid();
 
-  const tableBlock = buildTableBlock(params, cols);
+  const tableBlock = buildTableBlock(params, cols, statusFieldName, engine);
 
   // 1) Create the menu route FIRST. For a flowPage this also creates the RouteModel at `schemaUid`
   //    (verified live). We must NOT pre-create our own model at that uid — it would collide

@@ -5,7 +5,7 @@
  * button generates the `/v/` page. Lane-agnostic: `app`/`t` injected, so no @nocobase/client* imports.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Input, Popover, Select, Space, Spin, Typography, message } from 'antd';
+import { Alert, Button, Input, Popover, Select, Space, Spin, Typography, message, theme } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import * as AntdIcons from '@ant-design/icons';
 import { createQuickPage, clientPrefix, componentOptionsFor, type QuickColumn } from './quickView';
@@ -120,6 +120,7 @@ function buildQuickColumnOptions(fields: any[]): ColOpt[] {
 }
 
 export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCreated, compact }) => {
+  const { token } = theme.useToken();
   const api = app?.apiClient;
   const engine = app?.flowEngine;
   const [collections, setCollections] = useState<Coll[]>([]);
@@ -254,7 +255,7 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
             placeholder={defOpt ? `${defOpt.label} (${t('default')})` : t('Default')}
             options={opts.map((o) => ({ value: o.value, label: o.isDefault ? `${o.label} · ${t('default')}` : o.label }))}
             onChange={(v) => updateCol(idx, { component: v })}
-            notFoundContent={<span style={{ color: '#999' }}>{t('Default')}</span>}
+            notFoundContent={<span style={{ color: token.colorTextTertiary }}>{t('Default')}</span>}
           />
         </div>
         <div>
@@ -323,7 +324,7 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
             optionRender={(opt) => (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16, display: 'inline-flex' }}>{renderIcon(opt.value as string)}</span>
-                <span style={{ fontSize: 12, color: 'var(--colorTextTertiary,#999)' }}>{opt.value}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{opt.value}</span>
               </span>
             )}
             labelRender={(props) => (
@@ -345,8 +346,8 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
             onChange={(v) => setParentId(v)}
             notFoundContent={
               groupsLoading
-                ? <span style={{ color: '#999' }}><Spin size="small" /> {t('Loading…')}</span>
-                : <span style={{ color: '#999' }}>{t('No menu groups yet — leave blank for top level')}</span>
+                ? <span style={{ color: token.colorTextTertiary }}><Spin size="small" /> {t('Loading…')}</span>
+                : <span style={{ color: token.colorTextTertiary }}>{t('No menu groups yet — leave blank for top level')}</span>
             }
             style={{ width: '100%' }}
           />
@@ -369,8 +370,8 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
           onChange={(names) => reconcileColumns(names as string[])}
           notFoundContent={
             columnsLoading
-              ? <span style={{ color: '#999' }}><Spin size="small" /> {t('Loading…')}</span>
-              : <span style={{ color: '#999' }}>{collectionName ? t('No columns') : t('Choose a collection first')}</span>
+              ? <span style={{ color: token.colorTextTertiary }}><Spin size="small" /> {t('Loading…')}</span>
+              : <span style={{ color: token.colorTextTertiary }}>{collectionName ? t('No columns') : t('Choose a collection first')}</span>
           }
           style={{ width: '100%' }}
         />
@@ -380,7 +381,7 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
             {columns.map((col, idx) => (
               <div
                 key={col.name}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', border: '1px solid #f0f0f0', borderRadius: 6, marginBottom: 6, background: '#fff' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, marginBottom: 6, background: token.colorBgContainer }}
               >
                 <Space.Compact size="small">
                   <Button type="text" size="small" icon={<ArrowUpOutlined />} disabled={idx === 0} onClick={() => moveCol(idx, -1)} />
@@ -388,7 +389,7 @@ export const QuickCreateForm: React.FC<QuickCreateFormProps> = ({ app, t, onCrea
                 </Space.Compact>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col.title?.trim() || colLabelOf(col.name)}</div>
-                  <div style={{ fontSize: 11, color: '#999', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {col.name}{col.component ? ` · ${col.component}` : ''}
                   </div>
                 </div>
