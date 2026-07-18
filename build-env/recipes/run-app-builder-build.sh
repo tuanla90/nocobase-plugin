@@ -2,6 +2,9 @@
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# Guard: the two self-contained page-builders (app-builder + instant-create-page quickView.tsx) must not
+# silently diverge on shared logic. Fails the build if they do — see checks/quickview-sync.mjs.
+node "$ROOT/checks/quickview-sync.mjs"
 NM="$ROOT/node_modules"
 PKG="@ptdl/plugin-app-builder"
 PKGDIR="$ROOT/packages/plugins/$PKG"
