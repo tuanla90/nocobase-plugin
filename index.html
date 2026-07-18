@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn Plugin @ptdl</title>
+<meta name="description" content="Hướng dẫn sử dụng 2 plugin @ptdl cho NocoBase — cài xong đổi gì, chỉnh ở đâu, dùng thế nào.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --border:#d1d9e0; --card:#f6f8fa;
+  --accent:#2563eb; --accent-soft:#dbeafe; --code-bg:#f6f8fa; --sidebar:#fbfcfd;
+  --shadow:0 1px 3px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d1117;--fg:#e6edf3;--muted:#9198a1;--border:#30363d;--card:#161b22;
+  --accent:#4c8dff;--accent-soft:#132a4d;--code-bg:#161b22;--sidebar:#0d1117;--shadow:none;}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+  background:var(--bg);color:var(--fg);line-height:1.6;font-size:15px;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.layout{display:flex;min-height:100vh;max-width:1180px;margin:0 auto}
+/* sidebar */
+.side{width:270px;flex:0 0 270px;border-right:1px solid var(--border);background:var(--sidebar);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 14px 40px}
+.brand{font-weight:700;font-size:16px;padding:4px 8px 2px}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
+.search{width:100%;margin:12px 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--fg);font-size:13px}
+.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.nav-group{margin:10px 0}
+.nav-cat{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:6px 8px 2px}
+.nav-link{display:block;padding:5px 10px;border-radius:6px;color:var(--fg);font-size:13.5px}
+.nav-link:hover{background:var(--card);text-decoration:none}
+.nav-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav-empty{display:none;color:var(--muted);font-size:13px;padding:10px}
+/* content */
+.main{flex:1 1 auto;min-width:0;padding:34px 40px 90px}
+.hero h1{margin:0 0 6px;font-size:26px;letter-spacing:-.01em}
+.hero p{margin:0 0 4px;color:var(--muted)}
+.hero .meta{font-size:13px;color:var(--muted);margin-top:10px}
+.plugin{scroll-margin-top:16px;padding-top:30px;margin-top:26px;border-top:1px solid var(--border)}
+.plugin-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.plugin-head h2{margin:0;font-size:21px}
+.chip{font-size:11.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 9px;background:var(--card)}
+.chip-cat{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft)}
+.chip-top{margin-left:auto;text-decoration:none;color:var(--muted)}
+.chip-top:hover{color:var(--accent);text-decoration:none}
+/* prose (rendered markdown) */
+.prose h2{font-size:17px;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.prose h3{font-size:15px;margin:18px 0 6px}
+.prose p{margin:8px 0}
+.prose ul,.prose ol{margin:8px 0;padding-left:22px}
+.prose li{margin:3px 0}
+.prose blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--accent);background:var(--card);border-radius:0 8px 8px 0;color:var(--fg)}
+.prose blockquote p{margin:2px 0}
+.prose code{background:var(--code-bg);border:1px solid var(--border);border-radius:5px;padding:.1em .4em;font-size:.88em;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.prose pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;overflow:auto}
+.prose pre code{background:none;border:none;padding:0}
+.prose table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;display:block;overflow-x:auto}
+.prose th,.prose td{border:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+.prose th{background:var(--card);font-weight:600}
+.prose tr:nth-child(even) td{background:var(--card)}
+.prose hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+.prose a{word-break:break-word}
+/* mobile */
+.menu-btn{display:none}
+@media (max-width:860px){
+  .layout{flex-direction:column}
+  .side{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--border)}
+  .main{padding:22px 18px 70px}
+  .menu-btn{display:inline-block;margin:0 0 8px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--fg);cursor:pointer}
+  .nav-wrap.collapsed{display:none}
+}
+</style>
+</head>
+<body>
+<a id="top"></a>
+<div class="layout">
+  <aside class="side">
+    <div class="brand">📚 Hướng dẫn Plugin @ptdl<small>2 plugin · NocoBase</small></div>
+    <button class="menu-btn" onclick="document.getElementById('navwrap').classList.toggle('collapsed')">☰ Danh mục</button>
+    <div class="nav-wrap" id="navwrap">
+      <input class="search" id="q" type="search" placeholder="Tìm plugin… (vd: field, màu, IP)" autocomplete="off">
+      <div id="nav">
+    <div class="nav-group" data-cat="Fields">
+      <div class="nav-cat">Trường / Field</div>
+      <a class="nav-link" href="#field-enhancements" data-text="field nâng cao about 16 no-code field widgets that swap a field’s renderer or input for a richer one — across numbers, text, choice, boolean, relation, date/time, colour, icon and json (star rating, progress bar, value tag, relative date, rich select…). also seeds a runjs snippet library. classic + /v/.">Field nâng cao</a>
+    </div>
+
+    <div class="nav-group" data-cat="UI">
+      <div class="nav-cat">Giao diện</div>
+      <a class="nav-link" href="#branding" data-text="thương hiệu &amp; giao diện app-wide branding: skin presets and gradient colors for the sidebar, header, cards and content; accent color and density; app-wide font and table styling; app name, favicon, logo (light/dark) and header tweaks. theme-aware, with config import/export.">Thương hiệu &amp; Giao diện</a>
+    </div>
+        <div class="nav-empty" id="empty">Không tìm thấy plugin phù hợp.</div>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="hero">
+      <h1>Hướng dẫn sử dụng Plugin @ptdl</h1>
+      <p>Cài plugin xong thì <b>đổi gì</b>, chỉnh <b>ở đâu</b>, dùng <b>thế nào</b> — từng bước.</p>
+      <div class="meta">Chọn plugin ở thanh bên trái, hoặc dùng ô tìm kiếm. Nội dung sinh tự động từ tài liệu của từng plugin.</div>
+    </div>
+    
+    <section class="plugin" id="field-enhancements" data-text="field nâng cao about 16 no-code field widgets that swap a field’s renderer or input for a richer one — across numbers, text, choice, boolean, relation, date/time, colour, icon and json (star rating, progress bar, value tag, relative date, rich select…). also seeds a runjs snippet library. classic + /v/. fields">
+      <div class="plugin-head">
+        <h2>Field nâng cao</h2>
+        <span class="chip chip-cat">Trường / Field</span>
+        <span class="chip">v0.2.11</span>
+        <a class="chip chip-top" href="#top" title="Lên đầu">↑</a>
+      </div>
+      <div class="prose"><blockquote>
+<p>Đổi cách một <strong>trường (field)</strong> hiển thị/nhập liệu sang kiểu đẹp và dễ đọc hơn: thanh tiến độ,
+chấm sao, nhãn màu, huy hiệu On/Off, ô nhập có icon… mà <strong>không cần code</strong>.
+Kèm sẵn một <strong>thư viện snippet RunJS</strong> cho trường hợp bạn muốn tự script.</p>
+</blockquote>
+<p><strong>Nhóm:</strong> Fields · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>Phiên bản:</strong> 0.2.10</p>
+<h3>Sau khi cài, có gì mới?</h3>
+<ul>
+<li><strong>Không thêm menu, không thêm trang.</strong> Thay đổi nằm ngay trong <strong>⚙ cấu hình của từng cột/field</strong>
+trên block (Bảng, Chi tiết, Biểu mẫu, List).</li>
+<li>Mỗi widget đăng ký thành một <strong>“Field component”</strong>. Với field đúng kiểu dữ liệu, mở ⚙ → <strong>Field component</strong>
+sẽ thấy <strong>thêm các lựa chọn hiển thị mới</strong> (vd cột số → có thêm <strong>Progress bar</strong>, <strong>Star rating</strong>, <strong>Number with unit</strong>).</li>
+<li>Field kiểu <strong>màu (<code>color</code>)</strong> và <strong>icon</strong> được đổi renderer <strong>mặc định</strong> ngay khi bật (không cần chỉnh);
+các widget còn lại là <strong>tùy chọn</strong> — field cũ giữ nguyên tới khi bạn tự chọn.</li>
+</ul>
+<h3>Bản đồ: kiểu field → widget có thêm</h3>
+<table>
+<thead>
+<tr>
+<th>Kiểu field (data type)</th>
+<th>Widget hiển thị thêm được</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Số: <code>number</code>, <code>integer</code>, <code>percent</code></td>
+<td><strong>Progress bar</strong> (thanh tiến độ), <strong>Number with unit</strong> (số + đơn vị), <strong>Percent text</strong></td>
+</tr>
+<tr>
+<td>Số: <code>number</code>, <code>integer</code></td>
+<td><strong>Star rating</strong> (chấm sao)</td>
+</tr>
+<tr>
+<td><code>checkbox</code>, <code>boolean</code></td>
+<td><strong>Boolean style</strong> — Toggle hoặc Icon, đặt nhãn On/Off, màu On/Off</td>
+</tr>
+<tr>
+<td><code>color</code> <em>(mặc định)</em></td>
+<td><strong>Colour chip</strong> (dot / chip / pill / bar) · <strong>Colour input</strong> (ô chọn màu)</td>
+</tr>
+<tr>
+<td><code>icon</code> <em>(mặc định)</em></td>
+<td><strong>Icon glyph</strong> (hiện icon) · <strong>Input with icon</strong> (ô nhập gắn icon)</td>
+</tr>
+<tr>
+<td><code>select</code>, <code>multipleSelect</code></td>
+<td><strong>Button group</strong> (nhóm nút) · <strong>Value tag</strong> (nhãn màu theo giá trị) · <strong>Rich select</strong></td>
+</tr>
+<tr>
+<td><code>url</code>, <code>email</code>, <code>phone</code>, <code>input</code></td>
+<td><strong>Link</strong> (biến chuỗi thành liên kết bấm được)</td>
+</tr>
+<tr>
+<td><code>textarea</code>, <code>markdown</code>, <code>richText</code></td>
+<td><strong>Clamp text</strong> (cắt gọn N dòng) · <strong>Rich display</strong> · <strong>Text style</strong></td>
+</tr>
+<tr>
+<td><code>json</code></td>
+<td><strong>JSON view</strong> (xem JSON gọn, có thu gọn)</td>
+</tr>
+<tr>
+<td><code>date</code> / <code>datetime</code></td>
+<td><strong>Relative date</strong> (“3 ngày trước”…) + xem ngày thật khi hover</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Tổng khoảng <strong>16 widget</strong>. Đa số <strong>tùy chọn</strong>; riêng <strong><code>color</code></strong> và <strong><code>icon</code></strong> thay renderer <strong>mặc định</strong>.</p>
+</blockquote>
+<h3>Dùng thế nào (từng bước)</h3>
+<h4>Ví dụ — biến cột số “Tiến độ” thành thanh Progress bar</h4>
+<ol>
+<li>Mở trang có <strong>Bảng</strong> chứa cột số (vd cột <code>progress</code> kiểu <code>percent</code>/<code>number</code>).</li>
+<li>Bật <strong>UI Editor</strong> (chế độ chỉnh giao diện) → <strong>rê chuột vào tiêu đề cột</strong> → bấm biểu tượng <strong>⚙</strong>.</li>
+<li>Chọn <strong>“Field component”</strong> → trong danh sách chọn <strong>“Progress bar”</strong>
+(danh sách chỉ hiện widget hợp kiểu field).</li>
+<li>Hộp thiết lập hiện ra (<strong>có preview trực tiếp</strong>) → chỉnh <strong>Low/Mid/High color</strong>, ngưỡng, bo góc… → xong.</li>
+<li>✅ Ô trong cột giờ hiển thị thanh tiến độ thay vì con số trần.</li>
+</ol>
+<h4>Ví dụ — cột đánh giá thành chấm sao</h4>
+<ol>
+<li>Với cột kiểu <code>integer</code>/<code>number</code> (vd <code>rating</code>), mở <strong>⚙ → “Field component”</strong>.</li>
+<li>Chọn <strong>“Star rating”</strong> → hộp thiết lập để đặt số sao tối đa, màu.</li>
+</ol>
+<h4>Cột màu, cột select…</h4>
+<ul>
+<li>Cột <code>color</code>: đã tự thành <strong>chip màu</strong>; muốn đổi dạng (dot/pill/bar) → <strong>⚙ → Field component → “Colour chip”</strong>.</li>
+<li>Cột <code>select</code>: <strong>⚙ → Field component → “Button group”</strong> (dạng nút) hoặc <strong>“Value tag”</strong> (nhãn màu theo từng giá trị).</li>
+</ul>
+<blockquote>
+<p>💡 Cùng một đường <strong>⚙ → Field component</strong> dùng được cho <strong>cột Bảng, trường Chi tiết, trong Biểu mẫu và List</strong>.</p>
+</blockquote>
+<h3>Mẹo &amp; lưu ý</h3>
+<ul>
+<li>⚠️ Widget chỉ xuất hiện với <strong>đúng kiểu dữ liệu</strong> (xem bảng trên). Cột kiểu khác sẽ không có lựa chọn tương ứng.</li>
+<li>✅ <strong>Hiển thị an toàn</strong>: widget vẽ đè lên giá trị gốc, nên <strong>sắp xếp / lọc / xuất dữ liệu vẫn dùng dữ liệu thật</strong> — không đổi dữ liệu.</li>
+<li>Chạy trên <strong>cả hai</strong> giao diện: classic <code>/admin</code> và modern <code>/v/</code>.</li>
+</ul>
+<h3>Gỡ / tắt</h3>
+<ul>
+<li>Tắt plugin trong <strong>Plugin Manager</strong>. Field đang dùng widget quay về renderer mặc định của NocoBase;
+cấu hình widget đã lưu trong schema block vẫn còn nếu bật lại.</li>
+</ul>
+<hr>
+<h4>Cho nhà phát triển</h4>
+<p>Mẫu widget đăng ký qua <code>registerAll</code> + <code>bindModelToInterface</code> (display/editable là 2 class riêng ở v2),
+thư viện snippet: xem <code>src/shared/*</code> và <code>PLUGIN-REGISTRY.md</code>. Doc kỹ thuật đầy đủ: chính <code>README.md</code> (tiếng Anh).</p>
+</div>
+    </section>
+
+    <section class="plugin" id="branding" data-text="thương hiệu &amp; giao diện app-wide branding: skin presets and gradient colors for the sidebar, header, cards and content; accent color and density; app-wide font and table styling; app name, favicon, logo (light/dark) and header tweaks. theme-aware, with config import/export. ui">
+      <div class="plugin-head">
+        <h2>Thương hiệu &amp; Giao diện</h2>
+        <span class="chip chip-cat">Giao diện</span>
+        <span class="chip">v0.4.7</span>
+        <a class="chip chip-top" href="#top" title="Lên đầu">↑</a>
+      </div>
+      <div class="prose"><blockquote>
+<p>Đổi “bộ mặt” toàn app: màu thanh bên/đầu trang/thẻ, màu nhấn, độ dày (mật độ), font,
+tên app, favicon, logo (sáng/tối)… Có sẵn preset, <strong>nhớ theo từng theme</strong>, và xuất/nhập cấu hình.</p>
+</blockquote>
+<p><strong>Nhóm:</strong> UI · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>Phiên bản:</strong> 0.4.7</p>
+<h3>Sau khi cài, có gì mới?</h3>
+<ul>
+<li>Trong <strong>Settings</strong> xuất hiện thêm mục <strong>“Branding &amp; Theme”</strong> (icon giọt màu 🎨).</li>
+<li>Từ đó chỉnh được <strong>skin/màu sidebar–header–thẻ–nền</strong>, <strong>màu nhấn (Accent)</strong>, <strong>mật độ (Density)</strong>,
+<strong>font toàn app</strong>, <strong>tên app + favicon + logo</strong>, và <strong>xuất/nhập</strong> nguyên bộ cấu hình.</li>
+<li>Cấu hình <strong>gắn theo từng theme</strong> của NocoBase: mỗi theme nhớ riêng bộ màu của nó.</li>
+</ul>
+<h3>Cấu hình ở đâu?</h3>
+<ul>
+<li><strong>/v/ (modern):</strong> bấm <strong>⚙ Settings → “Branding &amp; Theme”</strong>.</li>
+<li><strong>/admin (classic):</strong> <strong><code>/admin/settings/branding</code></strong> (Settings → Branding &amp; Theme).</li>
+</ul>
+<p>Trang có các tab: <strong>Skin</strong> · <strong>Header &amp; Logo</strong> · <strong>Import / export</strong>.</p>
+<h3>Dùng thế nào (từng bước)</h3>
+<h4>1) Đổi màu &amp; phong cách tổng thể (tab <strong>Skin</strong>)</h4>
+<ol>
+<li>Mở <strong>Settings → Branding &amp; Theme → tab Skin</strong>.</li>
+<li>Chọn <strong>Admin skin</strong> (preset dựng sẵn) để đổi nhanh cả bộ.</li>
+<li>Tinh chỉnh:
+<ul>
+<li><strong>Accent &amp; shape</strong> — màu nhấn + bo góc (<strong>Corners</strong>).</li>
+<li><strong>Density</strong> — <strong>Compact</strong> (gọn) hay <strong>Comfortable</strong> (thoáng).</li>
+<li><strong>Font</strong> — <strong>Font family</strong>, <strong>Font size</strong>, hoặc dán <strong>Google Fonts link</strong>.</li>
+<li>Màu nền: <strong>Container (content background)</strong>, <strong>Card</strong>, <strong>Header</strong> (có <strong>From/To/Angle</strong> để chuyển sắc gradient, <strong>Header weight</strong>, <strong>Hide top menu</strong>).</li>
+</ul>
+</li>
+<li>Đổi tới đâu xem preview tới đó → hài lòng thì <strong>Lưu</strong>. ✅</li>
+</ol>
+<h4>2) Tên app, favicon, logo (tab <strong>Header &amp; Logo</strong>)</h4>
+<ol>
+<li><strong>App name &amp; favicon</strong> — đặt lại <strong>tên app</strong> và <strong>favicon</strong>.</li>
+<li><strong>Logo</strong> — tải <strong>logo sáng/tối</strong> riêng, hoặc <strong>Generate from logo…</strong> để suy ra màu.</li>
+</ol>
+<h4>3) Sao lưu / mang sang app khác (tab <strong>Import / export</strong>)</h4>
+<ul>
+<li><strong>Export theme</strong> → tải file cấu hình; <strong>Import</strong> → dán/tải lên để áp lại y hệt.</li>
+</ul>
+<blockquote>
+<p>💡 Vì cấu hình <strong>theo theme</strong>: nếu đổi theme mà thấy “mất màu”, kiểm tra xem đang ở đúng theme đã cấu hình chưa.</p>
+</blockquote>
+<h3>Mẹo &amp; lưu ý</h3>
+<ul>
+<li>⚠️ <strong>Màu nút bấm (primary)</strong>: antd lấy màu từ <strong>token theme</strong>, không theo CSS chèn thêm — muốn đổi màu nút,
+chỉnh ở token theme (áp dụng sau khi tải lại trang).</li>
+<li><strong>Tên app</strong> là toàn cục (không theo theme). Trang <strong>đăng nhập</strong> không gộp vào đây (dùng plugin <em>Custom Login</em>).</li>
+<li>Chạy trên <strong>cả hai</strong> giao diện classic và /v/.</li>
+</ul>
+<h3>Gỡ / tắt</h3>
+<ul>
+<li>Tắt plugin trong <strong>Plugin Manager</strong> → app trở lại giao diện gốc NocoBase.
+Cấu hình đã lưu vẫn còn trong DB; bật lại là khôi phục.</li>
+</ul>
+<hr>
+<h4>Cho nhà phát triển</h4>
+<p>Cơ chế theme-aware (<code>type@&lt;uid&gt;</code> + fallback global, đọc <code>localStorage.NOCOBASE_THEME.uid</code>):
+xem <code>docs/</code> (THEME-AWARE-PLAN) và mã trong <code>src/shared/brandingPage.tsx</code>.</p>
+</div>
+    </section>
+  </main>
+</div>
+<script>
+// live search
+var q=document.getElementById('q');
+function filter(){
+  var v=(q.value||'').trim().toLowerCase();
+  var anyLink=false;
+  document.querySelectorAll('.nav-link').forEach(function(a){
+    var m=!v||a.getAttribute('data-text').indexOf(v)>=0; a.style.display=m?'':'none'; if(m)anyLink=true;
+  });
+  document.querySelectorAll('.nav-group').forEach(function(g){
+    var vis=g.querySelectorAll('.nav-link:not([style*="none"])').length; g.style.display=vis?'':'none';
+  });
+  document.getElementById('empty').style.display=anyLink?'none':'block';
+  document.querySelectorAll('.plugin').forEach(function(s){
+    s.style.display=(!v||s.getAttribute('data-text').indexOf(v)>=0)?'':'none';
+  });
+}
+q.addEventListener('input',filter);
+// active link on scroll
+var links={}; document.querySelectorAll('.nav-link').forEach(function(a){links[a.getAttribute('href').slice(1)]=a;});
+var obs=new IntersectionObserver(function(es){
+  es.forEach(function(e){ if(e.isIntersecting){var a=links[e.target.id]; if(a){Object.values(links).forEach(function(x){x.classList.remove('active')});a.classList.add('active');}}});
+},{rootMargin:'-10% 0px -80% 0px'});
+document.querySelectorAll('.plugin').forEach(function(s){obs.observe(s)});
+</script>
+</body>
+</html>
