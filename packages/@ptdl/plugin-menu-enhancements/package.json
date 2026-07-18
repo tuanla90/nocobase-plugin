@@ -3,7 +3,7 @@
   "displayName": "Menu Enhancements (Sections + Badge)",
   "displayName.vi-VN": "Menu nâng cao (Nhóm + Badge)",
   "description": "Sidebar-menu enhancements: turn any menu item into a styleable section header or labeled divider, and attach a live badge showing a row count or an aggregate (sum/avg/max/min) of a field. Filter builder, overflow/compact/dot display, threshold colour and auto-refresh. Classic + /v/.",
-  "version": "0.4.15",
+  "version": "0.4.16",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "peerDependencies": {

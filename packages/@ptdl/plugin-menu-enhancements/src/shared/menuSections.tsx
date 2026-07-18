@@ -1,4 +1,5 @@
 import React from 'react';
+import { theme } from 'antd';
 import { ColorField, registerSettingsKit, rx, fi, livePreview, previewField, SEG_PROPS, SegmentedGroup } from '@ptdl/shared';
 
 /**
@@ -116,12 +117,17 @@ li.ant-menu-item:has([data-ptdl-menu-kind="groupLabel"]) {
 }
 
 function DividerNode({ style, fallbackText }: { style?: SectionStyle; fallbackText?: any }) {
+  // NocoBase's antd v5 theme does NOT expose --colorSplit/--colorTextTertiary as CSS variables, so a
+  // hardcoded var(..., <black-rgba-fallback>) always fell through to that black default — unreadable on
+  // a dark theme. Resolve the REAL antd tokens here instead (theme.useToken() must run inside a React
+  // component render, which this is).
+  const { token } = theme.useToken();
   // onClick guard (not pointer-events:none) so the click is swallowed here instead of bubbling to
   // the surrounding menu <Link> and navigating.
-  const lineColor = style?.color || 'var(--colorSplit, rgba(0, 0, 0, 0.08))';
+  const lineColor = style?.color || token.colorSplit;
   // Caption follows the chosen line color so text + rule read as one unit; unset → muted tertiary
   // (unchanged default look).
-  const textColor = style?.color || 'var(--colorTextTertiary, rgba(0,0,0,0.45))';
+  const textColor = style?.color || token.colorTextTertiary;
   const thickness = Math.max(1, Number(style?.thickness) || 1);
   const explicit = typeof style?.text === 'string' ? style.text.trim() : '';
   const lineOn = style?.lineOn !== false; // default: show the rule
@@ -211,6 +217,7 @@ function DividerNode({ style, fallbackText }: { style?: SectionStyle; fallbackTe
 }
 
 function GroupLabelNode({ text, style }: { text: any; style?: SectionStyle }) {
+  const { token } = theme.useToken();
   const size = Number(style?.size) > 0 ? Number(style?.size) : 11;
   return (
     <span
@@ -226,7 +233,7 @@ function GroupLabelNode({ text, style }: { text: any; style?: SectionStyle }) {
         fontSize: size,
         fontWeight: style?.bold === false ? 500 : 600,
         letterSpacing: 0.6,
-        color: style?.color || 'var(--colorTextTertiary, rgba(0, 0, 0, 0.45))',
+        color: style?.color || token.colorTextTertiary,
         padding: '8px 0 2px',
         lineHeight: 1.4,
         whiteSpace: 'nowrap',

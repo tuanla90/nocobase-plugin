@@ -117,6 +117,20 @@ async function ensureQuickCreateTemplates(app: any, spec: AppSpec): Promise<Reco
   return out;
 }
 
+// meta.name should be a Vietnamese DISPLAY title (see appSpecSystemPrompt in the server plugin), but if
+// the AI slips and emits the machine name instead (e.g. "quan_ly_ban_hang"), don't show that verbatim as
+// the top menu group. Defence in depth: detect a machine-ish string (has '_', or is all-lowercase with no
+// space — the AI's own machine-name pattern is `^[a-z][a-z0-9_]*`) and titleize it for display only.
+function looksMachineName(s: string): boolean {
+  return /_/.test(s) || (s === s.toLowerCase() && !/\s/.test(s));
+}
+function titleizeMachineName(s: string): string {
+  return s
+    .replace(/_/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 export interface MaterializeResult {
   pages: Array<{ title: string; collection: string; schemaUid: string; url: string }>;
   groups: Array<{ label: string; id: number | null }>;
@@ -134,7 +148,8 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   // ONE top-level group = the single top-menu entry (no header overflow). Under it, a FLAT left-sidebar list
   // where each spec group becomes a @ptdl/plugin-menu-enhancements "divider" section LABEL (a childless group
   // carrying options.ptdlMenuKind) followed by its pages. Created in visual order so they sort correctly.
-  const appLabel = spec.meta?.name?.trim() || 'Ứng dụng';
+  const rawAppLabel = spec.meta?.name?.trim() || 'Ứng dụng';
+  const appLabel = looksMachineName(rawAppLabel) ? titleizeMachineName(rawAppLabel) : rawAppLabel;
   const topId = await createMenuGroup(app, appLabel, spec.menu?.icon || 'lucide-layout-dashboard');
   // Section style depends on @ptdl/plugin-menu-enhancements: if enabled, each spec group renders as a
   // NON-CLICKABLE "divider" LABEL (a childless group carrying options.ptdlMenuKind) with its pages flat

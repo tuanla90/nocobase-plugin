@@ -69,6 +69,10 @@ interface BuiltCol {
   quickCreateTarget?: string;
   /** the target's registered Add-form block template that the quick-create popup references. */
   quickCreateTemplate?: TemplateRef;
+  /** to-one relation (m2o/o2o/...) rendered as a clickable display field: a pre-built `popupShell` +
+   *  `detailsBlock` (read-only Details of the TARGET collection) to use as the field's own openView
+   *  popup content — see tableColumn(). Without this the popup opens EMPTY (see relationPopupColumns). */
+  relPopup?: any;
 }
 
 /** A registered Add-form block template (single source of truth reused by quick-create popups). */
@@ -286,6 +290,44 @@ function buildSubTableColumns(engine: any, ds: string, targetColl: any, parentCo
   });
 }
 
+/**
+ * Column list for a to-one relation's (m2o/o2o/...) OPEN-VIEW POPUP: the TARGET collection's own
+ * displayable fields, as plain BuiltCol entries for detailsBlock(). NocoBase's click-to-open default on a
+ * relation display field (DisplayTextFieldModel et al., via ClickableFieldModel) pops a drawer whose
+ * content is loaded/created at (parentId: the field's own uid, subKey:'page') — see FlowPage.tsx. If
+ * nothing was ever saved there it auto-creates an EMPTY tab, so the popup shows nothing. Pre-building this
+ * column list lets the caller attach a real Details block as that popup's content instead.
+ * Filtering mirrors buildSubTableColumns (system fields, raw FK columns, to-many fields, and a back-ref
+ * to the source collection) — kept SHALLOW on purpose, no nested popups within this popup.
+ */
+function relationPopupColumns(engine: any, targetColl: any, sourceCollName: string): BuiltCol[] {
+  if (!targetColl?.getFields) return [];
+  const resolveT = makeResolver(engine, targetColl);
+  const SYS = new Set(['id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'createdById', 'updatedById', 'sort']);
+  const all = targetColl.getFields() || [];
+  const fkNames = new Set<string>();
+  all.forEach((f: any) => {
+    [f.foreignKey, f.otherKey, f.options?.foreignKey, f.options?.otherKey].forEach((k) => k && fkNames.add(k));
+  });
+  const fields = all.filter((f: any) => {
+    const name = f?.name;
+    if (!name || SYS.has(name)) return false;
+    if (!f.interface) return false;
+    if (fkNames.has(name) || f.isForeignKey) return false;
+    const t = f.type || f.interface;
+    if (t === 'hasMany' || t === 'belongsToMany' || f.interface === 'o2m' || f.interface === 'm2m') return false;
+    const isToOne = f.interface === 'm2o' || t === 'belongsTo';
+    if (isToOne && f.target === sourceCollName) return false; // don't show the back-ref to the source row
+    return true;
+  });
+  return fields.map((f: any) => ({
+    name: f.name,
+    tableUse: resolveT(f.name, 'table'),
+    detailsUse: resolveT(f.name, 'details'),
+    formUse: resolveT(f.name, 'form'),
+  }));
+}
+
 // ── small literal builders ─────────────────────────────────────────────────────────────────────
 const resInit = (ds: string, coll: string, filterByTk?: boolean) => ({
   resourceSettings: { init: { dataSourceKey: ds, collectionName: coll, ...(filterByTk ? { filterByTk: '{{ctx.view.inputArgs.filterByTk}}' } : {}) } },
@@ -301,12 +343,21 @@ const colTitleStep = (t?: string) => (t && t.trim() ? { tableColumnSettings: { t
 const formLabelStep = (t?: string) => (t && t.trim() ? { editItemSettings: { label: { label: t.trim() } } } : {});
 const detailLabelStep = (t?: string) => (t && t.trim() ? { detailItemSettings: { label: { label: t.trim() } } } : {});
 
-/** One data column: TableColumnModel + its (user-chosen or default) display renderer sub-model. */
+/** One data column: TableColumnModel + its (user-chosen or default) display renderer sub-model. A to-one
+ *  relation's `relPopup` (see relationPopupColumns) is attached at the field's own `page` subKey — exactly
+ *  where the framework's openView action loads/creates the click-to-open popup's content (FlowPage.tsx),
+ *  so the popup shows the related record's Details instead of opening empty. */
 function tableColumn(ds: string, coll: string, c: BuiltCol) {
   return {
     use: 'TableColumnModel',
     stepParams: { ...fieldStep(ds, coll, c.name), ...colTitleStep(c.title) },
-    subModels: { field: { use: c.tableUse, stepParams: fieldStep(ds, coll, c.name) } },
+    subModels: {
+      field: {
+        use: c.tableUse,
+        stepParams: fieldStep(ds, coll, c.name),
+        ...(c.relPopup ? { subModels: { page: c.relPopup } } : {}),
+      },
+    },
   };
 }
 
@@ -520,6 +571,23 @@ export async function createQuickPage(app: any, params: CreateQuickPageParams): 
           const sub = params.subColumnsOf?.(c.name); // AI-designed sub-table column order (o2m)
           if (/subtable/i.test(bc.formUse)) bc.formSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'form', sub);
           if (/subtable/i.test(bc.detailsUse)) bc.detailsSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'details', sub);
+        }
+      }
+      // to-one relation (m2o/o2o/...) rendered as a clickable display field: pre-attach a read-only
+      // Details block for the TARGET as the field's own openView popup content (see relationPopupColumns
+      // + tableColumn) — otherwise clicking the cell pops an EMPTY drawer.
+      {
+        const field = collection?.getField?.(c.name);
+        const relTarget = field?.target || field?.targetCollection?.name || field?.options?.target;
+        const relKind = field?.type || field?.interface;
+        const relIsToMany = relKind === 'hasMany' || relKind === 'belongsToMany' || field?.interface === 'o2m' || field?.interface === 'm2m';
+        if (relTarget && !relIsToMany) {
+          const targetColl =
+            field?.targetCollection ||
+            app?.dataSourceManager?.getDataSource?.(ds)?.getCollection?.(relTarget) ||
+            app?.dataSourceManager?.getCollection?.(ds, relTarget);
+          const relCols = relationPopupColumns(engine, targetColl, params.collectionName);
+          if (relCols.length) bc.relPopup = popupShell('Details', detailsBlock(ds, relTarget, relCols));
         }
       }
       // quick-create: to-one relation gets an inline "Add new <target>". Prefer the "Rich select"

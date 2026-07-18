@@ -30,6 +30,21 @@ function slugify(s: string): string {
     .replace(/^_+|_+$/g, '') || 'status';
 }
 
+/** Translate an `opSeed` value for an enum field (select/multipleSelect/statusFlow) from its LABEL to its
+ *  stored slug VALUE. `opSeed`'s rows carry human labels (e.g. "Mới" from CollectionSpec.seed), but the
+ *  column's enum stores slugs (e.g. "moi" from fieldDef's statusFlow/select compile) — writing the raw
+ *  label leaves the field null (mismatch). A value that already equals an option's `value` passes through
+ *  unchanged (idempotent). Handles both a single value and an array (multipleSelect). Returns undefined
+ *  when nothing matches, so the caller can drop the key and let the field's own defaultValue apply. */
+function resolveEnumSeedValue(enumOpts: Array<{ value: any; label?: any }>, raw: any): any {
+  const findOne = (v: any) => enumOpts.find((o) => o.value === v || String(o.label) === String(v))?.value;
+  if (Array.isArray(raw)) {
+    const mapped = raw.map(findOne).filter((v) => v !== undefined);
+    return mapped.length ? mapped : undefined;
+  }
+  return findOne(raw);
+}
+
 /**
  * Map an App-Spec FieldSpec → a NocoBase field definition `{name, type, interface, uiSchema, ...}`.
  * Grounded in gsheet-sync's `fieldDef` + instant-create-page's interface maps. Kept deliberately small;
@@ -212,6 +227,7 @@ function appSpecSystemPrompt(): string {
     'Bạn là CHUYÊN GIA UI/UX kiêm kỹ sư dựng app NocoBase. Từ MÔ TẢ tiếng Việt, hãy THIẾT KẾ rồi sinh MỘT App-Spec JSON hợp lệ — không chỉ đúng dữ liệu mà còn ĐẸP, GỌN & DỄ DÙNG (thứ tự cột, chọn widget, cột nào lên bảng vs chỉ trong popup… đều do BẠN quyết như một designer).',
     '',
     'App-Spec = { "meta": {"name","locale":"vi"}, "collections": [...], "pages": [...], "menu": {"groups": [...]} }.',
+    'meta.name = TÊN HIỂN THỊ của cả app, tiếng Việt CÓ DẤU, viết hoa đầu câu (vd "Quản lý bán hàng", "Theo dõi dự án") — đây là nhãn hiển thị trên menu, TUYỆT ĐỐI KHÔNG phải tên máy/snake_case (SAI: "quan_ly_ban_hang").',
     'collection = { "name" (machine, ^[a-z][a-z0-9_]*), "title" (vi có dấu), "titleField", "fields": [...], "relations": [...], "seed": [...] }.',
     'field = { "name", "title", "interface", "options"?, "required"?, "widget"?, "computed"?, "states"? }.',
     '  interface ∈ input, textarea, markdown, phone, email, url, number, integer, percent, select, multipleSelect, checkbox, date, datetime, time, color, json, statusFlow.',
@@ -225,6 +241,7 @@ function appSpecSystemPrompt(): string {
     'menu = { "groups": [{ "label" (nhãn nhóm sidebar, vd "Danh mục"/"Vận hành"), "icon"? }] }. Đưa trang vào nhóm bằng page.menuGroup = ĐÚNG "label" của nhóm (đừng lồng danh sách pages vào trong group).',
     '',
     'QUY TẮC:',
+    '- meta.name = TÊN HIỂN THỊ tiếng Việt có dấu (vd "Quản lý bán hàng"), KHÔNG PHẢI tên máy/snake_case — khác với name của collection/field bên dưới.',
     '- name của collection/field = KHÔNG DẤU, snake_case (vd "khach_hang", "ngay_dat"); title = tiếng Việt có dấu.',
     '- Mỗi collection có titleField = 1 field string chính (vd "ten", "ma").',
     '- Đơn có dòng chi tiết: khai o2m ở bảng cha (reverseName = tên m2o ở bảng con) + m2o ở bảng con; cột computed line-total dùng data.<field>.',
@@ -392,6 +409,20 @@ export class PluginAppBuilderServer extends Plugin {
     const collObj: any = this.db.getCollection(coll);
     const belongsTo = (collObj?.getFields?.() || []).filter((f: any) => f.type === 'belongsTo');
     const relByName = new Map<string, any>(belongsTo.map((f: any) => [f.name, f]));
+    // Enum fields (select/multipleSelect/statusFlow): read each field's uiSchema.enum from the fields
+    // metadata repo (same read path as opRenameField/collTitle — the runtime Collection's own Field
+    // instances don't reliably expose it) so seed rows can translate label → value before insert.
+    const enumByName = new Map<string, Array<{ value: any; label?: any }>>();
+    try {
+      const fieldRepo: any = this.db.getRepository('fields');
+      const fieldRows: any[] = fieldRepo ? await fieldRepo.find({ filter: { collectionName: coll } }) : [];
+      for (const fr of fieldRows) {
+        const name = fr.get ? fr.get('name') : fr.name;
+        const options = (fr.get ? fr.get('options') : fr.options) || {};
+        const en = options.uiSchema?.enum;
+        if (name && Array.isArray(en) && en.length) enumByName.set(name, en);
+      }
+    } catch { /* best-effort — fall back to storing the raw seed value below */ }
     let n = 0;
     for (const row of rows) {
       const values: any = {};
@@ -405,7 +436,13 @@ export class PluginAppBuilderServer extends Plugin {
           const id = hit && (hit.get ? hit.get('id') : hit.id);
           if (id != null) values[rel.foreignKey || rel.options?.foreignKey || fkOf(rel.name)] = id;
         } else if (!rel) {
-          values[k] = v;
+          const enumOpts = enumByName.get(k);
+          if (enumOpts) {
+            const resolved = resolveEnumSeedValue(enumOpts, v);
+            if (resolved !== undefined) values[k] = resolved; // else: drop — the field's defaultValue applies
+          } else {
+            values[k] = v;
+          }
         }
       }
       try { await repo.create({ values }); n++; } catch { /* skip a bad row */ }
