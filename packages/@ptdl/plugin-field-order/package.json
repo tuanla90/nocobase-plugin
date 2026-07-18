@@ -19,5 +19,6 @@
     "@nocobase/client-v2": "2.x",
     "@nocobase/server": "2.x",
     "@nocobase/test": "2.x"
-  }
+  },
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#field-order"
 }
