@@ -589,8 +589,31 @@ tgz `0.4.3` built + deployed nb-local (`pm2 restart index`, boot clean, `appBuil
 
 **Existing apps:** patched their stored `desktopRoutes.title` in place via API — `"Quan Ly Ban Hang"→"Quản lý bán hàng"`, `"project_management_pro"→"Quản lý dự án"`, `"Lịch đặt phong"→"Lịch đặt phòng"` (verified live after restart).
 
+## 21. Preview → refine → patch → dashboards (v0.4.5–0.5.0, 2026-07-18, verify LIVE)
+
+- **v0.4.5 launcher edit-mode gate** — the floating 🛠 Build app / + Quick page launchers only render when the /v/ "UI editor" flag is ON (`useFlowSettingsEnabled` mirrors the framework reader: localStorage `NOCOBASE_V2_FLOW_SETTINGS_ENABLED` + its preference-change event), so they never clutter normal use.
+- **v0.4.6 SpecPreview "Xem trước"** (`src/client-v2/SpecPreview.tsx`) — a Segmented [👁 Preview | JSON] tab renders the App-Spec visually, **deriving everything from the spec, skipping whatever isn't present**: stat chips + Vietnamese prose summary + an SVG ERD (one box/collection, arrows per relation) + menu tree + per-page Collapse (columns / popup / sub-table / actions) with a field-type icon per column and a hover Popover for configured fields (statusFlow flow diagram, computed formula, relation target, select options).
+- **v0.4.7 patch/merge-apply** — `apply` is now an idempotent MERGE: an existing collection gets its MISSING fields added (not skipped) and reports `mergedFields`; seed runs only for newly-created collections; `materializeApp` reuses menu groups by title+parent and skips pages whose title already exists. Re-applying or pasting a spec into an existing app never duplicates.
+- **v0.4.8 aiRefine** — while previewing a spec, chat an instruction; `appBuilder:aiRefine({spec, instruction})` returns the WHOLE modified spec (keep everything unrelated, structured-output + validate/retry ≤3) and re-fills the editor. Distinct from aiGenerate (new app) and aiPlan (modify a built app). ACL-allowed.
+- **Page-builder refactor = option B (sync guard).** Both page-builders are deliberately shared-free; instead of merging into @ptdl/shared, `build-env/checks/quickview-sync.mjs` fails the build if the 10 byte-identical helpers diverge between app-builder/quickView.tsx and instant-create-page/quickView.tsx, or if any of 10 feature markers is missing from either. Wired into both recipes.
+
+### v0.5.0 — Dashboard generation (Phase 3B)
+
+Block/layout flowModel shapes were reverse-engineered from a hand-built dashboard (see the `reference_nocobase_v2_dashboard_blocks` memory). A dashboard is a normal flowPage whose BlockGridModel holds the widgets; the grid `layout` is `{version:2, rows:[{cells:[{items:[blockUid]}], sizes}]}` on a 24-col basis (24 = full width, 12+12 = two columns) — so every widget block is given an EXPLICIT `uid` that the layout references (same trick createQuickPage uses for tabs).
+
+**`src/shared/dashboard.tsx` `createDashboard(app, DashboardSpec)`** — `DashboardSpec = { title, collection, icon?, widgets[] }`. Three widget kinds:
+- **score** → `CustomHtmlBlockModel`: `chartSettings.configure.query` (a count/sum/avg measure, aliased) + `customHtmlSettings.code.code` = JS returning an HTML KPI card (coloured bg, Lucide icon via `helpers.icon`, value via `helpers.fmt`, optional `scale` + `unit` so a billion đồng reads "1.849 triệu đ").
+- **chart** → `ChartBlockModel`: `configure.query` (measure + dimension, date dimension takes `format:'YYYY-MM'`) + `chart.option = { mode:'custom', builder, raw }` where `raw` is hand-written ECharts JS (`var data = ctx.data.objects; return {…}`) — line with an area gradient, bar with rounded caps, pie as a donut, each with a self-labelling `title.text`. Custom mode chosen because the builder default looks poor. Data keys: an un-aliased measure surfaces under its FIELD name, so `raw` reads `x.<field>`.
+- **filter** → `FilterFormBlockModel` → `FilterFormGridModel` → one `FilterFormItemModel` per field (`fieldSettings.init` + `filterFormItemSettings.init.filterField` + `defaultTargetUid` → the first chart); date fields get a `DateTimeTzFilterFieldModel` sub-model.
+
+**Server `aiDashboard({collection, description?})`** — introspects the collection's real fields (bucketed num / date / category), feeds them to the LLM (`getAiProvider`), and gets back a DashboardSpec via structured output; `validateDashboardSpec` forces the collection and drops any widget referencing an unknown field, retry ≤3. The prompt pairs `scale` with the right unit word.
+
+**Launcher** — an edit-mode-only "📊 Dashboard" button opens a modal: a Select of user collections (system tables filtered out) + an optional focus hint → aiDashboard → createDashboard → a widget summary + clickable link. `window.__ptdlAppBuilder.{createDashboard, aiDashboard}` are also in the tool catalog. Bilingual (en+vi).
+
+**Verified live** on the sales app: `aiDashboard('don_hang')` designed 3 KPI cards (28 đơn / 1.849 triệu đ / 66.048 ngàn đ) + a revenue-by-month line + orders-by-month bar + status pie + a 3-field filter; both charts drew real content and the page logged 0 console errors — parity with the hand-built dashboard.
+
 ## Files
-`packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
-`src/server/{index.ts, plugin.ts (actions apply/dryRun)}`, `src/client-v2/index.tsx` (launcher + settings),
+`packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx, materialize.tsx, quickView.tsx, dashboard.tsx}`,
+`src/server/{index.ts, plugin.ts (actions apply/dryRun/ai*/dashboard)}`, `src/client-v2/{index.tsx (launcher + Build app + 📊 Dashboard), SpecPreview.tsx}`,
 `src/client/index.tsx` (no-op), `src/samples/*.json` (golden), `src/locale/{en-US,vi-VN}.json`.
-Build: `build-env/recipes/run-app-builder-build.sh`.
+Build: `build-env/recipes/run-app-builder-build.sh` (runs `build-env/checks/quickview-sync.mjs` first).
