@@ -1,5 +1,6 @@
 import { Plugin } from '@nocobase/client-v2';
 import { initFieldOrder } from '../shared/fieldOrder';
+import { applySettingsMenuOrder } from '../shared/settingsMenuOrder';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
@@ -21,6 +22,9 @@ export class PluginFieldOrderClientV2 extends Plugin {
     const t = (s: string, opts?: Record<string, any>) => this.app.i18n.t(s, { ns: NS, ...(opts || {}) });
 
     initFieldOrder({ apiClient: (this.app as any).apiClient, t });
+
+    // Reorder the /v/ Settings-center menu into a logical, theme-grouped order.
+    applySettingsMenuOrder(this.app);
   }
 }
 
