@@ -1,97 +1,80 @@
-# @ptdl/plugin-ip-guard
+# IP Guard (Allow-list / Block-list) — User Guide
 
-**IP Guard (Whitelist / Blacklist)** — firewall your NocoBase by the client's IP address, configured
-from the admin panel. Works on both the classic (`/`, `/admin`) and modern (`/v/`) clients.
+> Firewall NocoBase by the visitor's **IP address**: admit only certain IPs, or block bad ones —
+> configured right in the admin UI, **no code, no server restart**.
 
-## What it does
+**Group:** Security · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.0
 
-Every request to the NocoBase HTTP **API** (`/api/*` — data, sign-in, settings, everything) is checked
-against your rules before the action runs:
+## What's new after installing?
 
-- **Allow-list mode** — only IPs in the allow-list (plus the safe-list) may reach the API. Everything
-  else is blocked.
-- **Block-list mode** — every IP is allowed except those in the block-list.
-- **Monitor mode** — requests are checked and would-be blocks are recorded in the access log, but
-  **nothing is actually blocked**. Use it to preview the impact of your rules before enforcing.
-- **Off** — no checking.
+- **A new Settings page: “IP Guard”** (lock icon). This is the one and only place you configure it.
+- **No new menu, button or field** is added to your data pages/blocks.
+- ⚠️ **The default is Off.** Enabling the plugin **blocks nothing** — rules take effect only after you pick a mode and click **Save**.
+- Also included: a box showing **your current IP**, a tool to **test an IP**, and an **access log** to see who gets blocked.
 
-Blocked requests get a configurable `403` and are recorded in a capped access log.
+## Where to configure
 
-### Enforcement scope
+| Client | Path to the config page |
+|---|---|
+| **Modern (`/v/`)** | ⚙ **Settings** → **“IP Guard”** |
+| **Classic (`/admin`)** | **Settings** → **“IP Guard”** (path `/admin/settings/ptdl-ip-guard`) |
 
-Pick how far the block reaches (Settings → IP Guard → **Enforcement scope**):
+Both clients open the **same config page** and share one set of rules.
 
-| Scope | Blocks | Notes |
-| :-- | :-- | :-- |
-| **Whole app** (default) | **every request** — the HTML page, static assets, and the API | A true firewall: a blocked IP gets nothing. Implemented as an app-level middleware registered before CORS. |
-| **API only** | the HTTP API only (`/api/*` — data, sign-in, settings) | The page shell still loads but does nothing for a blocked IP. Can never hard-brick the web server, so you can always reach the page to fix the config from an allowed IP. |
+## How to use (step by step)
 
-Loopback and the safe-list are exempt in **both** scopes, so a local or safe-listed admin can always recover.
+> ✅ **Always do this first:** in the top card, check **“Your current IP”**, then click
+> **“Add my IP to safe-list”**. This is your “escape hatch” so you can't lock yourself out.
 
-## Rule syntax
+### Scenario A — Allow only a few trusted IPs (allow-list)
 
-One entry per line (commas and semicolons also separate). IPv4 **and** IPv6.
+1. Open the **“IP Guard”** page.
+2. Click **“Add my IP to safe-list”** (so you keep access for sure).
+3. Under **Mode**, choose **“Allow-list”**.
+4. Pick the **Enforcement scope**: **“Whole app”** (blocks everything) or **“API only”** (safer — see the table below).
+5. Fill in **“Allow-list (allowed IPs)”**, **one entry per line** (single IP, a CIDR block `10.0.0.0/8`, or a range `1.2.3.4-1.2.3.9`).
+6. Click **“Save”**. ✅ From now on only IPs on the list (and the safe-list) get in; everyone else is blocked immediately.
 
-| Form | Example |
-| :-- | :-- |
-| Single address | `203.0.113.4` · `2001:db8::1` |
-| CIDR block | `10.0.0.0/8` · `192.168.1.0/24` · `2001:db8::/32` |
-| Start–end range | `192.168.1.10-192.168.1.20` |
-| Comment | `# office router` (whole line ignored) |
+### Scenario B — Block a few troublemakers (block-list)
 
-## Usage
+1. Open the config page → set **Mode** to **“Block-list”**.
+2. Put the IPs to ban into **“Block-list (blocked IPs)”**, one per line.
+3. Click **“Save”**. ✅ Every IP gets in **except** the ones you listed.
 
-1. **Enable**: Plugin Manager → `@ptdl/plugin-ip-guard` → enable.
-2. **Configure**: open **Settings → IP Guard**.
-3. The panel shows **your current IP** and whether the current rules would allow it. Click
-   **Add my IP to safe-list** first so you don't lock yourself out.
-4. Pick a **Mode**, fill the relevant list, and (recommended) leave it on **Monitor** for a while to
-   watch the access log.
-5. Use the **Test an IP** box to check any address against the unsaved rules.
-6. **Save**. Changes apply immediately (no restart).
+### Scenario C — Try before you enforce (Monitor)
 
-### Safety features
+1. Set **Mode** to **“Monitor”**, enter your rules as usual, then **“Save”**.
+2. The plugin **checks and logs** cases that *would* be blocked but **doesn't actually block** — safe to gauge the impact.
+3. Watch the **access log**. The **Decision** column shows **“Would block”** for IPs that would be banned.
+4. Once happy, switch **Mode** to **“Allow-list”** / **“Block-list”** and **“Save”** again.
 
-- **Safe-list (always allowed)** — applies in every mode and is never blocked. Put trusted admin IPs
-  here. This is your remote-admin escape hatch.
-- **Always allow loopback** (default **on**) — `127.0.0.0/8` and `::1` are never blocked, so local and
-  CLI access keeps working.
-- **Always allow private / LAN** (optional) — RFC1918, link-local and IPv6 ULA ranges.
-- **Live lock-out warning** — the panel warns (and the mode blocks) before you save a config that would
-  block your own current IP.
+> 💡 Want to try an address quickly **without saving**? Use **“Test an IP against the current (unsaved) rules”**, enter an IP and click **“Test”**.
 
-## Behind a proxy
+## Tips & notes
 
-If NocoBase runs behind Nginx, a load balancer or Cloudflare, the socket address is the proxy, not the
-client. Leave **Behind a proxy** on (default) so the guard reads the real client IP from the
-`X-Forwarded-For` header (first hop; `X-Real-IP` is a fallback). You can change the header name.
+- ⚠️ **This is server-side enforcement.** Rules apply **the moment you click “Save”**, **no restart** — be sure before you save.
+- ⚠️ **Don't lock yourself out.** If your config would block your own IP, the page shows a red warning **“This configuration would block your own IP”**. Add your IP to the **allow-list** or **safe-list** first.
+- Choose the **Enforcement scope** to fit your need:
 
-> **Security note.** A forwarded header is only trustworthy when a proxy you control sets it. If clients
-> can reach the Node server **directly**, they can spoof `X-Forwarded-For` — in that case turn the
-> option **off** so the guard uses the real socket address, or make sure only your proxy can reach the app.
+  | Scope | Blocks what | Note |
+  |---|---|---|
+  | **Whole app** *(default)* | **Every request**, including the web page + static assets | A true firewall: a blocked IP sees nothing. |
+  | **API only** | The API only (data, sign-in, settings) | The page shell still loads but is useless to a blocked IP; **never hard-bricks the server**. |
 
-## Recovering from a lock-out
+  Both scopes **exempt loopback and the safe-list**, so you always have a way back in.
+- **Loopback is always allowed** (on by default): `127.0.0.1`, `::1`. So if you do lock yourself out, you can still get in **from the server itself** via `http://127.0.0.1:<port>` and set Mode back to **“Off”**.
+- **Behind a proxy?** If NocoBase runs behind Nginx / a load balancer / Cloudflare, leave **“Behind a proxy (read forwarded header)”** on to read the real client IP. If clients connect **directly**, turn it **off** (a forwarded header can be spoofed).
+- The **access log** self-caps around the last **500 rows**; you can **clear** it anytime. Turn on **“Log allowed requests”** only briefly when debugging — it's very chatty.
+- Runs on **both** clients: classic `/admin` and modern `/v/`.
 
-If you enforce an allow-list that excludes you and have no safe-listed/loopback path, recover on the
-server (root bypasses ACL but the guard is IP-based, so use one of these):
+## Remove / disable
 
-- **From the server host** (loopback is exempt by default): open the app on `http://127.0.0.1:<port>`
-  and set the mode back to **Off** / add your IP.
-- **Via the database**: set the guard back to off in the single config row —
-  ```sql
-  UPDATE "ptdlIpAccessConfigs" SET options = '{"mode":"off"}' WHERE "key" = 'global';
-  ```
-  then restart the app (or re-save from an allowed IP). The table name matches the collection
-  `ptdlIpAccessConfigs`.
+- **Pause blocking:** open the config page, set **Mode** back to **“Off”** → **“Save”**. Your config (the lists) is kept for later.
+- **Remove entirely:** disable the plugin in **Plugin Manager** — blocking stops at once. Saved config and logs stay in the database if you re-enable.
+- 🆘 **Locked out with no safe path?** Open the app **from the server** via `http://127.0.0.1:<port>` (loopback is exempt) and set Mode to **“Off”**; or edit the config row in the `ptdlIpAccessConfigs` DB table.
 
-## Data
+---
 
-- `ptdlIpAccessConfigs` — one row (`key = 'global'`) whose `options` JSON holds the whole config.
-- `ptdlIpAccessLogs` — access-attempt audit trail, auto-capped at 500 rows.
+### For developers
 
-## Notes
-
-- Server-enforced by an in-memory config that reloads on save: an app-level `app.use` middleware for
-  **Whole app** scope, or a `resourcer.use` middleware for **API only** scope.
-- Bilingual UI (English + Tiếng Việt); reuses `@ptdl/shared` settings-kit.
-- The IP-matching core is pure and unit-tested (IPv4/IPv6, CIDR, ranges, loopback/private, decisions).
+Server-tier enforcement: **Whole app** uses `app.use` (registered before CORS, covers everything), **API only** uses `resourcer.use`. Config is one row (`key = 'global'`) in `ptdlIpAccessConfigs`, logs in `ptdlIpAccessLogs` (auto-trimmed to ~500 rows). The pure IP matcher (`ipMatch`) is unit-tested (IPv4/IPv6, CIDR, ranges, loopback/LAN).

@@ -2,13 +2,15 @@
 
 > Sắp xếp lại **thứ tự các trường** của một bảng dữ liệu bằng cách **kéo–thả**, ngay trong màn hình
 > cấu hình trường — không cần code, không cần restart server.
+> **Từ 0.1.1**, plugin còn **tự sắp lại menu trong trang Settings** cho gọn gàng theo nhóm.
 
-**Nhóm:** Trường (Fields) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.0
+**Nhóm:** Trường (Fields) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.1
 
 ## Sau khi cài, có gì mới?
 
 - **Một nút mới: “Sắp xếp trường”** xuất hiện trên **thanh công cụ của ngăn cấu hình trường** (ngăn kéo ra khi bạn mở phần “Configure fields” của một bảng — chỗ có nút **“Add field”**). Nút nằm cạnh nút thêm trường.
 - Bấm nút → mở hộp thoại **“Sắp xếp trường”**: một **danh sách kéo–thả** liệt kê các trường của bảng theo thứ tự hiện tại. Kéo để đổi chỗ, hoặc dùng nút **Lên / Xuống** ở mỗi dòng.
+- 🆕 **(0.1.1) Menu trang Settings tự sắp lại theo nhóm.** Các mục cài đặt của bộ plugin **@ptdl** được gom nhóm và xếp **ngay dưới** các mục sẵn có của NocoBase — thay vì rải rác theo thứ tự nạp. **Tự động, không cần thao tác.**
 - **Không thêm menu, trang cài đặt, hay field** nào khác. Đây là công cụ dùng ngay tại chỗ quản lý trường.
 - ✅ Lấp đúng khoảng trống của NocoBase: trường **thêm sau** luôn bị đẩy xuống **cuối** và bản thân NocoBase **không có nút để kéo lên** — plugin này cho bạn làm điều đó.
 
@@ -41,21 +43,34 @@ Plugin **không có trang cài đặt riêng**. Bạn dùng nó ngay trong **khu
 
 > 💡 Thứ tự mới **chi phối màn cấu hình trường này** *và* **thứ tự trường mặc định** của các **block/biểu mẫu bạn tạo MỚI** sau đó. Các **block/biểu mẫu đã tạo trước** vẫn **giữ nguyên bố cục** của chúng (đúng theo cơ chế NocoBase) — dòng chú thích trong hộp thoại cũng nhắc điều này.
 
+## Bonus: tự sắp lại menu trang Settings (từ 0.1.1)
+
+Tính năng này **tự động** — chỉ cần bật plugin, không có nút nào để bấm. Vào **/v/ → ⚙ Settings**, các mục cấu hình của bộ **@ptdl** sẽ được gom nhóm cho dễ tìm, theo thứ tự:
+
+- 🎨 **Giao diện** — Branding & Theme · Custom Login · PWA · Custom Icons
+- 🔍 **Tìm kiếm & tiện ích** — Global Search · Instant Create Page
+- 🗄️ **Dữ liệu & tự động** — AI Column · Công thức tự tính · Tính tuần tự · Line Generator · Google Sheets Sync · Change Log
+- 🖨️ **In ấn** — Print Template
+- 🔒 **Bảo mật** — IP Guard *(để cuối)*
+
+> 💡 Các mục **sẵn có của NocoBase** (System settings, Plugin manager…) vẫn ở **trên cùng**; nhóm @ptdl xếp **ngay dưới**. Thứ tự áp cho **/v/ (modern)**.
+> ⚠️ NocoBase **không cho kéo–thả** menu Settings, nên đây là thứ tự **cố định trong plugin**. Muốn thứ tự khác → sửa danh sách `PTDL_SETTINGS_ORDER` trong mã plugin (nhờ người dựng chỉnh lại).
+
 ## Mẹo & lưu ý
 
 - ✅ **Áp dụng ngay khi “Lưu”, không cần restart** server.
 - 📦 **Chỉ đổi thứ tự hiển thị**, tuyệt đối **không đụng tới cấu trúc/dữ liệu** của trường. Muốn sắp lại thế nào cũng an toàn.
 - 🧭 Danh sách chỉ gồm **các trường giao diện** (những trường xuất hiện trong bộ chọn). Các **trường hệ thống** (như `id`, `createdAt`…) không hiển thị và **không bị thay đổi**.
 - 🖥️ Áp dụng cho **nguồn dữ liệu chính (main data source)** — nơi bạn quản lý bảng ngay trong app. Các nguồn dữ liệu ngoài (external) không nằm trong phạm vi công cụ này.
-- 🔁 Muốn thứ tự mới xuất hiện trong một block **đã có sẵn**? Hãy **tạo lại block/biểu mẫu** (hoặc thêm block mới) — block cũ giữ bố cục riêng của nó.
-- 🌐 Chạy trên **cả hai** giao diện: classic `/admin` và modern `/v/`.
+- 🔁 Muốn thứ tự trường mới xuất hiện trong một block **đã có sẵn**? Hãy **tạo lại block/biểu mẫu** (hoặc thêm block mới) — block cũ giữ bố cục riêng của nó.
+- 🌐 Nút sắp xếp trường chạy trên **cả hai** giao diện; phần **tự sắp menu Settings** hiện áp dụng cho **/v/**.
 
 ## Gỡ / tắt
 
-- **Tắt plugin** trong **Plugin Manager**: nút **“Sắp xếp trường”** biến mất. Thứ tự trường bạn đã lưu **vẫn được giữ nguyên** (vì nó là dữ liệu thứ tự sẵn có của NocoBase) — **không mất gì cả**. Bật lại lúc nào cũng dùng tiếp được.
+- **Tắt plugin** trong **Plugin Manager**: nút **“Sắp xếp trường”** biến mất và **menu Settings trở lại** thứ tự mặc định. Thứ tự trường bạn đã lưu **vẫn được giữ nguyên** (vì nó là dữ liệu thứ tự sẵn có của NocoBase) — **không mất gì cả**. Bật lại lúc nào cũng dùng tiếp được.
 
 ---
 
 ### Cho nhà phát triển
 
-Nút được gắn ở **cấp body** (tự mount một React root, không qua `app.addProvider` vì provider không render trên subtree `/admin/settings/*`), dò tìm ngăn cấu hình trường bằng cấu trúc DOM + theo dõi cú click chọn bảng, và chỉ hoạt động khi đường dẫn chứa `data-source-manager`. Lưu thứ tự qua action server `fieldOrder:reorder` — ghi lại cột `sort` của bảng metadata `fields` bằng cách **tái dùng đúng các slot sort hiện có** của những trường được sắp (không đụng trường hệ thống/ẩn, không tạo trùng). Chi tiết kỹ thuật: xem `FIELD-ORDER.md` và `README.md` (tiếng Anh).
+Nút được gắn ở **cấp body** (tự mount một React root, không qua `app.addProvider` vì provider không render trên subtree `/admin/settings/*`), dò tìm ngăn cấu hình trường bằng cấu trúc DOM + theo dõi cú click chọn bảng, và chỉ hoạt động khi đường dẫn chứa `data-source-manager`. Lưu thứ tự qua action server `fieldOrder:reorder` — ghi lại cột `sort` của bảng metadata `fields` bằng cách **tái dùng đúng các slot sort hiện có** của những trường được sắp (không đụng trường hệ thống/ẩn, không tạo trùng). **Phần sắp menu Settings** (`src/shared/settingsMenuOrder.ts`) đóng dấu `sort` lên `pluginSettingsManager.menus[key]` cho 14 khoá menu @ptdl (patch `addMenuItem` + xoá cache) — không cần build lại 13 plugin kia. Chi tiết kỹ thuật: xem `FIELD-ORDER.md` và `README.md` (tiếng Anh).

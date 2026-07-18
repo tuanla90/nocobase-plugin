@@ -1,110 +1,109 @@
-# @ptdl/plugin-gsheet-sync
+# Google Sheets Sync — User Guide
 
-Sync a Google Sheet tab into a **real NocoBase collection** — one-way pull, optional
-two-way write-back, on a schedule or on demand. Works on both the classic `/admin` and the
-Modern `/v/` app.
+> Pull data from **a single Google Sheet tab** into a **real NocoBase collection** — run it
+> manually or automatically on a schedule. Auto-create the collection and **infer data types**,
+> or map columns onto an existing collection; **replace-all** or **upsert-by-key** modes;
+> optional **two-way write-back** to the sheet.
 
-- **Pull (Sheet → NocoBase)** — each connection pulls one sheet tab into a collection.
-  Create the collection automatically (columns + inferred types) **or** map columns into an
-  existing collection.
-- **Type inference** — values are read `UNFORMATTED` (numbers stay numbers, dates are
-  day-serials). Date-vs-number is decided by the cell's **effective `numberFormat.type`**
-  from the Sheets API (authoritative), so date columns are detected regardless of locale
-  formatting. Falls back to a formatted-string heuristic if the format grid can't be read.
-- **Two-way (NocoBase → Sheet)** — for `upsert` connections with a key column, edits/creates/
-  deletes in NocoBase are pushed back to the sheet (debounced batch, formula-injection guarded,
-  loop-safe). Row identity on the sheet is the **key column**; `_sheet_row` is a hint.
-- **Reusable Service Accounts** — register a Google service-account key once and reuse it
-  across many connections (own tab in the settings page). Legacy per-connection inline
-  credentials still work as a fallback.
-- **Scheduling** — per-connection interval (minutes); `0` = manual only.
+**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.1
 
-## Setup
+## What's new after installing?
 
-1. **Google Cloud** → IAM → Service Accounts → create one → **Keys** → add a JSON key.
-2. In NocoBase: **Settings → Google Sheets Sync → Service Account tab → ＋ Thêm Service Account**,
-   paste the JSON, give it a name.
-3. **Share** the Google Sheet with the service account's `client_email` — **Viewer** is enough
-   for pull; **Editor** is required for two-way write-back.
-4. **Kết nối tab → ＋ Thêm connection**: pick the service account, paste the sheet URL/ID,
-   **Kiểm tra kết nối** to load tabs, choose the tab, then the target collection (new or existing).
-   Use **Xem trước** to review inferred types / set up column mapping, then **Lưu** and
-   **Đồng bộ ngay**.
+- **A new Settings page: “Google Sheets Sync”** (cloud-sync icon). This is the one and only place you work — split into two tabs: **“Connections”** and **“Service Account”**.
+- **No new menu, button or field** is added to your data pages/blocks.
+- When you run the first sync, a **real data collection** appears in **Data sources** (immediately usable in blocks/relations like any other table).
+- ⚠️ **Enabling the plugin syncs nothing yet.** You must register a **Service Account** + a **Connection** before data starts flowing.
 
-## Sync modes
+## Where to configure
 
-- **Replace** (default) — wipe + bulk insert every sync. Fast, but **record IDs change each
-  run** (relations/comments attached to synced records break). On an *existing* collection only
-  rows this plugin created (`_sheet_row` set) are wiped — your own rows stay.
-- **Upsert (by key column)** — match on a key column, update-or-insert per row, keeping record
-  IDs stable. Required to enable two-way. Optional "delete rows no longer on the sheet".
+| Client | Path to the config page |
+|---|---|
+| **Modern (`/v/`)** | ⚙ **Settings** → **“Google Sheets Sync”** → **“Connections”** tab |
+| **Classic (`/admin`)** | **Settings** → **“Google Sheets Sync”** (path `/admin/settings/gsheet-sync`) |
 
-## Data model (server, all hidden)
+Both clients open the **same config page** and share one set of data. The page has two buttons in the top-right corner: **“↻ Reload”** and **“Manage collections”** (opens the collection list in Data sources directly).
 
-- `ptdl_gsheet_connections` — one row per connection (source, target, mode, schedule, status,
-  `accountId` → service account, legacy inline `credentials` fallback, `twoWay`, `pushDeletes`…).
-- `ptdl_gsheet_accounts` — reusable service accounts (`title`, write-only `credentials`).
-- The **target collection** is created via the collections repository (same path as the
-  collection-manager UI) so it appears in Data sources; a helper `_sheet_row` bigint field is
-  added for row identity.
+## How to use (step by step)
 
-Resource: `ptdlGsheet` (ACL snippet `pm.gsheet-sync`). Actions: `listConnections`,
-`saveConnection`, `deleteConnection`, `testConnection`, `preview`, `syncNow`, `pushNow`,
-`listAccounts`, `saveAccount`, `deleteAccount`.
+> ✅ **Do this once, first:** register a **Service Account**, then **Share** the Google Sheet with its email. Without this step every connection fails with a “can't access the sheet” error.
 
-## Architecture
+### Prep step — Create a Service Account & share the sheet
 
-- **`src/server/google.ts`** — zero-dep Google client: RS256 JWT signed with node `crypto`,
-  token exchange + Sheets REST via global `fetch` (no `googleapis`). Scope: full
-  `auth/spreadsheets` (so write-back needs no re-consent).
-- **`src/server/sync.ts`** — header→field slugify, type inference, value coercion, snapshot
-  fetch, mapping resolution.
-- **`src/server/writeback.ts`** — `WritebackManager`: binds per two-way connection, queues +
-  debounces changes, flushes as one `values:batchUpdate` (+ append / deleteDimension).
-- **`src/server/plugin.ts`** — collections, resource actions, credential resolution
-  (`resolveConnCredentials`: account wins, inline is fallback), scheduler.
-- **`src/shared/ConnectionManager.tsx`** — the whole settings UI (antd only), shared by both
-  client lanes; the api client is injected per lane. Also carries the "open a collection's
-  field-config" deep-link helper.
-- Lanes: `src/client` (classic) and `src/client-v2` (`/v/`). The classic lane also consumes a
-  `sessionStorage` flag on boot to open a collection's field-config after a cross-app jump.
+1. Go to **Google Cloud Console → IAM → Service Accounts** → create a service account → **Keys** tab → add a **JSON key** (download the file).
+2. In NocoBase open the **“Google Sheets Sync”** page → **“Service Account”** tab → click **“Add Service Account”**.
+3. Set a **“Nickname”** (e.g. *Accounting SA*) and paste the **entire** JSON file content into the **“Service Account JSON”** box → **“Save”**.
+4. After saving, the **“Service account email”** column shows an address like `…@…iam.gserviceaccount.com`. **Copy** it.
+5. Open the Google Sheet you want to sync → **Share** it with the copied email: **Viewer** access is enough to pull; **Editor** is needed for **two-way write-back**.
 
-## Build
+> 💡 One Service Account is **reusable across many connections** — register it once. The **“In use”** column shows how many connections use it (a Service Account that's in use can't be deleted).
 
-```
-bash build-env/recipes/run-gsheet-sync-build.sh
-```
+### Scenario A — Pull a tab into a NEW collection (auto-created)
 
-Zero real deps (server = node crypto + fetch; client = antd + `@ant-design/icons`, both external).
-Output: `build-env/storage/tar/@ptdl/plugin-gsheet-sync-0.1.0.tgz`. Packaged copies live in
-`latest/@ptdl/` and `archive/@ptdl/`.
+1. Go to the **“Connections”** tab → click **“＋ Add connection”**.
+2. **“Connection name”**: give it a memorable name (e.g. *Order list*).
+3. **“Service Account”**: pick the account saved in the prep step.
+4. **“Spreadsheet ID or URL”**: pasting the **full** Google Sheet URL works too (the system extracts the ID) → click **“Test connection”**. If OK it shows the spreadsheet title + tab count.
+5. **“Sheet (tab)”**: pick the tab to read (the list loads after Test connection).
+6. *(Optional)* **“Data range (optional)”**: empty = whole sheet; or type `A1:F` — **the first row of the range is the header row**.
+7. **“Target collection”**: choose **“Create new collection”** and name the table (e.g. `gs_orders`).
+8. Click **“👁 Preview & set up column mapping”** to see the **auto-inferred types** and **sample data**. Untick columns you don't need, and edit the field name / **“Stored type”** if you want.
+9. Set **“Auto sync (minutes)”** (`0` = manual only; `15` = every 15 minutes), keep **“Enable connection”** on → **“Save”**.
+10. Click **“Sync now”** (on the connection row or inside the edit dialog). ✅ The collection is **auto-created** with data; it reports *“Sync complete: N rows”*.
 
-## Install on nb-local (dev host, port 13000)
+> 💡 A **Date** column on the sheet is recognized correctly as a date (not Google's serial number) — the type is inferred from the cell format, independent of locale.
 
-Extract the tgz into **both** `nb-local/node_modules/@ptdl/plugin-gsheet-sync` and
-`nb-local/storage/plugins/@ptdl/plugin-gsheet-sync` (use `tar --force-local` because the path
-has a `D:` drive letter), copy the root marker files (`server.js`, `*.d.ts` — the tgz ships
-`client.js`/`client-v2.js` but not `server.js`), set the DB row `enabled=1`, then restart:
+### Scenario B — Load into an EXISTING collection (map columns)
 
-```
-node nb-local/node_modules/pm2/bin/pm2 restart index --update-env
-```
+1. In **“Target collection”** choose **“Existing collection”** → pick a collection from the list.
+2. Click **“👁 Preview & set up column mapping”**. Columns whose name matches a field **auto-match**; only **ticked** columns sync.
+3. For each column, pick the matching **“Target field”** (the type **follows the target field**, so there's no “Stored type” to choose).
+4. Choose the sync mode → **“Save”** → **“Sync now”**.
 
-Hard-refresh the browser.
+> ⚠️ On an existing collection, **replace** mode **only deletes rows created by this plugin** (rows you entered by hand are kept).
 
-## Known behaviour / limits (not bugs)
+### Scenario C — Keep record IDs stable (Upsert by key column)
 
-- **Field types aren't altered on re-sync** — `ensureTargetCollection` only *adds* missing
-  fields. To change a field's type, edit it in Data sources (the settings list links straight to
-  it) or drop the field/collection and re-sync.
-- **Replace mode reassigns record IDs** each run — use *upsert* if you need stable IDs or plan to
-  attach relations.
-- **Two-way is last-write-wins** — no conflict detection / diff-before-write yet.
-- **Service accounts can't create spreadsheets** (Google 2025 policy drops SA Drive quota) — the
-  sheet must already exist and be shared with the SA.
+1. In **“Sync mode”** choose **“Upsert by key column”**.
+2. Pick the **“Key column”** — a column with a **unique value** per row (e.g. *Order ID*). *(Click Preview to load the column list.)*
+3. *(Optional)* tick **“Delete records no longer on the sheet”** to clean up rows removed from the sheet.
+4. **“Save”**. ✅ Each sync **updates or inserts** by the key column, **keeping record IDs stable** — safe for relations / comments attached to a record.
 
-## Disconnecting
+### Scenario D — Two-way write-back (NocoBase → Sheet)
 
-Turning off **Bật connection** (or interval `0`, or two-way) stops auto-sync but keeps the config.
-**Deleting** a connection removes only its config — the synced collection and its rows stay, and
-so does the sheet. The two copies become independent.
+1. You must be on **Upsert + a key column selected** (required), and the sheet must be **Shared with Editor** access to the service account.
+2. Turn on the **“Push changes from NocoBase to the sheet”** switch.
+3. Choose how to handle **“When deleting a record:”** — **“Leave the sheet alone”**, **“Clear the row (keep the row)”**, or **“Delete the row from the sheet”**.
+4. **“Save”**. From now on, **editing / adding / deleting** a record in NocoBase is **pushed to the sheet after ~3 seconds** (batched into one lot). To re-push everything now: click **“⇪ Push everything to the sheet”**.
+
+## Tips & notes
+
+- **Replace or Upsert?**
+
+  | Mode | How it runs | Record IDs | Use when |
+  |---|---|---|---|
+  | **Replace all (replace)** *(default)* | Wipes and reloads everything each sync | **Change every run** → relations/comments attached to records break | Lookup tables with no relations; need speed |
+  | **Upsert by key column** | Matches on the key column, update-or-insert per row | **Stay stable** | Need stable IDs, have relations, or want two-way on |
+
+- **Inferable data types** (when creating a new collection) — editable in the **“Stored type”** column of the mapping table: **Text (string)**, **Long text (text)**, **Integer**, **Decimal**, **Boolean**, **Date**.
+- ⚠️ **Re-sync doesn't change existing field types** — each sync only **adds** missing fields, it never alters an existing field's type. To change a type/format: click the **collection-name chip** (blue, with a ⚙ icon) in the **“Target collection”** column to open the field config directly, edit it, then sync again.
+- **Write-back is last-write-wins** — no conflict detection yet. Avoid editing the same row simultaneously in both places.
+- **A Service Account can't create a new spreadsheet** (Google 2025 policy) — the Google Sheet must **already exist** and be **Shared** with the service account.
+- **Auto schedule:** the system scans every minute; set/change **“Auto sync (minutes)”** then **“Save”** and it takes effect — **no server restart needed**. Set `0` for manual only.
+- **Legacy credentials (per-connection):** an old connection may still use credentials pasted inline (labelled **“own credentials (legacy)”**). It still works, but switching to a shared **Service Account** is tidier.
+- Runs on **both** clients: classic `/admin` and modern `/v/`.
+
+## Remove / disable
+
+- **Pause a connection:** open the connection, **turn off “Enable connection”** (or set **“Auto sync (minutes)”** = `0`, or turn off two-way) → **“Save”**. The config is kept; re-enable anytime.
+- **Delete a connection:** click **“Delete”** — this removes only the config. **The data collection and its synced rows stay**, and the Google Sheet is untouched; from then on the two sides are independent.
+- **Remove the plugin entirely:** disable it in **Plugin Manager** — syncing stops at once. The collections already created and their data **stay** in the database.
+
+---
+
+### For developers
+
+The Google client has **no external dependencies** — an RS256 JWT is signed with node's `crypto` and tokens/data are fetched straight from the Sheets REST API via global `fetch` (no `googleapis`); the scope is full `auth/spreadsheets`, so write-back needs no re-consent. **Type inference** reads values `UNFORMATTED` and decides date-vs-number from the cell's effective `numberFormat.type` (authoritative from the Sheets API), so dates are detected regardless of locale, with a formatted-string heuristic as fallback.
+
+Config lives in two hidden collections: `ptdl_gsheet_connections` (one row per connection — source, target, mode, schedule, status, `accountId`, legacy inline `credentials`, `twoWay`, `pushDeletes`…) and `ptdl_gsheet_accounts` (reusable service accounts, write-only `credentials`). Credential resolution: the account wins, inline credentials are the fallback. The **target collection** is created via the collections repository (same path as the collection-manager UI, so it appears in Data sources) plus a hidden `_sheet_row` bigint field for row identity.
+
+Server resource: `ptdlGsheet` (ACL snippet `pm.gsheet-sync`), with actions `listConnections`, `saveConnection`, `deleteConnection`, `testConnection`, `preview`, `syncNow`, `pushNow`, `listAccounts`, `saveAccount`, `deleteAccount`. The scheduler runs every 60 seconds. Write-back (`WritebackManager`) binds per two-way connection, queues + debounces changes, and flushes them as one `values:batchUpdate` (+ append / deleteDimension) — formula-injection guarded and loop-safe; row identity on the sheet is the **key column**, with `_sheet_row` as a hint. The whole settings UI is `src/shared/ConnectionManager.tsx` (antd only), shared by both client lanes with the api client injected per lane. Build via `bash build-env/recipes/run-gsheet-sync-build.sh`.

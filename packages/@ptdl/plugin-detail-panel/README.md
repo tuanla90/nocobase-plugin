@@ -1,75 +1,87 @@
-# @ptdl/plugin-detail-panel — Detail Panel / "Side panel" open mode
+# Detail Panel (split-screen detail view) — User Guide
 
-AppSheet-style **master–detail split view** for NocoBase `/v/`, in two complementary features that share the
-layout's built-in embed side container, plus a **drag-resize splitter**.
+> Open a record **docked to the right** instead of a full-screen popup — **AppSheet-style master–detail**:
+> the list on the left, the record's details on the right, drag the divider to resize. Just switch it on, **no code**.
 
-## A) "Side panel" open mode (full, editable popup)
+**Group:** Blocks · **Runs on:** **/v/ (modern) only** — not /admin (classic) · **Version:** 0.1.0
 
-Adds a **"Side panel"** option to the *Open mode* of record popups — a native-feeling 4th choice next to
-Drawer / Dialog / Page.
+## What's new after installing?
 
-## What it does
+- **A new way to open a record: “Side panel”** — a **4th** choice beside Drawer / Dialog / Page in the *Open mode* of every popup button (View/Edit…). Pick it and the popup **docks to the right**, with the main content **shrinking beside it** instead of being hidden under a mask.
+- **A new option in the Table block's ⚙: “Side detail panel”** — turn it on so **clicking anywhere on a row** opens that record in the right-hand panel (no button needed).
+- **A drag splitter** on the panel's left edge: drag to resize the panel / content.
+- **Adds no** menu, Settings page, field or collection. **Doesn't touch the server** — pure UI.
+- ⚠️ **Nothing is enabled by default:** you must pick **“Side panel”** for a button, or turn on the row-click toggle, before anything takes effect.
 
-In a record action's **Edit popup** dialog:
+## Where to configure
 
-```
-Open mode:  ( ) Drawer   ( ) Dialog   ( ) Page   (•) Side panel   ← added
-Popup size: ( ) Small    (•) Medium   ( ) Large                   ← controls panel width (30/40/50%)
-Popup template: …                                                  ← your existing configured popup
-```
+The plugin has **no Settings page of its own**. Everything is configured **right on the block/button** in **UI Editor** mode (toggle the UI-editing button in the top-right corner).
 
-Pick **Side panel** and clicking that action (e.g. the row **View** button) opens the *exact same configured
-popup* — tabs, action buttons, editable form/detail/sub-blocks — **docked to the right** in the layout's
-built-in `#nocobase-embed-container`. The content shrinks beside it (no mask, both interactive), and opening
-another record **swaps** the panel without closing it. The panel's X (or opening elsewhere) closes it and
-restores the layout.
+| Feature | Where to set it |
+|---|---|
+| **“Side panel” open mode** (per button) | Turn on **UI Editor** → click a button (e.g. **View**/**Edit**) → ⚙ → the popup config (*Edit popup*) → the *Open mode* section → choose **“Side panel”** |
+| **Row-click opens the panel** (whole table) | Turn on **UI Editor** → the **Table** block's ⚙ → **“Side detail panel”** |
 
-Nothing new to build: it reuses whatever popup the user already configured. It works anywhere `openView`
-is used (row View/Edit buttons, association fields, …).
+> ⚠️ Only on the **/v/ (modern)** client. On **/admin (classic)** the plugin **does nothing** (the classic client has no such *Open mode* control and no dock area to split the screen).
 
-## B) Row-click (click anywhere on a row body)
+## How to use (step by step)
 
-A Table block ⚙ toggle (**Side detail panel**). Click **anywhere on a row body** (no button needed) → the
-record opens in the side panel. **Panel content** is a choice:
+### Scenario A — Make a **View/Edit** button open the record in the right panel
 
-- **Configured popup (full, editable)** — *default*. Triggers the row's own **View** action (the same popup
-  the user built: tabs, actions, editable form/sub-blocks) in Side panel mode, so clicking the row body and
-  clicking the **View** button give the *same* editable popup. Falls back to the quick view if the table has
-  no popup action.
-- **Quick view (read-only)** — a zero-config read-only field list (optionally a field subset).
+1. Open a page with a **Table** block and turn on **UI Editor**.
+2. Click a row's button, e.g. **View** → open ⚙ → choose the popup config (*Edit popup*).
+3. In the *Open mode* section, choose **“Side panel”** (instead of Drawer / Dialog / Page).
+4. (Optional) Choose the **Popup size** → the panel becomes **30% / 40% / 50%** wide accordingly.
+5. **Save**. ✅ From now on, clicking **View** opens **exactly the popup you configured** (its tabs, buttons, editable form/sub-blocks) **docked to the right**, with the table shrinking on the left; opening another row **swaps the content** rather than closing; click **X** to close and restore the layout.
 
-Clicking another row swaps the panel; the X closes it. Width follows the picked size (30/40/50%).
+> 💡 It **reuses the very popup you built** — nothing new to make. It applies everywhere a popup button exists: a row's View/Edit buttons, association fields…
 
-Clicks that land on a row **action button** (View/Edit/Delete), link, checkbox or inline input are ignored
-by the row-click handler — those run their own action — so B coexists with A on the same table with **no
-double-open** (row body and the View button each open the popup exactly once).
+### Scenario B — **Click a row** to open the panel (no button needed)
 
-## Splitter
+1. Turn on **UI Editor** → open the **Table** block's ⚙ → choose **“Side detail panel”**.
+2. Turn on the **“Click a row to open a detail panel on the right”** toggle.
+3. Choose **“Panel content”**:
+   - **“Configured popup (full, editable)”** *(default)* — clicking a row opens **the View button's exact popup** (editable tabs, buttons, form). So the row body and the **View** button give the **same** popup. (If the table has no popup button, it falls back to quick view.)
+   - **“Quick view (read-only)”** — a **read-only** field list, no extra configuration.
+4. Choose **“Panel width”**: **“Narrow (30%)” / “Medium (40%)” / “Wide (50%)”**.
+5. If you chose **“Quick view (read-only)”**, you can use the **“Fields to show (empty = all)”** box to show only a few fields (leave empty = show all).
+6. **Save**. ✅ Now **clicking any row body** opens the record in the panel; clicking another row **swaps** it; click **X** to close.
 
-While the panel is open, a drag handle sits on its left edge — drag to resize the split (min 320px panel /
-360px content). Applies to both features.
+> 💡 Clicks that land on a **button** (View/Edit/Delete), a **link**, a **checkbox** or an inline input do **not** trigger the panel — those run their own action. That's how A and B **coexist** on the same table with **no double-open**.
 
-## How it works (no core patching)
+### Scenario C — Resize the panel
 
-Augments the already-registered native `openView` action in place:
+- While the panel is open, a **drag handle** sits on the panel's **left edge** — **drag** it to resize. The system keeps a minimum of **320px for the panel** and **360px for the main content** so nothing gets squeezed away.
 
-1. Pushes a `sidePanel` option into `uiSchema.mode.enum` (label baked per language).
-2. Wraps `handler`: when `mode === 'sidePanel'`, retarget the open to `#nocobase-embed-container`, apply a
-   width from the popup size, and disable router navigation — then delegate to the original handler (which
-   still builds the real popup page). The retarget mutates `ctx.inputArgs` **properties** (reassigning the
-   whole object does not stick).
-3. A `MutationObserver` on the container restores the layout width when the panel closes.
+## Tips & notes
 
-## Scope / notes
+- ✅ **No server restart needed:** this is a pure client-side (UI) feature; configure, **Save**, and it works right away.
+- **A and B share the same right-hand panel** region, so the experience is identical; both have a drag handle to resize.
+- Size → panel width mapping:
 
-- `/v/` only — classic `/admin` uses a different, schema-based popup system (no `openView` action, no embed
-  container), so neither feature applies there → no-op.
-- Client-only; no server, collection, or schema.
-- Degrades to a drawer if the embed container is missing (e.g. mobile, where core forces full-screen embed).
-- Reuses the flow-engine's *global-embed replace behavior* for the swap; coexists with subtable-pro's
-  `rowClick` bridge + conditional-format on the same blocks.
+  | Choice | Panel width |
+  |---|---|
+  | Small / **Narrow (30%)** | ~30% of the screen |
+  | Medium / **Medium (40%)** *(default)* | ~40% of the screen |
+  | Large / **Wide (50%)** | ~50% of the screen |
 
-## Build & deploy
+- ⚠️ **/v/ only:** on /admin (classic) the plugin is a **no-op** — no error, but nothing changes either.
+- 📱 **Very narrow screen / phone:** if there's no dock area to split, the panel **falls back to a drawer** that covers the screen as usual — still usable, just not split-screen.
+- Coexists nicely with other @ptdl plugins acting on the same block (e.g. Sub-table Pro's row-click, conditional formatting).
+
+## Remove / disable
+
+- **Turn off for one button:** reopen the button's popup config, set *Open mode* back to **Drawer / Dialog / Page** → **Save**.
+- **Turn off row-click for a table:** open **⚙ → “Side detail panel”**, turn off the **“Click a row to open a detail panel on the right”** toggle → **Save**.
+- **Remove entirely:** disable the plugin in **Plugin Manager**. Because the plugin **creates no data / collection / field**, turning it off reverts buttons to their default open mode — **no data is lost**.
+
+---
+
+### For developers
+
+Client-only, **/v/ only**; no server, collection, or schema, and no core patching. **A** pushes a `sidePanel` option into the native `openView` action's `uiSchema.mode.enum` (label baked per language), then wraps its `handler`: when `mode === 'sidePanel'` it retargets the popup to the layout's built-in `#nocobase-embed-container`, applies a width from the popup size, and disables router navigation before delegating to the original handler (which still builds the real popup page). The retarget mutates `ctx.inputArgs` **properties** — reassigning the whole object does not stick. **B** registers a `rowClick` flow on `TableBlockModel`; the “configured popup” content re-triggers the row's own View action in `sidePanel` mode (falling back to a read-only field list — the “quick” content — when the table has no popup action). A `MutationObserver` on the container resets the width and shows/hides the splitter as the panel opens and closes. If the embed container is missing (e.g. mobile, where core forces a full-screen embed) it degrades to a drawer. Coexists with Sub-table Pro's `rowClick` bridge and conditional formatting on the same blocks.
+
+Build & deploy:
 
 ```bash
 cd build-env
