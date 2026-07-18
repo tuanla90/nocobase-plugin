@@ -78,6 +78,11 @@ export interface RelationSpec {
   /** friendly render widget for this relation in pages/popups, e.g. 'Sub-table Pro', 'Subform',
    *  'Dropdown select'. Default: to-many → inline sub-table, to-one → record picker / title text. */
   widget?: string;
+  /** to-one relations only: add an inline "Add new <target>" button on forms (Rich select + quick-create
+   *  Pop-up, whose create form REUSES the target's Add form via a block-template reference). Set true for
+   *  relations to entities users create on-the-fly (customer/contact/supplier); false for controlled
+   *  master/catalog data (product/room/category/status). AI decides per that heuristic. */
+  quickCreate?: boolean;
 }
 
 export interface CollectionSpec {

@@ -29,6 +29,9 @@ export interface QuickColumn {
   name: string;
   title?: string;
   component?: string;
+  /** to-one relation: render an inline "Add new <target>" affordance on the form (Rich select +
+   *  quick-create Pop-up reusing the target's Add form via a block-template reference). */
+  quickCreate?: boolean;
 }
 
 export interface CreateQuickPageParams {
@@ -42,6 +45,9 @@ export interface CreateQuickPageParams {
   popupColumns?: QuickColumn[];
   /** table block class — 'TableBlockModel' (basic) or 'EnhancedTableBlockModel' (summary row + cell-select). */
   blockUse?: string;
+  /** target collection name → its Add-form block template, so quick-create fields on this page can
+   *  reference the target's reusable Add form. Built by materializeApp before pages. */
+  quickCreateTemplates?: Record<string, TemplateRef>;
 }
 
 /** Resolved per-column model uses (display for table/details, editable for the form), title synced. */
@@ -55,7 +61,16 @@ interface BuiltCol {
   formSubCols?: any[];
   /** for a to-many relation rendered as a read-only sub-table in Details: its child columns (built). */
   detailsSubCols?: any[];
+  /** to-one relation with an inline "Add new <target>" affordance (Rich select + quick-create Pop-up). */
+  quickCreate?: boolean;
+  /** the quick-create relation's target collection name (for the template reference). */
+  quickCreateTarget?: string;
+  /** the target's registered Add-form block template that the quick-create popup references. */
+  quickCreateTemplate?: TemplateRef;
 }
+
+/** A registered Add-form block template (single source of truth reused by quick-create popups). */
+export interface TemplateRef { templateUid: string; targetUid: string; templateName: string; }
 
 // ── field interface → renderer model class ─────────────────────────────────────────────────────
 // Fallback only. We try the framework's own resolver (getDefaultBindingByField) first so custom
@@ -301,6 +316,27 @@ function detailsBlock(ds: string, coll: string, cols: BuiltCol[]) {
   };
 }
 
+/** The quick-create popup body: a grid holding a ReferenceBlockModel that renders the target's Add-form
+ *  template (resolved by uid at render; the usage row is auto-created server-side on save). Lives at the
+ *  relation field's subKey 'grid' (the modalAdd create-form slot). */
+function referenceFormGrid(ds: string, targetColl: string, tpl: TemplateRef) {
+  return {
+    use: 'BlockGridModel',
+    subModels: {
+      items: [{
+        use: 'ReferenceBlockModel',
+        stepParams: {
+          referenceSettings: {
+            useTemplate: { mode: 'reference', templateUid: tpl.templateUid, templateName: tpl.templateName, targetUid: tpl.targetUid },
+            target: { mode: 'reference', targetUid: tpl.targetUid },
+          },
+          resourceSettings: { init: { dataSourceKey: ds, collectionName: targetColl } },
+        },
+      }],
+    },
+  };
+}
+
 /** Editable form block (Create or Edit) + Submit button, one FormItemModel per picked column. */
 function formBlock(blockUse: 'CreateFormModel' | 'EditFormModel', ds: string, coll: string, cols: BuiltCol[]) {
   return {
@@ -310,22 +346,68 @@ function formBlock(blockUse: 'CreateFormModel' | 'EditFormModel', ds: string, co
       grid: {
         use: 'FormGridModel',
         subModels: {
-          items: cols.map((c) => ({
-            use: 'FormItemModel',
-            stepParams: { ...fieldStep(ds, coll, c.name), ...formLabelStep(c.title) },
-            subModels: {
-              field: {
-                use: c.formUse,
-                stepParams: fieldStep(ds, coll, c.name),
-                ...(c.formSubCols && c.formSubCols.length ? { subModels: { columns: c.formSubCols } } : {}),
+          items: cols.map((c) => {
+            // quick-create: switch the component (record editItemSettings.model.use so the settings UI is
+            // consistent) + turn on the "Add new" Pop-up, whose create-form is a ReferenceBlockModel (at the
+            // field's subKey 'grid') rendering the target's reusable Add-form template.
+            const qc = c.quickCreate;
+            const fieldSub: any = {};
+            if (c.formSubCols && c.formSubCols.length) fieldSub.columns = c.formSubCols;
+            if (qc && c.quickCreateTemplate && c.quickCreateTarget) fieldSub.grid = referenceFormGrid(ds, c.quickCreateTarget, c.quickCreateTemplate);
+            return {
+              use: 'FormItemModel',
+              stepParams: { ...fieldStep(ds, coll, c.name), ...formLabelStep(c.title), ...(qc ? { editItemSettings: { model: { use: c.formUse } } } : {}) },
+              subModels: {
+                field: {
+                  use: c.formUse,
+                  stepParams: { ...fieldStep(ds, coll, c.name), ...(qc ? { selectSettings: { quickCreate: { quickCreate: 'modalAdd' } } } : {}) },
+                  ...(Object.keys(fieldSub).length ? { subModels: fieldSub } : {}),
+                },
               },
-            },
-          })),
+            };
+          }),
         },
       },
       actions: [{ use: 'FormSubmitActionModel' }],
     },
   };
+}
+
+/** Build a STANDALONE Add-form (a root CreateFormModel) for `collectionName` and register it as a reusable
+ *  block template. Quick-create popups reference it by uid, so the "Add new <X>" form is defined ONCE and
+ *  can be edited centrally. Returns the template handle (null on any failure → caller falls back to a plain
+ *  empty popup). The usage rows are created server-side when the referencing page saves. */
+export async function createAddFormTemplate(
+  app: any,
+  params: { collectionName: string; columns: QuickColumn[]; dataSourceKey?: string; title?: string },
+): Promise<TemplateRef | null> {
+  const engine = app?.flowEngine;
+  if (!engine?.createModelAsync) return null;
+  const ds = params.dataSourceKey || 'main';
+  const collection =
+    app?.dataSourceManager?.getDataSource?.(ds)?.getCollection?.(params.collectionName) ||
+    app?.dataSourceManager?.getCollection?.(ds, params.collectionName);
+  const resolve = makeResolver(engine, collection);
+  const cols: BuiltCol[] = (params.columns || []).map((c) => ({
+    name: c.name, title: c.title,
+    tableUse: resolve(c.name, 'table', c.component),
+    detailsUse: resolve(c.name, 'details', c.component),
+    formUse: resolve(c.name, 'form', c.component),
+  }));
+  try {
+    const targetUid = uid();
+    const model = await engine.createModelAsync({ uid: targetUid, ...formBlock('CreateFormModel', ds, params.collectionName, cols) });
+    await model.save();
+    const templateName = `Form (Thêm mới): ${params.title || params.collectionName}`;
+    const res = await app.apiClient.request({
+      url: 'flowModelTemplates:create', method: 'post',
+      data: { name: templateName, targetUid, useModel: 'CreateFormModel', type: 'block', dataSourceKey: ds, collectionName: params.collectionName },
+    });
+    const templateUid = res?.data?.data?.uid ?? res?.data?.uid;
+    return templateUid ? { templateUid, targetUid, templateName } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Popup shell shared by every action: ChildPage → tab → grid → [block]. */
@@ -418,6 +500,16 @@ export async function createQuickPage(app: any, params: CreateQuickPageParams): 
           if (/subtable/i.test(bc.formUse)) bc.formSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'form');
           if (/subtable/i.test(bc.detailsUse)) bc.detailsSubCols = buildSubTableColumns(engine, ds, target, params.collectionName, c.name, 'details');
         }
+      }
+      // quick-create: to-one relation gets an inline "Add new <target>". Prefer the "Rich select"
+      // component (@ptdl/field-enhancements) — fall back to whatever the resolver picked (Dropdown select).
+      if (c.quickCreate && /RecordSelect|RichSelect|RecordPicker/i.test(bc.formUse)) {
+        const field = collection?.getField?.(c.name);
+        bc.quickCreate = true;
+        bc.quickCreateTarget = field?.target || field?.targetCollection?.name || field?.options?.target;
+        bc.quickCreateTemplate = bc.quickCreateTarget ? params.quickCreateTemplates?.[bc.quickCreateTarget] : undefined;
+        const hasRich = (() => { try { return !!engine.getModelClass?.('PtdlRichSelectFieldModel'); } catch { return false; } })();
+        if (hasRich) bc.formUse = 'PtdlRichSelectFieldModel';
       }
       return bc;
     });

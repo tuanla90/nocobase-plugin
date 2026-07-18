@@ -5,17 +5,21 @@
  * app.context.routeRepository + app.dataSourceManager).
  */
 import { AppSpec, ColumnSpec } from './appSpec';
-import { clientPrefix, createQuickPage, QuickColumn } from './quickView';
+import { clientPrefix, createAddFormTemplate, createQuickPage, QuickColumn, TemplateRef } from './quickView';
 
 // The widget can be declared on the FieldSpec (field-level) OR overridden per page column. A page column
 // that's a bare string inherits the field's widget; a ColumnSpec's own widget wins. `widgetOf` maps a
 // field name → its FieldSpec.widget for the page's collection.
-const toQuickColumns = (cols: Array<string | ColumnSpec>, widgetOf: (name: string) => string | undefined): QuickColumn[] =>
-  (cols || []).map((c) =>
-    typeof c === 'string'
-      ? { name: c, component: widgetOf(c) }
-      : { name: c.name, title: c.title, component: c.widget || widgetOf(c.name) },
-  );
+const toQuickColumns = (
+  cols: Array<string | ColumnSpec>,
+  widgetOf: (name: string) => string | undefined,
+  quickCreateOf: (name: string) => boolean = () => false,
+): QuickColumn[] =>
+  (cols || []).map((c) => {
+    const name = typeof c === 'string' ? c : c.name;
+    const base = typeof c === 'string' ? { name, component: widgetOf(name) } : { name, title: c.title, component: c.widget || widgetOf(name) };
+    return quickCreateOf(name) ? { ...base, quickCreate: true } : base;
+  });
 
 /** Reload the client dataSource so collections created server-side become visible to flowEngine. */
 async function reloadDataSource(app: any): Promise<void> {
@@ -61,22 +65,47 @@ export async function createMenuGroup(app: any, label: string, icon?: string): P
 
 /** Create ONE page from a PageSpec (+ optional CollectionSpec for field-level widget threading). A
  *  standalone tool AND the per-page step of materializeApp. `p.parentId` places it under a menu group. */
-export async function createPage(app: any, p: any, cspec?: any): Promise<{ title: string; collection: string; schemaUid: string; url: string }> {
+export async function createPage(app: any, p: any, cspec?: any, quickCreateTemplates?: Record<string, TemplateRef>): Promise<{ title: string; collection: string; schemaUid: string; url: string }> {
   await waitForCollection(app, p.collection);
   const wmap = new Map<string, string | undefined>();
   (cspec?.fields || []).forEach((f: any) => { if (f.widget) wmap.set(f.name, f.widget); });
   (cspec?.relations || []).forEach((r: any) => { if (r.widget) wmap.set(r.name, r.widget); });
   const widgetOf = (name: string) => wmap.get(name);
+  // relations flagged quickCreate → the form field gets an inline "Add new <target>" button (reusing the
+  // target's Add form via a block-template reference). See createQuickPage.
+  const qcSet = new Set((cspec?.relations || []).filter((r: any) => r.quickCreate).map((r: any) => r.name));
+  const quickCreateOf = (name: string) => qcSet.has(name);
   const { pageSchemaUid } = await createQuickPage(app, {
     collectionName: p.collection,
-    columns: toQuickColumns(p.columns, widgetOf),
-    popupColumns: p.popupColumns ? toQuickColumns(p.popupColumns, widgetOf) : undefined,
+    columns: toQuickColumns(p.columns, widgetOf, quickCreateOf),
+    popupColumns: p.popupColumns ? toQuickColumns(p.popupColumns, widgetOf, quickCreateOf) : undefined,
     title: p.title,
     icon: p.icon,
     parentId: p.parentId ?? null,
     blockUse: p.block,
+    quickCreateTemplates,
   });
   return { title: p.title, collection: p.collection, schemaUid: pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}` };
+}
+
+/** Build + register one reusable Add-form block template per quick-create TARGET collection, so the
+ *  quick-create popup on any form referencing that target reuses ONE Add form (single source of truth).
+ *  Best-effort: a failed template just means that field falls back to a plain (empty) quick-create popup. */
+async function ensureQuickCreateTemplates(app: any, spec: AppSpec): Promise<Record<string, TemplateRef>> {
+  const out: Record<string, TemplateRef> = {};
+  const targets = new Set<string>();
+  for (const c of spec.collections || []) for (const r of c.relations || []) if (r.quickCreate && (r.type === 'm2o' || r.type === 'o2o')) targets.add(r.target);
+  for (const target of targets) {
+    const page = (spec.pages || []).find((p) => p.collection === target);
+    const cspec = (spec.collections || []).find((c) => c.name === target);
+    const cols = (page?.popupColumns || page?.columns || (cspec?.fields || []).map((f) => f.name)) as Array<string | ColumnSpec>;
+    const wmap = new Map<string, string | undefined>();
+    (cspec?.fields || []).forEach((f: any) => { if (f.widget) wmap.set(f.name, f.widget); });
+    await waitForCollection(app, target);
+    const tpl = await createAddFormTemplate(app, { collectionName: target, columns: toQuickColumns(cols, (n) => wmap.get(n)), title: cspec?.title || target });
+    if (tpl) out[target] = tpl;
+  }
+  return out;
 }
 
 export interface MaterializeResult {
@@ -87,6 +116,10 @@ export interface MaterializeResult {
 /** Client page tier: menu groups + one page per PageSpec. Assumes collections already exist server-side. */
 export async function materializeApp(app: any, spec: AppSpec): Promise<MaterializeResult> {
   await reloadDataSource(app);
+
+  // Reusable Add-form templates for quick-create targets — built BEFORE pages so each page's quick-create
+  // fields can reference them.
+  const quickCreateTemplates = await ensureQuickCreateTemplates(app, spec);
 
   // groups: those declared in menu.groups, plus any menuGroup referenced by a page but not declared.
   const wanted = new Map<string, string | undefined>();
@@ -105,7 +138,7 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   for (const p of spec.pages || []) {
     const parentId = p.menuGroup ? groupIdByLabel.get(p.menuGroup) ?? null : null;
     const cspec = (spec.collections || []).find((c) => c.name === p.collection);
-    pages.push(await createPage(app, { ...p, parentId }, cspec));
+    pages.push(await createPage(app, { ...p, parentId }, cspec, quickCreateTemplates));
   }
   return { pages, groups };
 }

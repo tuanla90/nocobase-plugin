@@ -482,6 +482,41 @@ seed m2o resolve theo titleField · **e2e**: thêm dòng qua FK snake → `thanh
 liệt kê con · **computed rollup** `tong`=SUM=150000. **App CŨ dựng trước fix giữ shape cũ → REBUILD để nhận fix (KHÔNG migrate
 in-place — quá rủi ro trên bảng đã có data).** tgz `0.2.0` build+deploy nb-local, pm2 restart.
 
+## 16. Quick-create trên field quan hệ (v0.3.0, 2026-07-18, DONE + verify LIVE 8/8 + render + 6/6 hotel)
+
+Field quan hệ m2o/o2o có nút **"＋ Thêm mới &lt;target&gt;"** ngay trên form — popup tạo nhanh **TÁI SỬ DỤNG** Add-form
+của bảng đích qua **block template** (sửa 1 chỗ, đổi mọi nơi). User tự dựng mẫu → mình học theo.
+
+**AI tự quyết (heuristic):** `RelationSpec.quickCreate?:bool`. Prompt: BẬT cho quan hệ tới thực thể tạo tại-chỗ
+(khách hàng/liên hệ/nhà cung cấp), TẮT cho danh mục/master (sản phẩm/phòng/dịch vụ). Verify hotel: `booking.khach`
+BẬT, `booking.phong` (danh mục) TẮT — đúng.
+
+**Cơ chế (đảo ngược từ mẫu user + 2 subagent đọc source `@nocobase/plugin-ui-templates`):**
+- Component = **`PtdlRichSelectFieldModel`** (@ptdl field-enhancements "Rich select"; fallback core `RecordSelectFieldModel`
+  nếu chưa cài — check `engine.getModelClass('PtdlRichSelectFieldModel')`). 2 model này ĐỀU kế thừa flow `selectSettings`.
+- Nút Add new = stepParam **`selectSettings.quickCreate = {quickCreate:'modalAdd'}`** trên field (recipe tối giản; KHÔNG cần
+  đổi sang "Popup select"/RecordPicker như mẫu user — Dropdown/Rich + quickCreate là đủ). FormItem ghi `editItemSettings.model.use`
+  để settings-UI nhất quán.
+- Form trong popup = **`ReferenceBlockModel`** ở subKey **`grid`** của field, stepParams `referenceSettings.{target.targetUid,
+  useTemplate.{templateUid,templateName,targetUid,mode:'reference'}}` + `resourceSettings.init.{dataSourceKey,collectionName}`.
+  ReferenceBlockModel resolve target theo uid lúc render (không copy subtree).
+- **Template** = REST `flowModelTemplates:create {name, targetUid, useModel:'CreateFormModel', type:'block', dataSourceKey,
+  collectionName}`. `flowModelTemplateUsages` **TỰ tạo server-side** khi model chứa reference save (KHÔNG gọi tay, self-healing).
+
+**Kiến trúc app-builder (2 file):**
+- `materialize.tsx` `ensureQuickCreateTemplates(app,spec)`: TRƯỚC khi dựng trang, mỗi collection là target của 1 quan hệ
+  quickCreate → dựng 1 **standalone CreateFormModel** (root, cột = popupColumns/columns của trang target) qua
+  `createModelAsync({uid,...formBlock('CreateFormModel',...)})`+save, rồi `flowModelTemplates:create` → `{templateUid,targetUid,templateName}`.
+  Map `quickCreateTemplates` truyền xuống `createPage`→`createQuickPage`.
+- `quickView.tsx`: `createAddFormTemplate()` (dựng+đăng ký template); `buildCols` set `bc.quickCreate/quickCreateTarget/quickCreateTemplate`
+  + đổi `formUse`→PtdlRichSelectFieldModel nếu có; `formBlock` khi quickCreate → field stepParams thêm selectSettings.quickCreate +
+  `subModels.grid = referenceFormGrid(template)` (BlockGridModel→ReferenceBlockModel).
+- `quickCreate` chỉ áp field m2o/o2o có formUse là RecordSelect/RichSelect. Template lỗi → field vẫn có nút (popup rỗng, fallback mềm).
+
+**Verify:** app test 2-collection `materialize()` → **8/8 DB** (template đăng ký · target=CreateFormModel · field=PtdlRichSelect ·
+quickCreate=modalAdd · grid→ReferenceBlockModel→đúng template · usage tự tạo) + **render**: mở form Đơn → field Khách (Rich select)
++ nút "Add new" → popup thứ 2 hiện **form Khách (Tên/ĐT) tái sử dụng**, 0 lỗi. Hotel `booking.khach` **6/6** (phong đúng KHÔNG bật). tgz 0.3.0 nb-local.
+
 ## Files
 `packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
 `src/server/{index.ts, plugin.ts (actions apply/dryRun)}`, `src/client-v2/index.tsx` (launcher + settings),
