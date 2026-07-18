@@ -898,6 +898,32 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
+        // List every Chart block in the app (uid + a friendly label + type + collection), so the launcher can
+        // offer AI-refine on an EXISTING chart (not just one just generated). Read-only.
+        listCharts: async (ctx: any, next: any) => {
+          const leaf = (f: any) => (Array.isArray(f) ? f[f.length - 1] : f);
+          let rows: any[] = [];
+          try {
+            const res: any = await this.db.sequelize.query("SELECT uid, options FROM flowModels WHERE options LIKE '%ChartBlockModel%'");
+            rows = Array.isArray(res?.[0]) ? res[0] : (Array.isArray(res) ? res : []);
+          } catch (e: any) { ctx.body = { ok: false, error: 'Không đọc được flowModels: ' + (e?.message || e) }; await next(); return; }
+          const charts: any[] = [];
+          for (const r of rows) {
+            let o: any; try { o = typeof r.options === 'string' ? JSON.parse(r.options) : r.options; } catch { continue; }
+            if (!o || o.use !== 'ChartBlockModel') continue;
+            const cfg = o.stepParams?.chartSettings?.configure || {};
+            const opt = cfg.chart?.option || {};
+            const q = cfg.query || {};
+            const m = String(opt.raw || '').match(/title\s*:\s*\{\s*text\s*:\s*['"]([^'"]+)['"]/);
+            const mea = q.measures?.[0]; const dim = q.dimensions?.[0];
+            const title = (m && m[1]) || (mea ? `${mea.aggregation || ''}(${leaf(mea.field) || ''})${dim ? ` theo ${leaf(dim.field)}` : ''}` : 'Biểu đồ');
+            const chartType = String(opt.builder?.type || '').replace('echarts.', '') || (/(type:\s*['"](pie|bar|line|scatter)['"])/.exec(String(opt.raw || ''))?.[2]) || 'chart';
+            charts.push({ uid: r.uid, title, chartType, collection: q.collectionPath?.[1] || '' });
+          }
+          ctx.body = { ok: true, charts };
+          await next();
+        },
+
         // {instruction} → AGENTIC: AI lập plan gọi các primitive (dùng trạng thái hiện tại làm "mắt").
         // KHÔNG chạy — trả steps để client preview + execute (data→server tool, page→flowEngine).
         aiPlan: async (ctx: any, next: any) => {
@@ -950,7 +976,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'listCharts', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 

@@ -47,10 +47,21 @@ function scoreBlock(ds: string, coll: string, w: DashboardWidget, i: number, id:
 // ── chart (core ECharts, custom raw option) ───────────────────────────────────────────────────────
 interface DimInfo { fieldPath: string[]; dataKey: string; format?: string; labels?: Record<string, string> }
 
-/** value→label map for an enum field (select / multipleSelect / radioGroup / statusFlow) from its uiSchema
- *  enum, so a chart grouped on it shows the human label ("Đang giao") instead of the stored slug ("dang_giao"). */
+/** value→label map for an enum field (select / multipleSelect / radioGroup / statusFlow) so a chart grouped
+ *  on it shows the human label ("Đang giao") instead of the stored slug ("dang_giao"). The labels live in
+ *  `uiSchema.enum` ([{value,label}]) — but a **statusFlow** field's TOP-LEVEL `uiSchema.enum` is `[]` (the
+ *  interface's default) while the real options sit at `options.uiSchema.enum`. `[]` is truthy, so a naive
+ *  `a || b` grabs the empty one → pick the first NON-EMPTY source instead. (`options.statusFlow` only holds
+ *  `kinds` keyed by slug — no labels — so it's not a source.) */
 function enumLabels(field: any): Record<string, string> | undefined {
-  const opts = field?.uiSchema?.enum || field?.options?.uiSchema?.enum;
+  const candidates = [
+    field?.uiSchema?.enum,
+    field?.options?.uiSchema?.enum,
+    field?.enum,
+  ];
+  const opts = candidates.find(
+    (c: any) => Array.isArray(c) && c.length && c.some((o: any) => o && o.value != null && o.label != null),
+  );
   if (!Array.isArray(opts) || !opts.length) return undefined;
   const m: Record<string, string> = {};
   opts.forEach((o: any) => {

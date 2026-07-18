@@ -70,6 +70,12 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [dashResult, setDashResult] = useState<{ url: string; title: string; widgets: any[]; charts?: Array<{ uid: string; title?: string; chartType?: string }> } | null>(null);
     const [chartRefine, setChartRefine] = useState<Record<string, string>>({}); // chartUid → instruction text
     const [chartRefineBusy, setChartRefineBusy] = useState<string | null>(null); // chartUid currently refining
+    // ✏️ Refine an EXISTING chart (any dashboard in the app), not just one just generated.
+    const [existingCharts, setExistingCharts] = useState<Array<{ uid: string; title: string; chartType: string; collection: string }> | null>(null);
+    const [existingBusy, setExistingBusy] = useState(false);
+    const [pickChart, setPickChart] = useState<string | undefined>(undefined);
+    const [pickInstr, setPickInstr] = useState('');
+    const [pickBusy, setPickBusy] = useState(false);
 
     // User data collections to offer as the dashboard source (skip system/hidden ones).
     const collections = React.useMemo(() => {
@@ -120,6 +126,37 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         message.error(e?.message || String(e));
       } finally {
         setChartRefineBusy(null);
+      }
+    };
+    // Load the list of every chart in the app (for refining a chart that already exists on some dashboard).
+    const loadExistingCharts = async () => {
+      setExistingBusy(true);
+      try {
+        const res = await app.apiClient.request({ url: 'appBuilder:listCharts', method: 'post', data: {} }).then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('Could not list charts')); return; }
+        setExistingCharts(res.charts || []);
+        if (!res.charts?.length) message.info(t('No charts found — generate a dashboard first'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setExistingBusy(false);
+      }
+    };
+    const onRefineExisting = async () => {
+      if (!pickChart) { message.warning(t('Choose a chart first')); return; }
+      if (!pickInstr.trim()) { message.warning(t('Type what to change')); return; }
+      setPickBusy(true);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:aiRefineChart', method: 'post', data: { chartUid: pickChart, instruction: pickInstr } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('AI could not edit the chart')); return; }
+        setPickInstr('');
+        message.success(res.explain || t('Chart updated — reload the dashboard page to see it'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setPickBusy(false);
       }
     };
 
@@ -403,6 +440,36 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
               )}
             </div>
           )}
+          <div style={{ marginTop: 18, borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: 12 }}>
+            <Typography.Text strong style={{ fontSize: 13 }}>✏️ {t('Edit an existing chart with AI')}</Typography.Text>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '4px 0 8px' }}>
+              {t('Pick any chart already on a dashboard and describe the change — the AI rewrites its ECharts code.')}
+            </Typography.Paragraph>
+            {!existingCharts ? (
+              <Button size="small" loading={existingBusy} onClick={loadExistingCharts}>🔄 {t('Load charts in this app')}</Button>
+            ) : (
+              <>
+                <Select
+                  showSearch value={pickChart} onChange={setPickChart} optionFilterProp="label"
+                  placeholder={t('Choose a chart…')}
+                  options={existingCharts.map((c) => ({ value: c.uid, label: `${c.title} · ${c.chartType}${c.collection ? ' · ' + c.collection : ''}` }))}
+                  style={{ width: '100%', marginBottom: 8 }}
+                  notFoundContent={t('No charts found — generate a dashboard first')}
+                />
+                <Space.Compact style={{ width: '100%' }}>
+                  <Input
+                    value={pickInstr} onChange={(e) => setPickInstr(e.target.value)} onPressEnter={onRefineExisting}
+                    placeholder={t('e.g. turn into a bar chart, add data labels, green line')} disabled={pickBusy}
+                  />
+                  <Button type="primary" loading={pickBusy} onClick={onRefineExisting} disabled={!pickChart}>✏️ {t('Refine')}</Button>
+                </Space.Compact>
+                <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+                  {t('Reload the dashboard page to see the change.')}{' '}
+                  <a onClick={() => { setExistingCharts(null); setPickChart(undefined); }}>{t('refresh list')}</a>
+                </Typography.Paragraph>
+              </>
+            )}
+          </div>
         </Modal>
           </>
         )}
@@ -455,6 +522,7 @@ export class PluginAppBuilderClientV2 extends Plugin {
         createDashboard: (spec) => createDashboard(app, spec),
         aiDashboard: (v) => api('aiDashboard', v),
         aiRefineChart: (v) => api('aiRefineChart', v),
+        listCharts: () => api('listCharts', {}),
       };
       // Execute an AI-planned sequence of tool calls step-by-step (data tools → server, page tools → client).
       const runPlan = async (steps: Array<{ tool: string; args: any }>) => {
