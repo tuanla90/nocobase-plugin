@@ -17,9 +17,35 @@ import viVN from '../locale/vi-VN.json';
 
 const NS = '@ptdl/plugin-app-builder/client';
 
+/** Reactively read NocoBase v2's "UI editor" (flow-settings) toggle — the floating launcher only shows when
+ *  it is ON, so it never clutters normal (non-edit) use. Mirrors the framework's own reader
+ *  (@nocobase/client-v2): the "1"/"0" localStorage flag + its custom preference-change event (plus the
+ *  native `storage` event so a toggle in another tab is picked up too). */
+function useFlowSettingsEnabled(): boolean {
+  const read = () => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem('NOCOBASE_V2_FLOW_SETTINGS_ENABLED') === '1';
+    } catch {
+      return false;
+    }
+  };
+  const [on, setOn] = React.useState(read);
+  React.useEffect(() => {
+    const h = () => setOn(read());
+    window.addEventListener('nocobase:v2:flow-settings-preference-change', h);
+    window.addEventListener('storage', h);
+    return () => {
+      window.removeEventListener('nocobase:v2:flow-settings-preference-change', h);
+      window.removeEventListener('storage', h);
+    };
+  }, []);
+  return on;
+}
+
 function createLauncher(app: any, t: (s: string) => string): React.FC<{ children?: React.ReactNode }> {
   const AppBuilderLauncher: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     const [open, setOpen] = useState(false);
+    const editMode = useFlowSettingsEnabled();
     const [text, setText] = useState(() => JSON.stringify(SAMPLE_BAN_HANG, null, 2));
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<{ pages: Array<{ title: string; collection: string; url: string; schemaUid: string }> } | null>(null);
@@ -133,6 +159,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     return (
       <>
         {children}
+        {editMode && (
+          <>
         <Tooltip title={t('Build app from spec')} placement="left">
           <Button
             type="primary" shape="round" onClick={() => setOpen(true)}
@@ -201,6 +229,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             </div>
           )}
         </Modal>
+          </>
+        )}
       </>
     );
   };

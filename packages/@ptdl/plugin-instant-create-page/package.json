@@ -1,6 +1,6 @@
 {
   "name": "@ptdl/plugin-instant-create-page",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "displayName": "Instant Create Page",
   "displayName.vi-VN": "Tạo trang nhanh",
   "description": "One click turns a collection + chosen columns into a ready-to-use /v/ menu page: a Table block plus working View / Edit / Add popups showing those columns. Output is native NocoBase and stays fully editable.",
