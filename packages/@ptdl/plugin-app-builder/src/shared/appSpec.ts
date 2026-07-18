@@ -34,9 +34,11 @@ export interface FieldOption {
   color?: string;
 }
 
-/** A computed/formula column, materialized via @ptdl/plugin-formula. `expression` is Excel-style
- *  (400+ functions, field refs). `kind`: 'display' = virtual view column (recomputed each render, right
- *  for time-based / roll-up), 'stored' = a real column recomputed on write across relations. */
+/** A computed/formula column, materialized via @ptdl/plugin-formula. `expression` is Excel-style:
+ *  `data.<field>` (same row) · `SUM(data.<o2m>.<field>)` (roll-up children) · `data.<m2o>.<field>`
+ *  (LOOKUP a value from a related/config record, e.g. a line's unit price from the product master).
+ *  `kind`: 'display' = virtual view column (recomputed each render), 'stored' = a real column recomputed
+ *  on write across relations (default). */
 export interface ComputedSpec {
   expression: string;
   kind?: 'display' | 'stored';
@@ -128,7 +130,8 @@ export interface AppSpec {
   meta: { name: string; description?: string; locale?: 'vi' | 'en' };
   collections: CollectionSpec[];
   pages: PageSpec[];
-  menu?: { groups: MenuGroup[] };
+  /** `groups` = sidebar sub-groups; `icon` = the single top-level app entry's icon. */
+  menu?: { groups: MenuGroup[]; icon?: string };
 }
 
 // ── pure validation (no app / no network) — the schema half of compiler.dryRun ────────────────────

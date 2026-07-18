@@ -517,6 +517,35 @@ BẬT, `booking.phong` (danh mục) TẮT — đúng.
 quickCreate=modalAdd · grid→ReferenceBlockModel→đúng template · usage tự tạo) + **render**: mở form Đơn → field Khách (Rich select)
 + nút "Add new" → popup thứ 2 hiện **form Khách (Tên/ĐT) tái sử dụng**, 0 lỗi. Hotel `booking.khach` **6/6** (phong đúng KHÔNG bật). tgz 0.3.0 nb-local.
 
+## 17. Tinh chỉnh view + lookup + menu sidebar (v0.3.1, 2026-07-18, verify 7/7 + chain + render)
+
+3 phản hồi user trên app khách sạn:
+
+1. **Field hệ thống KHÔNG hiện trong view.** 5 field cơ bản (id + created/updated at/by) **bắt buộc CÓ** trong bảng
+   (v0.2.0) nhưng **gần như không bao giờ nên show** (user tự thêm nếu cần). Lỗi: `buildSubTableColumns` lọc SYS thiếu
+   `createdBy`/`updatedBy` (là belongsTo CÓ interface → lọt qua) → sub-table hiện "Người tạo/Người cập nhật" lên đầu.
+   Fix: thêm `createdBy`,`updatedBy` vào SYS set (quickView.tsx). Chỉ sub-table auto-build cột mới lọt; trang/popup dùng
+   cột spec (AI không nêu field hệ thống). Verify: sub-table Chi tiết dịch vụ = [so_luong,don_gia,thanh_tien,dich_vu].
+
+2. **Công thức LOOKUP** (đơn giá dòng con ← bảng config). plugin-formula ĐÃ hỗ trợ lookup qua belongsTo (`computed.ts:9`
+   "field pulled through a belongsTo/hasOne") + mode `table` (bảng config rời). App-builder chỉ cần SINH biểu thức
+   `data.<m2o>.<field>` — plugin tự resolve edge lookup (không cần config thêm). Thêm vào AI prompt + ComputedSpec doc.
+   Hotel: `booking_dv.don_gia` = `data.dich_vu.don_gia` (tự điền khi chọn dịch vụ) → cascade `thanh_tien=so_luong*don_gia`.
+   Verify live: chọn "Đưa đón sân bay"(350k)·SL 3 → don_gia=350k, thanh_tien=1.050.000. (Lookup = computed read-only;
+   muốn sửa tay thì để field thường.)
+
+3. **Menu = sidebar groups cho ALL, ít item top-menu** (user: "apply thư viện quản lý sidebar", "hạn chế phân trang menu chính").
+   Nền (2 subagent đọc client-v2): shell = ProLayout `layout:mix, splitMenus` → route top-level (parentId null) = **menu
+   NGANG trên**; con của item đang chọn = **sidebar trái**; nhiều top-level → header **overflow "…"** = "phân trang". Fix
+   (Option B): **1 group top-level = tên app** (header 1 item) → dưới nó FLAT: mỗi spec-group = 1 **nhãn divider**
+   (`@ptdl/plugin-menu-enhancements`: route `options.ptdlMenuKind='divider'` + `ptdlMenuStyle`, ghi thẳng lúc tạo route —
+   patch render đọc options runtime) + các trang, tạo THEO THỨ TỰ để sort đúng. **TRAP: chỉ đánh divider trên group
+   CHILDLESS** (patch strip `routes` → con biến mất). `createMenuGroup(app,label,icon,parentId,options)`; materializeApp
+   Option B. Verify: 1 top-entry "Quản lý khách sạn" · sidebar Danh mục[divider]→3 trang→Vận hành[divider]→1 trang;
+   "Danh mục" render non-clickable, trang clickable. (Cần menu-enhancements bật; không thì nhãn thành item bấm được.)
+
+tgz 0.3.1 nb-local. App khách sạn rebuild với cả 3.
+
 ## Files
 `packages/@ptdl/plugin-app-builder/` — `src/shared/{appSpec.ts, compiler.tsx, extractor.tsx}`,
 `src/server/{index.ts, plugin.ts (actions apply/dryRun)}`, `src/client-v2/index.tsx` (launcher + settings),

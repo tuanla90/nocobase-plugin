@@ -221,7 +221,7 @@ function makeResolver(engine: any, collection: any) {
 function buildSubTableColumns(engine: any, ds: string, targetColl: any, parentCollName: string, assocName: string, kind: 'form' | 'details' = 'form'): any[] {
   if (!targetColl?.getFields) return [];
   const resolveT = makeResolver(engine, targetColl);
-  const SYS = new Set(['id', 'createdAt', 'updatedAt', 'createdById', 'updatedById', 'sort']);
+  const SYS = new Set(['id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'createdById', 'updatedById', 'sort']);
   const all = targetColl.getFields() || [];
   // the raw FK columns backing the target's relations (e.g. orderId, productId) — hide them
   const fkNames = new Set<string>();

@@ -45,10 +45,14 @@ async function waitForCollection(app: any, name: string, tries = 10): Promise<bo
   return false;
 }
 
-/** Create a menu group route; returns its id (used as a page's parentId). Exposed as a tool. */
-export async function createMenuGroup(app: any, label: string, icon?: string): Promise<number | null> {
+/** Create a menu group route; returns its id (used as a page's / sub-group's parentId). `parentId` nests
+ *  this group under another route (so a whole app can live under ONE top-menu entry, its sections in the
+ *  left sidebar — avoids top-menu overflow). `options` is written to the route's `options` JSON — e.g.
+ *  `{ptdlMenuKind:'divider'}` turns a CHILDLESS group into a @ptdl/plugin-menu-enhancements section label.
+ *  (Never mark a group that has child routes — the divider render strips its children.) Exposed as a tool. */
+export async function createMenuGroup(app: any, label: string, icon?: string, parentId?: number | null, options?: any): Promise<number | null> {
   const routeRepo = app?.context?.routeRepository;
-  const values: any = { type: 'group', title: label, icon: icon || undefined };
+  const values: any = { type: 'group', title: label, icon: icon || undefined, ...(parentId ? { parentId } : {}), ...(options ? { options } : {}) };
   try {
     if (routeRepo?.createRoute) {
       const r = await routeRepo.createRoute(values);
@@ -121,24 +125,29 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   // fields can reference them.
   const quickCreateTemplates = await ensureQuickCreateTemplates(app, spec);
 
-  // groups: those declared in menu.groups, plus any menuGroup referenced by a page but not declared.
-  const wanted = new Map<string, string | undefined>();
-  (spec.menu?.groups || []).forEach((g) => wanted.set(g.label, g.icon));
-  (spec.pages || []).forEach((p) => { if (p.menuGroup && !wanted.has(p.menuGroup)) wanted.set(p.menuGroup, undefined); });
-
-  const groupIdByLabel = new Map<string, number | null>();
-  const groups: MaterializeResult['groups'] = [];
-  for (const [label, icon] of wanted) {
-    const id = await createMenuGroup(app, label, icon);
-    groupIdByLabel.set(label, id);
-    groups.push({ label, id });
-  }
-
+  // Navigation (User: "group sidebar cho all… apply thư viện quản lý sidebar… hạn chế phân trang menu chính"):
+  // ONE top-level group = the single top-menu entry (no header overflow). Under it, a FLAT left-sidebar list
+  // where each spec group becomes a @ptdl/plugin-menu-enhancements "divider" section LABEL (a childless group
+  // carrying options.ptdlMenuKind) followed by its pages. Created in visual order so they sort correctly.
+  const appLabel = spec.meta?.name?.trim() || 'Ứng dụng';
+  const topId = await createMenuGroup(app, appLabel, spec.menu?.icon || 'lucide-layout-dashboard');
+  const DIVIDER = { ptdlMenuKind: 'divider', ptdlMenuStyle: { lineOn: false, align: 'left' } };
+  const cspecOf = (coll: string) => (spec.collections || []).find((c) => c.name === coll);
+  const groups: MaterializeResult['groups'] = [{ label: appLabel, id: topId }];
   const pages: MaterializeResult['pages'] = [];
-  for (const p of spec.pages || []) {
-    const parentId = p.menuGroup ? groupIdByLabel.get(p.menuGroup) ?? null : null;
-    const cspec = (spec.collections || []).find((c) => c.name === p.collection);
-    pages.push(await createPage(app, { ...p, parentId }, cspec, quickCreateTemplates));
+  const mkPage = async (p: any) => { pages.push(await createPage(app, { ...p, parentId: topId }, cspecOf(p.collection), quickCreateTemplates)); };
+
+  // section labels in spec order (menu.groups first, then any referenced only by pages)
+  const labels: string[] = [];
+  (spec.menu?.groups || []).forEach((g) => { if (!labels.includes(g.label)) labels.push(g.label); });
+  (spec.pages || []).forEach((p) => { if (p.menuGroup && !labels.includes(p.menuGroup)) labels.push(p.menuGroup); });
+
+  for (const p of (spec.pages || []).filter((p) => !p.menuGroup)) await mkPage(p); // ungrouped → directly under app
+  for (const label of labels) {
+    const icon = (spec.menu?.groups || []).find((g) => g.label === label)?.icon;
+    const id = await createMenuGroup(app, label, icon, topId, DIVIDER); // childless section label
+    groups.push({ label, id });
+    for (const p of (spec.pages || []).filter((p) => p.menuGroup === label)) await mkPage(p);
   }
   return { pages, groups };
 }
