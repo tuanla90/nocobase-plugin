@@ -13,8 +13,8 @@ DST="$ROOT/packages/plugins/@ptdl/$NAME"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
-cp "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
-cp "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
+cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
+cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 echo "synced <- $SRC"
 
 # Stub EXTERNAL framework deps (harvested from the running nb-local host 2.1.19) so externalVersion.js
