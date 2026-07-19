@@ -1,14 +1,15 @@
 import { Database } from '@nocobase/database';
 import { pgIdent } from '../utils/db';
+import { SYSTEM_COLLECTION_NAMES } from '../utils/constants';
 
 /**
  * Category of a collection, from the operator's point of view:
  *  - user    : a collection YOU created in the Collection Manager (real business data). This is what
- *              you normally clone. Signal: it's a row in the `collections` DB table (managed) AND is
- *              not owned by a plugin AND its physical table exists.
- *  - plugin  : a collection a plugin defined for its own config/data (origin = a package name).
- *  - system  : a framework/core collection defined in code (origin "core", not user-managed) — fields,
- *              uiSchemas, migrations, and any plugin collection that didn't declare an origin.
+ *              you normally clone. Signal: it's a row in the `collections` DB table (managed), it is
+ *              not a plugin table, not a core system name (users/roles/…), and its physical table exists.
+ *  - plugin  : a collection a plugin defined for its own config/data (third-party origin, or a `ptdl*` name).
+ *  - system  : a framework/core collection (fields, uiSchemas, migrations…) and every @nocobase plugin
+ *              collection (users, roles, workflows…) — i.e. NocoBase's own tables.
  *  - deleted : a managed collection whose physical table no longer exists (an orphan left behind).
  */
 export type CollectionCategory = 'user' | 'plugin' | 'system' | 'deleted';
@@ -34,19 +35,25 @@ export interface AnalyzeResult {
 export class CollectionAnalyzer {
   constructor(private db: Database) {}
 
-  /** Names present in the `collections` DB table = collections created/managed via the UI. */
+  /**
+   * Names present in the `collections` DB table = collections created/managed via the Collection
+   * Manager. Raw SQL is the reliable signal here (works on pg + sqlite) — the repository's
+   * `find({fields})` has returned records without a usable `.name` at runtime, which silently
+   * emptied this set and made every user collection fall through to "system".
+   */
   private async managedNames(): Promise<Set<string>> {
     try {
-      const rows: any[] = await this.db.getRepository('collections').find({ fields: ['name'] });
-      return new Set(rows.map((r: any) => r.name));
+      const [rows] = (await this.db.sequelize.query(`SELECT name FROM ${pgIdent('collections')}`)) as any;
+      const set = new Set((rows as any[]).map((r) => r.name).filter(Boolean));
+      if (set.size > 0) return set;
     } catch {
-      // Fallback: query the table directly (still works if the repository isn't ready).
-      try {
-        const [rows] = (await this.db.sequelize.query(`SELECT name FROM ${pgIdent('collections')}`)) as any;
-        return new Set((rows as any[]).map((r) => r.name));
-      } catch {
-        return new Set();
-      }
+      /* fall through to the repository */
+    }
+    try {
+      const rows: any[] = await this.db.getRepository('collections').find({ fields: ['name'] });
+      return new Set(rows.map((r: any) => r.name ?? r.get?.('name')).filter(Boolean));
+    } catch {
+      return new Set();
     }
   }
 
@@ -85,11 +92,17 @@ export class CollectionAnalyzer {
       const isThirdPartyOrigin = origin !== 'core' && !origin.startsWith('@nocobase');
       const looksLikePtdlTable = /^ptdl/i.test(name);
       const isPlugin = isThirdPartyOrigin || looksLikePtdlTable;
+      // A "system" NAME (users, roles, uiSchemas, fields, migrations…) is never the user's own table,
+      // even though a couple of them (roles, users) are rows in the `collections` table.
+      const isSystemName = SYSTEM_COLLECTION_NAMES.has(name);
 
       let category: CollectionCategory;
       if (isManaged && !tableExists) category = 'deleted';
       else if (isPlugin) category = 'plugin';                 // third-party / @ptdl plugin tables
-      else if (isManaged && origin === 'core') category = 'user'; // user-created (managed, no owner)
+      // "user" = managed via the Collection Manager and not a core system table. Do NOT gate on
+      // origin === 'core' — at runtime the data-source loader stamps user collections with its own
+      // origin (not "core"), which wrongly dropped every user table into "system".
+      else if (isManaged && !isSystemName) category = 'user';
       else category = 'system';                               // framework core + all @nocobase plugins
 
       counts[category] += 1;
