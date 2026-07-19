@@ -28,15 +28,21 @@ export function ensureLauncherDock(): HTMLElement {
   dock.style.right = (pos && typeof pos.right === 'number' ? pos.right : 20) + 'px';
   dock.style.bottom = (pos && typeof pos.bottom === 'number' ? pos.bottom : 20) + 'px';
 
+  // `stretch` → every button portalled in takes the SAME (widest) width, so Build app / Dashboard / Quick
+  // page line up equal-width instead of ragged. The handle stays a small circle (dock is flex-end).
   const items = document.createElement('div');
   items.className = 'ptdl-dock-items';
-  Object.assign(items.style, { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' } as Partial<CSSStyleDeclaration>);
+  Object.assign(items.style, { display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '8px' } as Partial<CSSStyleDeclaration>);
 
+  // Match the handle to the app's antd PRIMARY colour (the buttons are type=primary) so it doesn't read as a
+  // different colour; fall back to the @ptdl accent if the theme doesn't expose the CSS var.
+  let primary = '#7C3AED';
+  try { const v = getComputedStyle(document.body).getPropertyValue('--ant-color-primary').trim(); if (v) primary = v; } catch { /* ignore */ }
   const handle = document.createElement('button');
   handle.type = 'button';
   handle.title = 'Kéo để di chuyển · bấm để thu/mở';
   handle.setAttribute('aria-label', 'Launcher');
-  Object.assign(handle.style, { width: '36px', height: '36px', borderRadius: '999px', border: 'none', cursor: 'grab', background: '#7C3AED', color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', fontSize: '18px', lineHeight: '36px', padding: '0', touchAction: 'none' } as Partial<CSSStyleDeclaration>);
+  Object.assign(handle.style, { alignSelf: 'flex-end', width: '36px', height: '36px', borderRadius: '999px', border: 'none', cursor: 'grab', background: primary, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', fontSize: '18px', lineHeight: '36px', padding: '0', touchAction: 'none' } as Partial<CSSStyleDeclaration>);
 
   let collapsed = false; try { collapsed = localStorage.getItem(COL_KEY) === '1'; } catch { /* ignore */ }
   const applyCollapsed = () => { items.style.display = collapsed ? 'none' : 'flex'; handle.textContent = collapsed ? '≡' : '×'; };

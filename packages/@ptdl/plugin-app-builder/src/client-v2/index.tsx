@@ -124,7 +124,13 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [dashColl, setDashColl] = useState<string | undefined>(undefined);
     const [dashDesc, setDashDesc] = useState('');
     const [dashBusy, setDashBusy] = useState(false);
-    const [dashResult, setDashResult] = useState<{ url: string; title: string; widgets: any[]; charts?: Array<{ uid: string; title?: string; chartType?: string }> } | null>(null);
+    const [dashResult, setDashResult] = useState<{ url: string; pageSchemaUid?: string; title: string; widgets: any[]; charts?: Array<{ uid: string; title?: string; chartType?: string }> } | null>(null);
+    // Open a generated page via CLIENT-SIDE routing (not a full <a href> reload) so the launcher panel + the
+    // just-generated result survive. Falls back to a normal navigation if the router isn't reachable.
+    const goToPage = (pageSchemaUid?: string, fallbackUrl?: string) => {
+      try { if (pageSchemaUid && app.router?.navigate) { app.router.navigate(`/admin/${pageSchemaUid}`); return; } } catch { /* fall through */ }
+      try { if (fallbackUrl) window.location.assign(fallbackUrl); } catch { /* ignore */ }
+    };
     const [chartRefine, setChartRefine] = useState<Record<string, string>>({}); // chartUid → instruction text
     const [chartRefineBusy, setChartRefineBusy] = useState<string | null>(null); // chartUid currently refining
     // ✏️ Refine an EXISTING chart (any dashboard in the app), not just one just generated.
@@ -173,7 +179,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         if (!ai?.ok) { message.error(ai?.error || t('AI could not design a dashboard')); return; }
         if (dashGroup) ai.spec.parentId = dashGroup; // place under the chosen menu group (else top-level)
         const built = await createDashboard(app, ai.spec);
-        setDashResult({ url: built.url, title: ai.spec.title, widgets: ai.spec.widgets || [], charts: built.charts });
+        setDashResult({ url: built.url, pageSchemaUid: built.pageSchemaUid, title: ai.spec.title, widgets: ai.spec.widgets || [], charts: built.charts });
         setChartRefine({});
         message.success(ai.explain || t('Dashboard created'));
       } catch (e: any) {
@@ -504,7 +510,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                       <div style={{ marginTop: 16 }}>
                         <Typography.Text strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <LIcon type="lucide-check" fallback={<CheckOutlined />} style={{ color: '#52c41a' }} />
-                          <a href={dashResult.url}>{dashResult.title}</a>
+                          <a href={dashResult.url} onClick={(e) => { e.preventDefault(); goToPage(dashResult.pageSchemaUid, dashResult.url); }}>{dashResult.title}</a>
                         </Typography.Text>
                         <ul style={{ marginTop: 6, fontSize: 12, paddingLeft: 2, listStyle: 'none' }}>
                           {dashResult.widgets.map((w, i) => {
