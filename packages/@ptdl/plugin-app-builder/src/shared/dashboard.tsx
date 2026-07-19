@@ -108,15 +108,26 @@ function chartRaw(w: DashboardWidget, dim: DimInfo): string {
   }
   return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', boundaryGap:false, data:data.map(function(x){return ${nameExpr};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'line', smooth:true, showSymbol:false, data:data.map(function(x){return ${mx};}), lineStyle:{width:3,color:'${ACCENT}'}, itemStyle:{color:'${ACCENT}'}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(124,58,237,0.4)'},{offset:1,color:'rgba(124,58,237,0)'}]}} }] };`;
 }
+// A dashboard chart = an **ECharts Pro** chart block (mode:'basic', the plugin renders via getProps →
+// buildOption). Render-time: the theme + enum→label mapping apply from LIVE field metadata, so labels are
+// always correct and any future ECharts-Pro fix reaches existing charts too — no baked `raw`. Shape
+// (builder.type 'echartsPro.echartsPro' + the general config fields) verified against a real saved chart.
 function chartBlock(ds: string, coll: string, w: DashboardWidget, id: string, dim: DimInfo) {
-  const raw = chartRaw(w, dim);
-  const builder: any = { type: 'echarts.' + (w.chartType || 'line'), xField: dim.dataKey, yField: w.measure!.field, yFields: [w.measure!.field], size: { type: 'ratio' }, lightTheme: 'walden', darkTheme: 'defaultDark', showLegend: true, legend: true, tooltip: true };
-  if (w.chartType === 'pie') Object.assign(builder, { colorField: dim.dataKey, angleField: w.measure!.field, innerRadius: 42 });
+  const proType = w.chartType === 'pie' ? 'pie' : w.chartType === 'bar' ? 'column' : 'line';
   return {
-    uid: id, use: 'ChartBlockModel', props: { chart: { optionRaw: raw } },
+    uid: id, use: 'ChartBlockModel',
     stepParams: { chartSettings: { configure: {
       query: { mode: 'builder', collectionPath: [ds, coll], measures: [{ field: [w.measure!.field], aggregation: w.measure!.aggregation }], dimensions: [{ field: dim.fieldPath, ...(dim.format ? { format: dim.format } : {}) }], orders: [], filter: { logic: '$and', items: [] } },
-      chart: { option: { mode: 'custom', builder, raw } },
+      chart: { option: { mode: 'basic', builder: {
+        type: 'echartsPro.echartsPro',
+        chartType: proType,
+        xField: dim.dataKey,
+        yField: w.measure!.field,
+        yFields: [w.measure!.field],
+        showLegend: true,
+        showLabel: true,
+        height: 340,
+      } } },
     } } },
   };
 }
@@ -127,8 +138,27 @@ function fieldMeta(collection: any, name: string) {
   const title = f?.uiSchema?.title || f?.options?.uiSchema?.title || f?.title || name;
   return { name, title: String(title).replace(/\{\{\s*t\(["']([^"']+)["']\)\s*\}\}/, '$1'), interface: f?.interface || 'input', type: f?.type || 'string' };
 }
-function filterBlock(engine: any, ds: string, coll: string, fields: string[], collection: any, targetUid: string | undefined, id: string) {
+/** filterPaths entry for a filter field. A scalar field files on its own name; an association (m2o/o2o/…)
+ *  field must file on the TARGET collection's key field (normally `id`) — mirrors FilterFormGridModel.
+ *  onModelCreated's own `${fieldPath}.${filterTargetKey}` construction, else the merged runtime filter
+ *  fires against the relation column itself instead of its id. */
+function filterPathFor(app: any, ds: string, fn: string, fieldObj: any): string {
+  const isAssoc = typeof fieldObj?.isAssociationField === 'function' ? fieldObj.isAssociationField() : !!fieldObj?.target;
+  const target = fieldObj?.target || fieldObj?.options?.target;
+  if (!isAssoc || !target) return fn;
+  const dsm = app?.dataSourceManager;
+  const tcoll = dsm?.getDataSource?.(ds)?.getCollection?.(target) || dsm?.getCollection?.(ds, target);
+  const targetKey = tcoll?.filterTargetKey || tcoll?.options?.filterTargetKey || 'id';
+  return `${fn}.${Array.isArray(targetKey) ? (targetKey[0] || 'id') : (targetKey || 'id')}`;
+}
+// A FilterFormItemModel's own `defaultTargetUid` is NOT the live wiring — it's a one-time seed the native
+// "Add filter field" UI consumes (FilterFormGridModel.onModelCreated) to auto-populate ONE entry in the
+// page's FilterManager. The real, plural connection is a `filterManager:[{filterId,targetId,filterPaths}]`
+// array stored on the shared BlockGridModel (read by BlockGridModel.onInit) — we build it ourselves because
+// createModelAsync never runs the interactive onModelCreated hook. Returns {block, filterManagerEntries}.
+function filterBlock(engine: any, app: any, ds: string, coll: string, fields: string[], collection: any, targetUids: string[], id: string) {
   const FilterItem: any = engine?.getModelClass?.('FilterFormItemModel');
+  const firstTargetUid = targetUids[0];
   const items = fields.map((fn) => {
     const meta = fieldMeta(collection, fn);
     const fieldObj = collection?.getField?.(fn);
@@ -154,17 +184,22 @@ function filterBlock(engine: any, ds: string, coll: string, fields: string[], co
       uid: iid, use: 'FilterFormItemModel',
       stepParams: {
         fieldSettings: { init: { dataSourceKey: ds, collectionName: coll, fieldPath: fn } },
-        filterFormItemSettings: { init: { filterField: { name: fn, title: meta.title, interface: meta.interface, type: meta.type }, ...(targetUid ? { defaultTargetUid: targetUid } : {}) } },
+        // defaultTargetUid kept for parity (feeds FilterFormBlockModel's target-deleted cleanup) — NOT what makes the filter live.
+        filterFormItemSettings: { init: { filterField: { name: fn, title: meta.title, interface: meta.interface, type: meta.type }, ...(firstTargetUid ? { defaultTargetUid: firstTargetUid } : {}) } },
       },
     };
     if (fieldUse) model.subModels = { field: { use: fieldUse, ...(fieldProps ? { props: fieldProps } : {}) } };
-    return { uid: iid, model };
+    return { uid: iid, model, filterPath: filterPathFor(app, ds, fn, fieldObj) };
   });
   const layout = { version: 2, rows: [{ id: uid(), cells: items.map((it) => ({ id: uid(), items: [it.uid] })), sizes: items.map(() => Math.max(6, Math.floor(24 / Math.max(1, items.length)))) }] };
-  return {
+  const block = {
     uid: id, use: 'FilterFormBlockModel',
     subModels: { grid: { use: 'FilterFormGridModel', props: { layout }, stepParams: { gridSettings: { grid: { layout } } }, subModels: { items: items.map((it) => it.model) } } },
   };
+  // One FilterManager fan-out entry per (filter field × target block) — THIS is what
+  // FilterFormItemModel.doFilter() → filterManager.refreshTargetsByFilter(this.uid) actually reads.
+  const filterManagerEntries = items.flatMap((it) => targetUids.map((targetId) => ({ filterId: it.uid, targetId, filterPaths: [it.filterPath] })));
+  return { block, filterManagerEntries };
 }
 
 const evenSizes = (n: number) => Array.from({ length: n }, () => Math.floor(24 / Math.max(1, n)));
@@ -183,9 +218,13 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
   const filters = spec.widgets.filter((w) => w.kind === 'filter' && (w.fields || []).length);
 
   const chartBlocks = charts.map((w) => chartBlock(ds, coll, w, uid(), resolveDimension(app, coll, w)));
-  const firstChartUid = chartBlocks[0]?.uid;
+  const chartUids = chartBlocks.map((b) => b.uid);
   const scoreBlocks = scores.map((w, i) => scoreBlock(ds, coll, w, i, uid()));
-  const filterBlocks = filters.map((w) => filterBlock(engine, ds, coll, w.fields || [], collection, firstChartUid, uid()));
+  const scoreUids = scoreBlocks.map((b) => b.uid);
+  // The filter fans out to every chart AND every KPI card so the whole dashboard reacts to it.
+  const filterResults = filters.map((w) => filterBlock(engine, app, ds, coll, w.fields || [], collection, [...chartUids, ...scoreUids], uid()));
+  const filterBlocks = filterResults.map((r) => r.block);
+  const filterManagerEntries = filterResults.flatMap((r) => r.filterManagerEntries);
 
   const rows: any[] = [];
   filterBlocks.forEach((fb) => rows.push({ id: uid(), cells: [{ id: uid(), items: [fb.uid] }], sizes: [24] }));
@@ -204,7 +243,7 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
 
   const pageModel = await engine.createModelAsync({
     parentId: pageSchemaUid, subKey: 'page', subType: 'object', use: 'RootPageModel',
-    subModels: { tabs: [{ uid: tabSchemaUid, use: 'RootPageTabModel', props: { route: { type: 'tabs', schemaUid: tabSchemaUid, tabSchemaName, hidden: true } }, subModels: { grid: { use: 'BlockGridModel', props: { layout }, stepParams: { gridSettings: { grid: { layout } } }, subModels: { items } } } }] },
+    subModels: { tabs: [{ uid: tabSchemaUid, use: 'RootPageTabModel', props: { route: { type: 'tabs', schemaUid: tabSchemaUid, tabSchemaName, hidden: true } }, subModels: { grid: { use: 'BlockGridModel', props: { layout }, stepParams: { gridSettings: { grid: { layout } } }, filterManager: filterManagerEntries, subModels: { items } } } }] },
   });
   await pageModel.save();
   const chartsOut = charts.map((w, i) => ({ uid: chartBlocks[i].uid, title: w.title, chartType: w.chartType }));

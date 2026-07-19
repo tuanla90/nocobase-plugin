@@ -349,6 +349,18 @@ function chartRefineSystemPrompt(): string {
   ].join('\n');
 }
 
+/** System prompt for refining ONE Custom-HTML block's (score card / KPI tile) JS from a NL instruction.
+ *  Sibling of chartRefineSystemPrompt() — same recipe, different runtime contract: the code returns an
+ *  HTML STRING (not an ECharts option) and sees `data`/`helpers`, not `ctx`. */
+function htmlRefineSystemPrompt(): string {
+  return [
+    'Bạn là chuyên gia viết JS cho block "Custom HTML" (thẻ KPI/score-card) của NocoBase. Sửa (hoặc viết lại) đoạn JS theo YÊU CẦU, GIỮ nguyên mọi thứ không liên quan.',
+    'Code chạy trong TRÌNH DUYỆT, có sẵn 2 biến: `data` = MẢNG bản ghi kết quả query (mỗi phần tử 1 object, key = tên field/alias trong query — 1 thẻ KPI thường chỉ cần `data[0]`); `helpers` = tiện ích dựng sẵn: `helpers.fmt(n)` định dạng số, `helpers.icon("ten-kebab", { size })` trả về SVG icon (vd "dollar-sign","shopping-cart","trending-up","users"), `helpers.esc(s)` escape HTML. Code PHẢI kết thúc bằng `return` MỘT CHUỖI HTML (template string).',
+    'Khung ví dụ: const raw = data && data[0] ? data[0]["Tổng doanh thu"] : 0; const val = raw; return `<div style="padding:16px">${helpers.fmt(val)}</div>`;',
+    'QUY TẮC: dùng ĐÚNG key dữ liệu đã cho (đừng bịa tên field/alias). KHÔNG require/import/khai báo hàm ngoài, KHÔNG dùng biến `ctx` (đây là thẻ HTML, KHÔNG phải biểu đồ ECharts). Đổi ĐÚNG thứ user yêu cầu (màu/nền, icon, đơn vị/định dạng số, bố cục, cỡ chữ, thêm % thay đổi…), phần còn lại giữ nguyên. Trả về TOÀN BỘ code JS (khai báo biến lẫn return), KHÔNG markdown, KHÔNG giải thích ngoài trường explain.',
+  ].join('\n');
+}
+
 /** Light validate + coerce a DashboardSpec: force the collection, drop widgets referencing unknown fields. */
 function validateDashboardSpec(spec: any, coll: string, fieldNames: Set<string>): { ok: boolean; spec?: any; error?: string } {
   if (!spec || typeof spec !== 'object') return { ok: false, error: 'Không phải object' };
@@ -857,9 +869,10 @@ export class PluginAppBuilderServer extends Plugin {
           const rec: any = await repo.findOne({ filter: { uid: chartUid } });
           if (!rec) { ctx.body = { ok: false, error: 'Không thấy chart: ' + chartUid }; await next(); return; }
           const options = typeof rec.options === 'string' ? JSON.parse(rec.options) : (rec.options || {});
-          if (options.use !== 'ChartBlockModel') { ctx.body = { ok: false, error: 'Không phải Chart block (' + options.use + ')' }; await next(); return; }
+          const isHtml = options.use === 'CustomHtmlBlockModel';
+          const isChart = options.use === 'ChartBlockModel';
+          if (!isHtml && !isChart) { ctx.body = { ok: false, error: 'Không phải Chart/Custom-HTML block (' + options.use + ')' }; await next(); return; }
           const cfg = (((options.stepParams = options.stepParams || {}).chartSettings = options.stepParams.chartSettings || {}).configure = options.stepParams.chartSettings.configure || {});
-          const opt = (cfg.chart = cfg.chart || {}).option || {};
           const query = cfg.query || {};
           const leaf = (f: any) => (Array.isArray(f) ? f[f.length - 1] : f);
           const measures = (query.measures || []).map((m: any) => m.alias || leaf(m.field));
@@ -867,34 +880,71 @@ export class PluginAppBuilderServer extends Plugin {
           const dataKeys = [...dims, ...measures].filter(Boolean);
           const { provider, error } = await getAiProvider(this.app);
           if (error) { ctx.body = { ok: false, error }; await next(); return; }
-          const system = chartRefineSystemPrompt();
-          const schema = { type: 'object', properties: { raw: { type: 'string', description: 'Code ECharts MỚI (JS trả về option)' }, explain: { type: 'string' } }, required: ['raw'] };
+
+          if (isChart) {
+            const opt = (cfg.chart = cfg.chart || {}).option || {};
+            const system = chartRefineSystemPrompt();
+            const schema = { type: 'object', properties: { raw: { type: 'string', description: 'Code ECharts MỚI (JS trả về option)' }, explain: { type: 'string' } }, required: ['raw'] };
+            const base = (extra = '') => [
+              'Code ECharts HIỆN TẠI của biểu đồ:', opt.raw || '(chưa có raw — chart đang dùng builder mặc định; hãy viết mới hoàn chỉnh)',
+              '', `Data: \`ctx.data.objects\` = mảng row, mỗi row có key: ${dataKeys.map((k) => 'x.' + k).join(', ') || '(theo query của chart)'}.`,
+              `Loại chart hiện tại: ${opt.builder?.type || '(tuỳ code)'}.`,
+              '', `YÊU CẦU SỬA: ${instruction}`,
+              '', 'Trả về TOÀN BỘ code mới.' + extra,
+            ].join('\n');
+            let human = base(); let raw = ''; let explain = ''; let lastError = '';
+            for (let attempt = 0; attempt < 3 && !raw; attempt++) {
+              let out = '';
+              try {
+                const r: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'chart', description: 'ECharts code + giải thích' } });
+                const p = r && typeof r === 'object' && 'parsed' in r ? r.parsed : r;
+                out = p?.raw || ''; explain = String(p?.explain || '');
+              } catch { /* fall back to plain text */ }
+              if (!out) { try { out = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả DUY NHẤT code JS.'], ['human', human]] })); } catch {} }
+              out = stripFences(out).trim();
+              if (!out || !/return/.test(out)) { lastError = 'Code không có return'; human = base('\n\nLần trước THIẾU câu return object.'); continue; }
+              try { new Function('ctx', out); } catch (e: any) { lastError = 'Lỗi cú pháp: ' + e?.message; human = base('\n\nLần trước LỖI cú pháp: ' + e?.message + '. Sửa cho chạy được.'); continue; }
+              raw = out;
+            }
+            if (!raw) { ctx.body = { ok: false, error: lastError || 'AI không sửa được code chart' }; await next(); return; }
+            cfg.chart.option = { ...opt, mode: 'custom', raw };
+            options.props = options.props || {}; options.props.chart = { ...(options.props.chart || {}), optionRaw: raw };
+            await repo.update({ filter: { uid: chartUid }, values: { options } });
+            ctx.body = { ok: true, raw, explain };
+            await next();
+            return;
+          }
+
+          // ── isHtml: CustomHtmlBlockModel — sửa customHtmlSettings.code.code (KHÔNG đụng cfg.chart) ──
+          const htmlCfg = (options.stepParams.customHtmlSettings = options.stepParams.customHtmlSettings || {});
+          const codeCfg = (htmlCfg.code = htmlCfg.code || {});
+          const currentCode = codeCfg.code || '';
+          const system = htmlRefineSystemPrompt();
+          const schema = { type: 'object', properties: { code: { type: 'string', description: 'Code JS MỚI (trả về chuỗi HTML)' }, explain: { type: 'string' } }, required: ['code'] };
           const base = (extra = '') => [
-            'Code ECharts HIỆN TẠI của biểu đồ:', opt.raw || '(chưa có raw — chart đang dùng builder mặc định; hãy viết mới hoàn chỉnh)',
-            '', `Data: \`ctx.data.objects\` = mảng row, mỗi row có key: ${dataKeys.map((k) => 'x.' + k).join(', ') || '(theo query của chart)'}.`,
-            `Loại chart hiện tại: ${opt.builder?.type || '(tuỳ code)'}.`,
+            'Code JS HIỆN TẠI của thẻ:', currentCode || '(chưa có code — thẻ đang dùng mặc định; hãy viết mới hoàn chỉnh)',
+            '', `Data: \`data\` = mảng row, mỗi row có key: ${dataKeys.map((k) => JSON.stringify(k)).join(', ') || '(theo query của thẻ)'}. Thường chỉ cần \`data[0]\`.`,
             '', `YÊU CẦU SỬA: ${instruction}`,
-            '', 'Trả về TOÀN BỘ code mới.' + extra,
+            '', 'Trả về TOÀN BỘ code JS mới (kết thúc bằng return chuỗi HTML).' + extra,
           ].join('\n');
-          let human = base(); let raw = ''; let explain = ''; let lastError = '';
-          for (let attempt = 0; attempt < 3 && !raw; attempt++) {
+          let human = base(); let code = ''; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !code; attempt++) {
             let out = '';
             try {
-              const r: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'chart', description: 'ECharts code + giải thích' } });
+              const r: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'html', description: 'Custom-HTML code + giải thích' } });
               const p = r && typeof r === 'object' && 'parsed' in r ? r.parsed : r;
-              out = p?.raw || ''; explain = String(p?.explain || '');
+              out = p?.code || ''; explain = String(p?.explain || '');
             } catch { /* fall back to plain text */ }
             if (!out) { try { out = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả DUY NHẤT code JS.'], ['human', human]] })); } catch {} }
             out = stripFences(out).trim();
-            if (!out || !/return/.test(out)) { lastError = 'Code không có return'; human = base('\n\nLần trước THIẾU câu return object.'); continue; }
-            try { new Function('ctx', out); } catch (e: any) { lastError = 'Lỗi cú pháp: ' + e?.message; human = base('\n\nLần trước LỖI cú pháp: ' + e?.message + '. Sửa cho chạy được.'); continue; }
-            raw = out;
+            if (!out || !/return/.test(out)) { lastError = 'Code không có return'; human = base('\n\nLần trước THIẾU câu return chuỗi HTML.'); continue; }
+            try { new Function('data', 'rows', 'helpers', 'scope', out); } catch (e: any) { lastError = 'Lỗi cú pháp: ' + e?.message; human = base('\n\nLần trước LỖI cú pháp: ' + e?.message + '. Sửa cho chạy được.'); continue; }
+            code = out;
           }
-          if (!raw) { ctx.body = { ok: false, error: lastError || 'AI không sửa được code chart' }; await next(); return; }
-          cfg.chart.option = { ...opt, mode: 'custom', raw };
-          options.props = options.props || {}; options.props.chart = { ...(options.props.chart || {}), optionRaw: raw };
+          if (!code) { ctx.body = { ok: false, error: lastError || 'AI không sửa được code thẻ' }; await next(); return; }
+          codeCfg.code = code;
           await repo.update({ filter: { uid: chartUid }, values: { options } });
-          ctx.body = { ok: true, raw, explain };
+          ctx.body = { ok: true, raw: code, explain };
           await next();
         },
 
@@ -916,21 +966,31 @@ export class PluginAppBuilderServer extends Plugin {
           }
           const underPage = (uid: string) => { let cur: any = uid; for (let i = 0; i < 16 && cur; i++) { cur = parentOf[cur]; if (cur === pageUid) return true; } return false; };
           let rows: any[] = [];
-          try { rows = rowsOf(await this.db.sequelize.query("SELECT uid, options FROM flowModels WHERE options LIKE '%ChartBlockModel%'")); }
+          try { rows = rowsOf(await this.db.sequelize.query("SELECT uid, options FROM flowModels WHERE options LIKE '%ChartBlockModel%' OR options LIKE '%CustomHtmlBlockModel%'")); }
           catch (e: any) { ctx.body = { ok: false, error: 'Không đọc được flowModels: ' + (e?.message || e) }; await next(); return; }
           const charts: any[] = [];
           for (const r of rows) {
             let o: any; try { o = typeof r.options === 'string' ? JSON.parse(r.options) : r.options; } catch { continue; }
-            if (!o || o.use !== 'ChartBlockModel') continue;
+            const isHtml = o?.use === 'CustomHtmlBlockModel';
+            const isChart = o?.use === 'ChartBlockModel';
+            if (!o || (!isChart && !isHtml)) continue;
             if (scoped && !underPage(r.uid)) continue;
             const cfg = o.stepParams?.chartSettings?.configure || {};
-            const opt = cfg.chart?.option || {};
             const q = cfg.query || {};
-            const m = String(opt.raw || '').match(/title\s*:\s*\{\s*text\s*:\s*['"]([^'"]+)['"]/);
             const mea = q.measures?.[0]; const dim = q.dimensions?.[0];
-            const title = (m && m[1]) || (mea ? `${mea.aggregation || ''}(${leaf(mea.field) || ''})${dim ? ` theo ${leaf(dim.field)}` : ''}` : 'Biểu đồ');
-            const chartType = String(opt.builder?.type || '').replace('echarts.', '') || (/(type:\s*['"](pie|bar|line|scatter)['"])/.exec(String(opt.raw || ''))?.[2]) || 'chart';
-            charts.push({ uid: r.uid, title, chartType, collection: q.collectionPath?.[1] || '' });
+            const aggFallback = mea ? `${mea.aggregation || ''}(${leaf(mea.field) || ''})${dim ? ` theo ${leaf(dim.field)}` : ''}` : '';
+            let title: string; let chartType: string;
+            if (isHtml) {
+              // Score-card label = the measure's alias (app-builder writes the KPI label there — see dashboard.tsx scoreBlock).
+              title = mea?.alias || aggFallback || 'Score card';
+              chartType = 'html';
+            } else {
+              const opt = cfg.chart?.option || {};
+              const m = String(opt.raw || '').match(/title\s*:\s*\{\s*text\s*:\s*['"]([^'"]+)['"]/);
+              title = (m && m[1]) || aggFallback || 'Biểu đồ';
+              chartType = String(opt.builder?.type || '').replace('echarts.', '') || (/(type:\s*['"](pie|bar|line|scatter)['"])/.exec(String(opt.raw || ''))?.[2]) || 'chart';
+            }
+            charts.push({ uid: r.uid, title, chartType, collection: q.collectionPath?.[1] || '', blockKind: isHtml ? 'html' : 'chart' });
           }
           ctx.body = { ok: true, charts, scoped };
           await next();

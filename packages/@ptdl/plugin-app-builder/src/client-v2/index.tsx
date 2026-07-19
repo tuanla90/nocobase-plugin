@@ -7,8 +7,13 @@
  * `window.__ptdlAppBuilder` (buildApp / validateAppSpec / samples) for scripted testing.
  */
 import React, { useState } from 'react';
-import { Plugin } from '@nocobase/client-v2';
-import { Button, Input, message, Modal, Segmented, Select, Space, Tooltip, Typography } from 'antd';
+import { createPortal } from 'react-dom';
+import { Plugin, Icon, icons } from '@nocobase/client-v2';
+import { Button, Input, message, Modal, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
+import {
+  ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
+  FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined,
+} from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
 import { createDashboard } from '../shared/dashboard';
@@ -18,6 +23,54 @@ import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
 const NS = '@ptdl/plugin-app-builder/client';
+
+/** Render a Lucide icon from the custom-icons registry (`<Icon type="lucide-*">`), guarded by `icons.has()`
+ *  so it degrades to an antd fallback when @ptdl/plugin-custom-icons isn't installed. Lucide draws a raw
+ *  <svg stroke="currentColor"> → size via fontSize, colour inherited. */
+const LIcon: React.FC<{ type: string; fallback?: React.ReactNode; size?: number; style?: React.CSSProperties }> =
+  ({ type, fallback = null, size = 14, style }) =>
+    Icon && (icons as any)?.has?.(type)
+      ? <Icon type={type} style={{ fontSize: size, lineHeight: 0, ...(style || {}) }} />
+      : <>{fallback}</>;
+
+// ── AI-Dashboard side panel — split view (no mask), replicating detail-panel's mechanism WITHOUT importing
+//    it. NocoBase's AdminLayout renders a built-in `#nocobase-embed-container` as a FLEX SIBLING of the main
+//    content; giving that sibling a width makes the browser reflow the page beside it (true split view, both
+//    sides interactive — the dashboard stays fully visible). We portal the panel UI into that container and
+//    set its width; on close we reset the width to `auto` (empty container → 0). If the container isn't
+//    present (non-admin layout) we fall back to a fixed right-docked host (panel still works, page not shrunk). ──
+const EMBED_ID = 'nocobase-embed-container';
+const PANEL_WIDTH = 'min(540px, 46vw)';
+const AiDashboardPanel: React.FC<{ open: boolean; title: React.ReactNode; onClose: () => void; children: React.ReactNode }> = ({ open, title, onClose, children }) => {
+  const { token } = theme.useToken();
+  const [host, setHost] = React.useState<HTMLElement | null>(null);
+  React.useLayoutEffect(() => {
+    if (!open || typeof document === 'undefined') { setHost(null); return; }
+    const embed = document.getElementById(EMBED_ID) as HTMLElement | null;
+    if (embed) {
+      embed.style.width = PANEL_WIDTH; embed.style.minWidth = '0px'; embed.style.maxWidth = '';
+      setHost(embed);
+      return () => { embed.style.width = 'auto'; embed.style.minWidth = ''; embed.style.maxWidth = ''; };
+    }
+    const el = document.createElement('div');
+    el.setAttribute('data-ptdl-appbuilder-panel', '1');
+    Object.assign(el.style, { position: 'fixed', top: '0', right: '0', height: '100vh', width: PANEL_WIDTH, zIndex: '1000' } as CSSStyleDeclaration);
+    document.body.appendChild(el);
+    setHost(el);
+    return () => { try { el.remove(); } catch { /* noop */ } };
+  }, [open]);
+  if (!open || !host) return null;
+  return createPortal(
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: token.colorBgContainer, borderLeft: `1px solid ${token.colorBorderSecondary}`, boxShadow: '-2px 0 8px rgba(0,0,0,0.06)' }}>
+      <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: `1px solid ${token.colorSplit}` }}>
+        <span style={{ fontWeight: 600, fontSize: token.fontSizeLG }}>{title}</span>
+        <Button type="text" size="small" aria-label="Close" onClick={onClose} style={{ marginRight: -6, fontSize: 16, lineHeight: 1 }}>✕</Button>
+      </div>
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: 16 }}>{children}</div>
+    </div>,
+    host,
+  );
+};
 
 /** Reactively read NocoBase v2's "UI editor" (flow-settings) toggle — the floating launcher only shows when
  *  it is ON, so it never clutters normal (non-edit) use. Mirrors the framework's own reader
@@ -157,7 +210,15 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
           .then((r: any) => r?.data?.data ?? r?.data);
         if (!res?.ok) { message.error(res?.error || t('AI could not edit the chart')); return; }
         setPickInstr('');
-        message.success(res.explain || t('Chart updated — reload the dashboard page to see it'));
+        // If the chart is on THIS page (scope=page), auto-reload so the change shows without a manual F5.
+        // (A single chart block can't be re-rendered in isolation — its model lives in the page's own flow
+        // context, unreachable from this launcher — so a page reload is the reliable refresh.)
+        if (chartScope === 'page' && currentPageUid()) {
+          message.success((res.explain || t('Chart updated')) + ' — ' + t('reloading…'));
+          setTimeout(() => { try { window.location.reload(); } catch { /* noop */ } }, 1100);
+        } else {
+          message.success(res.explain || t('Chart updated — reload the dashboard page to see it'));
+        }
       } catch (e: any) {
         message.error(e?.message || String(e));
       } finally {
@@ -291,9 +352,10 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         <Tooltip title={t('Build app from spec')} placement="left">
           <Button
             type="primary" shape="round" onClick={() => setOpen(true)}
+            icon={<LIcon type="lucide-hammer" fallback={<ToolOutlined />} size={15} />}
             style={{ position: 'fixed', right: 20, bottom: 72, zIndex: 1000, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
           >
-            🛠 {t('Build app')}
+            {t('Build app')}
           </Button>
         </Tooltip>
         <Modal open={open} onCancel={() => setOpen(false)} width={800} title={t('Build app from spec')} footer={null} destroyOnClose>
@@ -387,101 +449,116 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         <Tooltip title={t('Generate a dashboard with AI')} placement="left">
           <Button
             shape="round" onClick={() => setDashOpen(true)}
+            icon={<LIcon type="lucide-layout-dashboard" fallback={<DashboardOutlined />} size={15} />}
             style={{ position: 'fixed', right: 20, bottom: 124, zIndex: 1000, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
           >
-            📊 {t('Dashboard')}
+            {t('Dashboard')}
           </Button>
         </Tooltip>
-        <Modal open={dashOpen} onCancel={() => setDashOpen(false)} width={520} title={`📊 ${t('AI Dashboard')}`} footer={null} destroyOnClose>
-          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 10 }}>
-            {t('Pick a table — AI designs KPI cards + charts + a filter bar from its fields.')}
-          </Typography.Paragraph>
-          <Select
-            showSearch value={dashColl} onChange={setDashColl}
-            placeholder={t('Choose a table…')} options={collections} optionFilterProp="label"
-            style={{ width: '100%', marginBottom: 8 }}
+        <AiDashboardPanel
+          open={dashOpen} onClose={() => setDashOpen(false)}
+          title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><LIcon type="lucide-layout-dashboard" fallback={<DashboardOutlined />} size={16} />{t('AI Dashboard')}</span>}
+        >
+          <Tabs
+            defaultActiveKey="create"
+            items={[
+              {
+                key: 'create',
+                label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} />{t('Create')}</span>),
+                children: (
+                  <>
+                    <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 10 }}>
+                      {t('Pick a table — AI designs KPI cards + charts + a filter bar from its fields.')}
+                    </Typography.Paragraph>
+                    <Select showSearch value={dashColl} onChange={setDashColl} placeholder={t('Choose a table…')} options={collections} optionFilterProp="label" style={{ width: '100%', marginBottom: 8 }} />
+                    <Input value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} onPressEnter={onDashboard} placeholder={t('Optional: what to focus on — e.g. revenue by month, status breakdown')} style={{ marginBottom: 10 }} />
+                    <Button type="primary" block loading={dashBusy} onClick={onDashboard} disabled={!dashColl} icon={<LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} />}>
+                      {t('Generate dashboard (AI)')}
+                    </Button>
+                    {dashResult && (
+                      <div style={{ marginTop: 16 }}>
+                        <Typography.Text strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <LIcon type="lucide-check" fallback={<CheckOutlined />} style={{ color: '#52c41a' }} />
+                          <a href={dashResult.url}>{dashResult.title}</a>
+                        </Typography.Text>
+                        <ul style={{ marginTop: 6, fontSize: 12, paddingLeft: 2, listStyle: 'none' }}>
+                          {dashResult.widgets.map((w, i) => {
+                            const meta = w.kind === 'score'
+                              ? { icon: 'lucide-hash', fb: <NumberOutlined />, text: `${w.label} — ${w.measure?.aggregation}(${w.measure?.field})` }
+                              : w.kind === 'chart'
+                              ? { icon: 'lucide-line-chart', fb: <LineChartOutlined />, text: `${w.title} — ${w.chartType}` }
+                              : { icon: 'lucide-filter', fb: <FilterOutlined />, text: `${t('Filter')}: ${(w.fields || []).join(', ')}` };
+                            return (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '3px 0' }}>
+                                <LIcon type={meta.icon} fallback={meta.fb} size={13} style={{ color: 'var(--colorTextTertiary, #999)' }} />
+                                <span>{meta.text}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        {dashResult.charts && dashResult.charts.length > 0 && (
+                          <div style={{ marginTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 10 }}>
+                            <Typography.Text strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <LIcon type="lucide-pencil" fallback={<EditOutlined />} size={13} />{t('Edit a chart with AI')}:
+                            </Typography.Text>
+                            {dashResult.charts.map((c) => (
+                              <Space.Compact key={c.uid} style={{ width: '100%', marginTop: 6 }}>
+                                <Input
+                                  addonBefore={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><LIcon type="lucide-line-chart" fallback={<LineChartOutlined />} size={12} />{c.title || c.chartType || 'chart'}</span>}
+                                  value={chartRefine[c.uid] || ''}
+                                  onChange={(e) => setChartRefine((m) => ({ ...m, [c.uid]: e.target.value }))}
+                                  onPressEnter={() => onRefineChart(c.uid)}
+                                  placeholder={t('e.g. turn into a bar chart, add data labels, green line')}
+                                  disabled={chartRefineBusy === c.uid}
+                                />
+                                <Button loading={chartRefineBusy === c.uid} onClick={() => onRefineChart(c.uid)} icon={<LIcon type="lucide-wand-sparkles" fallback={<EditOutlined />} />} />
+                              </Space.Compact>
+                            ))}
+                            <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+                              {t('The chart’s ECharts code is rewritten in place — open the dashboard above to see it (or edit it manually in the chart’s Configure panel).')}
+                            </Typography.Paragraph>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: 'edit',
+                label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LIcon type="lucide-pencil" fallback={<EditOutlined />} />{t('Edit dashboard')}</span>),
+                children: (
+                  <>
+                    <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '0 0 8px' }}>
+                      {t('Pick any chart already on a dashboard and describe the change — the AI rewrites its ECharts code.')}
+                    </Typography.Paragraph>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                      <Segmented value={chartScope} onChange={(val) => { const s = val as 'page' | 'app'; setChartScope(s); if (existingCharts) loadExistingCharts(s); }} options={[{ label: t('This page'), value: 'page' }, { label: t('Whole app'), value: 'app' }]} />
+                      <Button loading={existingBusy} onClick={() => loadExistingCharts()} icon={<LIcon type="lucide-refresh-cw" fallback={<ReloadOutlined />} />}>
+                        {existingCharts ? t('Reload') : t('Load charts')}
+                      </Button>
+                      {existingCharts && <Typography.Text type="secondary" style={{ fontSize: 11 }}>{existingCharts.length} {t('chart(s)')}</Typography.Text>}
+                    </div>
+                    {existingCharts && (
+                      <>
+                        <Select showSearch value={pickChart} onChange={setPickChart} optionFilterProp="label" placeholder={t('Choose a chart…')} options={existingCharts.map((c) => ({ value: c.uid, label: `${c.title} · ${c.chartType}${c.collection ? ' · ' + c.collection : ''}` }))} style={{ width: '100%', marginBottom: 8 }} notFoundContent={t('No charts found — generate a dashboard first')} />
+                        <Space.Compact style={{ width: '100%' }}>
+                          <Input value={pickInstr} onChange={(e) => setPickInstr(e.target.value)} onPressEnter={onRefineExisting} placeholder={t('e.g. turn into a bar chart, add data labels, green line')} disabled={pickBusy} />
+                          <Button type="primary" loading={pickBusy} onClick={onRefineExisting} disabled={!pickChart} icon={<LIcon type="lucide-wand-sparkles" fallback={<EditOutlined />} />}>
+                            {t('Refine')}
+                          </Button>
+                        </Space.Compact>
+                        <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+                          {t('Reload the dashboard page to see the change.')}
+                        </Typography.Paragraph>
+                      </>
+                    )}
+                  </>
+                ),
+              },
+            ]}
           />
-          <Input
-            value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} onPressEnter={onDashboard}
-            placeholder={t('Optional: what to focus on — e.g. revenue by month, status breakdown')}
-            style={{ marginBottom: 10 }}
-          />
-          <Button type="primary" block loading={dashBusy} onClick={onDashboard} disabled={!dashColl}>
-            📊 {t('Generate dashboard (AI)')}
-          </Button>
-          {dashResult && (
-            <div style={{ marginTop: 16 }}>
-              <Typography.Text strong>✓ <a href={dashResult.url}>{dashResult.title}</a></Typography.Text>
-              <ul style={{ marginTop: 6, fontSize: 12, paddingLeft: 18 }}>
-                {dashResult.widgets.map((w, i) => (
-                  <li key={i}>
-                    {w.kind === 'score' ? `🔢 ${w.label} — ${w.measure?.aggregation}(${w.measure?.field})`
-                      : w.kind === 'chart' ? `📈 ${w.title} — ${w.chartType}`
-                      : `🔎 ${t('Filter')}: ${(w.fields || []).join(', ')}`}
-                  </li>
-                ))}
-              </ul>
-              {dashResult.charts && dashResult.charts.length > 0 && (
-                <div style={{ marginTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 10 }}>
-                  <Typography.Text strong style={{ fontSize: 12 }}>✏️ {t('Edit a chart with AI')}:</Typography.Text>
-                  {dashResult.charts.map((c) => (
-                    <Space.Compact key={c.uid} style={{ width: '100%', marginTop: 6 }}>
-                      <Input
-                        size="small"
-                        addonBefore={<span style={{ fontSize: 11, maxWidth: 130, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📈 {c.title || c.chartType || 'chart'}</span>}
-                        value={chartRefine[c.uid] || ''}
-                        onChange={(e) => setChartRefine((m) => ({ ...m, [c.uid]: e.target.value }))}
-                        onPressEnter={() => onRefineChart(c.uid)}
-                        placeholder={t('e.g. turn into a bar chart, add data labels, green line')}
-                        disabled={chartRefineBusy === c.uid}
-                      />
-                      <Button size="small" loading={chartRefineBusy === c.uid} onClick={() => onRefineChart(c.uid)}>✏️</Button>
-                    </Space.Compact>
-                  ))}
-                  <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
-                    {t('The chart’s ECharts code is rewritten in place — open the dashboard above to see it (or edit it manually in the chart’s Configure panel).')}
-                  </Typography.Paragraph>
-                </div>
-              )}
-            </div>
-          )}
-          <div style={{ marginTop: 18, borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: 12 }}>
-            <Typography.Text strong style={{ fontSize: 13 }}>✏️ {t('Edit an existing chart with AI')}</Typography.Text>
-            <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '4px 0 8px' }}>
-              {t('Pick any chart already on a dashboard and describe the change — the AI rewrites its ECharts code.')}
-            </Typography.Paragraph>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-              <Segmented
-                size="small" value={chartScope}
-                onChange={(val) => { const s = val as 'page' | 'app'; setChartScope(s); if (existingCharts) loadExistingCharts(s); }}
-                options={[{ label: t('This page'), value: 'page' }, { label: t('Whole app'), value: 'app' }]}
-              />
-              <Button size="small" loading={existingBusy} onClick={() => loadExistingCharts()}>🔄 {existingCharts ? t('Reload') : t('Load charts')}</Button>
-              {existingCharts && <Typography.Text type="secondary" style={{ fontSize: 11 }}>{existingCharts.length} {t('chart(s)')}</Typography.Text>}
-            </div>
-            {existingCharts && (
-              <>
-                <Select
-                  showSearch value={pickChart} onChange={setPickChart} optionFilterProp="label"
-                  placeholder={t('Choose a chart…')}
-                  options={existingCharts.map((c) => ({ value: c.uid, label: `${c.title} · ${c.chartType}${c.collection ? ' · ' + c.collection : ''}` }))}
-                  style={{ width: '100%', marginBottom: 8 }}
-                  notFoundContent={t('No charts found — generate a dashboard first')}
-                />
-                <Space.Compact style={{ width: '100%' }}>
-                  <Input
-                    value={pickInstr} onChange={(e) => setPickInstr(e.target.value)} onPressEnter={onRefineExisting}
-                    placeholder={t('e.g. turn into a bar chart, add data labels, green line')} disabled={pickBusy}
-                  />
-                  <Button type="primary" loading={pickBusy} onClick={onRefineExisting} disabled={!pickChart}>✏️ {t('Refine')}</Button>
-                </Space.Compact>
-                <Typography.Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
-                  {t('Reload the dashboard page to see the change.')}
-                </Typography.Paragraph>
-              </>
-            )}
-          </div>
-        </Modal>
+        </AiDashboardPanel>
           </>
         )}
       </>

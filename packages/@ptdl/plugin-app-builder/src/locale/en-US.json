@@ -68,5 +68,9 @@
   "Load charts": "Load charts",
   "Reload": "Reload",
   "chart(s)": "chart(s)",
-  "No charts on this page — switch to “Whole app” or open a dashboard": "No charts on this page — switch to “Whole app” or open a dashboard"
+  "No charts on this page — switch to “Whole app” or open a dashboard": "No charts on this page — switch to “Whole app” or open a dashboard",
+  "Chart updated": "Chart updated",
+  "reloading…": "reloading…",
+  "Create": "Create",
+  "Edit dashboard": "Edit dashboard"
 }

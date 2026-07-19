@@ -68,5 +68,9 @@
   "Load charts": "Tải biểu đồ",
   "Reload": "Tải lại",
   "chart(s)": "biểu đồ",
-  "No charts on this page — switch to “Whole app” or open a dashboard": "Trang này chưa có biểu đồ — chuyển “Cả app” hoặc mở một dashboard"
+  "No charts on this page — switch to “Whole app” or open a dashboard": "Trang này chưa có biểu đồ — chuyển “Cả app” hoặc mở một dashboard",
+  "Chart updated": "Đã sửa biểu đồ",
+  "reloading…": "đang tải lại…",
+  "Create": "Tạo mới",
+  "Edit dashboard": "Sửa dashboard"
 }
