@@ -5,6 +5,8 @@
   "Sinh công thức": "Generate formula",
   "Sửa công thức hiện tại": "Fix current formula",
   "Chuyển từ AppSheet": "Convert from AppSheet",
+  "Xem trong sơ đồ": "Show in graph",
+  "Cột này chưa có trong sơ đồ (lưu công thức trước).": "This column isn't in the graph yet (save the formula first).",
   "Dán công thức AppSheet vào ô trên": "Paste an AppSheet formula in the box above",
   "Dán công thức AppSheet vào ô trên rồi bấm đây": "Paste an AppSheet formula above, then click here",
   "Dán công thức AppSheet": "Paste an AppSheet formula",

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Table, Input, Button, Switch, Select, Space, message, Popconfirm, Typography, Modal, Tag, Popover, Tooltip, Empty, Cascader, Checkbox, theme } from 'antd';
-import { PlusOutlined, ReloadOutlined, PartitionOutlined, FunctionOutlined, LinkOutlined, FilterOutlined, CalculatorOutlined, ArrowUpOutlined, ArrowDownOutlined, PushpinOutlined, TableOutlined, BulbOutlined, PlayCircleOutlined, RobotOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, PartitionOutlined, FunctionOutlined, LinkOutlined, FilterOutlined, CalculatorOutlined, ArrowUpOutlined, ArrowDownOutlined, PushpinOutlined, TableOutlined, BulbOutlined, PlayCircleOutlined, RobotOutlined, AimOutlined } from '@ant-design/icons';
 import { SettingCard, SettingRow, Hint, FieldPickerCascader, getCaretElement, insertAtCaret, getFields } from '@ptdl/shared';
 import { FORMULA_EXAMPLES as EXAMPLES, FORMULA_FUNCTIONS as FN_HELP, TRIGGER_OPTIONS, splitTriggers } from './formulaKnowledge';
 import { t } from './i18n';
@@ -61,11 +61,13 @@ const KIND_COLOR: Record<string, string> = { local: '#94a3b8', aggregate: '#2563
 const Dot = ({ c }: { c: string }) => <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: c, verticalAlign: 'middle', marginRight: 4 }} />;
 
 // ------------------------------- DAG (SVG, theme-aware, interactive) -------------------------------
-function Dag({ nodes, edges }: { nodes: any[]; edges: any[] }) {
+function Dag({ nodes, edges, focus }: { nodes: any[]; edges: any[]; focus?: { id: string; n: number } }) {
   const [filter, setFilter] = useState<string[]>([]);
   const [hover, setHover] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
   const active = pinned || hover;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingScroll = useRef<string | null>(null);
 
   const collOptions = useMemo(() => [...new Set(nodes.map((n) => n.collection))].map((c) => ({ value: c, label: c })), [nodes]);
 
@@ -109,6 +111,22 @@ function Dag({ nodes, edges }: { nodes: any[]; edges: any[] }) {
   }, [vNodes]);
 
   const activeNode = active ? vNodes.find((n) => n.id === active) : null;
+
+  // Focus from the rule table: clear the filter (so the node is visible), pin it, and remember to scroll to it.
+  useEffect(() => {
+    if (!focus?.id) return;
+    setFilter([]);
+    setPinned(focus.id);
+    pendingScroll.current = focus.id;
+  }, [focus?.n]);
+  // Scroll runs once the (possibly re-filtered) layout is ready, so pos.get() sees the node.
+  useEffect(() => {
+    const id = pendingScroll.current;
+    if (!id || !layout || !scrollRef.current) return;
+    const p = layout.pos.get(id);
+    if (p) { scrollRef.current.scrollTo({ top: Math.max(0, p.y - 140), behavior: 'smooth' }); pendingScroll.current = null; }
+  }, [layout, pinned]);
+
   const nodeSkin = (id: string, enabled: boolean) => {
     if (!hi) return { fill: enabled === false ? 'var(--colorFillTertiary,#f5f5f5)' : 'var(--colorBgContainer,#fff)', stroke: enabled === false ? 'var(--colorBorderSecondary,#e0e0e0)' : 'var(--colorPrimaryBorder,#c7d2fe)', sw: 1.4, op: 1 };
     if (id === active) return { fill: 'var(--colorPrimaryBg,#e6f0ff)', stroke: 'var(--colorPrimary,#2563eb)', sw: 2.6, op: 1 };
@@ -131,14 +149,19 @@ function Dag({ nodes, edges }: { nodes: any[]; edges: any[] }) {
         </Space>
       </div>
 
-      <div style={{ minHeight: 24, marginBottom: 6, fontSize: 12 }}>
+      {/* FIXED height + own scroll: a long formula must NOT grow this box, else the SVG below shifts down,
+          the cursor lands on a different node, hover flips, and it flickers. Constant height = stable layout. */}
+      <div style={{ height: 56, overflow: 'auto', marginBottom: 6, fontSize: 12 }}>
         {activeNode ? (
-          <Space size={12} wrap>
-            <span><b>{activeNode.collection}.{activeNode.field}</b> = <code>{activeNode.formula}</code></span>
-            <span style={{ color: 'var(--colorInfo,#1677ff)' }}><ArrowUpOutlined /> {up.size} {t('nguồn')}</span>
-            <span style={{ color: 'var(--colorWarning,#d48806)' }}><ArrowDownOutlined /> {down.size} {t('bị ảnh hưởng')}</span>
-            <span style={{ color: 'var(--colorTextTertiary)' }}>{pinned ? <><PushpinOutlined /> {t('đã ghim — bấm lại để bỏ')}</> : t('(bấm để ghim)')}</span>
-          </Space>
+          <>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <b>{activeNode.collection}.{activeNode.field}</b>
+              <span style={{ color: 'var(--colorInfo,#1677ff)' }}><ArrowUpOutlined /> {up.size} {t('nguồn')}</span>
+              <span style={{ color: 'var(--colorWarning,#d48806)' }}><ArrowDownOutlined /> {down.size} {t('bị ảnh hưởng')}</span>
+              <span style={{ color: 'var(--colorTextTertiary)' }}>{pinned ? <><PushpinOutlined /> {t('đã ghim — bấm lại để bỏ')}</> : t('(bấm để ghim)')}</span>
+            </div>
+            <code style={{ fontSize: 11.5, color: 'var(--colorTextSecondary)', wordBreak: 'break-word' }}>{activeNode.formula}</code>
+          </>
         ) : (
           <span style={{ color: 'var(--colorTextTertiary)' }}>{t('Rê chuột (hoặc bấm để ghim) lên một ô → nổi bật')} <b style={{ color: 'var(--colorInfo,#1677ff)' }}>{t('toàn bộ nguồn (upstream)')}</b> & <b style={{ color: 'var(--colorWarning,#d48806)' }}>{t('toàn bộ chỗ bị ảnh hưởng (downstream)')}</b> — {t('đệ quy.')}</span>
         )}
@@ -147,7 +170,7 @@ function Dag({ nodes, edges }: { nodes: any[]; edges: any[] }) {
       {!layout ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('Chưa có công thức nào')} />
       ) : (
-        <div style={{ overflow: 'auto', maxHeight: 420, border: '1px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8, background: 'var(--colorBgLayout, #fafafa)' }} onClick={() => setPinned(null)}>
+        <div ref={scrollRef} style={{ overflow: 'auto', maxHeight: 420, border: '1px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8, background: 'var(--colorBgLayout, #fafafa)' }} onClick={() => setPinned(null)}>
           <svg width={Math.max(layout.width, 320)} height={Math.max(layout.height, 80)}>
             <defs>
               <marker id="cf-arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" style={{ fill: 'var(--colorTextTertiary, #94a3b8)' }} /></marker>
@@ -182,6 +205,13 @@ function Dag({ nodes, edges }: { nodes: any[]; edges: any[] }) {
 export function ComputedRulesManager({ api }: { api: any }) {
   const [rows, setRows] = useState<Rule[]>([]);
   const [graph, setGraph] = useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
+  // A focus request for the DAG (bumped `.n` re-triggers even for the same node). Set by the table's ◎ button.
+  const [focusReq, setFocusReq] = useState<{ id: string; n: number }>({ id: '', n: 0 });
+  const focusInDag = (r: Rule) => {
+    const n = graph.nodes.find((x: any) => x.collection === r.collectionName && x.field === r.targetField);
+    if (!n) { message.info(t('Cột này chưa có trong sơ đồ (lưu công thức trước).')); return; }
+    setFocusReq((p) => ({ id: n.id, n: p.n + 1 }));
+  };
   const [collOptions, setCollOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<Rule | null>(null);
@@ -339,8 +369,9 @@ export function ComputedRulesManager({ api }: { api: any }) {
     { title: t('Phụ thuộc'), width: 220, render: (_: any, r: Rule) => depTags(r) },
     { title: t('Bật'), dataIndex: 'enabled', width: 56, render: (_: any, r: Rule) => <Switch size="small" checked={r.enabled !== false} onChange={(c) => toggle(r, c)} /> },
     {
-      title: '', width: 190, render: (_: any, r: Rule) => (
+      title: '', width: 220, render: (_: any, r: Rule) => (
         <Space size={4}>
+          <Tooltip title={t('Xem trong sơ đồ')}><Button size="small" icon={<AimOutlined />} onClick={() => focusInDag(r)} /></Tooltip>
           <Button size="small" onClick={() => setModal({ ...r })}>{t('Sửa')}</Button>
           <Tooltip title={t('Tính lại toàn bộ dòng của bảng này')}><Button size="small" onClick={() => recompute(r)}>{t('Tính lại')}</Button></Tooltip>
           <Popconfirm title={t('Xoá công thức này?')} okText={t('Xoá')} cancelText={t('Huỷ')} onConfirm={() => del(r)}><Button size="small" danger>{t('Xoá')}</Button></Popconfirm>
@@ -435,7 +466,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
           <PartitionOutlined /> {t('Sơ đồ phụ thuộc (DAG)')}
           <Hint tip={t('Node = cột computed, xếp theo tầng topo (nguồn trái → kết quả phải). Mũi tên: nguồn → cột được tính. Rê chuột lên node để làm nổi bật chuỗi & xem công thức. Lọc theo bảng khi nhiều cột.')} />
         </div>
-        <div style={{ padding: 12 }}><Dag nodes={graph.nodes} edges={graph.edges} /></div>
+        <div style={{ padding: 12 }}><Dag nodes={graph.nodes} edges={graph.edges} focus={focusReq} /></div>
       </SettingCard>
 
       <Space style={{ marginBottom: 8 }}>
