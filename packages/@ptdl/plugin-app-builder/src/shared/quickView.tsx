@@ -562,6 +562,16 @@ function changeStatusAction(engine: any, statusFieldName: string, asRowLink: boo
   };
 }
 
+/** Delete action (DeleteActionModel — NocoBase's built-in record delete: a danger button with a confirm
+ *  dialog, record-scene like View/Edit so it reads ctx.record wherever it's placed). Emitted into BOTH the
+ *  row actions AND the View popup's Details action bar, so a record can be removed from either place. */
+function deleteAction(asRowLink: boolean): any {
+  return {
+    use: 'DeleteActionModel',
+    stepParams: asRowLink ? rowActionBtn : { buttonSettings: { general: { type: 'default' } } },
+  };
+}
+
 /** The Table block: data columns (`cols`) + a row-actions column (View/Edit[/Change-status]) + toolbar
  *  actions (Add/Refresh). The View/Edit/Add popups render `popupCols` (defaults to `cols`). When the
  *  collection has a statusFlow field (`statusFieldName`), a Change-status action joins the row actions AND
@@ -573,7 +583,7 @@ function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[], popupCols: 
   const labels = { view: 'View', edit: 'Edit', add: 'Add new' };
   const rowStatusAction = statusFieldName ? changeStatusAction(engine, statusFieldName, true) : undefined;
   const viewStatusAction = statusFieldName ? changeStatusAction(engine, statusFieldName, false) : undefined;
-  const viewActions = [editAction(ds, coll, popupCols, false, labels.edit), ...(viewStatusAction ? [viewStatusAction] : [])];
+  const viewActions = [editAction(ds, coll, popupCols, false, labels.edit), ...(viewStatusAction ? [viewStatusAction] : []), deleteAction(false)];
   return {
     use: p.blockUse || 'TableBlockModel',
     stepParams: resInit(ds, coll),
@@ -587,6 +597,7 @@ function buildTableBlock(p: CreateQuickPageParams, cols: BuiltCol[], popupCols: 
               { use: 'ViewActionModel', stepParams: rowActionBtn, subModels: { page: popupShell(labels.view, detailsBlock(ds, coll, popupCols, viewActions)) } },
               editAction(ds, coll, popupCols, true, labels.edit),
               ...(rowStatusAction ? [rowStatusAction] : []),
+              deleteAction(true),
             ],
           },
         },

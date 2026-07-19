@@ -113,15 +113,25 @@ function buildErd(spec: AppSpec) {
   });
   const byName: Record<string, (typeof nodes)[number]> = {};
   nodes.forEach((n) => (byName[n.name] = n));
-  const edges: { x1: number; y1: number; x2: number; y2: number; mx: number; my: number; label: string }[] = [];
+  // ONE edge per collection PAIR (a m2o + its reverse o2m are the same link — don't draw both). Merge to a
+  // single cardinality label: N–N (any m2m) > 1–N (m2o/o2m) > 1–1 (o2o). Rendered as a two-headed arrow.
+  const pairs = new Map<string, { a: string; b: string; card: string }>();
+  const rank: Record<string, number> = { '1–1': 0, '1–N': 1, 'N–N': 2 };
   colls.forEach((c) => (c.relations || []).forEach((r) => {
-    const a = byName[c.name], b = byName[r.target];
-    if (!a || !b || a === b) return;
+    if (!byName[c.name] || !byName[r.target] || c.name === r.target) return;
+    const key = [c.name, r.target].sort().join('|');
+    const card = r.type === 'm2m' ? 'N–N' : (r.type === 'o2o' ? '1–1' : '1–N');
+    const prev = pairs.get(key);
+    if (!prev || rank[card] > rank[prev.card]) pairs.set(key, { a: c.name, b: r.target, card });
+  }));
+  const edges: { x1: number; y1: number; x2: number; y2: number; mx: number; my: number; label: string }[] = [];
+  pairs.forEach(({ a: an, b: bn, card }) => {
+    const a = byName[an], b = byName[bn];
     const ac = [a.x + a.w / 2, a.y + a.h / 2], bc = [b.x + b.w / 2, b.y + b.h / 2];
     const [x1, y1] = borderPoint(ac[0], ac[1], a.w / 2, a.h / 2, bc[0], bc[1]);
     const [x2, y2] = borderPoint(bc[0], bc[1], b.w / 2, b.h / 2, ac[0], ac[1]);
-    edges.push({ x1, y1, x2, y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, label: TYPE_LABEL[r.type] ? r.type : r.type });
-  }));
+    edges.push({ x1, y1, x2, y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, label: card });
+  });
   const rows = Math.ceil(colls.length / cols);
   return { nodes, edges, width: pad * 2 + cols * W + (cols - 1) * gapX, height: pad * 2 + rows * H + (rows - 1) * gapY };
 }
@@ -225,10 +235,13 @@ const Erd: React.FC<{ spec: AppSpec; token: any }> = ({ spec, token }) => {
         <marker id="ptdl-erd-ar" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 z" fill={stroke} />
         </marker>
+        <marker id="ptdl-erd-ar-s" markerWidth="8" markerHeight="8" refX="1.5" refY="4" orient="auto">
+          <path d="M8,0 L0,4 L8,8 z" fill={stroke} />
+        </marker>
       </defs>
       {edges.map((e, i) => (
         <g key={i}>
-          <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke={stroke} strokeWidth={1.3} markerEnd="url(#ptdl-erd-ar)" opacity={0.75} />
+          <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke={stroke} strokeWidth={1.3} markerStart="url(#ptdl-erd-ar-s)" markerEnd="url(#ptdl-erd-ar)" opacity={0.75} />
           <text x={e.mx} y={e.my - 3} fill={token.colorTextTertiary} fontSize={10} textAnchor="middle">{e.label}</text>
         </g>
       ))}

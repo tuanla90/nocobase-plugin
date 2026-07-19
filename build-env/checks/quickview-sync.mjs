@@ -23,7 +23,7 @@ const IC = path.join(ROOT, 'packages/@ptdl/plugin-instant-create-page/src/shared
 // (a) Helpers that MUST be byte-identical (modulo comments/whitespace) in both files — the small, shared
 // action/render pieces that carry no plugin-specific difference.
 const SYNC_LIST = [
-  'editAction', 'changeStatusAction', 'findStatusFlowField', 'popupShell',
+  'editAction', 'changeStatusAction', 'deleteAction', 'findStatusFlowField', 'popupShell',
   'resInit', 'fieldStep', 'colTitleStep', 'formLabelStep', 'detailLabelStep', 'modelClassFor',
 ];
 // (b) Feature markers that MUST appear in BOTH files. The bigger functions (buildTableBlock / detailsBlock
@@ -32,8 +32,8 @@ const SYNC_LIST = [
 // FEATURES are present in both, so a feature can't be silently DROPPED from one (which is exactly how the
 // row-Edit / Change-status buttons and the relation click-to-Details popup once diverged).
 const MARKERS = [
-  'ViewActionModel', 'EditActionModel', 'TableActionsColumnModel', 'AddNewActionModel',
-  'StatusTransitionActionModel', 'changeStatusAction', 'viewActions', 'relPopup',
+  'ViewActionModel', 'EditActionModel', 'DeleteActionModel', 'TableActionsColumnModel', 'AddNewActionModel',
+  'StatusTransitionActionModel', 'changeStatusAction', 'deleteAction', 'viewActions', 'relPopup',
   'relationPopupColumns', 'findStatusFlowField',
 ];
 
