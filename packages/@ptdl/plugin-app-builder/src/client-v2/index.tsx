@@ -155,9 +155,10 @@ const ChartAiButton: React.FC<{
       </div>
     </div>
   );
+  // bottom-right corner — the native block toolbar (drag / linkage / ⚙ menu) sits TOP-right, so we sit opposite it
   return (
-    <div className={'ptdl-chart-ai-btn' + (open ? ' ptdl-open' : '')} style={{ position: 'absolute', top: 6, right: 6, zIndex: 20 }}>
-      <Popover open={open} onOpenChange={onOpenChange} trigger="click" placement="bottomRight" content={content}>
+    <div className={'ptdl-chart-ai-btn' + (open ? ' ptdl-open' : '')} style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 20 }}>
+      <Popover open={open} onOpenChange={onOpenChange} trigger="click" placement="topRight" content={content}>
         <Button size="small" type="primary" ghost
           icon={<LIcon type="lucide-sparkles" fallback={<span>✨</span>} size={14} />}
           style={{ background: 'rgba(255,255,255,0.94)', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
