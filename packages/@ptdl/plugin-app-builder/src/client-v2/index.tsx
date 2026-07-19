@@ -13,6 +13,7 @@ import { Button, Input, message, Modal, Segmented, Select, Space, Tabs, theme, T
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
   FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
+  EyeOutlined, PlayCircleOutlined, DeleteOutlined, RocketOutlined,
 } from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
@@ -303,6 +304,19 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     // box below so the user reviews before Create.
     const onAiGenerate = async () => {
       if (!desc.trim()) { message.warning(t('Describe your app first')); return; }
+      // "Generate" REPLACES the editor with a brand-new app spec. If the editor already holds a real spec
+      // (not the untouched demo), confirm first — accidentally regenerating instead of refining wipes it.
+      let hasSpec = false;
+      try { const cur = JSON.parse(text); hasSpec = Array.isArray(cur?.collections) && cur.collections.length > 0 && text !== JSON.stringify(SAMPLE_BAN_HANG, null, 2); } catch { /* not valid JSON → let it regenerate */ }
+      if (hasSpec) {
+        const go = await new Promise<boolean>((resolve) => Modal.confirm({
+          title: t('Replace the current spec?'),
+          content: t('“Generate” builds a NEW app and REPLACES the spec in the editor. To ADD to the current spec instead, Cancel and use “Refine spec (AI)” at the bottom (e.g. “add a teachers table”).'),
+          okText: t('Generate new'), cancelText: t('Cancel'), okButtonProps: { danger: true },
+          onOk: () => resolve(true), onCancel: () => resolve(false),
+        }));
+        if (!go) return;
+      }
       setAiBusy(true);
       try {
         const res = await app.apiClient
@@ -417,8 +431,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             style={{ margin: '6px 0 8px' }}
           />
           <Space style={{ marginBottom: 8 }} wrap>
-            <Button type="primary" loading={aiBusy} onClick={onAiGenerate}>✨ {t('Generate with AI')}</Button>
-            <Button loading={planBusy} onClick={onPlan}>🔧 {t('Build/modify step-by-step')}</Button>
+            <Button type="primary" loading={aiBusy} onClick={onAiGenerate} icon={<LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} />}>{t('Generate with AI')}</Button>
+            <Button loading={planBusy} onClick={onPlan} icon={<LIcon type="lucide-list-checks" fallback={<ToolOutlined />} />}>{t('Build/modify step-by-step')}</Button>
           </Space>
           <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
             {t('“Generate” fills the App-Spec below (a new app). “Step-by-step” lets AI plan tool calls — it can also MODIFY an existing app (e.g. add a status field / a page).')}
@@ -427,7 +441,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             <div style={{ marginBottom: 14, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 6, padding: 10 }}>
               <Space style={{ marginBottom: 6 }} wrap>
                 <Typography.Text strong>{t('Plan')} ({plan.length}):</Typography.Text>
-                <Button size="small" type="primary" loading={runBusy} onClick={onRunPlan}>▶ {t('Run plan')}</Button>
+                <Button type="primary" loading={runBusy} onClick={onRunPlan} icon={<LIcon type="lucide-play" fallback={<PlayCircleOutlined />} />}>{t('Run plan')}</Button>
               </Space>
               <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, maxHeight: 170, overflow: 'auto' }}>
                 {plan.map((s, i) => {
@@ -448,7 +462,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
               size="small"
               value={specView}
               onChange={(v) => setSpecView(v as 'preview' | 'json')}
-              options={[{ label: `👁 ${t('Preview')}`, value: 'preview' }, { label: 'JSON', value: 'json' }]}
+              options={[{ label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><LIcon type="lucide-eye" fallback={<EyeOutlined />} size={12} />{t('Preview')}</span>, value: 'preview' }, { label: 'JSON', value: 'json' }]}
             />
           </Space>
           {specView === 'json' ? (
@@ -472,14 +486,14 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
               onPressEnter={onRefine}
               disabled={refineBusy}
             />
-            <Button loading={refineBusy} onClick={onRefine}>✏️ {t('Refine spec (AI)')}</Button>
+            <Button loading={refineBusy} onClick={onRefine} icon={<LIcon type="lucide-wand-sparkles" fallback={<EditOutlined />} />}>{t('Refine spec (AI)')}</Button>
           </Space.Compact>
           <Space style={{ marginTop: 12 }} wrap>
             <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))}>{t('Load demo')}</Button>
             <Button onClick={onValidate}>{t('Validate')}</Button>
-            <Button type="primary" loading={busy} onClick={onBuild}>{t('Create app')}</Button>
+            <Button type="primary" loading={busy} onClick={onBuild} icon={<LIcon type="lucide-rocket" fallback={<RocketOutlined />} />}>{t('Create app')}</Button>
             {lastArtifacts && (
-              <Button danger loading={delBusy} onClick={onDeleteApp}>🗑 {t('Delete the app I just built')}</Button>
+              <Button danger loading={delBusy} onClick={onDeleteApp} icon={<LIcon type="lucide-trash" fallback={<DeleteOutlined />} />}>{t('Delete the app I just built')}</Button>
             )}
           </Space>
           {result && (

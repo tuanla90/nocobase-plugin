@@ -83,5 +83,9 @@
   "Describe the widget to add": "Describe the widget to add",
   "AI could not design a widget": "AI could not design a widget",
   "Could not add the widget": "Could not add the widget",
-  "Widget added": "Widget added"
+  "Widget added": "Widget added",
+  "Replace the current spec?": "Replace the current spec?",
+  "“Generate” builds a NEW app and REPLACES the spec in the editor. To ADD to the current spec instead, Cancel and use “Refine spec (AI)” at the bottom (e.g. “add a teachers table”).": "“Generate” builds a NEW app and REPLACES the spec in the editor. To ADD to the current spec instead, Cancel and use “Refine spec (AI)” at the bottom (e.g. “add a teachers table”).",
+  "Generate new": "Generate new",
+  "Cancel": "Cancel"
 }

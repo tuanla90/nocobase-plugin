@@ -83,5 +83,9 @@
   "Describe the widget to add": "Hãy mô tả widget cần thêm",
   "AI could not design a widget": "AI chưa thiết kế được widget",
   "Could not add the widget": "Chưa chèn được widget",
-  "Widget added": "Đã thêm widget"
+  "Widget added": "Đã thêm widget",
+  "Replace the current spec?": "Thay toàn bộ spec hiện tại?",
+  "“Generate” builds a NEW app and REPLACES the spec in the editor. To ADD to the current spec instead, Cancel and use “Refine spec (AI)” at the bottom (e.g. “add a teachers table”).": "“Sinh bằng AI” dựng app MỚI và THAY toàn bộ spec trong ô soạn. Muốn THÊM vào spec hiện tại thì bấm Huỷ rồi dùng “Refine spec (AI)” ở dưới (vd “thêm bảng giảng viên”).",
+  "Generate new": "Sinh mới",
+  "Cancel": "Huỷ"
 }

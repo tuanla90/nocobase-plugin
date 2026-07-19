@@ -72,5 +72,23 @@ export function ensureLauncherDock(): HTMLElement {
   dock.appendChild(handle);
   document.body.appendChild(dock);
   applyCollapsed();
+
+  // Match the handle to the ACTUAL rendered primary-button colour (the CSS-var read above is often blank in
+  // NocoBase's theme, leaving a mismatched fallback). Buttons portal in slightly after; watch for the first
+  // `.ant-btn-primary` and copy its computed background onto the handle, once.
+  try {
+    const sync = () => {
+      const btn = items.querySelector('.ant-btn-primary') as HTMLElement | null;
+      if (!btn) return false;
+      const bg = getComputedStyle(btn).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') { handle.style.background = bg; return true; }
+      return false;
+    };
+    if (!sync()) {
+      const mo = new MutationObserver(() => { if (sync()) mo.disconnect(); });
+      mo.observe(items, { childList: true, subtree: true });
+      setTimeout(() => mo.disconnect(), 8000);
+    }
+  } catch { /* keep the fallback colour */ }
   return items;
 }
