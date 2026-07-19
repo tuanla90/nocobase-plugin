@@ -62,6 +62,9 @@ export interface AiCodegenButtonProps {
   onInsert: (code: string) => void;
   /** Validate the generated code by rendering/compiling it; return { ok, error }. Optional but recommended. */
   validate?: (code: string) => AiValidateResult | Promise<AiValidateResult>;
+  /** Render a LIVE preview of the generated code → `{ html }` (shown in a box) or `{ error }`. Optional.
+   *  Recomputed whenever the code changes (incl. hand-edits), so the user sees the real output before Chèn. */
+  preview?: (code: string) => { html?: string; error?: string } | Promise<{ html?: string; error?: string }>;
   /** Build the codegen context lazily (columns / sampleRows / helpers / tokens). */
   getContext?: () => any;
   /** Existing code to FIX instead of writing fresh. */
@@ -85,13 +88,32 @@ export function AiCodegenButton(props: AiCodegenButtonProps): React.ReactElement
   const [explain, setExplain] = React.useState('');
   const [status, setStatus] = React.useState<{ ok: boolean; error?: string; tries: number } | null>(null);
   const [err, setErr] = React.useState('');
+  const [previewOut, setPreviewOut] = React.useState<{ html?: string; error?: string } | null>(null);
 
   const reset = () => {
     setCode('');
     setExplain('');
     setStatus(null);
     setErr('');
+    setPreviewOut(null);
   };
+
+  // Live preview: recompute whenever the (possibly hand-edited) code changes. Guarded — a throwing
+  // preview fn shows as an error box, never crashes the modal.
+  const previewFn = props.preview;
+  React.useEffect(() => {
+    let alive = true;
+    if (!previewFn || !code.trim()) {
+      setPreviewOut(null);
+      return;
+    }
+    Promise.resolve()
+      .then(() => previewFn(code))
+      .then((p) => { if (alive) setPreviewOut(p || null); })
+      .catch((e: any) => { if (alive) setPreviewOut({ error: e?.message || String(e) }); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
 
   const run = async () => {
     if (!instruction.trim() && !props.getCurrent?.()) {
@@ -213,6 +235,40 @@ export function AiCodegenButton(props: AiCodegenButtonProps): React.ReactElement
                 <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
                   {explain}
                 </Typography.Paragraph>
+              ) : null}
+              {props.preview ? (
+                <div>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {st('Xem trước')}
+                  </Typography.Text>
+                  <div
+                    style={{
+                      border: '1px solid #efefef',
+                      borderRadius: 8,
+                      padding: 12,
+                      marginTop: 4,
+                      background: '#fafafa',
+                      minHeight: 56,
+                      maxHeight: 280,
+                      overflow: 'auto',
+                    }}
+                  >
+                    {previewOut?.error ? (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message={st('Lỗi khi chạy')}
+                        description={<Typography.Text code>{String(previewOut.error).slice(0, 300)}</Typography.Text>}
+                      />
+                    ) : previewOut?.html ? (
+                      <div dangerouslySetInnerHTML={{ __html: previewOut.html }} />
+                    ) : (
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        …
+                      </Typography.Text>
+                    )}
+                  </div>
+                </div>
               ) : null}
               <Input.TextArea
                 value={code}

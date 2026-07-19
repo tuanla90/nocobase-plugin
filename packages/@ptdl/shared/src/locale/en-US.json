@@ -49,5 +49,7 @@
   "AI không phản hồi": "AI did not respond",
   "Thiếu bảng hoặc kết nối API": "Missing collection or API connection",
   "AI không trả về công thức": "AI returned no formula",
-  "chạy thử OK": "test passed"
+  "chạy thử OK": "test passed",
+  "Xem trước": "Preview",
+  "Lỗi khi chạy": "Runtime error"
 }

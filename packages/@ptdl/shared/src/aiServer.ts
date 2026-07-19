@@ -125,7 +125,7 @@ const LANG_RULES: Record<CodegenLanguage, string> = {
     'Nếu cần logic, giữ tối giản. KHÔNG markdown, KHÔNG ```, chỉ HTML.',
   ].join(' '),
   js: [
-    'Bạn viết THÂN một đoạn JavaScript. Các biến `data` (object), `rows` (mảng), `helpers`, `scope` có sẵn.',
+    'Bạn viết THÂN một đoạn JavaScript. Các biến `data`, `rows`, `helpers`, `scope` có sẵn — kiểu dữ liệu + danh sách helper khả dụng xem phần mô tả bên dưới; CHỈ dùng đúng helper được liệt kê (đừng bịa tên).',
     'Chỉ code, KHÔNG markdown, KHÔNG ```.',
   ].join(' '),
   css: 'Bạn viết CSS thuần. KHÔNG markdown, KHÔNG ```.',
