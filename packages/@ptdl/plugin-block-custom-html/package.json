@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Khối: HTML tùy biến",
   "displayName.zh-CN": "区块：自定义 HTML",
   "description": "A block that runs the Chart block’s data query (Builder / SQL / preview / filter / refresh) and renders the result with your own HTML + CSS + JS — scorecards, KPIs, top lists, cards. Ships preset templates and helper functions (format, escape, icons).",
-  "version": "0.12.8",
+  "version": "0.12.9",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "peerDependencies": {
