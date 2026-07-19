@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hướng dẫn Plugin @ptdl · @ptdl Plugin Guides</title>
-<meta name="description" content="Hướng dẫn sử dụng 30 plugin @ptdl cho NocoBase — User guides for 30 @ptdl NocoBase plugins.">
+<meta name="description" content="Hướng dẫn sử dụng 32 plugin @ptdl cho NocoBase — User guides for 32 @ptdl NocoBase plugins.">
 <style>
 :root{
   --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --border:#d1d9e0; --card:#f6f8fa;
@@ -76,7 +76,7 @@ a:hover{text-decoration:underline}
 <a id="top"></a>
 <div class="layout">
   <aside class="side">
-    <div class="brand">📚 <span class="lang lang-vi">Hướng dẫn Plugin @ptdl</span><span class="lang lang-en" hidden>@ptdl Plugin Guides</span><small>30 plugin · NocoBase</small></div>
+    <div class="brand">📚 <span class="lang lang-vi">Hướng dẫn Plugin @ptdl</span><span class="lang lang-en" hidden>@ptdl Plugin Guides</span><small>32 plugin · NocoBase</small></div>
     <div class="langtoggle">
       <button data-lang="vi" class="active">Tiếng Việt</button>
       <button data-lang="en">English</button>
@@ -157,6 +157,12 @@ a:hover{text-decoration:underline}
     <div class="nav-group">
       <div class="nav-cat"><span class="lang lang-vi">Đăng nhập</span><span class="lang lang-en" hidden>Sign-in</span></div>
       <a class="nav-link" href="#login-lite" data-text="trang đăng nhập tùy biến custom login tùy biến trang đăng nhập: nền (gradient dựng sẵn, ảnh, html hoặc nhúng trang web), bố cục form (panel bên hoặc thẻ nổi) và vị trí, chủ đề màu sáng/tối/theo hệ thống, logo, icon ô nhập, chân trang markdown, và trang đích sau đăng nhập. có xem trước; cả hai client. theme the sign-in page: background (gradient presets, image, html or embedded webpage), form layout (side panel or floating card) and position, color/light/dark/system themes, logo, input icons, markdown footer, and a post-login landing page. live preview; both clients."><span class="lang lang-vi">Trang đăng nhập tùy biến</span><span class="lang lang-en" hidden>Custom Login</span></a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-cat"><span class="lang lang-vi">nocobase</span><span class="lang lang-en" hidden>nocobase</span></div>
+      <a class="nav-link" href="#nb-cloner" data-text="nb cloner (xuất / nhập ứng dụng) nb cloner (app export / import) nhân bản toàn bộ một app nocobase tự xây giữa các bản cài. xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uischemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi upsert sang một app cùng phiên bản mà không xoá dữ liệu đang có. phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. đích postgresql. clone a whole self-built nocobase app between installs. exports the schema (collections + fields + categories), the ui (uischemas + flow-engine models + desktop/mobile menus + block templates), roles &amp; permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then upsert-imports it into another same-version app without deleting existing data. classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. postgresql target."><span class="lang lang-vi">NB Cloner (Xuất / nhập ứng dụng)</span><span class="lang lang-en" hidden>NB Cloner (App export / import)</span></a>
+      <a class="nav-link" href="#inline-field" data-text="thêm cột tại chỗ inline field thêm cột mới ngay khi đang sửa bảng — không phải vào collection để tạo field. mục ‘➕ thêm cột mới…’ trong menu ⚙ của khối bảng mở hộp thoại khai báo field (văn bản, số, lựa chọn, ngày, có/không…); field được tạo trên collection, cột vật lý được migrate, và cột hiện luôn trong bảng đang sửa. client /v/. add a new column while editing a table view — no trip to the collection manager. a ‘➕ new column…’ item in a table block’s settings menu opens a dialog to define a scalar field (text, number, choice, date, checkbox, …); it is created on the collection, the physical column is migrated, and the column is dropped straight into the block being edited. modern /v/ client."><span class="lang lang-vi">Thêm cột tại chỗ</span><span class="lang lang-en" hidden>Inline Field</span></a>
     </div>
         <div class="nav-empty" id="empty"><span class="lang lang-vi">Không tìm thấy plugin phù hợp.</span><span class="lang lang-en" hidden>No matching plugin found.</span></div>
       </div>
@@ -1000,7 +1006,7 @@ a:hover{text-decoration:underline}
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Công thức &amp; Trường tự tính</span><span class="lang lang-en" hidden>Formula &amp; Computed Fields</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Trường / Field</span><span class="lang lang-en" hidden>Fields</span></span>
-        <span class="chip">v0.1.63</span>
+        <span class="chip">v0.1.67</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -2329,7 +2335,7 @@ The client only filters the dropdown for tidiness (UX); it is not the protection
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Thiết bị hiện trường</span><span class="lang lang-en" hidden>Device Kit</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Trường / Field</span><span class="lang lang-en" hidden>Fields</span></span>
-        <span class="chip">v0.8.0</span>
+        <span class="chip">v0.8.1</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -2964,7 +2970,7 @@ no code, no server restart.
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Bảng con Pro</span><span class="lang lang-en" hidden>Sub-table Pro</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.2.7</span>
+        <span class="chip">v0.2.8</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -3349,7 +3355,7 @@ bridge?.publish('ch1', { action: 'add', record: ctx.record });
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Cây lọc / Thanh lọc</span><span class="lang lang-en" hidden>Filter Tree / Bar</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.3.5</span>
+        <span class="chip">v0.3.6</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -3608,7 +3614,7 @@ blocks on the same page. Two skins on one engine: <strong>Filter tree</strong> (
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Chế độ bảng tính</span><span class="lang lang-en" hidden>Spreadsheet View</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.2.2</span>
+        <span class="chip">v0.2.3</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -3969,7 +3975,7 @@ save per row. Add <strong>virtual formula columns</strong>, <strong>multi-level 
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Định dạng có điều kiện</span><span class="lang lang-en" hidden>Conditional Formatting</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.2.5</span>
+        <span class="chip">v0.2.6</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -4224,7 +4230,7 @@ In the dialog, click <strong>“Add rule”</strong>. Each rule uses one of 3 ty
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Khối bố cục (Tabs / Collapse)</span><span class="lang lang-en" hidden>Layout Containers (Tabs / Collapse)</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.4.1</span>
+        <span class="chip">v0.4.2</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -4608,7 +4614,7 @@ Text, with an <strong>app-wide default per theme</strong>.</p>
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Khối: Bảng nâng cao</span><span class="lang lang-en" hidden>Block: Enhanced Table</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v2.1.0-beta.16</span>
+        <span class="chip">v2.1.0-beta.17</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -4976,7 +4982,7 @@ configured right on the block, <strong>no code, no server restart</strong>.</p>
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Khối: HTML tùy biến</span><span class="lang lang-en" hidden>Block: Custom HTML</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.12.3</span>
+        <span class="chip">v0.12.9</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -4991,6 +4997,7 @@ chỉ số KPI, bảng xếp hạng, thẻ card… Có sẵn <strong>mẫu bấm
 <li>Khi thêm, khối <strong>hỏi nguồn dữ liệu (bảng) y như thêm biểu đồ</strong>, rồi bạn cấu hình truy vấn theo cách quen thuộc của Chart: <strong>Builder / SQL</strong>, <strong>xem trước</strong>, <strong>lọc</strong>, <strong>làm mới (Run query)</strong>.</li>
 <li><strong>Không thêm menu, không thêm trang Settings</strong> nào. Mọi thứ chỉnh <strong>ngay trên khối</strong>.</li>
 <li>Trong ⚙ của khối có thêm mục cấu hình <strong>“Custom HTML”</strong>: mở ra một <strong>cửa sổ soạn code</strong> với <strong>6 mẫu dựng sẵn</strong>, <strong>ô xem trước trực tiếp</strong>, <strong>bộ chọn cột</strong>, nút <strong>“AI viết hộ”</strong> và <strong>danh sách hàm trợ giúp</strong>.</li>
+<li><strong>Tên khối dễ đọc</strong> — trong ⚙ nay có thêm mục <strong>“Tiêu đề block”</strong>. Khối Biểu đồ và Custom HTML không có header, nên hộp thoại <strong>Filter form → “Connect fields”</strong> của NocoBase trước đây liệt kê chúng bằng ID khó hiểu như <em>“Custom HTML #b287”</em>. Giờ mỗi khối <strong>báo cáo một tiêu đề có nghĩa</strong>: là chuỗi bạn gõ ở <strong>Tiêu đề block</strong>, hoặc — nếu để trống — <strong>tự suy ra</strong> từ chính cấu hình khối (tiêu đề biểu đồ, hoặc measure/dimension). Nhờ vậy dialog nối trường hiện <em>“Doanh thu #b287”</em> thay vì ID. (Cũng cải thiện mọi nơi khác có hiển thị tiêu đề khối.)</li>
 <li>⚠️ Khối này cần bật sẵn plugin <strong>Data Visualization</strong> (khối Biểu đồ). Nếu chưa bật, khối <strong>sẽ không xuất hiện</strong> trong bảng chọn.</li>
 </ul>
 <h3>Cấu hình ở đâu?</h3>
@@ -5187,6 +5194,7 @@ KPIs, top lists, cards. Ships <strong>click-to-run templates</strong> and a <str
 <li>When you add it, the block <strong>asks for a data source (table) just like adding a chart</strong>, then you configure the query the familiar Chart way: <strong>Builder / SQL</strong>, <strong>preview</strong>, <strong>filter</strong>, <strong>refresh (Run query)</strong>.</li>
 <li><strong>No new menu, no new Settings page.</strong> Everything is edited <strong>right on the block</strong>.</li>
 <li>The block’s ⚙ gains a <strong>“Custom HTML”</strong> config item: it opens a <strong>code editor</strong> with <strong>6 ready-made templates</strong>, a <strong>live preview</strong>, a <strong>column picker</strong>, a <strong>“Let AI write it”</strong> button, and a <strong>helper functions list</strong>.</li>
+<li><strong>Readable block titles</strong> — the ⚙ now also has a <strong>“Block title”</strong> item. Chart and Custom-HTML blocks are headerless, so NocoBase’s <strong>Filter form → “Connect fields”</strong> dialog used to list them as unhelpful IDs like <em>“Custom HTML #b287”</em>. Now each block reports a <strong>meaningful title</strong>: whatever you type in <strong>Block title</strong>, or — if left empty — an <strong>auto-derived</strong> name from its own config (the chart’s title, or its measure/dimension). So the connect-fields picker shows <em>“Doanh thu #b287”</em> instead. (Also improves any place the block’s title is shown.)</li>
 <li>⚠️ This block requires the <strong>Data Visualization</strong> plugin (the Chart block) to be enabled. If it isn’t, the block <strong>won’t appear</strong> in the picker.</li>
 </ul>
 <h3>Where to configure</h3>
@@ -5377,7 +5385,7 @@ return `
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Panel bên</span><span class="lang lang-en" hidden>Detail Panel</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Khối (Block)</span><span class="lang lang-en" hidden>Blocks</span></span>
-        <span class="chip">v0.1.0</span>
+        <span class="chip">v0.1.1</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -5636,7 +5644,7 @@ bash recipes/add-markers.sh storage/tar/@ptdl/plugin-detail-panel-0.1.0.tgz
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Dựng app từ mô tả</span><span class="lang lang-en" hidden>App Builder</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.3.2</span>
+        <span class="chip">v0.6.10</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -5644,13 +5652,14 @@ bash recipes/add-markers.sh storage/tar/@ptdl/plugin-detail-panel-0.1.0.tgz
 <strong>bảng dữ liệu, quan hệ, dữ liệu mẫu, cột tính tự động, luồng trạng thái, trang và menu</strong> — hiện ngay
 trên giao diện <strong>/v/</strong>. Cần chỉnh app đã có? AI cũng <strong>thêm/sửa từng bước</strong> giúp bạn.</p>
 </blockquote>
-<p><strong>Nhóm:</strong> Công cụ dựng app (Low-code Builder) · <strong>Chạy trên:</strong> Chỉ <strong>/v/</strong> (modern) · <strong>Phiên bản:</strong> 0.3.1</p>
+<p><strong>Nhóm:</strong> Công cụ dựng app (Low-code Builder) · <strong>Chạy trên:</strong> Chỉ <strong>/v/</strong> (modern) · <strong>Phiên bản:</strong> 0.6.10</p>
 <h3>Sau khi cài, có gì mới?</h3>
 <ul>
 <li><strong>Một nút nổi</strong> ở <strong>góc dưới bên phải</strong> màn hình: <strong>“🛠 Dựng app”</strong> (chỉ trên giao diện <strong>/v/</strong>). Bấm để mở hộp thoại <strong>“Dựng app từ App-Spec”</strong> — đây là nơi duy nhất bạn thao tác.</li>
 <li><strong>Không thêm</strong> trang trong Settings, <strong>không đụng</strong> vào các menu/trang/khối dữ liệu hiện có của bạn.</li>
 <li>Trong hộp thoại có <strong>3 cách dựng</strong>: để <strong>AI viết từ mô tả</strong>, để <strong>AI dựng/sửa từng bước</strong>, hoặc <strong>dán / nạp App-Spec (JSON)</strong> rồi bấm tạo.</li>
 <li>Tạo xong sẽ hiện <strong>“Các trang đã tạo”</strong> kèm <strong>link bấm vào dùng ngay</strong>, và nút <strong>“🗑 Xoá app vừa tạo”</strong> để hoàn tác nhanh.</li>
+<li><strong>📊 Dashboard + ✨ Sửa biểu đồ bằng AI:</strong> thanh nút nổi còn <strong>tạo dashboard</strong> (thẻ KPI + biểu đồ + thanh lọc) và cho <strong>sửa từng biểu đồ ngay trên trang bằng AI</strong> — xem mục <strong><a href="#dashboard--bi%E1%BB%83u-%C4%91%E1%BB%93-ai">Dashboard &amp; biểu đồ (AI)</a></strong> bên dưới.</li>
 <li>⚠️ Trên giao diện <strong>classic (<code>/admin</code>)</strong> plugin <strong>không hiện gì</strong> — cố ý, vì trang do plugin sinh ra là trang <strong>/v/</strong>.</li>
 </ul>
 <h3>Cấu hình ở đâu?</h3>
@@ -5774,6 +5783,41 @@ trên giao diện <strong>/v/</strong>. Cần chỉnh app đã có? AI cũng <st
 <blockquote>
 <p>🗑 <strong>Lỡ tay?</strong> Ngay sau khi tạo, bấm <strong>“🗑 Xoá app vừa tạo”</strong> để xoá đúng phần vừa dựng (bảng + trang). Nút chỉ hoàn tác <strong>lần tạo gần nhất trong phiên</strong> này.</p>
 </blockquote>
+<h3>Dashboard &amp; biểu đồ (AI)</h3>
+<p>Ngoài dựng app, plugin còn <strong>tạo dashboard</strong> và cho <strong>sửa biểu đồ bằng AI ngay tại chỗ</strong>. Các nút nằm trong <strong>thanh nút nổi</strong> ở góc dưới bên phải (chỉ hiện khi <strong>bật UI-editor</strong> của /v/):</p>
+<table>
+<thead>
+<tr>
+<th>Việc</th>
+<th>Làm thế nào</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>📊 Tạo dashboard</strong></td>
+<td>Bấm <strong>📊 Dashboard</strong> → chọn <strong>một bảng</strong> (và tuỳ chọn <strong>nhóm menu</strong>) → mô tả trọng tâm nếu muốn → AI thiết kế <strong>thẻ KPI + biểu đồ (đường / cột / tròn) + thanh lọc</strong> rồi dựng thành <strong>một trang dashboard</strong> hoàn chỉnh</td>
+</tr>
+<tr>
+<td><strong>✨ Sửa biểu đồ bằng AI (tại chỗ)</strong></td>
+<td>Trên trang dashboard, khi <strong>UI-editor đang bật</strong>, <strong>rê chuột lên bất kỳ biểu đồ / thẻ KPI</strong> nào → nút <strong>✨ AI</strong> hiện ở <strong>chính giữa cạnh trên</strong> → gõ yêu cầu → AI <strong>viết lại</strong> biểu đồ và <strong>đổi ngay tại chỗ</strong> (không tải lại trang)</td>
+</tr>
+<tr>
+<td><strong>↶ Hoàn tác</strong></td>
+<td>Ngay trong ô sửa, bấm <strong>↶ Hoàn tác</strong> để quay về <strong>bản trước</strong> của biểu đồ đó</td>
+</tr>
+<tr>
+<td><strong>➕ Thêm widget</strong></td>
+<td>Mở một dashboard rồi mô tả <em>“thêm biểu đồ cột doanh thu theo quý”</em> / <em>“thêm filter theo khách hàng”</em> → AI dựng và <strong>chèn</strong> widget vào</td>
+</tr>
+</tbody>
+</table>
+<p>Ví dụ câu lệnh sửa biểu đồ: <em>“đổi sang biểu đồ cột”</em>, <em>“màu xanh dương”</em>, <em>“thêm nhãn %”</em>, <em>“gộp theo tháng”</em>, <em>“sắp xếp giảm dần”</em>.</p>
+<blockquote>
+<p>💡 Cột dạng <strong>chọn / luồng trạng thái</strong> hiển thị <strong>tên chứ không phải mã</strong> (vd <code>dang_giao</code> → <em>Đang giao</em>), và biểu đồ dùng <strong>theme hiện đại</strong> mặc định (bảng màu sạch, số rút gọn K/M, có nhãn dữ liệu).</p>
+</blockquote>
+<blockquote>
+<p>🤖 Các tính năng AI này cần <strong><code>@nocobase/plugin-ai</code></strong> đã bật + có model, giống 2 nút dựng app. Nút ✨ trên biểu đồ <strong>chỉ hiện khi bật UI-editor</strong> (chế độ chỉnh giao diện /v/) — người xem thường không thấy.</p>
+</blockquote>
 <h3>Mẹo &amp; lưu ý</h3>
 <ul>
 <li>⚠️ <strong>Tạo app = ghi thật vào cơ sở dữ liệu</strong> (tạo bảng, quan hệ, trang). Hãy <strong>Kiểm tra</strong> / xem lại JSON <strong>trước khi</strong> bấm <strong>Tạo app</strong>.</li>
@@ -5805,13 +5849,14 @@ NocoBase app for you: <strong>collections, relations, seed data, auto-computed c
 pages and menu</strong> — right in the <strong>/v/</strong> interface. Need to change an existing app? AI <strong>adds/modifies
 it step by step</strong> too.</p>
 </blockquote>
-<p><strong>Group:</strong> Low-code builder · <strong>Runs on:</strong> /v/ (modern) only · <strong>Version:</strong> 0.3.1</p>
+<p><strong>Group:</strong> Low-code builder · <strong>Runs on:</strong> /v/ (modern) only · <strong>Version:</strong> 0.6.10</p>
 <h3>What’s new after installing?</h3>
 <ul>
 <li><strong>A floating button</strong> at the <strong>bottom-right</strong> of the screen: <strong>“🛠 Build app”</strong> (on the <strong>/v/</strong> interface only). Click it to open the <strong>“Build app from an App-Spec”</strong> dialog — the one and only place you work.</li>
 <li><strong>No Settings page</strong> is added, and <strong>nothing is touched</strong> in your existing menus/pages/data blocks.</li>
 <li>The dialog offers <strong>3 ways to build</strong>: let <strong>AI write from a description</strong>, let <strong>AI build/modify step by step</strong>, or <strong>paste / load an App-Spec (JSON)</strong> and click create.</li>
 <li>When it finishes, it shows <strong>“Created pages”</strong> with <strong>clickable links to use them right away</strong>, plus a <strong>“🗑 Delete the app I just built”</strong> button for a quick undo.</li>
+<li><strong>📊 Dashboard + ✨ Edit charts with AI:</strong> the floating dock also <strong>generates dashboards</strong> (KPI cards + charts + a filter bar) and lets you <strong>edit each chart right on the page with AI</strong> — see <strong><a href="#dashboards--charts-ai">Dashboards &amp; charts (AI)</a></strong> below.</li>
 <li>⚠️ On the <strong>classic (<code>/admin</code>)</strong> interface the plugin <strong>shows nothing</strong> — by design, because the pages it generates are <strong>/v/</strong> pages.</li>
 </ul>
 <h3>Where to configure</h3>
@@ -5935,6 +5980,41 @@ it step by step</strong> too.</p>
 <blockquote>
 <p>🗑 <strong>Made a mistake?</strong> Right after creating, click <strong>“🗑 Delete the app I just built”</strong> to remove exactly what was just built (collections + pages). The button only undoes the <strong>most recent build in this session</strong>.</p>
 </blockquote>
+<h3>Dashboards &amp; charts (AI)</h3>
+<p>Beyond building apps, the plugin also <strong>generates dashboards</strong> and lets you <strong>edit any chart with AI in place</strong>. These live in the <strong>floating dock</strong> at the bottom-right (only shown while the <strong>/v/ UI-editor is ON</strong>):</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>📊 Generate a dashboard</strong></td>
+<td>Click <strong>📊 Dashboard</strong> → pick <strong>one collection</strong> (and optionally a <strong>menu group</strong>) → describe a focus if you like → AI designs <strong>KPI cards + charts (line / column / pie) + a filter bar</strong> and builds them into <strong>one complete dashboard page</strong></td>
+</tr>
+<tr>
+<td><strong>✨ Edit a chart with AI (in place)</strong></td>
+<td>On a dashboard page, with the <strong>UI-editor ON</strong>, <strong>hover over any chart or KPI card</strong> → an <strong>✨ AI</strong> button appears at the <strong>top centre</strong> → type your request → the AI <strong>rewrites</strong> the chart and it <strong>updates in place</strong> (no page reload)</td>
+</tr>
+<tr>
+<td><strong>↶ Undo</strong></td>
+<td>In the same edit box, click <strong>↶ Undo</strong> to revert that chart to its <strong>previous version</strong></td>
+</tr>
+<tr>
+<td><strong>➕ Add a widget</strong></td>
+<td>Open a dashboard, then describe <em>“add a revenue-by-quarter column chart”</em> / <em>“add a filter by customer”</em> → the AI builds and <strong>inserts</strong> the widget</td>
+</tr>
+</tbody>
+</table>
+<p>Example chart-edit prompts: <em>“turn it into a column chart”</em>, <em>“make it blue”</em>, <em>“add % labels”</em>, <em>“group by month”</em>, <em>“sort descending”</em>.</p>
+<blockquote>
+<p>💡 <strong>Select / status-flow</strong> columns show <strong>labels, not stored codes</strong> (e.g. <code>dang_giao</code> → <em>In transit</em>), and charts use a clean <strong>modern default theme</strong> (tidy palette, compact K/M numbers, data labels).</p>
+</blockquote>
+<blockquote>
+<p>🤖 These AI features need <strong><code>@nocobase/plugin-ai</code></strong> enabled + a model configured, same as the two build buttons. The ✨ button on a chart <strong>only appears while the UI-editor is ON</strong> (the /v/ design mode) — regular viewers won’t see it.</p>
+</blockquote>
 <h3>Tips &amp; notes</h3>
 <ul>
 <li>⚠️ <strong>Creating an app writes for real to the database</strong> (it creates collections, relations, pages). <strong>Validate</strong> / review the JSON <strong>before</strong> you click <strong>Create app</strong>.</li>
@@ -5966,7 +6046,7 @@ it step by step</strong> too.</p>
       <div class="plugin-head">
         <h2><span class="lang lang-vi">PWA (ứng dụng cài đặt được)</span><span class="lang lang-en" hidden>PWA (Installable App)</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.4.1</span>
+        <span class="chip">v0.4.2</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -6169,7 +6249,7 @@ it gets its own icon on the home screen and opens full-screen like a real app. Y
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Tạo trang nhanh</span><span class="lang lang-en" hidden>Instant Create Page</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.1.0</span>
+        <span class="chip">v0.1.7</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -6394,7 +6474,7 @@ No manual block/column/popup wiring. The result is a native NocoBase page you ca
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Thương hiệu &amp; Giao diện</span><span class="lang lang-en" hidden>Branding &amp; Theme</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.4.7</span>
+        <span class="chip">v0.4.8</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -6540,7 +6620,7 @@ app name, favicon and logo (light/dark)… Ships with presets, <strong>remembers
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Tiêu đề tùy biến</span><span class="lang lang-en" hidden>Custom Header</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.2.1</span>
+        <span class="chip">v0.2.2</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -6880,7 +6960,7 @@ form/detail field labels and block titles: set an <strong>icon</strong>, <strong
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Tìm kiếm toàn cục</span><span class="lang lang-en" hidden>Global Search</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.9.6</span>
+        <span class="chip">v0.9.7</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -7208,7 +7288,7 @@ client’s <code>pm:listEnabledV2</code> skips the plugin and nothing renders on
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Menu nâng cao (Nhóm + Badge)</span><span class="lang lang-en" hidden>Menu Enhancements (Sections + Badge)</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Menu</span><span class="lang lang-en" hidden>Menu</span></span>
-        <span class="chip">v0.4.15</span>
+        <span class="chip">v0.4.17</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -7771,7 +7851,7 @@ password is stored only on the server and never returned to the client). HTML→
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Nút thao tác nâng cao</span><span class="lang lang-en" hidden>Action Button Enhancements</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Hành động</span><span class="lang lang-en" hidden>Actions</span></span>
-        <span class="chip">v0.1.0</span>
+        <span class="chip">v0.1.1</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -8227,7 +8307,7 @@ bash recipes/add-markers.sh storage/tar/@ptdl/plugin-action-enhancements-*.tgz
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Bộ sinh dòng theo quy tắc</span><span class="lang lang-en" hidden>Line Generator</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Dữ liệu</span><span class="lang lang-en" hidden>Data</span></span>
-        <span class="chip">v0.6.9</span>
+        <span class="chip">v0.6.10</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -8437,7 +8517,7 @@ The same mechanism covers <strong>BOM explosion</strong>, <strong>commission spl
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Đồng bộ Google Sheets</span><span class="lang lang-en" hidden>Google Sheets Sync</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Dữ liệu</span><span class="lang lang-en" hidden>Data</span></span>
-        <span class="chip">v0.1.1</span>
+        <span class="chip">v0.1.2</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -8747,7 +8827,7 @@ optional <strong>two-way write-back</strong> to the sheet.</p>
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Nhật ký thay đổi</span><span class="lang lang-en" hidden>Change Log</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Dữ liệu</span><span class="lang lang-en" hidden>Data</span></span>
-        <span class="chip">v0.1.3</span>
+        <span class="chip">v0.1.4</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -9040,7 +9120,7 @@ Review it as a <strong>timeline</strong> right on the record — <strong>no code
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Biểu đồ ECharts Pro</span><span class="lang lang-en" hidden>Data Visualization: ECharts Pro</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Biểu đồ</span><span class="lang lang-en" hidden>Charts</span></span>
-        <span class="chip">v0.1.0</span>
+        <span class="chip">v0.2.4</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -9951,7 +10031,7 @@ configured right in the admin UI, <strong>no code, no server restart</strong>.</
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Trang đăng nhập tùy biến</span><span class="lang lang-en" hidden>Custom Login</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Đăng nhập</span><span class="lang lang-en" hidden>Sign-in</span></span>
-        <span class="chip">v2.3.1</span>
+        <span class="chip">v2.3.2</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -10243,6 +10323,549 @@ the login page <strong>still uses the plugin’s default skin</strong> (gradient
 <hr>
 <h4>For developers</h4>
 <p>The plugin <strong>overrides</strong> <code>AuthLayout</code> + <code>SignInPage</code> on <strong>both lanes</strong> (<code>/</code> classic and <code>/v/</code> modern). Config is stored in the <strong><code>login_configs</code></strong> table — each row has <code>options</code> (JSON), <code>type = 'home'</code>, and an <code>enabled</code> flag. The <strong><code>getActiveConfig</code></strong> action is <strong>public only</strong> for <code>type = 'home'</code>; <strong>enabling</strong> one configuration <strong>automatically disables</strong> the others of the same type (only one active). The settings page is registered via <code>pluginSettingsManager.add</code> (classic) and <code>addMenuItem</code> + <code>addPageTabItem</code> (v2), both editing the same record. Framework-free helpers live in <code>@ptdl/shared</code> (<code>loginKit</code>) and are bundled into the plugin. Sign-in inputs mirror their placeholder into <code>aria-label</code> for screen readers. Dual-licensed AGPL-3.0 / NocoBase Commercial — please keep the footer attribution line.</p>
+</div>
+    </section>
+
+    <section class="plugin" id="nb-cloner" data-text="nb cloner (xuất / nhập ứng dụng) nb cloner (app export / import) nhân bản toàn bộ một app nocobase tự xây giữa các bản cài. xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uischemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi upsert sang một app cùng phiên bản mà không xoá dữ liệu đang có. phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. đích postgresql. clone a whole self-built nocobase app between installs. exports the schema (collections + fields + categories), the ui (uischemas + flow-engine models + desktop/mobile menus + block templates), roles &amp; permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then upsert-imports it into another same-version app without deleting existing data. classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. postgresql target. nocobase">
+      <div class="plugin-head">
+        <h2><span class="lang lang-vi">NB Cloner (Xuất / nhập ứng dụng)</span><span class="lang lang-en" hidden>NB Cloner (App export / import)</span></h2>
+        <span class="chip chip-cat"><span class="lang lang-vi">nocobase</span><span class="lang lang-en" hidden>nocobase</span></span>
+        <span class="chip">v1.9.0</span>
+        <a class="chip chip-top" href="#top" title="Top">↑</a>
+      </div>
+      <div class="prose lang lang-vi"><blockquote>
+<p>Nhân bản toàn bộ một app NocoBase tự xây — collections, giao diện, menu, phân quyền và dữ liệu được
+chọn — từ bản cài này sang bản cài khác bằng một file <strong><code>.nbc.gz</code></strong> duy nhất. Import là <strong>UPSERT</strong>
+(không bao giờ xoá dữ liệu đang có).</p>
+</blockquote>
+<p><strong>Nhóm:</strong> Quản trị / Di trú (Migration) · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>CSDL:</strong> chỉ PostgreSQL · <strong>Phiên bản:</strong> 1.9.0</p>
+<h3>Sau khi cài, có gì mới?</h3>
+<ul>
+<li><strong>Một trang cấu hình mới trong Settings: “NB Cloner”</strong> (biểu tượng copy) với hai tab: <strong>Xuất (Export)</strong> và <strong>Nhập (Import)</strong>.</li>
+<li><strong>Không thêm menu, nút hay field</strong> nào lên các trang/khối dữ liệu của bạn.</li>
+<li>Không có gì chạy tự động — mọi lần xuất/nhập đều do bạn bấm từ trang này.</li>
+</ul>
+<h3>Cấu hình ở đâu?</h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Đường dẫn tới trang</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Hiện đại (<code>/v/</code>)</strong></td>
+<td>⚙ <strong>Settings</strong> → <strong>“NB Cloner”</strong></td>
+</tr>
+<tr>
+<td><strong>Cổ điển (<code>/admin</code>)</strong></td>
+<td><strong>Settings</strong> → <strong>“NB Cloner”</strong> (đường dẫn <code>/admin/settings/ptdl-nb-cloner</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Cả hai client mở <strong>cùng một trang</strong> và gọi cùng các endpoint phía server.</p>
+<h3>Những gì được clone</h3>
+<table>
+<thead>
+<tr>
+<th>Phần</th>
+<th>Có</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Collections + Fields</strong></td>
+<td>✅</td>
+<td>Cấu trúc các bảng nghiệp vụ (bảng hệ thống KHÔNG bị đụng khi import).</td>
+</tr>
+<tr>
+<td><strong>Nhóm bảng (categories)</strong></td>
+<td>✅</td>
+<td>Các nhóm hiển thị trong collection manager.</td>
+</tr>
+<tr>
+<td><strong>Giao diện (UI)</strong></td>
+<td>tuỳ chọn</td>
+<td>uiSchemas, flow-engine models (nội dung trang/khối của <code>/v/</code>), block template.</td>
+</tr>
+<tr>
+<td><strong>Menu / routes</strong></td>
+<td>✅ (kèm UI)</td>
+<td>routes desktop + mobile và các bảng closure/path — thiếu chúng thì app đích trắng menu.</td>
+</tr>
+<tr>
+<td><strong>Vai trò &amp; phân quyền</strong></td>
+<td>tuỳ chọn</td>
+<td>Chỉ role tự tạo (<code>root</code>/<code>admin</code>/<code>member</code> được bỏ qua để không ghi đè role mặc định của app đích).</td>
+</tr>
+<tr>
+<td><strong>Workflows</strong></td>
+<td>tuỳ chọn</td>
+<td>Chỉ định nghĩa + node — <strong>không</strong> lấy executions/jobs.</td>
+</tr>
+<tr>
+<td><strong>Dữ liệu nghiệp vụ</strong></td>
+<td>theo từng bảng</td>
+<td>Mặc định tắt; bật <strong>“Chép dữ liệu”</strong> cho bảng nào bạn muốn lấy cả dòng.</td>
+</tr>
+<tr>
+<td><strong>File đính kèm / upload</strong></td>
+<td>❌</td>
+<td>File nhị phân <strong>không</strong> được clone — chỉ có dòng DB.</td>
+</tr>
+</tbody>
+</table>
+<h3>Cách dùng (từng bước)</h3>
+<h4>Xuất (app nguồn)</h4>
+<ol>
+<li>Mở <strong>Settings → “NB Cloner” → Xuất</strong>.</li>
+<li>Đặt <strong>Tên app</strong> (dùng trong tên file tải về).</li>
+<li>Bật các tuỳ chọn <strong>Hệ thống</strong> bạn muốn: <em>Cấu trúc bảng</em>, <em>Giao diện / Menu</em>, <em>Vai trò &amp; phân quyền</em>, <em>Quy trình</em>.</li>
+<li>Trong <strong>Bảng nghiệp vụ</strong>, tích các bảng cần lấy và bật <strong>“Chép dữ liệu”</strong> cho bảng nào muốn lấy cả dòng. Dùng nút <strong>Tất cả / Không</strong> để bật/tắt nhanh.</li>
+<li>Bấm <strong>“Xuất → Tải .nbc.gz”</strong>. Trình duyệt tải về file <code>nb-clone-&lt;app&gt;-&lt;ngày&gt;.nbc.gz</code>.</li>
+</ol>
+<h4>Nhập (app đích)</h4>
+<blockquote>
+<p>⚠️ <strong>App đích PHẢI CÙNG phiên bản NocoBase với app nguồn.</strong> Flow-engine đổi định dạng lưu giữa các
+version, nên import chéo phiên bản sẽ làm hỏng giao diện.</p>
+</blockquote>
+<ol>
+<li>Mở <strong>Settings → “NB Cloner” → Nhập</strong> trên app <strong>đích</strong>.</li>
+<li>Đọc phần cảnh báo, rồi kéo thả file <code>.nbc.gz</code> vào ô tải lên.</li>
+<li>Chờ báo cáo từng bước — <strong>đừng đóng hay reload trang</strong> khi đang chạy (app lớn có thể mất 1–2 phút).</li>
+<li>Xong thì <strong>Restart app</strong> để bảng và giao diện nạp đủ.</li>
+</ol>
+<p>Bảng kết quả liệt kê từng bước (<code>schema.collections</code>, <code>db.sync</code>, <code>ui.schemas</code>, <code>data.&lt;bảng&gt;</code>, …) kèm trạng thái <code>ok</code> / <code>bỏ qua</code> / <code>lỗi</code> và số dòng.</p>
+<h4>Cập nhật plugin (tuỳ chọn)</h4>
+<p>Tab <strong>Cập nhật plugin</strong> cho phép thả file <code>plugin-nb-cloner-vX.Y.Z.zip</code> mới để ghi đè bản đang cài tại
+chỗ (né lỗi <em>“already added”</em> / EBUSY khi Remove). Sau khi báo thành công, <strong>restart app</strong>. Tab này cũng
+hiện version đang cài so với version code đang thực chạy, để bạn biết khi nào còn cần restart.</p>
+<h3>Yêu cầu &amp; giới hạn</h3>
+<ul>
+<li><strong>Chỉ PostgreSQL.</strong> Xuất/nhập dùng SQL đặc thù PostgreSQL (<code>ON CONFLICT</code> upsert, dò khóa chính qua
+<code>information_schema</code>). Trên dialect khác, plugin <strong>báo lỗi rõ ràng và dừng ngay</strong> thay vì làm hỏng app đích.</li>
+<li><strong>Cùng phiên bản NocoBase</strong> ở hai đầu (xem cảnh báo import ở trên).</li>
+<li><strong>Import là UPSERT</strong> — cập nhật/chèn, không xoá. Muốn kết quả sạch, import vào một app <strong>trắng, vừa cài</strong>.</li>
+<li><strong>Bundle lớn:</strong> nội dung flow-engine có thể vượt giới hạn request mặc định 10 MB của NocoBase. Nếu import
+lỗi trên app lớn, đặt env <strong><code>REQUEST_BODY_LIMIT=50mb</code></strong> (hoặc cao hơn) rồi restart.</li>
+<li><strong>File đính kèm không được clone</strong> — copy storage riêng nếu cần file.</li>
+<li><strong>Bắt buộc restart</strong> sau import để bảng + giao diện xuất hiện.</li>
+</ul>
+<h3>Bảo mật</h3>
+<p>Các endpoint export / import / self-update rất mạnh: export đọc <strong>mọi</strong> bảng nghiệp vụ, import ghi
+schema/UI/role của app đích, còn self-update <strong>ghi đè chính code của plugin</strong> (sẽ chạy ở lần restart sau).
+Chúng được cấp cho <code>loggedIn</code> — giống các plugin cấu hình @ptdl khác — và chỉ vào được qua trang <strong>Settings</strong>
+(vốn chỉ admin thấy). <strong>Nếu app của bạn cho người dùng không tin cậy đăng nhập, hãy giới hạn quyền bằng
+role của NocoBase</strong> (hoặc đừng bật plugin ở đó).</p>
+<h3>Định dạng <code>.nbc.gz</code></h3>
+<p>File <code>.nbc.gz</code> là một JSON bundle duy nhất (manifest + schema + ui + acl + workflows + businessData) nén
+bằng gzip. Manifest mang version của định dạng bundle; importer sẽ từ chối bundle có major version cũ hơn
+mức nó hiểu và yêu cầu bạn export lại.</p>
+<h3>Xử lý sự cố</h3>
+<table>
+<thead>
+<tr>
+<th>Hiện tượng</th>
+<th>Nguyên nhân / cách xử lý</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>“NB Cloner supports PostgreSQL only …”</td>
+<td>App không chạy PostgreSQL. Tool này chỉ hỗ trợ PostgreSQL theo thiết kế.</td>
+</tr>
+<tr>
+<td>Import lỗi trên app lớn</td>
+<td>Tăng <code>REQUEST_BODY_LIMIT</code> (vd <code>50mb</code>) rồi restart, thử lại.</td>
+</tr>
+<tr>
+<td>Menu / trang app đích trống sau import</td>
+<td>Đảm bảo đã bật <strong>Giao diện / Menu</strong> khi export, và <strong>Restart</strong> app đích sau import.</td>
+</tr>
+<tr>
+<td>Vài bước <code>data.&lt;bảng&gt;</code> báo <code>lỗi</code></td>
+<td>Các dòng đó bị bỏ qua (thường do thứ tự FK hoặc lệch cột); phần còn lại của import vẫn áp dụng. Restart rồi chạy lại nếu cần.</td>
+</tr>
+<tr>
+<td>Tag version hiện màu cam “code v… · restart để đồng bộ”</td>
+<td>Code đang chạy khác version ghi trong DB — hãy restart app.</td>
+</tr>
+</tbody>
+</table>
+</div>
+      <div class="prose lang lang-en" hidden><blockquote>
+<p>Clone a whole self-built NocoBase app — its collections, UI, menus, roles and hand-picked data —
+from one install to another as a single <strong><code>.nbc.gz</code></strong> file. Import is an <strong>UPSERT</strong> (it never deletes
+what’s already there).</p>
+</blockquote>
+<p><strong>Group:</strong> Admin / Migration · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Database:</strong> PostgreSQL only · <strong>Version:</strong> 1.9.0</p>
+<h3>What’s new after installing?</h3>
+<ul>
+<li><strong>A new Settings page: “NB Cloner”</strong> (copy icon) with two tabs: <strong>Export</strong> and <strong>Import</strong>.</li>
+<li><strong>No new menu, button or field</strong> is added to your data pages/blocks.</li>
+<li>Nothing runs automatically — you drive every export and import from that page.</li>
+</ul>
+<h3>Where to configure</h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Path to the page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Modern (<code>/v/</code>)</strong></td>
+<td>⚙ <strong>Settings</strong> → <strong>“NB Cloner”</strong></td>
+</tr>
+<tr>
+<td><strong>Classic (<code>/admin</code>)</strong></td>
+<td><strong>Settings</strong> → <strong>“NB Cloner”</strong> (path <code>/admin/settings/ptdl-nb-cloner</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Both clients open the <strong>same page</strong> and hit the same server endpoints.</p>
+<h3>What gets cloned</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Included</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Collections + Fields</strong></td>
+<td>✅</td>
+<td>Business collections’ schema (system collections are never modified on import).</td>
+</tr>
+<tr>
+<td><strong>Collection categories</strong></td>
+<td>✅</td>
+<td>The table groups shown in the collection manager.</td>
+</tr>
+<tr>
+<td><strong>UI</strong></td>
+<td>optional</td>
+<td>uiSchemas, flow-engine models (the <code>/v/</code> page/block content), block templates.</td>
+</tr>
+<tr>
+<td><strong>Menus / routes</strong></td>
+<td>✅ (with UI)</td>
+<td>desktop + mobile routes and their closure/path tables — without these the target has no menu.</td>
+</tr>
+<tr>
+<td><strong>Roles &amp; permissions</strong></td>
+<td>optional</td>
+<td>Custom roles only (<code>root</code>/<code>admin</code>/<code>member</code> are skipped to avoid clobbering the target’s defaults).</td>
+</tr>
+<tr>
+<td><strong>Workflows</strong></td>
+<td>optional</td>
+<td>Definitions + nodes only — <strong>not</strong> executions/jobs.</td>
+</tr>
+<tr>
+<td><strong>Business data</strong></td>
+<td>per-collection</td>
+<td>Off by default; turn on <strong>“Copy Data”</strong> for each collection you want rows from.</td>
+</tr>
+<tr>
+<td><strong>File attachments / uploads</strong></td>
+<td>❌</td>
+<td>Binary files are <strong>not</strong> cloned — only the DB rows.</td>
+</tr>
+</tbody>
+</table>
+<h3>How to use (step by step)</h3>
+<h4>Export (source app)</h4>
+<ol>
+<li>
+<p>Open <strong>Settings → “NB Cloner” → Export</strong>.</p>
+</li>
+<li>
+<p>Set an <strong>App name</strong> (used in the download filename).</p>
+</li>
+<li>
+<p>Toggle the <strong>System</strong> options you want: <em>Collections Schema</em>, <em>UI / Menus</em>, <em>Roles &amp; Permissions</em>, <em>Workflows</em>.</p>
+</li>
+<li>
+<p>In <strong>Collections</strong>, use the category filter to focus on what you want. Every collection is classified:</p>
+<ul>
+<li><strong>My collections</strong> — the tables you created (real business data). <em>This is the default view, and only these are pre-selected.</em></li>
+<li><strong>Plugin</strong> — tables a plugin defined for its own config/data.</li>
+<li><strong>System</strong> — NocoBase framework tables (fields, uiSchemas, roles…).</li>
+<li><strong>Deleted</strong> — a managed collection whose physical table is gone (an orphan).</li>
+</ul>
+<p>Tick the collections to include and flip <strong>“Copy Data”</strong> on the ones whose rows you also want (use <strong>All / None</strong>). This is why a “fresh” app can list 100+ collections — most are plugin/system tables; the filter hides them so you export just yours.</p>
+</li>
+<li>
+<p>Click <strong>“Export → Download .nbc.gz”</strong>. Your browser downloads <code>nb-clone-&lt;app&gt;-&lt;date&gt;.nbc.gz</code>.</p>
+</li>
+</ol>
+<h4>Import (target app)</h4>
+<blockquote>
+<p>⚠️ <strong>The target must be the SAME NocoBase version as the source.</strong> The flow-engine changes its stored
+format between versions, so a cross-version import produces a broken UI.</p>
+</blockquote>
+<ol>
+<li>Open <strong>Settings → “NB Cloner” → Import</strong> on the <strong>target</strong> app.</li>
+<li>Read the warnings, then drag the <code>.nbc.gz</code> into the upload box.</li>
+<li>Wait for the step report — <strong>do not close or reload the page</strong> while it runs (a large app can take 1–2 minutes).</li>
+<li>When it finishes, <strong>Restart the app</strong> so the new tables and UI load fully.</li>
+</ol>
+<p>The result table lists every step (<code>schema.collections</code>, <code>db.sync</code>, <code>ui.schemas</code>, <code>data.&lt;collection&gt;</code>, …) with an <code>ok</code> / <code>skipped</code> / <code>error</code> status and a row count.</p>
+<blockquote>
+<p>Updating the plugin itself is done the normal way — Plugin Manager → <strong>Add &amp; Update</strong> → upload the newer
+<code>.tgz</code>, then restart.</p>
+</blockquote>
+<h3>Requirements &amp; limits</h3>
+<ul>
+<li><strong>PostgreSQL only.</strong> Export/import use PostgreSQL-specific SQL (<code>ON CONFLICT</code> upsert, <code>information_schema</code>
+primary-key discovery). On any other dialect the plugin <strong>fails fast with a clear message</strong> rather than
+corrupting the target.</li>
+<li><strong>Same NocoBase version</strong> on both ends (see the import warning above).</li>
+<li><strong>Import is an UPSERT</strong> — it updates/inserts, it does not delete. For a clean result, import into a
+<strong>blank, freshly installed</strong> app.</li>
+<li><strong>Large bundles:</strong> the flow-engine content can exceed NocoBase’s default 10 MB request limit. If import
+fails on a big app, set the env var <strong><code>REQUEST_BODY_LIMIT=50mb</code></strong> (or higher) and restart.</li>
+<li><strong>Attachments are not cloned</strong> — copy your storage separately if you need the files.</li>
+<li>A <strong>restart is required</strong> after import for tables + UI to appear.</li>
+</ul>
+<h3>Security</h3>
+<p>The export / import endpoints are powerful: export reads <strong>every</strong> business table and import writes the
+target’s schema/UI/roles. They are granted to <code>loggedIn</code> — the same pattern the other @ptdl settings
+plugins use — and are reached only through the admin-gated <strong>Settings</strong> surface. <strong>If untrusted users can
+sign in to your app, restrict access with NocoBase roles</strong> (or don’t enable this plugin there).</p>
+<h3>The <code>.nbc.gz</code> format</h3>
+<p>A <code>.nbc.gz</code> file is a single JSON bundle (manifest + schema + ui + acl + workflows + businessData) compressed
+with gzip. The manifest carries a bundle-format version; the importer refuses a bundle whose major version is
+older than it understands and tells you to re-export.</p>
+<h3>Troubleshooting</h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause / fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>“NB Cloner supports PostgreSQL only …”</td>
+<td>The app isn’t on PostgreSQL. This tool is PostgreSQL-only by design.</td>
+</tr>
+<tr>
+<td>Import fails on a large app</td>
+<td>Raise <code>REQUEST_BODY_LIMIT</code> (e.g. <code>50mb</code>) and restart, then retry.</td>
+</tr>
+<tr>
+<td>Target menu / pages are empty after import</td>
+<td>Make sure <strong>UI / Menus</strong> was enabled on export, and <strong>Restart</strong> the target after import.</td>
+</tr>
+<tr>
+<td>Some <code>data.&lt;collection&gt;</code> steps show <code>error</code></td>
+<td>Those rows were skipped (often FK order or a column mismatch); the rest of the import still applied. Re-run after a restart if needed.</td>
+</tr>
+<tr>
+<td>Version tag shows an orange “code v… · restart to sync”</td>
+<td>The running code differs from the DB-recorded version — restart the app.</td>
+</tr>
+</tbody>
+</table>
+</div>
+    </section>
+
+    <section class="plugin" id="inline-field" data-text="thêm cột tại chỗ inline field thêm cột mới ngay khi đang sửa bảng — không phải vào collection để tạo field. mục ‘➕ thêm cột mới…’ trong menu ⚙ của khối bảng mở hộp thoại khai báo field (văn bản, số, lựa chọn, ngày, có/không…); field được tạo trên collection, cột vật lý được migrate, và cột hiện luôn trong bảng đang sửa. client /v/. add a new column while editing a table view — no trip to the collection manager. a ‘➕ new column…’ item in a table block’s settings menu opens a dialog to define a scalar field (text, number, choice, date, checkbox, …); it is created on the collection, the physical column is migrated, and the column is dropped straight into the block being edited. modern /v/ client. nocobase">
+      <div class="plugin-head">
+        <h2><span class="lang lang-vi">Thêm cột tại chỗ</span><span class="lang lang-en" hidden>Inline Field</span></h2>
+        <span class="chip chip-cat"><span class="lang lang-vi">nocobase</span><span class="lang lang-en" hidden>nocobase</span></span>
+        <span class="chip">v0.1.3</span>
+        <a class="chip chip-top" href="#top" title="Top">↑</a>
+      </div>
+      <div class="prose lang lang-vi"><blockquote>
+<p>Thêm một <strong>cột (field) mới ngay khi đang sửa bảng</strong> — <strong>không</strong> phải rời trang để vào Collection
+Manager tạo field. Khai báo trong một hộp thoại nhỏ, cột hiện <strong>luôn</strong> trong bảng đang xem.</p>
+</blockquote>
+<p><strong>Nhóm:</strong> Trường (Fields) · <strong>Chạy trên:</strong> /v/ (modern) · <strong>Phiên bản:</strong> 0.1.3</p>
+<h3>Sau khi cài, có gì mới?</h3>
+<ul>
+<li>Trong <strong>menu ⚙ (cài đặt)</strong> của mỗi <strong>khối Bảng</strong> trên <code>/v/</code> xuất hiện mục <strong>“Thêm cột mới”</strong>.</li>
+<li>Bấm → mở hộp thoại khai báo: <strong>Tên cột</strong>, <strong>Loại dữ liệu</strong>, (nếu là <em>lựa chọn</em>) <strong>các giá trị</strong>, và <strong>Bắt buộc</strong>.</li>
+<li>Bấm <strong>OK</strong> → plugin <strong>tạo field trên collection</strong>, <strong>migrate cột vật lý</strong>, rồi <strong>thả cột thẳng vào bảng đang sửa</strong> — bạn thấy ngay, không cần làm mới trang.</li>
+<li>✅ Lấp đúng khoảng trống của NocoBase: bình thường muốn có cột mới bạn phải <strong>vào Collection Manager → Add field → quay lại bật cột</strong>. Plugin gộp cả ba bước làm một, ngay tại chỗ.</li>
+</ul>
+<h3>Dùng thế nào (từng bước)</h3>
+<ol>
+<li>Mở một <strong>trang có khối Bảng</strong> trên <code>/v/</code>, bật chế độ cấu hình giao diện (UI editor).</li>
+<li>Di vào khối Bảng, mở <strong>menu ⚙</strong> của khối → chọn <strong>“➕ Thêm cột mới”</strong>.</li>
+<li>Nhập <strong>Tên cột</strong> (ví dụ <em>Ghi chú</em>, <em>Đơn giá</em>). <strong>Mã field</strong> (snake_case) tự sinh từ tên; muốn đổi thì mở <strong>Nâng cao</strong>.</li>
+<li>Chọn <strong>Loại dữ liệu</strong> (xem danh sách bên dưới). Lựa chọn → gõ giá trị; <strong>Quan hệ</strong> → chọn bảng liên kết; <strong>Tự tính</strong> → viết công thức.</li>
+<li>Bật <strong>Bắt buộc</strong> nếu cần. Bấm <strong>OK</strong>.</li>
+<li>✅ Hiện thông báo <strong>“Đã thêm cột …”</strong>; cột mới nằm ngay trước cột nút thao tác. Có thể kéo tiêu đề cột để đổi vị trí.</li>
+</ol>
+<h3>Loại dữ liệu hỗ trợ (bản 0.1.3)</h3>
+<table>
+<thead>
+<tr>
+<th>Nhóm</th>
+<th>Loại</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Văn bản</strong></td>
+<td>Văn bản 1 dòng · Văn bản nhiều dòng · Email · Điện thoại · Liên kết (URL)</td>
+</tr>
+<tr>
+<td><strong>Số</strong></td>
+<td>Số thập phân · Số nguyên · Phần trăm</td>
+</tr>
+<tr>
+<td><strong>Lựa chọn</strong></td>
+<td>Một lựa chọn · Nhiều lựa chọn · Có/Không · <strong>Luồng trạng thái</strong></td>
+</tr>
+<tr>
+<td><strong>Ngày/giờ</strong></td>
+<td>Ngày · Ngày giờ · Giờ</td>
+</tr>
+<tr>
+<td><strong>Quan hệ</strong></td>
+<td>Liên kết 1 bản ghi (m2o) · Danh sách bản ghi con (o2m) · Nhiều–nhiều (m2m)</td>
+</tr>
+<tr>
+<td><strong>Media &amp; tệp</strong></td>
+<td><strong>Biểu tượng</strong> · Màu · <strong>Ảnh/Tệp (URL)</strong> · <strong>Tệp đính kèm (upload)</strong></td>
+</tr>
+<tr>
+<td><strong>Khác</strong></td>
+<td><strong>Tự tính (công thức)</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>Trạng thái, biểu tượng &amp; tệp — mới ở 0.1.3</h4>
+<ul>
+<li><strong>Luồng trạng thái</strong> — khai báo <strong>đơn giản</strong>: liệt kê các trạng thái + chọn <strong>màu</strong> cho mỗi cái. <strong>Trạng thái đầu = bắt đầu (init), cuối = kết thúc (end)</strong>; chuyển tuần tự theo thứ tự. Hiển thị dạng thẻ màu + đổi trạng thái (đủ nhất khi có <strong>@ptdl/plugin-status-flow</strong>).</li>
+<li><strong>Biểu tượng</strong> — field chọn icon (bộ Lucide) khi nhập.</li>
+<li><strong>Ảnh/Tệp (URL)</strong> — dán URL ảnh/tệp có sẵn; bảng hiện link bấm được.</li>
+<li><strong>Tệp đính kèm (upload)</strong> — tải tệp thật lên storage (<strong>cần plugin File manager</strong> — thường có sẵn), lưu vào bảng <code>attachments</code>.</li>
+</ul>
+<h4>Quan hệ (relation) — mới ở 0.1.2</h4>
+<p>Chọn một loại <strong>Quan hệ</strong> → hiện ô <strong>Bảng liên kết</strong> để chọn bảng đích:</p>
+<ul>
+<li><strong>Liên kết 1 bản ghi (m2o)</strong> — mỗi dòng trỏ tới 1 bản ghi bảng kia (belongsTo). Vd đơn hàng → khách hàng.</li>
+<li><strong>Danh sách bản ghi con (o2m)</strong> — mỗi dòng có nhiều con ở bảng kia (hasMany); plugin <strong>tự tạo liên kết ngược</strong> trên bảng con.</li>
+<li><strong>Nhiều–nhiều (m2m)</strong> — nối qua bảng trung gian (belongsToMany).</li>
+</ul>
+<h4>Cột tự tính (công thức) — từ 0.1.1</h4>
+<p>Chọn loại <strong>“Tự tính (công thức)”</strong> → hiện thêm <strong>Kết quả</strong> (Số / Số nguyên / Phần trăm / Văn bản) và ô
+<strong>Công thức</strong> kiểu Excel. Tham chiếu cột khác bằng <code>data.&lt;mã_field&gt;</code> — bấm nút <strong>“Chèn field/quan hệ”</strong>
+(bộ chọn chuẩn dùng chung với plugin <strong>Công thức</strong>) để chèn tại con trỏ; <strong>drill được cả quan hệ</strong>, vd
+<code>data.khach_hang.ten</code>. Bấm <strong>“Xem thử”</strong> để chạy công thức trên <strong>bản ghi đầu tiên</strong> và xem ngay kết quả.
+Plugin tạo field (chỉ đọc) + một <strong>luật tính</strong> của plugin <strong>Công thức</strong> — giá trị <strong>tự cập nhật</strong> khi tạo/sửa.</p>
+<blockquote>
+<p>⚠️ Cột tự tính (và nút Xem thử) cần cài <strong>@ptdl/plugin-formula (Công thức)</strong>. Nếu chưa cài, cột vẫn được
+tạo nhưng công thức chưa chạy (plugin báo rõ).</p>
+</blockquote>
+<h3>Mẹo &amp; lưu ý</h3>
+<ul>
+<li>🧱 Cột được tạo là <strong>field thật</strong> trên collection (có cả cột vật lý trong CSDL) — không phải cột ảo. Xoá thì vào <strong>Collection Manager</strong>.</li>
+<li>🔤 Hai cột cùng tên hiển thị vẫn ổn: <strong>tên máy</strong> tự thêm hậu tố (<code>ghi_chu</code>, <code>ghi_chu_2</code>…) để không trùng.</li>
+<li>🔁 Cột chỉ tự thêm vào <strong>khối bạn đang thao tác</strong>. Field mới cũng lập tức có mặt trong danh sách <strong>“Fields”</strong> (nút ⚙) của mọi khối khác cùng bảng, để bạn tick thêm nếu muốn.</li>
+<li>🔒 Việc tạo field là thao tác cấu hình — nên chỉ mở cho người có quyền chỉnh giao diện. (Xem phần nhà phát triển.)</li>
+</ul>
+<h3>Gỡ / tắt</h3>
+<ul>
+<li><strong>Tắt plugin</strong> trong <strong>Plugin Manager</strong>: mục <strong>“Thêm cột mới”</strong> biến mất. Các field bạn đã tạo <strong>vẫn còn nguyên</strong> (chúng là field thật của collection) — không mất dữ liệu.</li>
+</ul>
+<hr>
+<h4>Cho nhà phát triển</h4>
+<p>Điểm vào = <code>TableBlockModel.registerFlow</code> (mục trong menu ⚙ của khối) + <code>flowSettings.registerComponents</code>
+(hộp thoại là component React <code>PtdlInlineFieldForm</code>) — <strong>đúng pattern</strong> đã chạy thật của
+<code>@ptdl/plugin-conditional-format</code>. Tạo field qua action server <strong><code>ptdlInlineField:createField</code></strong>: ghi
+metadata vào bảng <code>fields</code> (kèm <code>context</code>) rồi <code>collection.sync({alter:true})</code> để migrate cột vật lý —
+mirror <code>opAddField</code> của app-builder. Sau đó client <code>dataSourceManager.reload({keys})</code> để nạp metadata,
+rồi gắn cột <strong>giống hệt nút “Fields” gốc</strong>: <code>createModelAsync</code> → <code>addSubModel('columns', …)</code> →
+<code>afterAddAsSubModel</code> → <code>save</code>. Bộ chuyển kiểu field (<code>buildFieldDef</code>) và bảng renderer mặc định
+(<code>DISPLAY_BY_INTERFACE</code>) tái dùng verbatim từ app-builder. ACL hiện đặt <code>loggedIn</code> (khớp app-builder /
+field-order) — siết thành vai trò admin nếu mở cho người dùng thường. Chỉ chạy <code>/v/</code> (classic không có
+<code>TableBlockModel</code>). Chi tiết kỹ thuật: xem <code>README.md</code> (tiếng Anh).</p>
+</div>
+      <div class="prose lang lang-en" hidden><blockquote>
+<p>Add a <strong>new column (field) while editing a table view</strong> — no trip to the Collection Manager. Define it
+in a small dialog and the column appears <strong>right there</strong> in the block you’re editing.</p>
+</blockquote>
+<p><strong>Group:</strong> Fields · <strong>Runs on:</strong> /v/ (modern) · <strong>Version:</strong> 0.1.3</p>
+<h3>What it adds</h3>
+<ul>
+<li>A <strong>“Add new column”</strong> item in every <strong>Table block’s ⚙ settings menu</strong> on <code>/v/</code>.</li>
+<li>Picking it opens a dialog: <strong>Column name</strong>, <strong>Data type</strong>, and type-specific options (choices, linked collection, or a formula).</li>
+<li>On <strong>OK</strong> the plugin <strong>creates the field</strong> on the collection, <strong>migrates the physical column</strong>, and <strong>drops the column straight into the block being edited</strong> — visible immediately, no page refresh.</li>
+<li>✅ Fills a real NocoBase gap: normally a new column means <strong>Collection Manager → Add field → come back and enable the column</strong>. This collapses all three into one in-place step.</li>
+</ul>
+<h3>How to use</h3>
+<ol>
+<li>Open a <code>/v/</code> page with a Table block and enter UI-config mode.</li>
+<li>On the Table block, open its <strong>⚙ menu</strong> → <strong>“Add new column”</strong>.</li>
+<li>Enter a <strong>Column name</strong> (e.g. <em>Notes</em>, <em>Unit price</em>). The <strong>Field key</strong> (snake_case) is auto-derived from it; override it under <strong>Advanced</strong>.</li>
+<li>Pick a <strong>Data type</strong>. Choice → type values; <strong>Relation</strong> → pick the linked collection; <strong>Computed</strong> → write a formula.</li>
+<li>Toggle <strong>Required</strong> if needed, then <strong>OK</strong>.</li>
+<li>✅ A “Column … added” toast appears; the new column sits just before the row-actions column. Drag the column header to reposition.</li>
+</ol>
+<h3>Supported data types (0.1.3)</h3>
+<p>Text (single/multi-line), Email, Phone, Link (URL) · Decimal, Integer, Percent · Single choice, Multiple
+choice, Yes/No, <strong>Status flow</strong> · Date, Date &amp; time, Time · <strong>Relations</strong> (link-to-one m2o, child-list o2m,
+many-to-many m2m) · <strong>Icon</strong>, Color, <strong>Image/File (URL)</strong>, <strong>Attachment (upload)</strong> · <strong>Computed (formula)</strong>.</p>
+<h4>Status flow, icon &amp; files (new in 0.1.3)</h4>
+<ul>
+<li><strong>Status flow</strong> — a <strong>simple</strong> config: list the states and pick a <strong>colour</strong> for each. <strong>First state = start (init), last = end</strong>; a linear flow is auto-derived. Renders as coloured tags + a change-status action (fullest with <strong>@ptdl/plugin-status-flow</strong> installed).</li>
+<li><strong>Icon</strong> — an icon-picker field (Lucide set).</li>
+<li><strong>Image/File (URL)</strong> — paste an existing image/file URL; shown as a clickable link.</li>
+<li><strong>Attachment (upload)</strong> — real file upload to storage (<strong>requires the File manager plugin</strong>, usually present), stored in the <code>attachments</code> collection.</li>
+</ul>
+<h4>Relations (new in 0.1.2)</h4>
+<p>Pick a <strong>Relation</strong> type → a <strong>Linked collection</strong> picker appears:</p>
+<ul>
+<li><strong>Link to one record (m2o)</strong> — each row points to one record of the other collection (belongsTo). e.g. order → customer.</li>
+<li><strong>Child records list (o2m)</strong> — each row has many children in the other collection (hasMany); a <strong>reverse link</strong> is auto-created on the child.</li>
+<li><strong>Many-to-many (m2m)</strong> — through a junction table (belongsToMany).</li>
+</ul>
+<h4>Computed columns (from 0.1.1)</h4>
+<p>Pick <strong>“Computed (formula)”</strong> → a <strong>Result</strong> type (Number / Integer / Percent / Text) and an Excel-style
+<strong>Formula</strong> box appear. Reference other columns with <code>data.&lt;field_key&gt;</code> — the <strong>“Insert field / relation”</strong>
+picker (the same one the <strong>Formula</strong> plugin uses) inserts at the caret and <strong>drills relations too</strong>, e.g.
+<code>data.customer.name</code>. Click <strong>“Preview”</strong> to run the formula against the <strong>first record</strong> and see the value.
+The plugin creates a read-only field plus a <strong>@ptdl/plugin-formula</strong> rule, so the value <strong>auto-recomputes</strong>
+on create/update.</p>
+<blockquote>
+<p>⚠️ Computed columns (and Preview) require <strong>@ptdl/plugin-formula</strong>. Without it the column is still
+created but the formula stays inactive (the plugin says so).</p>
+</blockquote>
+<h3>Notes</h3>
+<ul>
+<li>🧱 The created column is a <strong>real field</strong> (with a physical DB column), not a virtual one. Delete it from the <strong>Collection Manager</strong>.</li>
+<li>🔤 Two columns with the same display name are fine — the <strong>machine name</strong> is auto-suffixed (<code>notes</code>, <code>notes_2</code>, …).</li>
+<li>🔁 The column is auto-added to <strong>the block you acted on</strong>; the new field is also immediately available in every other block’s <strong>“Fields”</strong> (⚙) picker for that collection.</li>
+<li>🔒 Creating a field is a config action — keep it to users who may edit the UI.</li>
+</ul>
+<h3>Disable</h3>
+<ul>
+<li><strong>Disabling the plugin</strong> removes the menu item. Fields you already created <strong>remain</strong> (they’re real collection fields) — no data loss.</li>
+</ul>
+<hr>
+<h4>For developers</h4>
+<p>Entry point = <code>TableBlockModel.registerFlow</code> (a ⚙-menu item) + <code>flowSettings.registerComponents</code> (the
+dialog body is a React component, <code>PtdlInlineFieldForm</code>) — the exact live-verified pattern of
+<code>@ptdl/plugin-conditional-format</code>. Field creation goes through the server action
+<strong><code>ptdlInlineField:createField</code></strong>: write a <code>fields</code> metadata record (with <code>context</code>) then
+<code>collection.sync({alter:true})</code> to migrate the physical column — mirroring app-builder’s <code>opAddField</code>.
+The client then <code>dataSourceManager.reload({keys})</code> to pick up metadata and attaches the column exactly the
+way the native <strong>Fields</strong> button does: <code>createModelAsync</code> → <code>addSubModel('columns', …)</code> →
+<code>afterAddAsSubModel</code> → <code>save</code>. The field-type map (<code>buildFieldDef</code>) and default renderer map
+(<code>DISPLAY_BY_INTERFACE</code>) are reused verbatim from app-builder. ACL is <code>loggedIn</code> (matches app-builder /
+field-order) — tighten to an admin role if you expose it to non-admins. <code>/v/</code> only (classic has no
+<code>TableBlockModel</code>).</p>
 </div>
     </section>
   </main>
