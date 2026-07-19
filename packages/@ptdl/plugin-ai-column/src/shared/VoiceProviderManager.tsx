@@ -1,6 +1,30 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Input, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Input, Popconfirm, Select, Space, Table, Tag, Typography, message, theme } from 'antd';
 import { t } from './i18n';
+
+/** Bridge antd theme tokens → CSS vars so `var(--colorX)` resolves inside portals / any container that
+ *  escapes antd's hash-scoped cssVar root (else the LIGHT fallback wins in dark mode). */
+function themeVars(token: any) {
+  return {
+    '--colorText': token.colorText,
+    '--colorTextSecondary': token.colorTextSecondary,
+    '--colorTextTertiary': token.colorTextTertiary,
+    '--colorTextQuaternary': token.colorTextQuaternary,
+    '--colorBorder': token.colorBorder,
+    '--colorBorderSecondary': token.colorBorderSecondary,
+    '--colorBgContainer': token.colorBgContainer,
+    '--colorBgLayout': token.colorBgLayout,
+    '--colorFillSecondary': token.colorFillSecondary,
+    '--colorFillTertiary': token.colorFillTertiary,
+    '--colorFillQuaternary': token.colorFillQuaternary,
+    '--colorSplit': token.colorSplit,
+    '--colorPrimary': token.colorPrimary,
+    '--colorInfo': token.colorInfo,
+    '--colorWarning': token.colorWarning,
+    '--colorSuccess': token.colorSuccess,
+    '--colorError': token.colorError,
+  } as React.CSSProperties;
+}
 
 /**
  * Settings screen to configure 3rd-party TTS provider credentials (ElevenLabs / Vbee) from the UI,
@@ -22,6 +46,8 @@ const PROVIDERS = [
 export function createVoiceProviderManager({ useApiClient }: { useApiClient: () => any }) {
   return function VoiceProviderManager() {
     const api = useApiClient();
+    const { token: tkn } = theme.useToken();
+    const tv = themeVars(tkn);
     const [rows, setRows] = useState<Row[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -135,7 +161,7 @@ export function createVoiceProviderManager({ useApiClient }: { useApiClient: () 
     ];
 
     return (
-      <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
+      <div style={{ ...tv, padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
         <Alert
           type="info"
           showIcon

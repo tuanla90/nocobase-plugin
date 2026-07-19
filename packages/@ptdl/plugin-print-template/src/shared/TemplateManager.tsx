@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button, Checkbox, Drawer, Input, InputNumber, Popconfirm, Select, Slider, Space,
-  Modal, Table, Tabs, Tag, Tooltip, message,
+  Modal, Table, Tabs, Tag, Tooltip, message, theme,
 } from 'antd';
 import Handlebars from 'handlebars';
 import { GrapesBodyEditor, composeBody, splitStyleFromBody } from './GrapesBodyEditor';
@@ -26,7 +26,7 @@ import { DEFAULT_PAGE_SETUP, DEFAULT_WATERMARK, PrintTemplate, TEMPLATES_COLLECT
 // would shadow / be shadowed. `tt` is the runtime translator (VN key → localized).
 import { t as tt } from './i18n';
 
-const token = (path: string[]) => `{{${path.join('.')}}}`;
+const fieldToken = (path: string[]) => `{{${path.join('.')}}}`;
 
 // Validate an AI-generated Handlebars snippet the same way the renderer will: compile + render with the
 // helper set registered (empty data). Catches syntax errors AND missing/typo'd helpers — the signals the
@@ -220,6 +220,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
     placeholder?: string;
     hint?: React.ReactNode;
   }> = ({ api, collectionName, includeToMany, value, onChange, rows = 12, placeholder, hint }) => {
+    const { token } = theme.useToken();
     const taRef = useRef<any>(null);
     const [showFns, setShowFns] = useState(false);
     const [fnsHeight, setFnsHeight] = useState(240);
@@ -254,7 +255,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
               api={api}
               collectionName={collectionName}
               includeToMany={includeToMany}
-              onPick={(path) => insert(token(path))}
+              onPick={(path) => insert(fieldToken(path))}
             />
             <AssetUploadButton
               api={api}
@@ -281,7 +282,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
         />
-        {hint ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{hint}</div> : null}
+        {hint ? <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 4 }}>{hint}</div> : null}
         {showFns && (
           <>
             <div
@@ -294,14 +295,14 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#bbb',
+                color: token.colorTextQuaternary,
                 fontSize: 10,
                 userSelect: 'none',
               }}
             >
               ● ● ●
             </div>
-            <div style={{ height: fnsHeight, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 6 }}>
+            <div style={{ height: fnsHeight, overflow: 'auto', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6 }}>
               <HelperDocs onInsert={insert} />
             </div>
           </>
@@ -373,6 +374,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
     onClose: () => void;
     onSaved: () => void;
   }> = ({ api, open, initial, collections, onClose, onSaved }) => {
+    const { token } = theme.useToken();
     const [t, setT] = useState<PrintTemplate>(initial);
     const [saving, setSaving] = useState(false);
     const [bodyMode, setBodyMode] = useState<'html' | 'visual'>('visual');
@@ -471,7 +473,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
       }
     };
 
-    const label = (text: string) => <div style={{ fontSize: 12, color: '#666', margin: '10px 0 4px' }}>{text}</div>;
+    const label = (text: string) => <div style={{ fontSize: 12, color: token.colorTextSecondary, margin: '10px 0 4px' }}>{text}</div>;
 
     return (
       <Drawer
@@ -572,14 +574,14 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
                     }
                     onChange={(v) => up({ conditions: v, whenField: undefined, whenValues: undefined })}
                   />
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 4 }}>
                     {tt('Khi nút In / block đặt chế độ')} <b>{tt('Tự động')}</b>
                     {tt(': chọn template đầu tiên khớp bản ghi. Nhiều điều kiện = phải khớp')} <b>{tt('tất cả')}</b>{' '}
                     {tt('(VÀ); mỗi điều kiện khớp nếu giá trị bản ghi nằm trong danh sách. Cột có thể chọn nhiều cấp (VD')}{' '}
                     <code>khach_hang.loai</code>
                     {tt('). Template để trống điều kiện = mặc định (dùng khi không điều kiện nào khớp).')}
                   </div>
-                  <div style={{ marginTop: 14, borderTop: '1px dashed #eee', paddingTop: 10 }}>
+                  <div style={{ marginTop: 14, borderTop: `1px dashed ${token.colorBorderSecondary}`, paddingTop: 10 }}>
                     <Checkbox
                       checked={!!t.isPartial}
                       onChange={(e) => up({ isPartial: e.target.checked })}
@@ -596,11 +598,11 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
                           addonBefore="{{>"
                           addonAfter="}}"
                         />
-                        <div style={{ fontSize: 12, color: '#888', marginTop: 6, lineHeight: 1.6 }}>
+                        <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 6, lineHeight: 1.6 }}>
                           {tt('Khối chung là')} <b>{tt('đoạn HTML tái sử dụng')}</b>{tt('. Sau khi đặt')} <b>slug</b> {tt('(VD')}{' '}
                           <code>header_chung</code>
                           {tt('), ở template khác bạn chèn nó vào phần Header / Nội dung / Footer bằng cú pháp')}{' '}
-                          <code style={{ background: '#f5f5f5', padding: '1px 5px', borderRadius: 3 }}>
+                          <code style={{ background: token.colorFillTertiary, padding: '1px 5px', borderRadius: 3 }}>
                             {'{{> header_chung}}'}
                           </code>
                           {tt('. Khi in, chỗ đó được thay bằng nội dung khối này (dùng chung dữ liệu bản ghi — mọi')}{' '}
@@ -660,7 +662,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
                             placeholder="<h1>HOÁ ĐƠN {{code}}</h1> ..."
                             hint={bodyHint()}
                           />
-                          <div style={{ fontSize: 12, color: '#666', margin: '12px 0 4px' }}>
+                          <div style={{ fontSize: 12, color: token.colorTextSecondary, margin: '12px 0 4px' }}>
                             {tt('CSS của nội dung (kéo-thả sinh ra đây — tự đi kèm khi in)')}
                           </div>
                           <Input.TextArea
@@ -877,7 +879,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
                       <Input value={ps.margin} onChange={(e) => up({ pageSetup: { ...ps, margin: e.target.value } })} placeholder="12mm" />
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
+                  <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 12 }}>
                     {tt('Header/footer lặp lại ở mỗi trang khi in; dòng ngày giờ/URL trình duyệt tự thêm đã được chặn.')}
                   </div>
                 </div>
@@ -889,15 +891,15 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
         <div
           style={{
             flex: 1,
-            borderLeft: '1px solid #e8e8e8',
+            borderLeft: `1px solid ${token.colorBorderSecondary}`,
             display: 'flex',
             flexDirection: 'column',
-            background: '#f0f1f3',
+            background: token.colorBgLayout,
             minWidth: 0,
           }}
         >
           <div style={{ padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, color: '#666', whiteSpace: 'nowrap' }}>{tt('Xem thử với:')}</span>
+            <span style={{ fontSize: 12.5, color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>{tt('Xem thử với:')}</span>
             <Select
               size="small"
               style={{ flex: 1, minWidth: 160 }}
@@ -949,6 +951,7 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
   };
 
   return function TemplateManager() {
+    const { token } = theme.useToken();
     const api = useApiClient();
     const [rows, setRows] = useState<PrintTemplate[]>([]);
     const [loading, setLoading] = useState(false);
@@ -993,9 +996,9 @@ export function createTemplateManager(deps: { useApiClient: () => any }): React.
     }, [collections]);
 
     return (
-      <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
+      <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: token.colorBgContainer, border: `0.8px solid ${token.colorBorderSecondary}`, borderRadius: 8 }}>
         <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ color: '#666' }}>
+          <div style={{ color: token.colorTextSecondary }}>
             {tt('Template in ấn (Handlebars). Gắn nút in vào block qua action')} <b>{tt('Mẫu in')}</b> {tt('trong "Configure actions".')}
           </div>
           <Button type="primary" onClick={() => setEditing({ ...EMPTY })}>

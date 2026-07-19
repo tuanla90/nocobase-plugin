@@ -619,7 +619,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
           </div>
 
           {/* right: live preview */}
-          <div style={{ flex: 1, borderLeft: '1px solid #e8e8e8', display: 'flex', flexDirection: 'column', background: '#f7f8fa', minWidth: 0 }}>
+          <div style={{ flex: 1, borderLeft: `1px solid ${token.colorBorderSecondary}`, display: 'flex', flexDirection: 'column', background: token.colorFillQuaternary, minWidth: 0 }}>
             <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12.5, color: token.colorTextSecondary }}>{tt('Chạy thử với:')}</span>
               <Select size="small" style={{ flex: 1, minWidth: 150 }} showSearch optionFilterProp="label" placeholder={tt('Chọn bản ghi')} value={sampleTk}

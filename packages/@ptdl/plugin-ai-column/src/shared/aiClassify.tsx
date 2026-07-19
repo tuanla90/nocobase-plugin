@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Tag, Tooltip, message } from 'antd';
+import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Tag, Tooltip, message, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
@@ -279,6 +279,7 @@ export const PtdlNumber: React.FC<any> = observer((props: any) => (
   <InputNumber style={{ width: 140 }} min={1} max={30} value={props.value ?? 8} onChange={(v) => props.onChange?.(v)} />
 ));
 export const PtdlAutoPick: React.FC<any> = observer((props: any) => {
+  const { token } = theme.useToken();
   const v = props.value || {};
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -286,7 +287,7 @@ export const PtdlAutoPick: React.FC<any> = observer((props: any) => {
         {t('Tự ghi đáp án tốt nhất nếu điểm ≥')}
       </Checkbox>
       <InputNumber min={0} max={100} value={v.threshold ?? 80} onChange={(n) => props.onChange?.({ ...v, threshold: n })} addonAfter="%" />
-      <span style={{ color: '#999', fontSize: 12 }}>{t('(dưới ngưỡng → hiện danh sách để chọn tay)')}</span>
+      <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>{t('(dưới ngưỡng → hiện danh sách để chọn tay)')}</span>
     </div>
   );
 });

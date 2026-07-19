@@ -7,7 +7,7 @@
 // which the renderer expands into {{#each}} just before compiling (printService).
 import React, { useEffect, useRef, useState } from 'react';
 import * as ReactDOM from 'react-dom';
-import { Alert, Spin } from 'antd';
+import { Alert, Spin, theme } from 'antd';
 import { ColorField, FieldPickerCascader } from '@ptdl/shared';
 import { appFontFamily, injectGrapesTheme, lucideSvg } from './grapesTheme';
 import { loadCssOnce, loadScriptClean } from './scriptLoader';
@@ -23,12 +23,12 @@ const editorHeight = () => Math.max(480, (typeof window !== 'undefined' ? window
 
 const BASE = '/static/plugins/@ptdl/plugin-print-template/dist/grapes';
 
-async function ensureGrapes(): Promise<{ grapesjs: any; plugins: any[] }> {
+async function ensureGrapes(token?: any): Promise<{ grapesjs: any; plugins: any[] }> {
   const w = window as any;
   // CSS must be in place BEFORE init — initialising against the unstyled DOM leaves
   // the canvas blank until something (e.g. the fullscreen toggle) forces a reflow.
   await loadCssOnce(`${BASE}/grapes.min.css`);
-  injectGrapesTheme();
+  injectGrapesTheme(token);
   if (!w.grapesjs) {
     await loadScriptClean(`${BASE}/grapes.min.js`);
     await loadScriptClean(`${BASE}/preset-webpage.js`).catch(() => {});
@@ -638,6 +638,9 @@ export const GrapesBodyEditor: React.FC<{
   /** override the auto (viewport) height — smaller for header/footer editors */
   heightPx?: number;
 }> = ({ api, collectionName, value, onChange, heightPx }) => {
+  const { token } = theme.useToken();
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
   const boxRef = useRef<HTMLDivElement>(null);
   const edRef = useRef<any>(null);
   const onChangeRef = useRef(onChange);
@@ -646,9 +649,15 @@ export const GrapesBodyEditor: React.FC<{
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
+  // Re-theme the (global, shared) grapes stylesheet when the app theme changes while
+  // the editor is open — light ↔ dark bakes new token values into the CSS.
+  useEffect(() => {
+    injectGrapesTheme(token);
+  }, [token]);
+
   useEffect(() => {
     let dead = false;
-    ensureGrapes()
+    ensureGrapes(tokenRef.current)
       .then(({ grapesjs, plugins }) => {
         if (dead || !boxRef.current) return;
         const { css, html } = splitStyleFromBody(initialRef.current);
@@ -742,10 +751,10 @@ export const GrapesBodyEditor: React.FC<{
     <div>
       <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <FieldPickerCascader api={api} collectionName={collectionName} includeToMany onPick={insertToken} />
-        <span style={{ fontSize: 12, color: '#888' }}>{tt('Block nhóm "Template in" ở panel phải')}</span>
+        <span style={{ fontSize: 12, color: token.colorTextSecondary }}>{tt('Block nhóm "Template in" ở panel phải')}</span>
       </div>
       <Spin spinning={loading}>
-        <div ref={boxRef} style={{ height: heightPx || editorHeight(), border: '1px solid #e5e5e5', borderRadius: 6, overflow: 'hidden' }} />
+        <div ref={boxRef} style={{ height: heightPx || editorHeight(), border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, overflow: 'hidden' }} />
       </Spin>
     </div>
   );

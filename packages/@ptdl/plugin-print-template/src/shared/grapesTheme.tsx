@@ -129,12 +129,55 @@ function iconRules(): string {
     .join('\n');
 }
 
-const THEME_CSS = `
-/* ---- light antd-like GrapesJS theme (plugin-print-template) ---- */
+/** Rough luminance test on a hex/rgb colour → true when it's a dark surface, so the
+ *  editor's `color-scheme` (native selects/scrollbars) follows the app theme. */
+function isDark(color: string): boolean {
+  try {
+    const s = String(color || '').trim();
+    let r = 255;
+    let g = 255;
+    let b = 255;
+    if (s.startsWith('#')) {
+      const h = s.slice(1);
+      const hex = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    } else {
+      const m = s.match(/rgba?\(([^)]+)\)/);
+      if (!m) return false;
+      const p = m[1].split(',').map((x) => parseFloat(x));
+      [r, g, b] = [p[0], p[1], p[2]];
+    }
+    return 0.299 * r + 0.587 * g + 0.114 * b < 128;
+  } catch (e) {
+    return false;
+  }
+}
+
+// The GrapesJS chrome CSS built from the antd theme token, so the whole editor UI
+// (panels, blocks, fields, sector titles, RTE toolbar) follows light/dark. antd scopes
+// its CSS vars to a hashed container that this global stylesheet can't rely on, so we
+// inline the token VALUES directly. Blue accents (selected/active/toolbar/badge) are
+// left as the primary colour on purpose — they read fine on both themes.
+function themeCss(token: any = {}): string {
+  const t = token || {};
+  const colorText = t.colorText || 'rgba(0,0,0,.85)';
+  const colorTextTertiary = t.colorTextTertiary || '#8c8c8c';
+  const colorBorder = t.colorBorder || '#d9d9d9';
+  const colorBorderSecondary = t.colorBorderSecondary || '#f0f0f0';
+  const colorBgContainer = t.colorBgContainer || '#ffffff';
+  const colorBgLayout = t.colorBgLayout || '#eef0f3';
+  const colorFillQuaternary = t.colorFillQuaternary || '#fafafa';
+  const colorFillTertiary = t.colorFillTertiary || '#f5f5f5';
+  const colorPrimary = t.colorPrimary || '#1677ff';
+  const colorPrimaryBg = t.colorPrimaryBg || '#e6f4ff';
+  return `
+/* ---- antd-token GrapesJS theme (plugin-print-template) — follows light/dark ---- */
 /* size guards: the editor lives inside Drawer/Tabs/Spin wrappers — make sure the
    %-height chain and the absolutely-positioned canvas/views never collapse */
 .gjs-editor-cont { height: 100%; }
-.gjs-editor { height: 100%; --gjs-left-width: 232px; color-scheme: light; }
+.gjs-editor { height: 100%; --gjs-left-width: 232px; color-scheme: ${isDark(colorBgContainer) ? 'dark' : 'light'}; }
 .gjs-editor, .gjs-editor * { letter-spacing: normal !important; }
 .gjs-cv-canvas, .gjs-pn-views-container { visibility: visible !important; opacity: 1 !important; }
 
@@ -163,50 +206,51 @@ const THEME_CSS = `
 .gjs-sm-sector-title { display: flex !important; align-items: center; gap: 8px; padding: 8px 12px !important; text-align: left !important; font-size: 12.5px; font-weight: 600; }
 .gjs-sm-sector-title .gjs-sm-sector-label { flex: 1; }
 /* labels lighter, tighter */
-.gjs-sm-label { font-size: 11px; color: #8c8c8c; margin-bottom: 3px; }
+.gjs-sm-label { font-size: 11px; color: ${colorTextTertiary}; margin-bottom: 3px; }
 .gjs-sm-property { margin-bottom: 8px; }
 /* padding/margin composite: lighter frame + tighter cells */
-.gjs-sm-composite { background: #fafafa !important; border: 1px solid #f0f0f0 !important; border-radius: 6px; padding: 6px !important; }
+.gjs-sm-composite { background: ${colorFillQuaternary} !important; border: 1px solid ${colorBorderSecondary} !important; border-radius: 6px; padding: 6px !important; }
 .gjs-sm-composite .gjs-sm-property { margin-bottom: 4px; }
 .gjs-sm-field input, .gjs-sm-field select, .gjs-field-integer, .gjs-field-select { border-radius: 6px; }
-.gjs-one-bg { background-color: #ffffff !important; }
-.gjs-two-color { color: rgba(0,0,0,.72) !important; }
-.gjs-three-bg { background-color: #1677ff !important; color: #fff !important; }
-.gjs-four-color, .gjs-four-color-h:hover { color: #1677ff !important; }
+.gjs-one-bg { background-color: ${colorBgContainer} !important; }
+.gjs-two-color { color: ${colorText} !important; }
+.gjs-three-bg { background-color: ${colorPrimary} !important; color: #fff !important; }
+.gjs-four-color, .gjs-four-color-h:hover { color: ${colorPrimary} !important; }
 
-.gjs-pn-panel { border-color: #f0f0f0 !important; }
-.gjs-pn-views, .gjs-pn-views-container { border-color: #f0f0f0 !important; box-shadow: none !important; }
+.gjs-pn-panel { border-color: ${colorBorderSecondary} !important; }
+.gjs-pn-views, .gjs-pn-views-container { border-color: ${colorBorderSecondary} !important; box-shadow: none !important; }
 .gjs-pn-btn { border-radius: 6px; margin: 1px; }
-.gjs-pn-btn:hover { background: #f5f5f5; }
-.gjs-pn-btn.gjs-pn-active { background: #e6f4ff !important; color: #1677ff !important; box-shadow: none !important; }
+.gjs-pn-btn:hover { background: ${colorFillTertiary}; }
+.gjs-pn-btn.gjs-pn-active { background: ${colorPrimaryBg} !important; color: ${colorPrimary} !important; box-shadow: none !important; }
 
-.gjs-cv-canvas { background: #eef0f3; }
+.gjs-cv-canvas { background: ${colorBgLayout}; }
 .gjs-frame-wrapper { box-shadow: 0 1px 6px rgba(0,0,0,.15); }
 
 .gjs-block {
-  border-radius: 8px; border: 1px solid #ececec; background: #fff; color: #555;
+  border-radius: 8px; border: 1px solid ${colorBorderSecondary}; background: ${colorBgContainer}; color: ${colorText};
   box-shadow: none; transition: all .15s; font-size: 11.5px; padding: 8px 4px; min-height: 64px;
 }
-.gjs-block:hover { border-color: #1677ff; color: #1677ff; box-shadow: 0 2px 8px rgba(22,119,255,.12); }
+.gjs-block:hover { border-color: ${colorPrimary}; color: ${colorPrimary}; box-shadow: 0 2px 8px rgba(22,119,255,.12); }
 svg.pt-lucide, svg.pt-lucide * { fill: none !important; stroke: currentColor; }
 .gjs-block svg.pt-lucide { width: 24px; height: 24px; }
 .gjs-caret-icon::before { width: 11px; height: 11px; vertical-align: -1px; }
 .gjs-block__media { margin-bottom: 6px; display: flex; justify-content: center; }
-.gjs-block-category { border-color: #f0f0f0; }
-.gjs-title, .gjs-sm-sector-title { background: #fafafa !important; color: #555 !important; border-color: #f0f0f0 !important; font-weight: 600; }
+.gjs-block-category { border-color: ${colorBorderSecondary}; }
+.gjs-title, .gjs-sm-sector-title { background: ${colorFillQuaternary} !important; color: ${colorText} !important; border-color: ${colorBorderSecondary} !important; font-weight: 600; }
 
-.gjs-field { background: #fff; border: 1px solid #d9d9d9; border-radius: 6px; color: #444; }
-.gjs-field input, .gjs-field select { color: #444; }
-.gjs-category-open, .gjs-block-category.gjs-open { border-color: #f0f0f0; }
-.gjs-layer { border-color: #f5f5f5; }
-.gjs-layer.gjs-selected { background: #e6f4ff; }
-.gjs-toolbar { background: #1677ff; border-radius: 6px; }
-.gjs-badge { background: #1677ff; border-radius: 4px; }
+.gjs-field { background: ${colorBgContainer}; border: 1px solid ${colorBorder}; border-radius: 6px; color: ${colorText}; }
+.gjs-field input, .gjs-field select { color: ${colorText}; }
+.gjs-category-open, .gjs-block-category.gjs-open { border-color: ${colorBorderSecondary}; }
+.gjs-layer { border-color: ${colorBorderSecondary}; }
+.gjs-layer.gjs-selected { background: ${colorPrimaryBg}; }
+.gjs-toolbar { background: ${colorPrimary}; border-radius: 6px; }
+.gjs-badge { background: ${colorPrimary}; border-radius: 4px; }
 .gjs-com-badge, .gjs-badge__name { font-size: 11px; }
-.gjs-rte-toolbar { border-radius: 6px; border-color: #f0f0f0; }
-.gjs-rte-action { border-color: #f0f0f0; }
+.gjs-rte-toolbar { border-radius: 6px; border-color: ${colorBorderSecondary}; background: ${colorBgContainer}; }
+.gjs-rte-action { border-color: ${colorBorderSecondary}; color: ${colorText}; }
 ${iconRules()}
 `;
+}
 
 /** The app theme's font stack — used for the grapes UI and the canvas content. */
 export function appFontFamily(): string {
@@ -217,15 +261,20 @@ export function appFontFamily(): string {
   }
 }
 
-export function injectGrapesTheme() {
-  if (document.getElementById('pt-grapes-theme')) return;
-  const s = document.createElement('style');
-  s.id = 'pt-grapes-theme';
+export function injectGrapesTheme(token?: any) {
   // grapes UI font rides on its own CSS var — point it at the app theme font (and
   // force font-family directly too: the var alone lost to :root in some setups)
   const font = appFontFamily();
-  s.textContent = `${THEME_CSS}
+  const css = `${themeCss(token)}
 .gjs-editor { --gjs-main-font: ${font}; --gjs-font-size: 12.5px; }
 .gjs-editor, .gjs-editor input, .gjs-editor select, .gjs-editor button, .gjs-editor textarea { font-family: ${font} !important; }`;
-  document.head.appendChild(s);
+  // Re-apply on every call (was once-only): the app theme (light/dark) can change
+  // between opens and the token values are baked into this stylesheet.
+  let s = document.getElementById('pt-grapes-theme') as HTMLStyleElement | null;
+  if (!s) {
+    s = document.createElement('style');
+    s.id = 'pt-grapes-theme';
+    document.head.appendChild(s);
+  }
+  s.textContent = css;
 }

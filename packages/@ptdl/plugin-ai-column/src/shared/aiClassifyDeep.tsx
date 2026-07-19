@@ -1,10 +1,35 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Checkbox, Input, Modal, Select, Tag, Tooltip, message } from 'antd';
+import { Alert, Button, Checkbox, Input, Modal, Select, Tag, Tooltip, message, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { getFields, ColumnSelect, cleanLabel } from '@ptdl/shared';
 import { SparklesIcon, collectValues } from './aiColumn';
 import { NS, t } from './i18n';
+
+/** Bridge antd theme tokens → CSS vars so `var(--colorX)` resolves inside portals (the result Modal,
+ *  the field-settings dialog) that escape antd's hash-scoped cssVar root — else the LIGHT fallback
+ *  wins in dark mode. Spread `...themeVars(token)` onto render roots + portal content roots. */
+function themeVars(token: any) {
+  return {
+    '--colorText': token.colorText,
+    '--colorTextSecondary': token.colorTextSecondary,
+    '--colorTextTertiary': token.colorTextTertiary,
+    '--colorTextQuaternary': token.colorTextQuaternary,
+    '--colorBorder': token.colorBorder,
+    '--colorBorderSecondary': token.colorBorderSecondary,
+    '--colorBgContainer': token.colorBgContainer,
+    '--colorBgLayout': token.colorBgLayout,
+    '--colorFillSecondary': token.colorFillSecondary,
+    '--colorFillTertiary': token.colorFillTertiary,
+    '--colorFillQuaternary': token.colorFillQuaternary,
+    '--colorSplit': token.colorSplit,
+    '--colorPrimary': token.colorPrimary,
+    '--colorInfo': token.colorInfo,
+    '--colorWarning': token.colorWarning,
+    '--colorSuccess': token.colorSuccess,
+    '--colorError': token.colorError,
+  } as React.CSSProperties;
+}
 
 /**
  * @ptdl/plugin-ai-column — "AI Phân loại chuyên sâu" (deep/decision-support classify). For HARD
@@ -38,8 +63,10 @@ export const PtdlDeepAttributes: React.FC<any> = observer((props: any) => {
   const update = (i: number, label: string) => { const n = rows.slice(); n[i] = { name: slugKey(label, i), description: label }; props.onChange?.(n); };
   const add = () => props.onChange?.([...rows, { name: '', description: '' }]);
   const rm = (i: number) => props.onChange?.(rows.filter((_: any, idx: number) => idx !== i));
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   return (
-    <div>
+    <div style={tv}>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
           <span style={{ flex: '0 0 auto', width: 18, height: 18, borderRadius: 9, background: '#f0e9fb', color: '#7c3aed', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
@@ -48,7 +75,7 @@ export const PtdlDeepAttributes: React.FC<any> = observer((props: any) => {
         </div>
       ))}
       <Button type="dashed" onClick={add} style={{ width: '100%' }}>{t('+ Thêm thuộc tính')}</Button>
-      {!rows.length ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('AI sẽ trích các thuộc tính này từ input để chấm chính xác hơn (bỏ trống nếu không cần).')}</div> : null}
+      {!rows.length ? <div style={{ fontSize: 12, color: 'var(--colorTextTertiary)', marginTop: 4 }}>{t('AI sẽ trích các thuộc tính này từ input để chấm chính xác hơn (bỏ trống nếu không cần).')}</div> : null}
     </div>
   );
 });
@@ -61,10 +88,12 @@ export const PtdlDeepRubricRows: React.FC<any> = observer((props: any) => {
   const add = () => props.onChange?.([...rows, { criterion: '', weight: 20 }]);
   const rm = (i: number) => props.onChange?.(rows.filter((_: any, idx: number) => idx !== i));
   const total = rows.reduce((s, r) => s + (Number(r.weight) || 0), 0);
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   return (
-    <div>
+    <div style={tv}>
       {rows.length ? (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 4, fontSize: 12, color: '#999' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 4, fontSize: 12, color: 'var(--colorTextTertiary)' }}>
           <span style={{ flex: 1 }}>{t('Tiêu chí')}</span>
           <span style={{ width: 90 }}>{t('Điểm tối đa')}</span>
           <span style={{ width: 24 }} />
@@ -78,7 +107,7 @@ export const PtdlDeepRubricRows: React.FC<any> = observer((props: any) => {
         </div>
       ))}
       <Button type="dashed" onClick={add} style={{ width: '100%' }}>{t('+ Thêm tiêu chí')}</Button>
-      {rows.length ? <div style={{ fontSize: 12, color: total === 100 ? '#52c41a' : '#d48806', marginTop: 4 }}>{t('Tổng điểm')}: {total}{total !== 100 ? t(' (nên = 100)') : ' ✓'}</div> : <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('Bỏ trống = AI tự chấm tổng quát. Khai báo tiêu chí + trọng số → điểm hiện thành thanh nhiều màu theo cấu phần.')}</div>}
+      {rows.length ? <div style={{ fontSize: 12, color: total === 100 ? '#52c41a' : '#d48806', marginTop: 4 }}>{t('Tổng điểm')}: {total}{total !== 100 ? t(' (nên = 100)') : ' ✓'}</div> : <div style={{ fontSize: 12, color: 'var(--colorTextTertiary)', marginTop: 4 }}>{t('Bỏ trống = AI tự chấm tổng quát. Khai báo tiêu chí + trọng số → điểm hiện thành thanh nhiều màu theo cấu phần.')}</div>}
     </div>
   );
 });
@@ -107,8 +136,10 @@ export const PtdlDeepDisplayFields: React.FC<any> = observer((props: any) => {
   const update = (i: number, patch: any) => { const n = rows.slice(); n[i] = { ...n[i], ...patch }; props.onChange?.(n); };
   const add = () => props.onChange?.([...rows, { field: undefined, role: 'tag' }]);
   const rm = (i: number) => props.onChange?.(rows.filter((_: any, idx: number) => idx !== i));
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   return (
-    <div>
+    <div style={tv}>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
           <ColumnSelect style={{ flex: 1 }} options={opts} value={r.field} onChange={(v: any) => update(i, { field: v })} placeholder={master.collection ? t('Chọn cột') : t('Chọn bảng master trước')} />
@@ -117,7 +148,7 @@ export const PtdlDeepDisplayFields: React.FC<any> = observer((props: any) => {
         </div>
       ))}
       <Button type="dashed" onClick={add} style={{ width: '100%' }}>{t('+ Thêm cột hiển thị')}</Button>
-      {!rows.length ? <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('Khai từng cột + vai trò để thẻ ứng viên hiển thị đúng ý (không đoán tự động).')}</div> : null}
+      {!rows.length ? <div style={{ fontSize: 12, color: 'var(--colorTextTertiary)', marginTop: 4 }}>{t('Khai từng cột + vai trò để thẻ ứng viên hiển thị đúng ý (không đoán tự động).')}</div> : null}
     </div>
   );
 });
@@ -142,8 +173,10 @@ export const PtdlDeepExamples: React.FC<any> = observer((props: any) => {
     return () => { a = false; };
   }, [v.collection]);
   const set = (patch: any) => props.onChange?.({ ...v, ...patch });
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   return (
-    <div>
+    <div style={tv}>
       <Select style={{ width: '100%', marginBottom: 6 }} allowClear showSearch optionFilterProp="label" options={colls} value={v.collection || undefined} onChange={(c) => set({ collection: c || undefined, dataSourceKey: 'main', queryField: undefined, codeField: undefined })} placeholder={t('Bảng ví dụ đã xác thực (input → mã đúng)')} />
       {v.collection ? (
         <div style={{ display: 'flex', gap: 8 }}>
@@ -152,7 +185,7 @@ export const PtdlDeepExamples: React.FC<any> = observer((props: any) => {
           <Input type="number" style={{ width: 70 }} value={v.k ?? 3} onChange={(e) => set({ k: Number(e.target.value) || 3 })} />
         </div>
       ) : null}
-      <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{t('Lấy vài ví dụ giống nhất làm few-shot cho AI + đảm bảo mã đúng lọt vào danh sách. Để trống nếu chưa có.')}</div>
+      <div style={{ fontSize: 12, color: 'var(--colorTextTertiary)', marginTop: 4 }}>{t('Lấy vài ví dụ giống nhất làm few-shot cho AI + đảm bảo mã đúng lọt vào danh sách. Để trống nếu chưa có.')}</div>
     </div>
   );
 });
@@ -268,8 +301,8 @@ const Breadcrumb: React.FC<{ path: string }> = ({ path }) => {
     <span style={{ lineHeight: 1.5 }}>
       {parts.map((p, i) => (
         <React.Fragment key={i}>
-          {i > 0 ? <span style={{ color: '#c8c8c8', margin: '0 5px' }}>›</span> : null}
-          <span style={{ color: i === parts.length - 1 ? '#1f1f1f' : '#8c8c8c', fontWeight: i === parts.length - 1 ? 600 : 400 }}>{p}</span>
+          {i > 0 ? <span style={{ color: 'var(--colorTextQuaternary)', margin: '0 5px' }}>›</span> : null}
+          <span style={{ color: i === parts.length - 1 ? 'var(--colorText)' : 'var(--colorTextTertiary)', fontWeight: i === parts.length - 1 ? 600 : 400 }}>{p}</span>
         </React.Fragment>
       ))}
     </span>
@@ -285,7 +318,7 @@ const ScoreBar: React.FC<{ items: any[] }> = ({ items }) => {
   const totalMax = list.reduce((s, c) => s + (Number(c.max) || 0), 0) || 100;
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: '#f0f0f0' }}>
+      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--colorFillSecondary)' }}>
         {list.map((c, i) => {
           const w = (Math.max(0, Math.min(Number(c.points) || 0, c.max)) / totalMax) * 100;
           return <Tooltip key={i} title={`${c.criterion}: ${c.points}/${c.max}`}><div style={{ width: w + '%', background: SEG_PALETTE[i % SEG_PALETTE.length] }} /></Tooltip>;
@@ -293,9 +326,9 @@ const ScoreBar: React.FC<{ items: any[] }> = ({ items }) => {
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 5 }}>
         {list.map((c, i) => (
-          <span key={i} style={{ fontSize: 11, color: '#777', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span key={i} style={{ fontSize: 11, color: 'var(--colorTextSecondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <i style={{ width: 8, height: 8, borderRadius: 2, background: SEG_PALETTE[i % SEG_PALETTE.length], display: 'inline-block' }} />
-            {c.criterion}: <b style={{ color: '#333' }}>{c.points}</b><span style={{ color: '#bbb' }}>/{c.max}</span>
+            {c.criterion}: <b style={{ color: 'var(--colorText)' }}>{c.points}</b><span style={{ color: 'var(--colorTextQuaternary)' }}>/{c.max}</span>
           </span>
         ))}
       </div>
@@ -320,9 +353,9 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayRoles, writeField
   const label = (f: string) => (fieldTitles?.[f] ? fieldTitles[f] + ': ' : '');
   const [openReason, setOpenReason] = useState(true);
   return (
-    <div style={{ border: `1px solid ${isTop ? '#b39ddb' : '#ececec'}`, background: isTop ? '#faf7ff' : '#fff', borderRadius: 10, padding: '12px 14px', marginBottom: 10, boxShadow: isTop ? '0 1px 6px rgba(124,58,237,0.12)' : 'none' }}>
+    <div style={{ border: `1px solid ${isTop ? '#b39ddb' : 'var(--colorBorderSecondary)'}`, background: 'var(--colorBgContainer)', borderRadius: 10, padding: '12px 14px', marginBottom: 10, boxShadow: isTop ? '0 1px 6px rgba(124,58,237,0.12)' : 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ flex: '0 0 auto', width: 22, height: 22, borderRadius: 11, background: isTop ? '#7c3aed' : '#eee', color: isTop ? '#fff' : '#888', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{rank}</span>
+        <span style={{ flex: '0 0 auto', width: 22, height: 22, borderRadius: 11, background: isTop ? '#7c3aed' : 'var(--colorFillSecondary)', color: isTop ? '#fff' : 'var(--colorTextTertiary)', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{rank}</span>
         <code style={{ fontSize: 16, fontWeight: 700, color: '#4c1d95', background: '#f3effc', padding: '2px 8px', borderRadius: 6, letterSpacing: 0.3 }}>{code}</code>
         {isTop ? <Tag color="purple" style={{ marginInlineEnd: 0 }}>{t('Đề xuất')}</Tag> : null}
         {c.fromPrecedent ? <Tooltip title={t('Mã này khớp một tiền lệ đã xác thực — luôn được hiện để bạn cân nhắc.')}><Tag color="gold" style={{ marginInlineEnd: 0 }}>{t('Tiền lệ')}</Tag></Tooltip> : null}
@@ -331,26 +364,26 @@ const CandidateCard: React.FC<any> = ({ c, rank, isTop, displayRoles, writeField
           <span style={{ fontSize: 13, fontWeight: 700, color: st.fg, background: st.bg, border: `1px solid ${st.bd}`, borderRadius: 20, padding: '1px 10px' }}>{c.score}</span>
         </Tooltip>
         <Tooltip title={t('Độ tin cậy')}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#666' }}>
-            <i style={{ width: 8, height: 8, borderRadius: 4, background: CONF_DOT[c.confidence] || '#bbb', display: 'inline-block' }} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--colorTextSecondary)' }}>
+            <i style={{ width: 8, height: 8, borderRadius: 4, background: CONF_DOT[c.confidence] || 'var(--colorTextQuaternary)', display: 'inline-block' }} />
             {confLabel(c.confidence)}
           </span>
         </Tooltip>
         <Button type="primary" size="small" style={{ background: '#7c3aed', borderColor: '#7c3aed' }} onClick={() => onPick(c)}>{t('Chọn')}</Button>
       </div>
       <ScoreBar items={c.criteriaScores} />
-      {titleFields.map((f) => <div key={f} style={{ margin: '8px 0 2px', fontSize: 14, fontWeight: 600, color: '#1f1f1f' }}>{String(rec[f])}</div>)}
+      {titleFields.map((f) => <div key={f} style={{ margin: '8px 0 2px', fontSize: 14, fontWeight: 600, color: 'var(--colorText)' }}>{String(rec[f])}</div>)}
       {pathFields.map((f) => <div key={f} style={{ margin: '8px 0 2px', fontSize: 13 }}><Breadcrumb path={String(rec[f])} /></div>)}
-      {textFields.map((f) => <div key={f} style={{ margin: '4px 0', fontSize: 13, color: '#555', lineHeight: 1.5 }}><span style={{ color: '#999' }}>{label(f)}</span>{String(rec[f])}</div>)}
+      {textFields.map((f) => <div key={f} style={{ margin: '4px 0', fontSize: 13, color: 'var(--colorTextSecondary)', lineHeight: 1.5 }}><span style={{ color: 'var(--colorTextTertiary)' }}>{label(f)}</span>{String(rec[f])}</div>)}
       {tagFields.length ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
-          {tagFields.map((f) => <span key={f} style={{ fontSize: 12, color: '#595959', background: '#f5f5f5', border: '1px solid #eee', borderRadius: 4, padding: '1px 7px' }}><span style={{ color: '#999' }}>{label(f)}</span>{String(rec[f])}</span>)}
+          {tagFields.map((f) => <span key={f} style={{ fontSize: 12, color: 'var(--colorTextSecondary)', background: 'var(--colorFillTertiary)', border: '1px solid var(--colorBorderSecondary)', borderRadius: 4, padding: '1px 7px' }}><span style={{ color: 'var(--colorTextTertiary)' }}>{label(f)}</span>{String(rec[f])}</span>)}
         </div>
       ) : null}
       {c.reasoning ? (
         <div style={{ marginTop: 6 }}>
           <a style={{ fontSize: 12, color: '#7c3aed' }} onClick={() => setOpenReason((v) => !v)}>{openReason ? t('▾ Lý do') : t('▸ Lý do')}</a>
-          {openReason ? <div style={{ color: '#555', fontSize: 13, marginTop: 2, lineHeight: 1.5 }}>{c.reasoning}</div> : null}
+          {openReason ? <div style={{ color: 'var(--colorTextSecondary)', fontSize: 13, marginTop: 2, lineHeight: 1.5 }}>{c.reasoning}</div> : null}
         </div>
       ) : null}
       {(c.matchedCriteria || []).length || (c.unmatchedCriteria || []).length ? (
@@ -371,6 +404,8 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
   const loadingRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   const p: any = model?.props || {};
   const master = p.aiMaster || {};
   // relationMode: this field is a belongsTo relation → the master collection is the relation target,
@@ -473,11 +508,11 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
         onCancel={() => setOpen(false)}
         footer={null}
         width={760}
-        styles={{ body: { maxHeight: '72vh', overflowY: 'auto', paddingTop: 8 } }}
+        styles={{ body: { ...tv, maxHeight: '72vh', overflowY: 'auto', paddingTop: 8 }, header: tv }}
         title={
           <div>
             <div style={{ fontSize: 15, fontWeight: 600 }}>{t('Kết quả phân loại — chọn 1 đáp án')}</div>
-            {result?.query ? <div style={{ fontSize: 12, fontWeight: 400, color: '#888', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 640 }}>{t('Nội dung')}: “{result.query}”</div> : null}
+            {result?.query ? <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--colorTextTertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 640 }}>{t('Nội dung')}: “{result.query}”</div> : null}
           </div>
         }
       >
@@ -487,12 +522,12 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
           const entries = Object.entries(a).filter(([k, v]) => k !== 'missing_info' && v != null && String(v).trim() !== '' && String(v).toLowerCase() !== 'null');
           if (!entries.length) return null;
           return (
-            <div style={{ background: '#f6f4fb', border: '1px solid #e6dffa', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+            <div style={{ background: 'var(--colorFillQuaternary)', border: '1px solid var(--colorBorderSecondary)', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
               <div style={{ fontSize: 12, color: '#7c3aed', fontWeight: 600, marginBottom: 4 }}>{t('AI đã hiểu nội dung của bạn')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {entries.map(([k, v]) => (
-                  <span key={k} style={{ fontSize: 12, background: '#fff', border: '1px solid #e6dffa', borderRadius: 4, padding: '1px 8px' }}>
-                    <span style={{ color: '#999' }}>{result.attrLabels?.[k] || k}:</span> <span style={{ color: '#333' }}>{String(v)}</span>
+                  <span key={k} style={{ fontSize: 12, background: 'var(--colorBgContainer)', border: '1px solid var(--colorBorderSecondary)', borderRadius: 4, padding: '1px 8px' }}>
+                    <span style={{ color: 'var(--colorTextTertiary)' }}>{result.attrLabels?.[k] || k}:</span> <span style={{ color: 'var(--colorText)' }}>{String(v)}</span>
                   </span>
                 ))}
               </div>
@@ -507,7 +542,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
         {cands.map((c: any, i: number) => (
           <CandidateCard key={c.tk ?? i} c={c} rank={i + 1} isTop={i === 0} displayRoles={result?.displayRoles} writeField={p.aiWriteField} fieldTitles={result?.fieldTitles} onPick={pick} />
         ))}
-        {result?.method === 'keyword' ? <div style={{ fontSize: 12, color: '#aaa', textAlign: 'center', marginTop: 4 }}>{t('Đối chiếu bằng từ khoá (master chưa embed) — kết quả kém chính xác hơn.')}</div> : null}
+        {result?.method === 'keyword' ? <div style={{ fontSize: 12, color: 'var(--colorTextQuaternary)', textAlign: 'center', marginTop: 4 }}>{t('Đối chiếu bằng từ khoá (master chưa embed) — kết quả kém chính xác hơn.')}</div> : null}
       </Modal>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Checkbox, Input, InputNumber, Select, Tag, Tooltip, message } from 'antd';
+import { Button, Checkbox, Input, InputNumber, Select, Tag, Tooltip, message, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
@@ -140,8 +140,9 @@ const IndexStatusDot: React.FC<{ target?: string; embedInfo?: any }> = ({ target
  *  line 2 = match source (a stored column OR a transient extract-only description),
  *  line 3 = rules (confidence threshold + create-if-missing). */
 const RelationRow: React.FC<{ row: MapRow; scalarMapped: any[]; childScalarOpts: any[]; onPatch: (p: Partial<MapRow>) => void }> = observer(({ row, scalarMapped, childScalarOpts, onPatch }) => {
+  const { token } = theme.useToken();
   const sourceMode = row.matchDesc != null ? 'transient' : 'column';
-  const labelW = { color: '#888', flex: '0 0 auto', width: 92 } as React.CSSProperties;
+  const labelW = { color: token.colorTextTertiary, flex: '0 0 auto', width: 92 } as React.CSSProperties;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, paddingLeft: 4 }}>
@@ -165,10 +166,10 @@ const RelationRow: React.FC<{ row: MapRow; scalarMapped: any[]; childScalarOpts:
       {/* Line 3: rules — threshold + (transient & gated only) save-raw-on-no-match */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Tooltip title={t('Điểm khớp tối thiểu (0–100) để nhận FK. 0 = luôn nhận đáp án tốt nhất. Tăng lên → chỉ nhận khi đủ tin cậy; dưới ngưỡng thì FK để trống (cần đối chiếu tay).')}>
-          <span style={{ ...labelW, cursor: 'help', borderBottom: '1px dotted #bbb' }}>{t('Ngưỡng')} ⓘ</span>
+          <span style={{ ...labelW, cursor: 'help', borderBottom: `1px dotted ${token.colorBorder}` }}>{t('Ngưỡng')} ⓘ</span>
         </Tooltip>
         <InputNumber min={0} max={100} style={{ width: 96 }} value={row.minScore ?? 0} onChange={(n) => onPatch({ minScore: Number(n) || 0 })} addonAfter="%" />
-        <span style={{ color: '#999', fontSize: 12, flex: '0 0 auto' }}>{(row.minScore ?? 0) > 0 ? t('dưới ngưỡng → không nhận') : t('0 = luôn nhận đáp án tốt nhất')}</span>
+        <span style={{ color: token.colorTextTertiary, fontSize: 12, flex: '0 0 auto' }}>{(row.minScore ?? 0) > 0 ? t('dưới ngưỡng → không nhận') : t('0 = luôn nhận đáp án tốt nhất')}</span>
         <Tooltip title={t('Bật: AI đọc & chấm lại (chính xác hơn với catalog dễ nhầm, nhưng chậm hơn +1 call LLM/dòng). Tắt: chỉ dùng vector (nhanh, gộp batch được).')}>
           <Checkbox checked={!!row.rerank} onChange={(e) => onPatch({ rerank: e.target.checked })}>
             {t('AI chấm kỹ (rerank)')}
@@ -176,7 +177,7 @@ const RelationRow: React.FC<{ row: MapRow; scalarMapped: any[]; childScalarOpts:
         </Tooltip>
         {sourceMode === 'transient' && (row.minScore ?? 0) > 0 ? (
           <>
-            <span style={{ color: '#888', flex: '0 0 auto' }}>{t('không khớp → lưu thô vào')}</span>
+            <span style={{ color: token.colorTextTertiary, flex: '0 0 auto' }}>{t('không khớp → lưu thô vào')}</span>
             <ColumnSelect style={{ width: 170 }} options={childScalarOpts} value={row.saveRawTo || undefined} placeholder={t('(không lưu)')} onChange={(v) => onPatch({ saveRawTo: v })} />
           </>
         ) : null}
@@ -189,6 +190,7 @@ const RelationRow: React.FC<{ row: MapRow; scalarMapped: any[]; childScalarOpts:
  *  relation) → what to tell the model to extract per row. Same auto-typing as AI Extract's mapping,
  *  but the collection is the CHILD one (read from the sibling `aiTargetRelation.target` value). */
 export const PtdlChildFieldMapping: React.FC<any> = observer((props: any) => {
+  const { token } = theme.useToken();
   const rows: MapRow[] = Array.isArray(props.value) ? props.value : [];
   const form = useForm();
   const rel: RelationTarget = form?.values?.aiTargetRelation || {};
@@ -266,14 +268,14 @@ export const PtdlChildFieldMapping: React.FC<any> = observer((props: any) => {
     .map((f: any) => ({ value: f.name, label: f.uiSchema?.title || f.name, type: f.type, iface: f.interface }));
 
   if (!childColl) {
-    return <div style={{ fontSize: 12, color: '#888' }}>{t('Chọn bảng con ở trên trước để hiện danh sách field.')}</div>;
+    return <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{t('Chọn bảng con ở trên trước để hiện danh sách field.')}</div>;
   }
   return (
     <div>
       {rows.map((r, i) => {
         const isRel = r.kind === 'relation';
         return (
-          <div key={i} style={{ border: '1px solid #eee', borderRadius: 6, padding: 8, marginBottom: 8 }}>
+          <div key={i} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: 8, marginBottom: 8 }}>
             {/* Line 1: field + type/🔗target(+index dot) + remove */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <ColumnSelect
@@ -317,7 +319,7 @@ export const PtdlChildFieldMapping: React.FC<any> = observer((props: any) => {
       })}
       <Button onClick={addRow}>{t('+ Thêm field')}</Button>
       {!rows.length ? (
-        <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+        <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 4 }}>
           {t('Chưa có field nào — thêm cột text (AI trích) hoặc cột quan hệ 🔗 (AI đối chiếu ra FK).')}
         </div>
       ) : null}

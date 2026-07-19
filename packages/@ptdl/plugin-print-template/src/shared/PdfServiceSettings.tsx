@@ -1,13 +1,14 @@
 // Admin settings for the external HTML→PDF service (Gotenberg). Config is stored
 // server-side; the password is write-only (never returned to the client).
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Input, Space, Typography, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Input, Space, Typography, message, theme } from 'antd';
 import { getPdfServiceConfig, renderPdfViaService, setPdfServiceConfig } from './pdfServiceClient';
 import { t } from './i18n';
 
 export function createPdfServiceSettings(deps: { useApiClient: () => any }): React.FC {
   const { useApiClient } = deps;
   return function PdfServiceSettings() {
+    const { token } = theme.useToken();
     const api = useApiClient();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -76,10 +77,10 @@ export function createPdfServiceSettings(deps: { useApiClient: () => any }): Rea
 
     if (loading) return <div style={{ padding: 24 }}>{t('Đang tải...')}</div>;
 
-    const label = (text: string) => <div style={{ fontSize: 12, color: '#666', margin: '12px 0 4px' }}>{text}</div>;
+    const label = (text: string) => <div style={{ fontSize: 12, color: token.colorTextSecondary, margin: '12px 0 4px' }}>{text}</div>;
 
     return (
-      <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
+      <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: token.colorBgContainer, border: `0.8px solid ${token.colorBorderSecondary}`, borderRadius: 8 }}>
         <Alert
           type="info"
           showIcon
@@ -131,7 +132,7 @@ export function createPdfServiceSettings(deps: { useApiClient: () => any }): Rea
             </Button>
           </Space>
         </Card>
-        <div style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
+        <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 12 }}>
           {t('Gợi ý deploy: chạy image')} <code>gotenberg/gotenberg:8</code> {t('(Docker/Railway). Endpoint plugin gọi:')}
           <code> {'{url}'}/forms/chromium/convert/html</code>. {t('Mật khẩu lưu ở server, không trả về client.')}
         </div>

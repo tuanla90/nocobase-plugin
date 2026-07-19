@@ -2,7 +2,7 @@
 // then print or save the PDF into an attachment field. Reused by the Print action's
 // modal and the "Print preview" block.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Empty, Select, Space, Spin, message } from 'antd';
+import { Alert, Button, Empty, Select, Space, Spin, message, theme } from 'antd';
 import { ColumnSelect } from '@ptdl/shared';
 import { attachmentFieldsOf, savePdfToField } from './pdfSave';
 import { buildPrintDocument } from './printDoc';
@@ -55,6 +55,7 @@ export const PrintConfigPanel: React.FC<PrintConfigPanelProps> = ({
   headerless,
   onDone,
 }) => {
+  const { token } = theme.useToken();
   const collectionName = collection?.name;
   const [templates, setTemplates] = useState<PrintTemplate[] | null>(null);
   const [tplId, setTplId] = useState<number | undefined>(pinnedTemplateId);
@@ -225,7 +226,7 @@ export const PrintConfigPanel: React.FC<PrintConfigPanelProps> = ({
 
   // Modal mode: explicit In/xuất PDF dialog — keep the picker + save-to-field toolbar.
   return (
-    <div style={{ border: '1px solid #e5e5e5', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8, overflow: 'hidden', background: token.colorBgContainer }}>
       <div
         style={{
           display: 'flex',
@@ -233,8 +234,8 @@ export const PrintConfigPanel: React.FC<PrintConfigPanelProps> = ({
           alignItems: 'center',
           gap: 8,
           padding: '8px 12px',
-          borderBottom: '1px solid #f0f0f0',
-          background: '#fafafa',
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          background: token.colorFillQuaternary,
         }}
       >
         {!pinnedTemplateId && !autoByRecord && (

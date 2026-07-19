@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Input, Select, Tag, Tooltip, message } from 'antd';
+import { Button, Input, Select, Tag, Tooltip, message, theme } from 'antd';
 import { observer } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
@@ -88,6 +88,7 @@ export function extractTypeTagLabel(row: MapRow): string {
  *  a table block via `blockModel.collection`, no single field of its own) — hence the fallback
  *  chain below. `ownField` (excluded from target options) only applies to the field-level case. */
 export const PtdlExtractMapping: React.FC<any> = observer((props: any) => {
+  const { token } = theme.useToken();
   const rows: MapRow[] = Array.isArray(props.value) ? props.value : [];
   const [options, setOptions] = useState<any[]>([]);
   const [fieldsByName, setFieldsByName] = useState<Record<string, any>>({});
@@ -173,7 +174,7 @@ export const PtdlExtractMapping: React.FC<any> = observer((props: any) => {
         {t('+ Thêm field')}
       </Button>
       {!rows.length ? (
-        <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+        <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 4 }}>
           {t('Chưa có field nào — bấm "+ Thêm field" để chọn field cần điền (vd: họ tên, số CCCD, ngày sinh...).')}
         </div>
       ) : null}

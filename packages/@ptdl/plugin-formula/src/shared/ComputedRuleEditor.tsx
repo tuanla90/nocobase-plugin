@@ -11,7 +11,8 @@ function themeVars(token: any): React.CSSProperties {
     '--colorBgContainer': token.colorBgContainer, '--colorBgLayout': token.colorBgLayout,
     '--colorFillSecondary': token.colorFillSecondary, '--colorFillTertiary': token.colorFillTertiary,
     '--colorFillQuaternary': token.colorFillQuaternary, '--colorPrimary': token.colorPrimary,
-    '--colorPrimaryBorder': token.colorPrimaryBorder, '--colorInfo': token.colorInfo,
+    '--colorPrimaryBorder': token.colorPrimaryBorder, '--colorPrimaryBg': token.colorPrimaryBg,
+    '--colorInfo': token.colorInfo, '--colorInfoBg': token.colorInfoBg, '--colorInfoBorder': token.colorInfoBorder,
     '--colorWarning': token.colorWarning, '--colorSuccess': token.colorSuccess, '--colorError': token.colorError,
   };
   return m as unknown as React.CSSProperties;

@@ -1,8 +1,33 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Input, Popconfirm, Select, Space, Table, Tabs, Tag, Tooltip, Typography, message } from 'antd';
+import { Alert, Button, Input, Popconfirm, Select, Space, Table, Tabs, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { FieldTokenTextArea, cleanLabel } from '@ptdl/shared';
 import { createVoiceProviderManager } from './VoiceProviderManager';
 import { t } from './i18n';
+
+/** Bridge antd theme tokens → CSS vars so `var(--colorX)` resolves inside portals (Modal/Popover/
+ *  Dropdown/Drawer) and any container that escapes antd's hash-scoped cssVar root (else the LIGHT
+ *  fallback like #fff wins in dark mode). Spread `...themeVars(token)` onto render/portal roots. */
+function themeVars(token: any) {
+  return {
+    '--colorText': token.colorText,
+    '--colorTextSecondary': token.colorTextSecondary,
+    '--colorTextTertiary': token.colorTextTertiary,
+    '--colorTextQuaternary': token.colorTextQuaternary,
+    '--colorBorder': token.colorBorder,
+    '--colorBorderSecondary': token.colorBorderSecondary,
+    '--colorBgContainer': token.colorBgContainer,
+    '--colorBgLayout': token.colorBgLayout,
+    '--colorFillSecondary': token.colorFillSecondary,
+    '--colorFillTertiary': token.colorFillTertiary,
+    '--colorFillQuaternary': token.colorFillQuaternary,
+    '--colorSplit': token.colorSplit,
+    '--colorPrimary': token.colorPrimary,
+    '--colorInfo': token.colorInfo,
+    '--colorWarning': token.colorWarning,
+    '--colorSuccess': token.colorSuccess,
+    '--colorError': token.colorError,
+  } as React.CSSProperties;
+}
 
 /**
  * Combined "AI Provider" settings page — merges what used to be a voice-only page into a tabbed
@@ -148,7 +173,7 @@ function ClassifyManager({ useApiClient }: { useApiClient: () => any }) {
       ellipsis: true,
       render: (v: string) => (
         <Tooltip title={v}>
-          <span style={{ color: '#888' }}>{v || '—'}</span>
+          <span style={{ color: 'var(--colorTextTertiary)' }}>{v || '—'}</span>
         </Tooltip>
       ),
     },
@@ -166,7 +191,7 @@ function ClassifyManager({ useApiClient }: { useApiClient: () => any }) {
             onChange={(v) => setSchedule(r, v)}
           />
           {r.lastRefreshAt ? (
-            <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: 'var(--colorTextQuaternary)', marginTop: 2 }}>
               {t('Lần cuối')}: {new Date(r.lastRefreshAt).toLocaleString()}
             </div>
           ) : null}
@@ -267,8 +292,10 @@ function ClassifyManager({ useApiClient }: { useApiClient: () => any }) {
 export function createAiProviderManager({ useApiClient }: { useApiClient: () => any }) {
   const VoiceTab = createVoiceProviderManager({ useApiClient });
   return function AiProviderManager() {
+    const { token } = theme.useToken();
+    const tv = themeVars(token);
     return (
-      <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
+      <div style={{ ...tv, padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
         <Typography.Title level={5} style={{ marginTop: 0 }}>
           {t('Nhà cung cấp AI')}
         </Typography.Title>

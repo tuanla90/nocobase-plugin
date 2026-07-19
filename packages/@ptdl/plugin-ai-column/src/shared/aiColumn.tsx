@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Checkbox, Input, Select, Tooltip, message } from 'antd';
+import { Button, Checkbox, Input, Select, Tooltip, message, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
@@ -298,6 +298,7 @@ export const PtdlTextTemplateSelect: React.FC<any> = observer(() => {
  *  (e.g. only score a lead when status = new). antd-only + NO collection lookup (field typed by name)
  *  so it drops into any dialog + any lane. Value = { onlyWhenEmpty, condition:{field,op,value} }. */
 export const PtdlAutorunGate: React.FC<any> = observer((props: any) => {
+  const { token } = theme.useToken();
   const v = props.value || {};
   const cond = v.condition || {};
   const set = (patch: any) => props.onChange?.({ ...v, ...patch });
@@ -309,7 +310,7 @@ export const PtdlAutorunGate: React.FC<any> = observer((props: any) => {
         {t('Chỉ chạy khi field đích đang trống (không sinh lại nếu đã có giá trị)')}
       </Checkbox>
       <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
-        <span style={{ color: '#888', flex: '0 0 auto' }}>{t('Chỉ chạy khi')}</span>
+        <span style={{ color: token.colorTextTertiary, flex: '0 0 auto' }}>{t('Chỉ chạy khi')}</span>
         <Input style={{ width: 130 }} placeholder={t('tên field')} value={cond.field} onChange={(e) => setCond({ field: e.target.value })} />
         <Select
           style={{ width: 120, flex: '0 0 auto' }}
@@ -321,7 +322,7 @@ export const PtdlAutorunGate: React.FC<any> = observer((props: any) => {
         />
         {opNeedsValue ? <Input style={{ flex: 1 }} placeholder={t('giá trị')} value={cond.value} onChange={(e) => setCond({ value: e.target.value })} /> : null}
       </div>
-      <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 4 }}>
         {t('Chỉ áp dụng cho trigger')} <b>{t('Server')}</b> {t('(để trống = luôn chạy).')}
       </div>
     </div>

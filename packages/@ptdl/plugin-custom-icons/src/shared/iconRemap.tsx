@@ -1,8 +1,34 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom';
-import { Button, Empty, Input, Popover, Space, Table, Tooltip, Upload, message } from 'antd';
+import { Button, Empty, Input, Popover, Space, Table, Tooltip, Upload, theme, message } from 'antd';
 // Runtime translator imported as `tt` because this file uses `t` as a local variable (parseCsv).
 import { t as tt } from './i18n';
+
+// Dark-mode bridge: antd scopes its theme CSS vars to a hash-class container, so Modal/Popover/Dropdown
+// PORTALS (and body-mounted setting roots) escape it and the LIGHT fallback of `var(--colorX, #fff)` wins.
+// The theme TOKENS travel through React context even across portals, so we spread these onto each affected
+// render root / portal content root, which lets every inner `var(--colorX, …)` resolve to the live theme.
+function themeVars(token: any) {
+  return {
+    '--colorText': token.colorText,
+    '--colorTextSecondary': token.colorTextSecondary,
+    '--colorTextTertiary': token.colorTextTertiary,
+    '--colorTextQuaternary': token.colorTextQuaternary,
+    '--colorBorder': token.colorBorder,
+    '--colorBorderSecondary': token.colorBorderSecondary,
+    '--colorBgContainer': token.colorBgContainer,
+    '--colorBgLayout': token.colorBgLayout,
+    '--colorFillSecondary': token.colorFillSecondary,
+    '--colorFillTertiary': token.colorFillTertiary,
+    '--colorFillQuaternary': token.colorFillQuaternary,
+    '--colorSplit': token.colorSplit,
+    '--colorPrimary': token.colorPrimary,
+    '--colorInfo': token.colorInfo,
+    '--colorWarning': token.colorWarning,
+    '--colorSuccess': token.colorSuccess,
+    '--colorError': token.colorError,
+  } as React.CSSProperties;
+}
 
 // Render a React element into a throwaway detached node and read its HTML — used to extract the antd
 // icon's className and the Lucide SVG markup at runtime. We use the host's react-dom (external) legacy
@@ -88,7 +114,7 @@ function RawIcon({ mapKey, from, style }: { mapKey?: string; from?: Map<string, 
   const src = from || iconsMap;
   if (!mapKey || !src) return null;
   const C = src.get(mapKey.toLowerCase());
-  return C ? React.createElement(C, { style }) : <span style={{ color: '#bbb', ...style }}>▢</span>;
+  return C ? React.createElement(C, { style }) : <span style={{ color: 'var(--colorTextQuaternary, #bbb)', ...style }}>▢</span>;
 }
 
 // A proxy that renders the mapped Lucide component, resolved LIVE from the registry each render.
@@ -248,6 +274,8 @@ function keysFor(mode: 'antd' | 'lucide', q: string): string[] {
 function RegistryPicker({ mode, value, onChange }: { mode: 'antd' | 'lucide'; value?: string; onChange: (k?: string) => void }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState('');
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   const keys = keysFor(mode, q);
   const CAP = 120;
   const shown = keys.slice(0, CAP);
@@ -255,11 +283,11 @@ function RegistryPicker({ mode, value, onChange }: { mode: 'antd' | 'lucide'; va
   // Preview the picked icon: source (antd) from the snapshot; target (lucide) from live map.
   const previewFrom = mode === 'antd' ? initialSnapshot : iconsMap;
   const content = (
-    <div style={{ width: 340 }}>
+    <div style={{ width: 340, ...tv }}>
       <Input size="small" allowClear placeholder={tt('Search {{lib}}… e.g. setting, home', { lib: mode === 'antd' ? 'Ant Design' : 'Lucide' })} value={q} onChange={(e: any) => setQ(e.target.value)} />
       <div style={{ maxHeight: 260, overflow: 'auto', marginTop: 8 }}>
         {shown.length === 0 ? (
-          <div style={{ color: '#999', padding: 8 }}>{tt('No match')}</div>
+          <div style={{ color: token.colorTextTertiary, padding: 8 }}>{tt('No match')}</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 4 }}>
             {shown.map((k) => {
@@ -281,15 +309,15 @@ function RegistryPicker({ mode, value, onChange }: { mode: 'antd' | 'lucide'; va
             })}
           </div>
         )}
-        {over > 0 ? <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{tt('+{{over}} more — type to narrow', { over })}</div> : null}
+        {over > 0 ? <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 4 }}>{tt('+{{over}} more — type to narrow', { over })}</div> : null}
       </div>
     </div>
   );
   return (
     <Popover open={open} onOpenChange={setOpen} trigger="click" placement="bottomLeft" content={content}>
       <Button size="small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 150, justifyContent: 'flex-start' }}>
-        {value ? <RawIcon mapKey={value} from={previewFrom} /> : <span style={{ color: '#bbb' }}>＋</span>}
-        <span style={{ fontSize: 12, color: value ? undefined : '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || tt('Select…')}</span>
+        {value ? <RawIcon mapKey={value} from={previewFrom} /> : <span style={{ color: token.colorTextQuaternary }}>＋</span>}
+        <span style={{ fontSize: 12, color: value ? undefined : token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || tt('Select…')}</span>
       </Button>
     </Popover>
   );
@@ -340,6 +368,8 @@ export function createIconRemapPane(deps: { getApi: () => any }) {
     const [rows, setRows] = React.useState<FormRow[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [saving, setSaving] = React.useState(false);
+    const { token } = theme.useToken();
+    const tv = themeVars(token);
 
     const load = React.useCallback(async () => {
       setLoading(true);
@@ -442,7 +472,7 @@ export function createIconRemapPane(deps: { getApi: () => any }) {
         width: 210,
         render: (_: any, r: FormRow) => <RegistryPicker mode="antd" value={r.sourceKey} onChange={(k) => update(r._k, { sourceKey: k || '' })} />,
       },
-      { title: '', key: 'arrow', width: 30, render: () => <span style={{ color: '#999' }}>→</span> },
+      { title: '', key: 'arrow', width: 30, render: () => <span style={{ color: token.colorTextTertiary }}>→</span> },
       {
         title: tt('Replace with (Lucide)'),
         key: 'dst',
@@ -456,7 +486,7 @@ export function createIconRemapPane(deps: { getApi: () => any }) {
         render: (_: any, r: FormRow) => (
           <Space>
             <RawIcon mapKey={r.sourceKey} from={initialSnapshot} />
-            <span style={{ color: '#ccc' }}>→</span>
+            <span style={{ color: token.colorTextQuaternary }}>→</span>
             <span style={{ fontSize: 16 }}>
               <RawIcon mapKey={r.lucideKey} from={iconsMap} />
             </span>
@@ -486,6 +516,7 @@ export function createIconRemapPane(deps: { getApi: () => any }) {
           background: 'var(--colorBgContainer, #fff)',
           border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)',
           borderRadius: 8,
+          ...tv,
         }}
       >
         <h2 style={{ marginTop: 0 }}>{tt('Icon remap')}</h2>
