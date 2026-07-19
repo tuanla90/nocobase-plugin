@@ -72,5 +72,6 @@
   "Chart updated": "Đã sửa biểu đồ",
   "reloading…": "đang tải lại…",
   "Create": "Tạo mới",
-  "Edit dashboard": "Sửa dashboard"
+  "Edit dashboard": "Sửa dashboard",
+  "Menu group (optional — else a top-level item)": "Nhóm menu (tuỳ chọn — để trống = mục top-level)"
 }

@@ -71,6 +71,14 @@ for (const marker of MARKERS) {
   if (inA && !inB) problems.push(`  FEATURE dropped from instant-create-page: "${marker}" (present in app-builder)`);
   if (inB && !inA) problems.push(`  FEATURE dropped from app-builder: "${marker}" (present in instant-create-page)`);
 }
+// (c) The shared launcher-dock module (the floating buttons portal into it) must be byte-identical too.
+const dockAB = path.join(ROOT, 'packages/@ptdl/plugin-app-builder/src/shared/launcherDock.ts');
+const dockIC = path.join(ROOT, 'packages/@ptdl/plugin-instant-create-page/src/shared/launcherDock.ts');
+try {
+  const da = fs.readFileSync(dockAB, 'utf8'), di = fs.readFileSync(dockIC, 'utf8');
+  if (norm(da) !== norm(di)) problems.push('  DIVERGED: src/shared/launcherDock.ts differs between the two plugins');
+} catch (e) { problems.push('  MISSING launcherDock.ts (both plugins need it): ' + e.message); }
+
 if (problems.length) {
   console.error(`❌ quickView sync FAILED — ${problems.length} shared function(s) out of sync between the two page-builders:`);
   console.error(problems.join('\n'));

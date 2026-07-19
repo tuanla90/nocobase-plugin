@@ -4,9 +4,11 @@
  * `app.addProvider`. Lane-agnostic: `app` + `t` injected by the lane.
  */
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Drawer, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { QuickCreateForm } from './QuickCreateForm';
+import { ensureLauncherDock } from './launcherDock';
 
 export interface LauncherDeps {
   app: any;
@@ -42,28 +44,26 @@ export function createLauncher({ app, t }: LauncherDeps): React.FC<{ children?: 
   const InstantCreatePageLauncher: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     const [open, setOpen] = useState(false);
     const editMode = useFlowSettingsEnabled();
+    // Portal the button into the shared draggable/collapsible launcher dock (see launcherDock.ts).
+    const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
+    React.useEffect(() => { if (editMode) setDockEl(ensureLauncherDock()); }, [editMode]);
     return (
       <>
         {children}
         {editMode && (
           <>
-        <Tooltip title={t('Quick create a table page')} placement="left">
-          <Button
-            type="primary"
-            shape="round"
-            icon={<PlusOutlined />}
-            onClick={() => setOpen(true)}
-            style={{
-              position: 'fixed',
-              right: 20,
-              bottom: 20,
-              zIndex: 1000,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
-            }}
-          >
-            {t('Quick page')}
-          </Button>
-        </Tooltip>
+        {dockEl && createPortal(
+          <Tooltip title={t('Quick create a table page')} placement="left">
+            <Button
+              type="primary"
+              shape="round"
+              icon={<PlusOutlined />}
+              onClick={() => setOpen(true)}
+              style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
+            >
+              {t('Quick page')}
+            </Button>
+          </Tooltip>, dockEl)}
         <Drawer
           title={t('Quick create a table page')}
           width={520}

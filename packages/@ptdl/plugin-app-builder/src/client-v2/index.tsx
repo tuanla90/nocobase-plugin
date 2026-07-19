@@ -12,11 +12,12 @@ import { Plugin, Icon, icons } from '@nocobase/client-v2';
 import { Button, Input, message, Modal, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
-  FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined,
+  FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined,
 } from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
 import { createDashboard } from '../shared/dashboard';
+import { ensureLauncherDock } from '../shared/launcherDock';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
 import SpecPreview from './SpecPreview';
 import enUS from '../locale/en-US.json';
@@ -101,6 +102,9 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
   const AppBuilderLauncher: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     const [open, setOpen] = useState(false);
     const editMode = useFlowSettingsEnabled();
+    // The shared draggable/collapsible launcher dock — the two buttons portal into it (see launcherDock.ts).
+    const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
+    React.useEffect(() => { if (editMode) setDockEl(ensureLauncherDock()); }, [editMode]);
     const [specView, setSpecView] = useState<'preview' | 'json'>('preview');
     const [text, setText] = useState(() => JSON.stringify(SAMPLE_BAN_HANG, null, 2));
     const [busy, setBusy] = useState(false);
@@ -132,6 +136,18 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [chartScope, setChartScope] = useState<'page' | 'app'>('page'); // list charts on THIS page vs whole app
     // the /v/ page schemaUid from the URL (…/v/admin/<uid>) — used to scope the chart list to this dashboard
     const currentPageUid = () => { try { return (window.location.pathname.match(/\/v\/[^/]+\/([^/?#]+)/) || [])[1] || ''; } catch { return ''; } };
+    // Existing menu GROUPS the dashboard can be placed under (else it becomes a top-level menu item).
+    const [dashGroup, setDashGroup] = useState<number | undefined>(undefined);
+    const [menuGroups, setMenuGroups] = useState<Array<{ value: number; label: string }>>([]);
+    React.useEffect(() => {
+      if (!dashOpen) return;
+      (async () => {
+        try {
+          const res = await app.apiClient.resource('desktopRoutes').list({ filter: { type: 'group' }, pageSize: 200, sort: ['sort'] }).then((r: any) => r?.data?.data ?? r?.data ?? []);
+          setMenuGroups((res || []).map((g: any) => ({ value: g.id, label: String(g.title || `#${g.id}`).replace(/\{\{\s*t\(["']([^"']+)["']\)\s*\}\}/, '$1') })));
+        } catch { setMenuGroups([]); }
+      })();
+    }, [dashOpen]);
 
     // User data collections to offer as the dashboard source (skip system/hidden ones).
     const collections = React.useMemo(() => {
@@ -155,6 +171,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
           .request({ url: 'appBuilder:aiDashboard', method: 'post', data: { collection: dashColl, description: dashDesc } })
           .then((r: any) => r?.data?.data ?? r?.data);
         if (!ai?.ok) { message.error(ai?.error || t('AI could not design a dashboard')); return; }
+        if (dashGroup) ai.spec.parentId = dashGroup; // place under the chosen menu group (else top-level)
         const built = await createDashboard(app, ai.spec);
         setDashResult({ url: built.url, title: ai.spec.title, widgets: ai.spec.widgets || [], charts: built.charts });
         setChartRefine({});
@@ -349,15 +366,16 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         {children}
         {editMode && (
           <>
-        <Tooltip title={t('Build app from spec')} placement="left">
-          <Button
-            type="primary" shape="round" onClick={() => setOpen(true)}
-            icon={<LIcon type="lucide-hammer" fallback={<ToolOutlined />} size={15} />}
-            style={{ position: 'fixed', right: 20, bottom: 72, zIndex: 1000, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
-          >
-            {t('Build app')}
-          </Button>
-        </Tooltip>
+        {dockEl && createPortal(
+          <Tooltip title={t('Build app from spec')} placement="left">
+            <Button
+              type="primary" shape="round" onClick={() => setOpen(true)}
+              icon={<LIcon type="lucide-hammer" fallback={<ToolOutlined />} size={15} />}
+              style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
+            >
+              {t('Build app')}
+            </Button>
+          </Tooltip>, dockEl)}
         <Modal open={open} onCancel={() => setOpen(false)} width={800} title={t('Build app from spec')} footer={null} destroyOnClose>
           <Typography.Text strong>✨ {t('Describe → build with AI')}</Typography.Text>
           <Input.TextArea
@@ -446,15 +464,16 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             </div>
           )}
         </Modal>
-        <Tooltip title={t('Generate a dashboard with AI')} placement="left">
-          <Button
-            shape="round" onClick={() => setDashOpen(true)}
-            icon={<LIcon type="lucide-layout-dashboard" fallback={<DashboardOutlined />} size={15} />}
-            style={{ position: 'fixed', right: 20, bottom: 124, zIndex: 1000, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
-          >
-            {t('Dashboard')}
-          </Button>
-        </Tooltip>
+        {dockEl && createPortal(
+          <Tooltip title={t('Generate a dashboard with AI')} placement="left">
+            <Button
+              type="primary" shape="round" onClick={() => setDashOpen(true)}
+              icon={<LIcon type="lucide-layout-dashboard" fallback={<DashboardOutlined />} size={15} />}
+              style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
+            >
+              {t('Dashboard')}
+            </Button>
+          </Tooltip>, dockEl)}
         <AiDashboardPanel
           open={dashOpen} onClose={() => setDashOpen(false)}
           title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><LIcon type="lucide-layout-dashboard" fallback={<DashboardOutlined />} size={16} />{t('AI Dashboard')}</span>}
@@ -471,7 +490,13 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                       {t('Pick a table — AI designs KPI cards + charts + a filter bar from its fields.')}
                     </Typography.Paragraph>
                     <Select showSearch value={dashColl} onChange={setDashColl} placeholder={t('Choose a table…')} options={collections} optionFilterProp="label" style={{ width: '100%', marginBottom: 8 }} />
-                    <Input value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} onPressEnter={onDashboard} placeholder={t('Optional: what to focus on — e.g. revenue by month, status breakdown')} style={{ marginBottom: 10 }} />
+                    <Input value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} onPressEnter={onDashboard} placeholder={t('Optional: what to focus on — e.g. revenue by month, status breakdown')} style={{ marginBottom: 8 }} />
+                    <Select
+                      allowClear showSearch value={dashGroup} onChange={setDashGroup} optionFilterProp="label"
+                      placeholder={t('Menu group (optional — else a top-level item)')} options={menuGroups}
+                      style={{ width: '100%', marginBottom: 10 }}
+                      suffixIcon={<LIcon type="lucide-folder" fallback={<FolderOutlined />} />}
+                    />
                     <Button type="primary" block loading={dashBusy} onClick={onDashboard} disabled={!dashColl} icon={<LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} />}>
                       {t('Generate dashboard (AI)')}
                     </Button>
