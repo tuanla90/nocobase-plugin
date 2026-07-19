@@ -4,7 +4,7 @@
 > chọn — từ bản cài này sang bản cài khác bằng một file **`.nbc.gz`** duy nhất. Import là **UPSERT**
 > (không bao giờ xoá dữ liệu đang có).
 
-**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.9.0
+**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.9.1
 
 ## Sau khi cài, có gì mới?
 
@@ -39,6 +39,7 @@ Cả hai client mở **cùng một trang** và gọi cùng các endpoint phía s
 ### Xuất (app nguồn)
 
 1. Mở **Settings → “NB Cloner” → Xuất**.
+   - **Nút mục tiêu nhanh** (nhanh nhất): bấm **📦 Sao lưu** (toàn bộ app + dữ liệu), **🧬 Nhân bản** (cấu trúc + giao diện, không data — bản trống), hoặc **↺ Mặc định** (đặt lại). Một preset sẽ bật đúng tùy chọn + chọn sẵn bảng của bạn trong 1 cú bấm; sau đó vẫn chỉnh tay được. Các bước dưới là cách làm thủ công tương đương.
 2. Đặt **Tên app** (dùng trong tên file tải về).
 3. Bật các tuỳ chọn **Hệ thống** bạn muốn: *Cấu trúc bảng*, *Giao diện / Menu*, *Vai trò & phân quyền*, *Quy trình*.
 4. Trong **Danh sách bảng**, dùng bộ lọc theo nhóm để tập trung vào thứ bạn cần. Mỗi bảng được phân loại:

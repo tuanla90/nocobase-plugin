@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert, Segmented,
+  Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert, Segmented, Tooltip,
   message, Upload, Spin, Badge, Divider, Space, Typography, Input, Row, Col,
   notification, Result, Progress,
 } from 'antd';
 import {
-  DownloadOutlined, UploadOutlined, ReloadOutlined,
+  DownloadOutlined, UploadOutlined, ReloadOutlined, SaveOutlined, CopyOutlined, ClearOutlined,
   DatabaseOutlined, AppstoreOutlined, CheckCircleOutlined, CloseCircleOutlined,
 } from '@ant-design/icons';
 import { ConfigContainer, formatNumber } from '@ptdl/shared';
@@ -163,6 +163,33 @@ export function NbClonerPane({ api }: { api: any }) {
     } finally {
       setExporting(false);
     }
+  };
+
+  // Quick goal presets — set the system toggles + collection selection in one click.
+  //  backup  : your whole app + ALL your data (structure, UI, roles, workflows, data ON)
+  //  clone   : the same app WITHOUT data (a blank copy for a new install; data OFF)
+  //  default : the conservative default (only your tables selected, workflows off, no data)
+  const applyPreset = (preset: 'backup' | 'clone' | 'default') => {
+    const withData = preset === 'backup';
+    const withWorkflows = preset !== 'default';
+    setOptions((o) => ({
+      ...o,
+      includeSystemSchema: true,
+      includeUiSchemas: true,
+      includeRoles: true,
+      includeWorkflows: withWorkflows,
+    }));
+    setSelections(() => {
+      const next: Record<string, Selection> = {};
+      collections.forEach((c) => {
+        const isUser = c.category === 'user';
+        next[c.name] = { selected: isUser, includeData: isUser && withData && c.tableExists };
+      });
+      return next;
+    });
+    setCategory('user'); // show what the preset picked
+    const label: Record<typeof preset, string> = { backup: t('Backup'), clone: t('Clone'), default: t('Default') };
+    message.success(t('Preset applied: {{name}}', { name: label[preset] }));
   };
 
   // Import — file → base64 → JSON (multipart is blocked by NocoBase middleware)
@@ -338,6 +365,24 @@ export function NbClonerPane({ api }: { api: any }) {
             label: <span><DownloadOutlined /> {t('Export Bundle')}</span>,
             children: (
               <Space direction="vertical" style={{ width: '100%' }} size="large">
+                {/* Quick goal presets */}
+                <Card size="small" title={<span>🎯 {t('Quick goal')}</span>}>
+                  <Space wrap align="center">
+                    <Tooltip title={t('Backup — your whole app + ALL your data (structure, UI, roles, workflows, data). For archiving or moving as-is.')}>
+                      <Button icon={<SaveOutlined />} onClick={() => applyPreset('backup')}>{t('Backup')}</Button>
+                    </Tooltip>
+                    <Tooltip title={t('Clone — the same app (structure, UI, roles, workflows) WITHOUT data. A blank copy for a new install.')}>
+                      <Button icon={<CopyOutlined />} onClick={() => applyPreset('clone')}>{t('Clone')}</Button>
+                    </Tooltip>
+                    <Tooltip title={t('Reset to the safe default: only your tables selected, no data.')}>
+                      <Button type="text" icon={<ClearOutlined />} onClick={() => applyPreset('default')}>{t('Default')}</Button>
+                    </Tooltip>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {t('Presets pick your collections + the right toggles. The target app needs the same NocoBase version & plugins.')}
+                    </Text>
+                  </Space>
+                </Card>
+
                 {/* App name */}
                 <Card size="small" title={t('Bundle info')}>
                   <Space>

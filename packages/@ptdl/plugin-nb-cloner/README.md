@@ -4,7 +4,7 @@
 > from one install to another as a single **`.nbc.gz`** file. Import is an **UPSERT** (it never deletes
 > what's already there).
 
-**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.9.0
+**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.9.1
 
 ## What's new after installing?
 
@@ -39,6 +39,7 @@ Both clients open the **same page** and hit the same server endpoints.
 ### Export (source app)
 
 1. Open **Settings → “NB Cloner” → Export**.
+   - **Quick goal presets** (fastest): click **📦 Backup** (your whole app + all data), **🧬 Clone** (structure + UI, no data — a blank copy), or **↺ Default** (reset). A preset sets the toggles + selects your collections in one click; you can still fine-tune afterward. The steps below are the manual equivalent.
 2. Set an **App name** (used in the download filename).
 3. Toggle the **System** options you want: *Collections Schema*, *UI / Menus*, *Roles & Permissions*, *Workflows*.
 4. In **Collections**, use the category filter to focus on what you want. Every collection is classified:

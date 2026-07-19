@@ -6,6 +6,16 @@
   "Export Bundle": "Xuất bundle",
   "Import Bundle": "Nhập bundle",
 
+  "Quick goal": "Mục tiêu nhanh",
+  "Backup": "Sao lưu",
+  "Clone": "Nhân bản",
+  "Default": "Mặc định",
+  "Backup — your whole app + ALL your data (structure, UI, roles, workflows, data). For archiving or moving as-is.": "Sao lưu — toàn bộ app + TẤT CẢ dữ liệu của bạn (cấu trúc, giao diện, phân quyền, workflow, dữ liệu). Để lưu trữ hoặc chuyển nguyên trạng.",
+  "Clone — the same app (structure, UI, roles, workflows) WITHOUT data. A blank copy for a new install.": "Nhân bản — app y hệt (cấu trúc, giao diện, phân quyền, workflow) NHƯNG không kèm dữ liệu. Bản trống để dựng app mới.",
+  "Reset to the safe default: only your tables selected, no data.": "Về mặc định an toàn: chỉ chọn bảng của bạn, không kèm dữ liệu.",
+  "Presets pick your collections + the right toggles. The target app needs the same NocoBase version & plugins.": "Preset tự chọn bảng của bạn + bật đúng tùy chọn. App đích cần cùng phiên bản NocoBase & cùng plugin.",
+  "Preset applied: {{name}}": "Đã áp dụng: {{name}}",
+
   "Bundle info": "Thông tin bundle",
   "App name:": "Tên app:",
   "System (schema is always exported)": "Hệ thống (luôn được export schema)",

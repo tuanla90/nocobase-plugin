@@ -6,6 +6,16 @@
   "Export Bundle": "Export Bundle",
   "Import Bundle": "Import Bundle",
 
+  "Quick goal": "Quick goal",
+  "Backup": "Backup",
+  "Clone": "Clone",
+  "Default": "Default",
+  "Backup — your whole app + ALL your data (structure, UI, roles, workflows, data). For archiving or moving as-is.": "Backup — your whole app + ALL your data (structure, UI, roles, workflows, data). For archiving or moving as-is.",
+  "Clone — the same app (structure, UI, roles, workflows) WITHOUT data. A blank copy for a new install.": "Clone — the same app (structure, UI, roles, workflows) WITHOUT data. A blank copy for a new install.",
+  "Reset to the safe default: only your tables selected, no data.": "Reset to the safe default: only your tables selected, no data.",
+  "Presets pick your collections + the right toggles. The target app needs the same NocoBase version & plugins.": "Presets pick your collections + the right toggles. The target app needs the same NocoBase version & plugins.",
+  "Preset applied: {{name}}": "Preset applied: {{name}}",
+
   "Bundle info": "Bundle info",
   "App name:": "App name:",
   "System (schema is always exported)": "System (schema is always exported)",
