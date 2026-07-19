@@ -18,6 +18,11 @@ _backup-localhost-*/
 # --- historical packaged plugins (large binaries; latest/ holds the current set) ---
 archive/
 
+# --- Claude Code: keep shared config (agents/) but never the machine-local bits ---
+.claude/settings.local.json
+.claude/worktrees/
+**/settings.local.json
+
 # --- misc ---
 *.log
 .DS_Store
