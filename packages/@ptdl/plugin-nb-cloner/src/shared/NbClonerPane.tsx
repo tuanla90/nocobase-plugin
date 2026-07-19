@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert,
+  Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert, Segmented,
   message, Upload, Spin, Badge, Divider, Space, Typography, Input, Row, Col,
   notification, Result, Progress,
 } from 'antd';
@@ -13,20 +13,27 @@ import { t } from './nbClonerClient';
 
 const { Title, Text } = Typography;
 
+type Category = 'user' | 'plugin' | 'system' | 'deleted';
+
 interface CollectionInfo {
   name: string;
   title: string;
-  type: 'system' | 'business';
+  category: Category;
+  origin: string;
+  managed: boolean;
+  tableExists: boolean;
   tableName: string;
   fieldsCount: number;
   rowCount?: number;
 }
 
-interface BusinessSelection {
-  name: string;
+interface Selection {
   selected: boolean;
   includeData: boolean;
 }
+
+const emptyCounts: Record<Category, number> = { user: 0, plugin: 0, system: 0, deleted: 0 };
+const CAT_COLOR: Record<Category, string> = { user: 'green', plugin: 'blue', system: 'default', deleted: 'red' };
 
 const yn = (b: boolean) => (b ? '✅' : '❌');
 
@@ -45,8 +52,10 @@ async function fileToBase64(file: File): Promise<string> {
 export function NbClonerPane({ api }: { api: any }) {
   // State
   const [loading, setLoading] = useState(false);
-  const [collections, setCollections] = useState<{ system: CollectionInfo[]; business: CollectionInfo[] }>({ system: [], business: [] });
-  const [businessSelections, setBusinessSelections] = useState<BusinessSelection[]>([]);
+  const [collections, setCollections] = useState<CollectionInfo[]>([]);
+  const [counts, setCounts] = useState<Record<Category, number>>(emptyCounts);
+  const [selections, setSelections] = useState<Record<string, Selection>>({});
+  const [category, setCategory] = useState<Category | 'all'>('user');
   const [options, setOptions] = useState({
     includeSystemSchema: true,
     includeUiSchemas: true,
@@ -59,10 +68,8 @@ export function NbClonerPane({ api }: { api: any }) {
   const [importResult, setImportResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('export');
   const [pluginInfo, setPluginInfo] = useState<any>(null);
-  const [updating, setUpdating] = useState(false);
-  const [updateResult, setUpdateResult] = useState<any>(null);
 
-  // Load thông tin phiên bản plugin
+  // Load plugin version info (header tag)
   const loadInfo = useCallback(async () => {
     try {
       const res = await api.request({ url: 'nbCloner:info', method: 'GET' });
@@ -76,47 +83,19 @@ export function NbClonerPane({ api }: { api: any }) {
     loadInfo();
   }, [loadInfo]);
 
-  // Update plugin: đọc file zip → base64 → gửi selfUpdate
-  const handleSelfUpdate = async (file: File) => {
-    setUpdating(true);
-    setUpdateResult(null);
-    try {
-      const base64 = await fileToBase64(file);
-      const res = await api.request({
-        url: 'nbCloner:selfUpdate',
-        method: 'POST',
-        data: { fileData: base64, filename: file.name },
-      });
-      const r = res.data?.data ?? res.data;   // NocoBase bọc trong { data }
-      setUpdateResult(r);
-      if (r?.success) {
-        message.success(r?.message || t('Updated successfully!'));
-      } else {
-        message.error(r?.error || t('Update failed'));
-      }
-      loadInfo();
-    } catch (err: any) {
-      message.error(t('Update failed: {{msg}}', { msg: err.message }));
-    } finally {
-      setUpdating(false);
-    }
-    return false; // ngăn antd Upload tự upload
-  };
-
-  // Load collections
+  // Load collections (classified into user/plugin/system/deleted)
   const loadCollections = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.request({ url: 'nbCloner:listCollections', method: 'GET' });
       const data = res.data?.data ?? res.data;
-      setCollections(data);
-      setBusinessSelections(
-        data.business.map((c: CollectionInfo) => ({
-          name: c.name,
-          selected: true,
-          includeData: false,
-        }))
-      );
+      const list: CollectionInfo[] = data.collections ?? [];
+      setCollections(list);
+      setCounts({ ...emptyCounts, ...(data.counts ?? {}) });
+      // Default-select only the user's own collections (real business data).
+      const sel: Record<string, Selection> = {};
+      list.forEach((c) => { sel[c.name] = { selected: c.category === 'user', includeData: false }; });
+      setSelections(sel);
     } catch (err: any) {
       message.error(t('Failed to load collections: {{msg}}', { msg: err.message }));
     } finally {
@@ -128,40 +107,49 @@ export function NbClonerPane({ api }: { api: any }) {
     loadCollections();
   }, [loadCollections]);
 
-  // Toggle business collection selection
-  const toggleBusiness = (name: string, field: 'selected' | 'includeData', value: boolean) => {
-    setBusinessSelections((prev) =>
-      prev.map((s) => (s.name === name ? { ...s, [field]: value } : s))
-    );
-  };
+  // Rows visible under the active category filter.
+  const visible = useMemo(
+    () => (category === 'all' ? collections : collections.filter((c) => c.category === category)),
+    [collections, category],
+  );
 
-  const toggleAllBusiness = (selected: boolean) => {
-    setBusinessSelections((prev) => prev.map((s) => ({ ...s, selected })));
-  };
+  const setSel = (name: string, field: keyof Selection, value: boolean) =>
+    setSelections((prev) => ({ ...prev, [name]: { ...prev[name], [field]: value } }));
 
-  const toggleAllData = (includeData: boolean) => {
-    setBusinessSelections((prev) => prev.map((s) => ({ ...s, includeData: s.selected ? includeData : s.includeData })));
-  };
+  // "Select all / none" + "copy data all / none" operate on the VISIBLE (filtered) rows only.
+  const toggleAllVisible = (selected: boolean) =>
+    setSelections((prev) => {
+      const next = { ...prev };
+      visible.forEach((c) => { next[c.name] = { ...next[c.name], selected }; });
+      return next;
+    });
+  const toggleAllData = (includeData: boolean) =>
+    setSelections((prev) => {
+      const next = { ...prev };
+      visible.forEach((c) => { if (next[c.name]?.selected && c.tableExists) next[c.name] = { ...next[c.name], includeData }; });
+      return next;
+    });
+
+  const selectedCount = collections.filter((c) => selections[c.name]?.selected).length;
+  const withDataCount = collections.filter((c) => selections[c.name]?.selected && selections[c.name]?.includeData).length;
+  const visibleAllSelected = visible.length > 0 && visible.every((c) => selections[c.name]?.selected);
+  const visibleSomeSelected = visible.some((c) => selections[c.name]?.selected);
 
   // Export
   const handleExport = async () => {
     setExporting(true);
     try {
-      const selectedBusiness = businessSelections
-        .filter((s) => s.selected)
-        .map((s) => ({ name: s.name, includeData: s.includeData }));
+      const selectedBusiness = collections
+        .filter((c) => selections[c.name]?.selected)
+        .map((c) => ({ name: c.name, includeData: !!selections[c.name]?.includeData }));
 
       const res = await api.request({
         url: 'nbCloner:export',
         method: 'POST',
-        data: {
-          ...options,
-          businessCollections: selectedBusiness,
-        },
+        data: { ...options, businessCollections: selectedBusiness },
         responseType: 'blob',
       });
 
-      // Trigger download
       const blob = new Blob([res.data], { type: 'application/gzip' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -177,7 +165,7 @@ export function NbClonerPane({ api }: { api: any }) {
     }
   };
 
-  // Import — đọc file thành base64 rồi gửi JSON (multipart bị NocoBase middleware block)
+  // Import — file → base64 → JSON (multipart is blocked by NocoBase middleware)
   const handleImport = async (file: File) => {
     setImporting(true);
     setImportResult(null);
@@ -188,7 +176,7 @@ export function NbClonerPane({ api }: { api: any }) {
         method: 'POST',
         data: { fileData: base64, filename: file.name },
       });
-      const result = res.data?.data ?? res.data;   // NocoBase bọc trong { data }
+      const result = res.data?.data ?? res.data;
       setImportResult(result);
       const okSteps = (result?.steps || []).filter((s: any) => s.status === 'ok').length;
       const errSteps = (result?.steps || []).filter((s: any) => s.status === 'error');
@@ -213,29 +201,41 @@ export function NbClonerPane({ api }: { api: any }) {
     } finally {
       setImporting(false);
     }
-    return false; // Ngăn Upload tự upload
+    return false;
   };
 
-  // Business table columns
-  const businessColumns = [
+  const catLabel: Record<Category, string> = {
+    user: t('My collections'),
+    plugin: t('Plugin'),
+    system: t('System'),
+    deleted: t('Deleted'),
+  };
+  const total = collections.length;
+  const filterOptions = [
+    { label: `${catLabel.user} (${counts.user})`, value: 'user' },
+    { label: `${catLabel.plugin} (${counts.plugin})`, value: 'plugin' },
+    { label: `${catLabel.system} (${counts.system})`, value: 'system' },
+    { label: `${catLabel.deleted} (${counts.deleted})`, value: 'deleted' },
+    { label: `${t('All')} (${total})`, value: 'all' },
+  ];
+
+  // Collections table columns
+  const columns = [
     {
       title: (
         <Checkbox
-          checked={businessSelections.length > 0 && businessSelections.every((s) => s.selected)}
-          indeterminate={businessSelections.some((s) => s.selected) && !businessSelections.every((s) => s.selected)}
-          onChange={(e) => toggleAllBusiness(e.target.checked)}
+          checked={visibleAllSelected}
+          indeterminate={visibleSomeSelected && !visibleAllSelected}
+          onChange={(e) => toggleAllVisible(e.target.checked)}
         />
       ),
-      width: 50,
-      render: (_: any, record: CollectionInfo) => {
-        const sel = businessSelections.find((s) => s.name === record.name);
-        return (
-          <Checkbox
-            checked={sel?.selected}
-            onChange={(e) => toggleBusiness(record.name, 'selected', e.target.checked)}
-          />
-        );
-      },
+      width: 44,
+      render: (_: any, record: CollectionInfo) => (
+        <Checkbox
+          checked={!!selections[record.name]?.selected}
+          onChange={(e) => setSel(record.name, 'selected', e.target.checked)}
+        />
+      ),
     },
     {
       title: t('Collection'),
@@ -248,13 +248,28 @@ export function NbClonerPane({ api }: { api: any }) {
       ),
     },
     {
+      title: t('Origin'),
+      dataIndex: 'origin',
+      width: 150,
+      render: (origin: string, record: CollectionInfo) => (
+        <Space direction="vertical" size={0}>
+          <Tag color={CAT_COLOR[record.category]} style={{ marginRight: 0 }}>{catLabel[record.category]}</Tag>
+          {origin && origin !== 'core' && (
+            <Text type="secondary" style={{ fontSize: 11 }}>{origin}</Text>
+          )}
+        </Space>
+      ),
+    },
+    {
       title: t('Rows'),
       dataIndex: 'rowCount',
       width: 90,
-      render: (v: number) =>
-        v === undefined || v === null
-          ? <Text type="secondary">–</Text>
-          : <Tag color={v > 0 ? 'blue' : 'default'}>{formatNumber(v)}</Tag>,
+      render: (v: number, record: CollectionInfo) =>
+        !record.tableExists
+          ? <Tag color="red">{t('no table')}</Tag>
+          : v === undefined || v === null
+            ? <Text type="secondary">–</Text>
+            : <Tag color={v > 0 ? 'blue' : 'default'}>{formatNumber(v)}</Tag>,
     },
     {
       title: t('Fields'),
@@ -272,12 +287,12 @@ export function NbClonerPane({ api }: { api: any }) {
       ),
       width: 140,
       render: (_: any, record: CollectionInfo) => {
-        const sel = businessSelections.find((s) => s.name === record.name);
+        const sel = selections[record.name];
         return (
           <Switch
-            disabled={!sel?.selected}
+            disabled={!sel?.selected || !record.tableExists}
             checked={sel?.includeData}
-            onChange={(v) => toggleBusiness(record.name, 'includeData', v)}
+            onChange={(v) => setSel(record.name, 'includeData', v)}
             checkedChildren={t('Data')}
             unCheckedChildren={t('Schema only')}
             size="small"
@@ -286,9 +301,6 @@ export function NbClonerPane({ api }: { api: any }) {
       },
     },
   ];
-
-  const selectedCount = businessSelections.filter((s) => s.selected).length;
-  const withDataCount = businessSelections.filter((s) => s.selected && s.includeData).length;
 
   return (
     <ConfigContainer maxWidth={1000}>
@@ -303,10 +315,7 @@ export function NbClonerPane({ api }: { api: any }) {
         </Col>
         <Col>
           <Space direction="vertical" align="end" size={2}>
-            <Tag
-              color="geekblue"
-              style={{ fontSize: 18, padding: '4px 14px', margin: 0, fontWeight: 600, borderRadius: 8 }}
-            >
+            <Tag color="geekblue" style={{ fontSize: 18, padding: '4px 14px', margin: 0, fontWeight: 600, borderRadius: 8 }}>
               v{pluginInfo?.version ?? '…'}
             </Tag>
             {pluginInfo?.fileVersion && pluginInfo.fileVersion !== pluginInfo.version && (
@@ -346,55 +355,31 @@ export function NbClonerPane({ api }: { api: any }) {
                 <Card size="small" title={<span><DatabaseOutlined /> {t('System (schema is always exported)')}</span>}>
                   <Row gutter={16}>
                     <Col span={6}>
-                      <div>
-                        <Switch
-                          checked={options.includeSystemSchema}
-                          onChange={(v) => setOptions((o) => ({ ...o, includeSystemSchema: v }))}
-                          size="small"
-                        />
-                        <Text style={{ marginLeft: 8 }}>{t('Collections Schema')}</Text>
-                      </div>
+                      <Switch checked={options.includeSystemSchema} onChange={(v) => setOptions((o) => ({ ...o, includeSystemSchema: v }))} size="small" />
+                      <Text style={{ marginLeft: 8 }}>{t('Collections Schema')}</Text>
                     </Col>
                     <Col span={6}>
-                      <div>
-                        <Switch
-                          checked={options.includeUiSchemas}
-                          onChange={(v) => setOptions((o) => ({ ...o, includeUiSchemas: v }))}
-                          size="small"
-                        />
-                        <Text style={{ marginLeft: 8 }}>{t('UI / Menus')}</Text>
-                      </div>
+                      <Switch checked={options.includeUiSchemas} onChange={(v) => setOptions((o) => ({ ...o, includeUiSchemas: v }))} size="small" />
+                      <Text style={{ marginLeft: 8 }}>{t('UI / Menus')}</Text>
                     </Col>
                     <Col span={6}>
-                      <div>
-                        <Switch
-                          checked={options.includeRoles}
-                          onChange={(v) => setOptions((o) => ({ ...o, includeRoles: v }))}
-                          size="small"
-                        />
-                        <Text style={{ marginLeft: 8 }}>{t('Roles & Permissions')}</Text>
-                      </div>
+                      <Switch checked={options.includeRoles} onChange={(v) => setOptions((o) => ({ ...o, includeRoles: v }))} size="small" />
+                      <Text style={{ marginLeft: 8 }}>{t('Roles & Permissions')}</Text>
                     </Col>
                     <Col span={6}>
-                      <div>
-                        <Switch
-                          checked={options.includeWorkflows}
-                          onChange={(v) => setOptions((o) => ({ ...o, includeWorkflows: v }))}
-                          size="small"
-                        />
-                        <Text style={{ marginLeft: 8 }}>{t('Workflows')}</Text>
-                      </div>
+                      <Switch checked={options.includeWorkflows} onChange={(v) => setOptions((o) => ({ ...o, includeWorkflows: v }))} size="small" />
+                      <Text style={{ marginLeft: 8 }}>{t('Workflows')}</Text>
                     </Col>
                   </Row>
                 </Card>
 
-                {/* Business collections */}
+                {/* Collections + category filter */}
                 <Card
                   size="small"
                   title={
-                    <Space>
-                      {t('Business Collections')}
-                      <Tag color="blue">{t('{{count}} / {{total}} selected', { count: String(selectedCount), total: String(collections.business.length) })}</Tag>
+                    <Space wrap>
+                      {t('Collections')}
+                      <Tag color="blue">{t('{{count}} selected', { count: String(selectedCount) })}</Tag>
                       {withDataCount > 0 && <Tag color="orange">{t('{{count}} with data', { count: String(withDataCount) })}</Tag>}
                     </Space>
                   }
@@ -404,15 +389,31 @@ export function NbClonerPane({ api }: { api: any }) {
                     </Button>
                   }
                 >
-                  <Spin spinning={loading}>
-                    <Table
-                      dataSource={collections.business}
-                      columns={businessColumns as any}
-                      rowKey="name"
+                  <Space direction="vertical" style={{ width: '100%' }} size="small">
+                    <Segmented
                       size="small"
-                      pagination={{ pageSize: 15 }}
+                      value={category}
+                      onChange={(v) => setCategory(v as any)}
+                      options={filterOptions as any}
                     />
-                  </Spin>
+                    <Alert
+                      type="info"
+                      showIcon
+                      banner
+                      message={t('“My collections” are the tables you created. Plugin/System are defined by plugins & NocoBase; they are usually not cloned.')}
+                      style={{ padding: '4px 12px' }}
+                    />
+                    <Spin spinning={loading}>
+                      <Table
+                        dataSource={visible}
+                        columns={columns as any}
+                        rowKey="name"
+                        size="small"
+                        locale={{ emptyText: t('No collections in this filter') }}
+                        pagination={{ pageSize: 15, hideOnSinglePage: true }}
+                      />
+                    </Spin>
+                  </Space>
                 </Card>
 
                 {/* Export summary + button */}
@@ -424,7 +425,7 @@ export function NbClonerPane({ api }: { api: any }) {
                       <Text>
                         {t('Schema')}: {yn(options.includeSystemSchema)} | {t('UI / Menus')}: {yn(options.includeUiSchemas)} | {t('Roles & Permissions')}: {yn(options.includeRoles)} | {t('Workflows')}: {yn(options.includeWorkflows)}
                       </Text>
-                      <Text>{t('{{count}} business collections ({{withData}} with data)', { count: String(selectedCount), withData: String(withDataCount) })}</Text>
+                      <Text>{t('{{count}} collections selected ({{withData}} with data)', { count: String(selectedCount), withData: String(withDataCount) })}</Text>
                     </Space>
                   }
                 />
@@ -481,12 +482,7 @@ export function NbClonerPane({ api }: { api: any }) {
                     />
                   )}
                   <Spin spinning={importing} tip={t('Importing…')}>
-                    <Upload.Dragger
-                      accept=".nbc.gz,.gz"
-                      beforeUpload={handleImport}
-                      showUploadList={false}
-                      disabled={importing}
-                    >
+                    <Upload.Dragger accept=".nbc.gz,.gz" beforeUpload={handleImport} showUploadList={false} disabled={importing}>
                       <p className="ant-upload-drag-icon">
                         <UploadOutlined style={{ fontSize: 48, color: importing ? '#ccc' : '#1890ff' }} />
                       </p>
@@ -496,15 +492,13 @@ export function NbClonerPane({ api }: { api: any }) {
                   </Spin>
                 </Card>
 
-                {/* Import result */}
                 {importResult && (
                   <Card
                     title={
                       <Space>
                         {importResult.success
                           ? <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                          : <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-                        }
+                          : <CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                         {importResult.success ? t('Import successful') : t('Import has errors')}
                         {importResult.manifest && (
                           <Tag>{importResult.manifest.appName} — {importResult.manifest.exportedAt?.split('T')[0]}</Tag>
@@ -515,11 +509,9 @@ export function NbClonerPane({ api }: { api: any }) {
                     <Result
                       status={importResult.success ? 'success' : 'warning'}
                       title={importResult.success ? t('Import successful!') : t('Import finished but with errors')}
-                      subTitle={
-                        importResult.success
-                          ? t('RESTART the app so the data tables and UI appear fully.')
-                          : t('Some steps failed — see the detail below. Tables/UI may be incomplete.')
-                      }
+                      subTitle={importResult.success
+                        ? t('RESTART the app so the data tables and UI appear fully.')
+                        : t('Some steps failed — see the detail below. Tables/UI may be incomplete.')}
                       style={{ padding: '12px 0' }}
                     />
                     <Table
@@ -530,9 +522,7 @@ export function NbClonerPane({ api }: { api: any }) {
                       columns={[
                         { title: t('Step'), dataIndex: 'step', render: (v: string) => <Text code>{v}</Text> },
                         {
-                          title: t('Status'),
-                          dataIndex: 'status',
-                          width: 100,
+                          title: t('Status'), dataIndex: 'status', width: 100,
                           render: (v: string) => (
                             <Tag color={v === 'ok' ? 'green' : v === 'skipped' ? 'default' : 'red'}>
                               {v === 'ok' ? t('ok') : v === 'skipped' ? t('skipped') : t('error')}
@@ -540,86 +530,13 @@ export function NbClonerPane({ api }: { api: any }) {
                           ),
                         },
                         {
-                          title: t('Rows'),
-                          dataIndex: 'count',
-                          width: 80,
+                          title: t('Rows'), dataIndex: 'count', width: 80,
                           render: (v: number) => v !== undefined ? <Badge count={formatNumber(v)} showZero style={{ backgroundColor: '#108ee9' }} /> : '-',
                         },
-                        {
-                          title: t('Error'),
-                          dataIndex: 'error',
-                          render: (v: string) => v ? <Text type="danger" style={{ fontSize: 12 }}>{v}</Text> : '-',
-                        },
+                        { title: t('Error'), dataIndex: 'error', render: (v: string) => v ? <Text type="danger" style={{ fontSize: 12 }}>{v}</Text> : '-' },
                       ]}
                     />
                   </Card>
-                )}
-              </Space>
-            ),
-          },
-          {
-            key: 'update',
-            label: <span><ReloadOutlined /> {t('Update Plugin')}</span>,
-            children: (
-              <Space direction="vertical" style={{ width: '100%' }} size="large">
-                <Card size="small" title={t('Plugin version')}>
-                  <Space direction="vertical" size={4}>
-                    <Space>
-                      <Text>{t('Installed (shown by NocoBase):')}</Text>
-                      <Tag color="geekblue">v{pluginInfo?.version ?? '?'}</Tag>
-                    </Space>
-                    {pluginInfo?.fileVersion && (
-                      <Space>
-                        <Text>{t('Running code (file):')}</Text>
-                        <Tag color={pluginInfo.fileVersion === pluginInfo.version ? 'green' : 'orange'}>
-                          v{pluginInfo.fileVersion}
-                        </Tag>
-                        {pluginInfo.fileVersion !== pluginInfo.version && (
-                          <Text type="warning">{t('— mismatch, restart the app to sync')}</Text>
-                        )}
-                      </Space>
-                    )}
-                    <Button size="small" icon={<ReloadOutlined />} onClick={loadInfo}>{t('Refresh')}</Button>
-                  </Space>
-                </Card>
-
-                <Alert
-                  type="info"
-                  showIcon
-                  message={t('Update the plugin manually without removing the old build')}
-                  description={
-                    <ul style={{ marginBottom: 0 }}>
-                      <li>{t('Drop the plugin-nb-cloner-vX.Y.Z.zip file into the box below.')}</li>
-                      <li>{t('The plugin overwrites the old build in storage/plugins and updates the version (avoids the "already added" / EBUSY error on Remove).')}</li>
-                      <li>{t('After it reports success, restart the app to load the new code.')}</li>
-                    </ul>
-                  }
-                />
-
-                <Card title={t('Upload the new version (.zip)')}>
-                  <Spin spinning={updating} tip={t('Updating, please wait…')}>
-                    <Upload.Dragger
-                      accept=".zip"
-                      beforeUpload={handleSelfUpdate}
-                      showUploadList={false}
-                      disabled={updating}
-                    >
-                      <p className="ant-upload-drag-icon">
-                        <ReloadOutlined style={{ fontSize: 48, color: '#1890ff' }} />
-                      </p>
-                      <p className="ant-upload-text">{t('Drag & drop the plugin .zip or click to select')}</p>
-                      <p className="ant-upload-hint">{t('Accepts a packaged NB Cloner .zip (contains package.json + dist)')}</p>
-                    </Upload.Dragger>
-                  </Spin>
-                </Card>
-
-                {updateResult && (
-                  <Alert
-                    type={updateResult.success ? 'success' : 'error'}
-                    showIcon
-                    message={updateResult.success ? t('Updated to v{{version}}', { version: updateResult.version }) : t('Update failed')}
-                    description={updateResult.message || updateResult.error}
-                  />
                 )}
               </Space>
             ),

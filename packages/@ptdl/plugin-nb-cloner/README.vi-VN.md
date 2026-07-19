@@ -4,11 +4,11 @@
 > chọn — từ bản cài này sang bản cài khác bằng một file **`.nbc.gz`** duy nhất. Import là **UPSERT**
 > (không bao giờ xoá dữ liệu đang có).
 
-**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.8.0
+**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.9.0
 
 ## Sau khi cài, có gì mới?
 
-- **Một trang cấu hình mới trong Settings: “NB Cloner”** (biểu tượng copy) với ba tab: **Xuất (Export)**, **Nhập (Import)** và **Cập nhật plugin (Update Plugin)**.
+- **Một trang cấu hình mới trong Settings: “NB Cloner”** (biểu tượng copy) với hai tab: **Xuất (Export)** và **Nhập (Import)**.
 - **Không thêm menu, nút hay field** nào lên các trang/khối dữ liệu của bạn.
 - Không có gì chạy tự động — mọi lần xuất/nhập đều do bạn bấm từ trang này.
 
@@ -41,7 +41,13 @@ Cả hai client mở **cùng một trang** và gọi cùng các endpoint phía s
 1. Mở **Settings → “NB Cloner” → Xuất**.
 2. Đặt **Tên app** (dùng trong tên file tải về).
 3. Bật các tuỳ chọn **Hệ thống** bạn muốn: *Cấu trúc bảng*, *Giao diện / Menu*, *Vai trò & phân quyền*, *Quy trình*.
-4. Trong **Bảng nghiệp vụ**, tích các bảng cần lấy và bật **“Chép dữ liệu”** cho bảng nào muốn lấy cả dòng. Dùng nút **Tất cả / Không** để bật/tắt nhanh.
+4. Trong **Danh sách bảng**, dùng bộ lọc theo nhóm để tập trung vào thứ bạn cần. Mỗi bảng được phân loại:
+   - **Của tôi** — các bảng bạn tự tạo (dữ liệu nghiệp vụ thật). *Đây là view mặc định, và chỉ những bảng này được chọn sẵn.*
+   - **Plugin** — bảng do plugin định nghĩa cho cấu hình/dữ liệu của nó.
+   - **Hệ thống** — bảng khung của NocoBase (fields, uiSchemas, roles…).
+   - **Đã xóa** — bảng managed nhưng bảng vật lý đã mất (orphan).
+
+   Tích các bảng cần lấy và bật **“Chép dữ liệu”** cho bảng nào muốn lấy cả dòng (dùng **Tất cả / Không**). Đây là lý do một app “mới” vẫn liệt kê 100+ bảng — phần lớn là bảng plugin/hệ thống; bộ lọc giấu chúng đi để bạn chỉ export bảng của mình.
 5. Bấm **“Xuất → Tải .nbc.gz”**. Trình duyệt tải về file `nb-clone-<app>-<ngày>.nbc.gz`.
 
 ### Nhập (app đích)
@@ -56,11 +62,8 @@ Cả hai client mở **cùng một trang** và gọi cùng các endpoint phía s
 
 Bảng kết quả liệt kê từng bước (`schema.collections`, `db.sync`, `ui.schemas`, `data.<bảng>`, …) kèm trạng thái `ok` / `bỏ qua` / `lỗi` và số dòng.
 
-### Cập nhật plugin (tuỳ chọn)
-
-Tab **Cập nhật plugin** cho phép thả file `plugin-nb-cloner-vX.Y.Z.zip` mới để ghi đè bản đang cài tại
-chỗ (né lỗi *“already added”* / EBUSY khi Remove). Sau khi báo thành công, **restart app**. Tab này cũng
-hiện version đang cài so với version code đang thực chạy, để bạn biết khi nào còn cần restart.
+> Cập nhật chính plugin thì làm theo cách thường — Plugin Manager → **Add & Update** → upload file `.tgz`
+> mới, rồi restart.
 
 ## Yêu cầu & giới hạn
 
@@ -75,11 +78,10 @@ hiện version đang cài so với version code đang thực chạy, để bạn
 
 ## Bảo mật
 
-Các endpoint export / import / self-update rất mạnh: export đọc **mọi** bảng nghiệp vụ, import ghi
-schema/UI/role của app đích, còn self-update **ghi đè chính code của plugin** (sẽ chạy ở lần restart sau).
-Chúng được cấp cho `loggedIn` — giống các plugin cấu hình @ptdl khác — và chỉ vào được qua trang **Settings**
-(vốn chỉ admin thấy). **Nếu app của bạn cho người dùng không tin cậy đăng nhập, hãy giới hạn quyền bằng
-role của NocoBase** (hoặc đừng bật plugin ở đó).
+Các endpoint export / import rất mạnh: export đọc **mọi** bảng nghiệp vụ, import ghi schema/UI/role của
+app đích. Chúng được cấp cho `loggedIn` — giống các plugin cấu hình @ptdl khác — và chỉ vào được qua trang
+**Settings** (vốn chỉ admin thấy). **Nếu app của bạn cho người dùng không tin cậy đăng nhập, hãy giới hạn
+quyền bằng role của NocoBase** (hoặc đừng bật plugin ở đó).
 
 ## Định dạng `.nbc.gz`
 

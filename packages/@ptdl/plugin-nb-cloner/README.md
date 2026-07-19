@@ -4,11 +4,11 @@
 > from one install to another as a single **`.nbc.gz`** file. Import is an **UPSERT** (it never deletes
 > what's already there).
 
-**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.8.0
+**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.9.0
 
 ## What's new after installing?
 
-- **A new Settings page: “NB Cloner”** (copy icon) with three tabs: **Export**, **Import** and **Update Plugin**.
+- **A new Settings page: “NB Cloner”** (copy icon) with two tabs: **Export** and **Import**.
 - **No new menu, button or field** is added to your data pages/blocks.
 - Nothing runs automatically — you drive every export and import from that page.
 
@@ -41,7 +41,13 @@ Both clients open the **same page** and hit the same server endpoints.
 1. Open **Settings → “NB Cloner” → Export**.
 2. Set an **App name** (used in the download filename).
 3. Toggle the **System** options you want: *Collections Schema*, *UI / Menus*, *Roles & Permissions*, *Workflows*.
-4. In **Business Collections**, tick the collections to include and flip **“Copy Data”** on the ones whose rows you also want. Use the **All / None** shortcuts for the data switches.
+4. In **Collections**, use the category filter to focus on what you want. Every collection is classified:
+   - **My collections** — the tables you created (real business data). *This is the default view, and only these are pre-selected.*
+   - **Plugin** — tables a plugin defined for its own config/data.
+   - **System** — NocoBase framework tables (fields, uiSchemas, roles…).
+   - **Deleted** — a managed collection whose physical table is gone (an orphan).
+
+   Tick the collections to include and flip **“Copy Data”** on the ones whose rows you also want (use **All / None**). This is why a “fresh” app can list 100+ collections — most are plugin/system tables; the filter hides them so you export just yours.
 5. Click **“Export → Download .nbc.gz”**. Your browser downloads `nb-clone-<app>-<date>.nbc.gz`.
 
 ### Import (target app)
@@ -56,12 +62,8 @@ Both clients open the **same page** and hit the same server endpoints.
 
 The result table lists every step (`schema.collections`, `db.sync`, `ui.schemas`, `data.<collection>`, …) with an `ok` / `skipped` / `error` status and a row count.
 
-### Update Plugin (optional)
-
-The **Update Plugin** tab lets you drop a newer `plugin-nb-cloner-vX.Y.Z.zip` to overwrite the installed
-build in place (it avoids NocoBase's *“already added”* / EBUSY errors on Remove). After it reports
-success, **restart the app**. It also shows the installed version vs. the version of the code actually
-running, so you can tell when a restart is still pending.
+> Updating the plugin itself is done the normal way — Plugin Manager → **Add & Update** → upload the newer
+> `.tgz`, then restart.
 
 ## Requirements & limits
 
@@ -78,11 +80,10 @@ running, so you can tell when a restart is still pending.
 
 ## Security
 
-The export / import / self-update endpoints are powerful: export reads **every** business table, import
-writes the target's schema/UI/roles, and self-update **overwrites the plugin's own code** (which runs on
-the next restart). They are granted to `loggedIn` — the same pattern the other @ptdl settings plugins use —
-and are reached only through the admin-gated **Settings** surface. **If untrusted users can sign in to your
-app, restrict access with NocoBase roles** (or don't enable this plugin there).
+The export / import endpoints are powerful: export reads **every** business table and import writes the
+target's schema/UI/roles. They are granted to `loggedIn` — the same pattern the other @ptdl settings
+plugins use — and are reached only through the admin-gated **Settings** surface. **If untrusted users can
+sign in to your app, restrict access with NocoBase roles** (or don't enable this plugin there).
 
 ## The `.nbc.gz` format
 
