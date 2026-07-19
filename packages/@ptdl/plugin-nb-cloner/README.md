@@ -1,0 +1,101 @@
+# NB Cloner (App export / import) — User Guide
+
+> Clone a whole self-built NocoBase app — its collections, UI, menus, roles and hand-picked data —
+> from one install to another as a single **`.nbc.gz`** file. Import is an **UPSERT** (it never deletes
+> what's already there).
+
+**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.8.0
+
+## What's new after installing?
+
+- **A new Settings page: “NB Cloner”** (copy icon) with three tabs: **Export**, **Import** and **Update Plugin**.
+- **No new menu, button or field** is added to your data pages/blocks.
+- Nothing runs automatically — you drive every export and import from that page.
+
+## Where to configure
+
+| Client | Path to the page |
+|---|---|
+| **Modern (`/v/`)** | ⚙ **Settings** → **“NB Cloner”** |
+| **Classic (`/admin`)** | **Settings** → **“NB Cloner”** (path `/admin/settings/ptdl-nb-cloner`) |
+
+Both clients open the **same page** and hit the same server endpoints.
+
+## What gets cloned
+
+| Area | Included | Notes |
+|---|---|---|
+| **Collections + Fields** | ✅ | Business collections' schema (system collections are never modified on import). |
+| **Collection categories** | ✅ | The table groups shown in the collection manager. |
+| **UI** | optional | uiSchemas, flow-engine models (the `/v/` page/block content), block templates. |
+| **Menus / routes** | ✅ (with UI) | desktop + mobile routes and their closure/path tables — without these the target has no menu. |
+| **Roles & permissions** | optional | Custom roles only (`root`/`admin`/`member` are skipped to avoid clobbering the target's defaults). |
+| **Workflows** | optional | Definitions + nodes only — **not** executions/jobs. |
+| **Business data** | per-collection | Off by default; turn on **“Copy Data”** for each collection you want rows from. |
+| **File attachments / uploads** | ❌ | Binary files are **not** cloned — only the DB rows. |
+
+## How to use (step by step)
+
+### Export (source app)
+
+1. Open **Settings → “NB Cloner” → Export**.
+2. Set an **App name** (used in the download filename).
+3. Toggle the **System** options you want: *Collections Schema*, *UI / Menus*, *Roles & Permissions*, *Workflows*.
+4. In **Business Collections**, tick the collections to include and flip **“Copy Data”** on the ones whose rows you also want. Use the **All / None** shortcuts for the data switches.
+5. Click **“Export → Download .nbc.gz”**. Your browser downloads `nb-clone-<app>-<date>.nbc.gz`.
+
+### Import (target app)
+
+> ⚠️ **The target must be the SAME NocoBase version as the source.** The flow-engine changes its stored
+> format between versions, so a cross-version import produces a broken UI.
+
+1. Open **Settings → “NB Cloner” → Import** on the **target** app.
+2. Read the warnings, then drag the `.nbc.gz` into the upload box.
+3. Wait for the step report — **do not close or reload the page** while it runs (a large app can take 1–2 minutes).
+4. When it finishes, **Restart the app** so the new tables and UI load fully.
+
+The result table lists every step (`schema.collections`, `db.sync`, `ui.schemas`, `data.<collection>`, …) with an `ok` / `skipped` / `error` status and a row count.
+
+### Update Plugin (optional)
+
+The **Update Plugin** tab lets you drop a newer `plugin-nb-cloner-vX.Y.Z.zip` to overwrite the installed
+build in place (it avoids NocoBase's *“already added”* / EBUSY errors on Remove). After it reports
+success, **restart the app**. It also shows the installed version vs. the version of the code actually
+running, so you can tell when a restart is still pending.
+
+## Requirements & limits
+
+- **PostgreSQL only.** Export/import use PostgreSQL-specific SQL (`ON CONFLICT` upsert, `information_schema`
+  primary-key discovery). On any other dialect the plugin **fails fast with a clear message** rather than
+  corrupting the target.
+- **Same NocoBase version** on both ends (see the import warning above).
+- **Import is an UPSERT** — it updates/inserts, it does not delete. For a clean result, import into a
+  **blank, freshly installed** app.
+- **Large bundles:** the flow-engine content can exceed NocoBase's default 10 MB request limit. If import
+  fails on a big app, set the env var **`REQUEST_BODY_LIMIT=50mb`** (or higher) and restart.
+- **Attachments are not cloned** — copy your storage separately if you need the files.
+- A **restart is required** after import for tables + UI to appear.
+
+## Security
+
+The export / import / self-update endpoints are powerful: export reads **every** business table, import
+writes the target's schema/UI/roles, and self-update **overwrites the plugin's own code** (which runs on
+the next restart). They are granted to `loggedIn` — the same pattern the other @ptdl settings plugins use —
+and are reached only through the admin-gated **Settings** surface. **If untrusted users can sign in to your
+app, restrict access with NocoBase roles** (or don't enable this plugin there).
+
+## The `.nbc.gz` format
+
+A `.nbc.gz` file is a single JSON bundle (manifest + schema + ui + acl + workflows + businessData) compressed
+with gzip. The manifest carries a bundle-format version; the importer refuses a bundle whose major version is
+older than it understands and tells you to re-export.
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| “NB Cloner supports PostgreSQL only …” | The app isn't on PostgreSQL. This tool is PostgreSQL-only by design. |
+| Import fails on a large app | Raise `REQUEST_BODY_LIMIT` (e.g. `50mb`) and restart, then retry. |
+| Target menu / pages are empty after import | Make sure **UI / Menus** was enabled on export, and **Restart** the target after import. |
+| Some `data.<collection>` steps show `error` | Those rows were skipped (often FK order or a column mismatch); the rest of the import still applied. Re-run after a restart if needed. |
+| Version tag shows an orange “code v… · restart to sync” | The running code differs from the DB-recorded version — restart the app. |
