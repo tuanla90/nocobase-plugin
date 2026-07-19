@@ -105,9 +105,23 @@ function buildErd(spec: AppSpec) {
   const colls = spec.collections || [];
   const referenced = new Set<string>();
   colls.forEach((c) => (c.relations || []).forEach((r) => { if (r.type === 'm2o' || r.type === 'o2o') referenced.add(r.target); }));
+  // Order boxes so RELATED collections sit ADJACENT (BFS over the relation graph). In raw spec order a long
+  // edge between two related boxes can pass BEHIND an unrelated box placed between them — reading as a false
+  // link (e.g. Khách hàng↔Đơn hàng drawn behind Sản phẩm). Adjacency keeps every edge short & unoccluded.
+  const nameSet = new Set(colls.map((c) => c.name));
+  const adj: Record<string, Set<string>> = {};
+  colls.forEach((c) => (adj[c.name] = new Set()));
+  colls.forEach((c) => (c.relations || []).forEach((r) => { if (nameSet.has(r.target) && r.target !== c.name) { adj[c.name].add(r.target); adj[r.target].add(c.name); } }));
+  const orderNames: string[] = []; const seen = new Set<string>();
+  colls.forEach((c) => {
+    if (seen.has(c.name)) return;
+    const queue = [c.name];
+    while (queue.length) { const n = queue.shift() as string; if (seen.has(n)) continue; seen.add(n); orderNames.push(n); [...adj[n]].forEach((m) => { if (!seen.has(m)) queue.push(m); }); }
+  });
+  const ordered = orderNames.map((n) => colls.find((c) => c.name === n)).filter(Boolean) as typeof colls;
   const W = 150, H = 46, gapX = 46, gapY = 58, pad = 14;
-  const cols = Math.max(1, Math.min(colls.length, 3));
-  const nodes = colls.map((c, i) => {
+  const cols = Math.max(1, Math.min(ordered.length, 3));
+  const nodes = ordered.map((c, i) => {
     const cc = i % cols, rr = Math.floor(i / cols);
     return { name: c.name, title: c.title || c.name, master: referenced.has(c.name), x: pad + cc * (W + gapX), y: pad + rr * (H + gapY), w: W, h: H };
   });
