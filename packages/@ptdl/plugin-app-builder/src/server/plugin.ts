@@ -1124,6 +1124,41 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
+        // {pageSchemaUid} → the same grid/target/collection info aiAddWidget gathers, WITHOUT the AI step,
+        // PLUS the collection's filterable field list — powers the launcher's MANUAL "add a filter column"
+        // picker (pick field(s) + optional display-name → build a filter widget client-side + addWidget).
+        dashboardFields: async (ctx: any, next: any) => {
+          const pageUid = String(readVals(ctx).pageSchemaUid || '').trim();
+          if (!pageUid) { ctx.body = { ok: false, error: 'Thiếu pageSchemaUid' }; await next(); return; }
+          const rowsOf = (res: any) => (Array.isArray(res?.[0]) ? res[0] : (Array.isArray(res) ? res : []));
+          const parentOf: Record<string, string> = {};
+          try { rowsOf(await this.db.sequelize.query("SELECT uid, json_extract(options,'$.parentId') AS parentId FROM flowModels")).forEach((r: any) => { if (r.parentId) parentOf[r.uid] = r.parentId; }); } catch {}
+          const underPage = (u: string) => { let cur: any = u; for (let i = 0; i < 16 && cur; i++) { cur = parentOf[cur]; if (cur === pageUid) return true; } return false; };
+          let gridUid = '';
+          try { const g = rowsOf(await this.db.sequelize.query("SELECT uid FROM flowModels WHERE json_extract(options,'$.use')='BlockGridModel'")).find((x: any) => underPage(x.uid)); gridUid = g?.uid || ''; } catch {}
+          if (!gridUid) { ctx.body = { ok: false, error: 'Không tìm thấy lưới (grid) của dashboard này' }; await next(); return; }
+          let collName = ''; const chartUids: string[] = []; const scoreUids: string[] = []; let maxSort = 0;
+          try {
+            for (const r of rowsOf(await this.db.sequelize.query(`SELECT uid, options FROM flowModels WHERE options LIKE '%"parentId":"${gridUid}"%'`))) {
+              let o: any; try { o = typeof r.options === 'string' ? JSON.parse(r.options) : r.options; } catch { continue; }
+              if (o.parentId !== gridUid) continue;
+              const s = Number(o.sortIndex) || 0; if (s > maxSort) maxSort = s;
+              if (o.use === 'ChartBlockModel') chartUids.push(r.uid); else if (o.use === 'CustomHtmlBlockModel') scoreUids.push(r.uid);
+              const cp = o.stepParams?.chartSettings?.configure?.query?.collectionPath; if (!collName && Array.isArray(cp) && cp[1]) collName = cp[1];
+            }
+          } catch {}
+          if (!collName) { ctx.body = { ok: false, error: 'Không xác định được bảng dữ liệu của dashboard' }; await next(); return; }
+          const collection: any = this.db.getCollection(collName);
+          if (!collection) { ctx.body = { ok: false, error: 'Không thấy collection: ' + collName }; await next(); return; }
+          const stripT = (s: any) => String(s == null ? '' : s).replace(/\{\{\s*t\(["']([^"']+)["']\)\s*\}\}/, '$1');
+          const fields: any[] = [];
+          // Filterable fields only: skip to-many / password (same exclusion aiAddWidget uses); m2o (belongsTo)
+          // stays — it's a valid relation filter.
+          collection.fields.forEach((f: any) => { const o = f.options || {}; if (['belongsToMany', 'hasMany', 'hasOne', 'password'].includes(o.type)) return; fields.push({ name: f.name, type: o.type, interface: o.interface, title: stripT(o.uiSchema?.title || o.title || f.name) }); });
+          ctx.body = { ok: true, gridUid, collection: collName, chartUids, scoreUids, nextSort: maxSort + 1, fields };
+          await next();
+        },
+
         // {gridUid, layoutRow, filterManagerEntries?} → append the row to the grid's layout (both props +
         // stepParams copies) and merge any filter-manager fan-out entries. The widget model itself is created
         // client-side via createModelAsync (so filter subtrees + client-only field bindings are built there).
@@ -1199,7 +1234,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'setChartRaw', 'listCharts', 'aiAddWidget', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'setChartRaw', 'listCharts', 'aiAddWidget', 'dashboardFields', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 

@@ -104,5 +104,14 @@
   "Modify running app": "Modify running app",
   "Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.": "Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.",
   "e.g. add a Teachers table and a page for it; add a status field to Orders": "e.g. add a Teachers table and a page for it; add a status field to Orders",
-  "Plan the change": "Plan the change"
+  "Plan the change": "Plan the change",
+  "Add a filter column (manual)": "Add a filter column (manual)",
+  "Open the dashboard, load its fields, then pick field(s) to add as a filter bar — set a display name if you like.": "Open the dashboard, load its fields, then pick field(s) to add as a filter bar — set a display name if you like.",
+  "Load fields": "Load fields",
+  "Choose field(s) to filter by…": "Choose field(s) to filter by…",
+  "Add filter": "Add filter",
+  "Could not read the dashboard fields": "Could not read the dashboard fields",
+  "No filterable fields found": "No filterable fields found",
+  "Pick at least one field": "Pick at least one field",
+  "Filter added": "Filter added"
 }

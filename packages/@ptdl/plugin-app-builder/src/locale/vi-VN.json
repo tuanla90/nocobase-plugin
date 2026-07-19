@@ -104,5 +104,14 @@
   "Modify running app": "Sửa module hiện tại",
   "Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.": "Sửa app ĐÃ dựng — AI lập kế hoạch các bước (thêm bảng, field trạng thái, trang…); xem lại rồi bấm Chạy.",
   "e.g. add a Teachers table and a page for it; add a status field to Orders": "vd thêm bảng Giảng viên và một trang cho nó; thêm field trạng thái vào Đơn hàng",
-  "Plan the change": "Lập kế hoạch"
+  "Plan the change": "Lập kế hoạch",
+  "Add a filter column (manual)": "Thêm cột lọc (thủ công)",
+  "Open the dashboard, load its fields, then pick field(s) to add as a filter bar — set a display name if you like.": "Mở dashboard, tải danh sách field, rồi chọn field để thêm thành thanh lọc — đặt tên hiển thị nếu muốn.",
+  "Load fields": "Tải danh sách field",
+  "Choose field(s) to filter by…": "Chọn field để lọc…",
+  "Add filter": "Thêm bộ lọc",
+  "Could not read the dashboard fields": "Không đọc được field của dashboard",
+  "No filterable fields found": "Không có field nào lọc được",
+  "Pick at least one field": "Chọn ít nhất một field",
+  "Filter added": "Đã thêm bộ lọc"
 }
