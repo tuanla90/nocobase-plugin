@@ -12,11 +12,11 @@ import { Plugin, Icon, icons } from '@nocobase/client-v2';
 import { Button, Input, message, Modal, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
-  FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined,
+  FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
 } from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
-import { createDashboard } from '../shared/dashboard';
+import { createDashboard, addWidgetToDashboard } from '../shared/dashboard';
 import { ensureLauncherDock } from '../shared/launcherDock';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
 import SpecPreview from './SpecPreview';
@@ -139,6 +139,9 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [pickChart, setPickChart] = useState<string | undefined>(undefined);
     const [pickInstr, setPickInstr] = useState('');
     const [pickBusy, setPickBusy] = useState(false);
+    // ＋ Add a NEW widget (chart/score/filter) to the dashboard you're viewing.
+    const [addInstr, setAddInstr] = useState('');
+    const [addBusy, setAddBusy] = useState(false);
     const [chartScope, setChartScope] = useState<'page' | 'app'>('page'); // list charts on THIS page vs whole app
     // the /v/ page schemaUid from the URL (…/v/admin/<uid>) — used to scope the chart list to this dashboard
     const currentPageUid = () => { try { return (window.location.pathname.match(/\/v\/[^/]+\/([^/?#]+)/) || [])[1] || ''; } catch { return ''; } };
@@ -246,6 +249,28 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         message.error(e?.message || String(e));
       } finally {
         setPickBusy(false);
+      }
+    };
+    // ＋ AI designs ONE widget from the description + adds it to the dashboard you're currently viewing.
+    const onAddWidget = async () => {
+      const pageSchemaUid = currentPageUid();
+      if (!pageSchemaUid) { message.warning(t('Open a dashboard page first')); return; }
+      if (!addInstr.trim()) { message.warning(t('Describe the widget to add')); return; }
+      setAddBusy(true);
+      try {
+        const ai = await app.apiClient
+          .request({ url: 'appBuilder:aiAddWidget', method: 'post', data: { pageSchemaUid, description: addInstr } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!ai?.ok) { message.error(ai?.error || t('AI could not design a widget')); return; }
+        const res = await addWidgetToDashboard(app, ai);
+        if (!res.ok) { message.error(res.error || t('Could not add the widget')); return; }
+        setAddInstr('');
+        message.success((ai.explain || t('Widget added')) + ' — ' + t('reloading…'));
+        setTimeout(() => { try { window.location.reload(); } catch { /* noop */ } }, 1100);
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setAddBusy(false);
       }
     };
 
@@ -560,8 +585,20 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                 label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LIcon type="lucide-pencil" fallback={<EditOutlined />} />{t('Edit dashboard')}</span>),
                 children: (
                   <>
+                    <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
+                      <Typography.Text strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <LIcon type="lucide-plus" fallback={<PlusOutlined />} size={13} />{t('Add a widget to THIS dashboard')}
+                      </Typography.Text>
+                      <Typography.Paragraph type="secondary" style={{ fontSize: 11, margin: '3px 0 6px' }}>
+                        {t('Open the dashboard, then describe a chart/KPI/filter to add — the AI builds and inserts it.')}
+                      </Typography.Paragraph>
+                      <Space.Compact style={{ width: '100%' }}>
+                        <Input value={addInstr} onChange={(e) => setAddInstr(e.target.value)} onPressEnter={onAddWidget} placeholder={t('e.g. add a revenue-by-quarter bar chart, add a filter by customer')} disabled={addBusy} />
+                        <Button type="primary" loading={addBusy} onClick={onAddWidget} icon={<LIcon type="lucide-plus" fallback={<PlusOutlined />} />}>{t('Add')}</Button>
+                      </Space.Compact>
+                    </div>
                     <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '0 0 8px' }}>
-                      {t('Pick any chart already on a dashboard and describe the change — the AI rewrites its ECharts code.')}
+                      {t('Or refine an existing chart: pick any chart already on a dashboard and describe the change — the AI rewrites it.')}
                     </Typography.Paragraph>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                       <Segmented value={chartScope} onChange={(val) => { const s = val as 'page' | 'app'; setChartScope(s); if (existingCharts) loadExistingCharts(s); }} options={[{ label: t('This page'), value: 'page' }, { label: t('Whole app'), value: 'app' }]} />

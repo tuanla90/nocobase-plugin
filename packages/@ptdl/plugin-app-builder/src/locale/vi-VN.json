@@ -73,5 +73,15 @@
   "reloading…": "đang tải lại…",
   "Create": "Tạo mới",
   "Edit dashboard": "Sửa dashboard",
-  "Menu group (optional — else a top-level item)": "Nhóm menu (tuỳ chọn — để trống = mục top-level)"
+  "Menu group (optional — else a top-level item)": "Nhóm menu (tuỳ chọn — để trống = mục top-level)",
+  "Add a widget to THIS dashboard": "Thêm widget vào dashboard NÀY",
+  "Open the dashboard, then describe a chart/KPI/filter to add — the AI builds and inserts it.": "Mở dashboard rồi mô tả chart/KPI/filter cần thêm — AI dựng và chèn vào.",
+  "e.g. add a revenue-by-quarter bar chart, add a filter by customer": "vd thêm biểu đồ cột doanh thu theo quý, thêm filter theo khách hàng",
+  "Add": "Thêm",
+  "Or refine an existing chart: pick any chart already on a dashboard and describe the change — the AI rewrites it.": "Hoặc sửa chart có sẵn: chọn 1 chart trên dashboard rồi mô tả thay đổi — AI viết lại.",
+  "Open a dashboard page first": "Hãy mở một trang dashboard trước",
+  "Describe the widget to add": "Hãy mô tả widget cần thêm",
+  "AI could not design a widget": "AI chưa thiết kế được widget",
+  "Could not add the widget": "Chưa chèn được widget",
+  "Widget added": "Đã thêm widget"
 }

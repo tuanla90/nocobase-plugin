@@ -73,5 +73,15 @@
   "reloading…": "reloading…",
   "Create": "Create",
   "Edit dashboard": "Edit dashboard",
-  "Menu group (optional — else a top-level item)": "Menu group (optional — else a top-level item)"
+  "Menu group (optional — else a top-level item)": "Menu group (optional — else a top-level item)",
+  "Add a widget to THIS dashboard": "Add a widget to THIS dashboard",
+  "Open the dashboard, then describe a chart/KPI/filter to add — the AI builds and inserts it.": "Open the dashboard, then describe a chart/KPI/filter to add — the AI builds and inserts it.",
+  "e.g. add a revenue-by-quarter bar chart, add a filter by customer": "e.g. add a revenue-by-quarter bar chart, add a filter by customer",
+  "Add": "Add",
+  "Or refine an existing chart: pick any chart already on a dashboard and describe the change — the AI rewrites it.": "Or refine an existing chart: pick any chart already on a dashboard and describe the change — the AI rewrites it.",
+  "Open a dashboard page first": "Open a dashboard page first",
+  "Describe the widget to add": "Describe the widget to add",
+  "AI could not design a widget": "AI could not design a widget",
+  "Could not add the widget": "Could not add the widget",
+  "Widget added": "Widget added"
 }

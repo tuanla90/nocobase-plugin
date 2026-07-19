@@ -206,3 +206,31 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
   const chartsOut = charts.map((w, i) => ({ uid: chartBlocks[i].uid, title: w.title, chartType: w.chartType }));
   return { pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}`, charts: chartsOut };
 }
+
+/** Add ONE widget (chart/score/filter) to an EXISTING dashboard: build the block with the SAME builders,
+ *  createModelAsync-append it under the page's grid, then patch the grid's layout (+ filterManager for a
+ *  filter) server-side. `info` comes from the `aiAddWidget` server action (grid uid, collection, targets). */
+export async function addWidgetToDashboard(app: any, info: { widget: DashboardWidget; gridUid: string; collection: string; chartUids?: string[]; scoreUids?: string[]; nextSort?: number }): Promise<{ ok: boolean; widgetUid?: string; error?: string }> {
+  const engine = app?.flowEngine;
+  if (!engine) return { ok: false, error: 'flowEngine unavailable' };
+  const { widget: w, gridUid, collection: coll, chartUids = [], scoreUids = [], nextSort = 0 } = info;
+  const ds = 'main';
+  const collection = app?.dataSourceManager?.getDataSource?.(ds)?.getCollection?.(coll) || app?.dataSourceManager?.getCollection?.(ds, coll);
+  const id = uid();
+  let block: any; let filterManagerEntries: any[] = [];
+  try {
+    if (w.kind === 'chart' && w.measure && w.dimension) block = chartBlock(ds, coll, w, id, resolveDimension(app, coll, w));
+    else if (w.kind === 'score' && w.measure) block = scoreBlock(ds, coll, w, scoreUids.length, id);
+    else if (w.kind === 'filter' && (w.fields || []).length) { const r = filterBlock(engine, app, ds, coll, w.fields || [], collection, [...chartUids, ...scoreUids], id); block = r.block; filterManagerEntries = r.filterManagerEntries; }
+    else return { ok: false, error: 'Widget không hợp lệ' };
+  } catch (e: any) { return { ok: false, error: 'Dựng widget lỗi: ' + (e?.message || e) }; }
+  const layoutRow = { id: uid(), cells: [{ id: uid(), items: [id] }], sizes: [24] };
+  try {
+    const wm = await engine.createModelAsync({ parentId: gridUid, subKey: 'items', subType: 'array', sortIndex: nextSort, ...block });
+    await wm.save();
+  } catch (e: any) { return { ok: false, error: 'Chèn widget vào grid lỗi: ' + (e?.message || e) }; }
+  try {
+    await app.apiClient.request({ url: 'appBuilder:patchGrid', method: 'post', data: { gridUid, layoutRow, filterManagerEntries } }).then((r: any) => r?.data?.data ?? r?.data);
+  } catch (e: any) { return { ok: false, error: 'Cập nhật layout grid lỗi: ' + (e?.message || e) }; }
+  return { ok: true, widgetUid: id };
+}

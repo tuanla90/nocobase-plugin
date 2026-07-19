@@ -345,6 +345,14 @@ function chartRefineSystemPrompt(): string {
     'Bạn là chuyên gia ECharts. Sửa (hoặc viết lại) code option của MỘT biểu đồ NocoBase theo YÊU CẦU, GIỮ nguyên mọi thứ không liên quan.',
     'Code chạy trong TRÌNH DUYỆT: có sẵn biến `ctx.data.objects` = MẢNG bản ghi (mỗi phần tử là 1 object, key = tên field trong query). Code PHẢI kết thúc bằng `return { …option ECharts… };`.',
     'Khung ví dụ: `var data = ctx.data.objects || []; return { tooltip:{trigger:"axis"}, xAxis:{type:"category", data:data.map(function(x){return x.thang;})}, series:[{type:"bar", data:data.map(function(x){return x.doanh_thu;})}] };`',
+    // Modern default look (khớp theme ECharts Pro / Semantix) — áp KHI user KHÔNG chỉ định khác:
+    'PHONG CÁCH MẶC ĐỊNH (hiện đại, sạch — dùng khi user không yêu cầu màu/style khác):',
+    '- Palette: color:["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#f97316","#14b8a6"]. textStyle.fontFamily:"Inter".',
+    '- Trục: axisLabel.color:"#94a3b8" (slate nhạt). Trục category: axisLine.lineStyle.color:"#e2e8f0", axisTick.show:false. Trục value: axisLine.show:false, splitLine.show:false (KHÔNG kẻ lưới).',
+    '- tooltip: backgroundColor:"#fff", borderColor:"#e2e8f0", extraCssText:"border-radius:10px;box-shadow:0 6px 20px rgba(15,23,42,0.14)", axisPointer:{type: (bar→"shadow", line→"line")}.',
+    '- bar: itemStyle.borderRadius:[5,5,0,0], barMaxWidth:44. line: smooth + lineStyle.width:2.5 + symbolSize:7 + areaStyle gradient nhạt. pie: radius ["42%","70%"] (donut), label formatter "{b}: {d}%".',
+    '- Số lớn: format compact (vd formatter: v=> Math.abs(v)>=1e6? (v/1e6).toFixed(1)+"M" : Math.abs(v)>=1e3? (v/1e3).toFixed(1)+"K" : v) cho axisLabel value + data label. Bật data label (series.label.show:true, fontWeight:700).',
+    'NHÃN PHÂN LOẠI: nếu human cung cấp "MAP nhãn" cho một field (field select/statusFlow lưu mã như "dang_giao"), PHẢI map mã→nhãn khi hiển thị: `var LBL={...}; ...name: LBL[x.trang_thai]||x.trang_thai` (dữ liệu vẫn là mã, chỉ đổi phần HIỂN THỊ tên/trục).',
     'QUY TẮC: dùng ĐÚNG key data đã cho (`x.<field>`). KHÔNG require/import/khai báo hàm ngoài. Đổi ĐÚNG thứ user yêu cầu (loại chart line/bar/pie, màu, nhãn số liệu label, định dạng trục, legend, tooltip…), phần còn lại giữ nguyên. Trả về TOÀN BỘ code (cả `var data` lẫn `return`), KHÔNG markdown, KHÔNG giải thích ngoài trường explain.',
   ].join('\n');
 }
@@ -519,6 +527,23 @@ export class PluginAppBuilderServer extends Plugin {
       const raw = c && (c.get ? c.get('title') : (c as any).title);
       return raw ? String(raw).replace(/\{\{\s*t\(["']([^"']+)["']\)\s*\}\}/, '$1') : '';
     } catch { return ''; }
+  }
+
+  /** value→label map of an enum field (select/multipleSelect/radioGroup/statusFlow) from its stored
+   *  `options.uiSchema.enum` — so an AI-refined raw chart can show labels instead of stored slugs. Server
+   *  reads the DB directly (the real enum WITH labels; no client empty-array trap). null if not an enum. */
+  private async enumLabelMapOf(coll: string, name: string): Promise<Record<string, string> | null> {
+    if (!coll || !name) return null;
+    try {
+      const f: any = await this.db.getRepository('fields').findOne({ filter: { collectionName: coll, name } });
+      if (!f) return null;
+      const o = f.get ? f.get('options') : f.options;
+      const opts = o?.uiSchema?.enum;
+      if (!Array.isArray(opts) || !opts.length) return null;
+      const m: Record<string, string> = {};
+      opts.forEach((x: any) => { if (x && x.value != null && x.label != null) m[String(x.value)] = String(x.label); });
+      return Object.keys(m).length ? m : null;
+    } catch { return null; }
   }
 
   /** Ensure the CHILD of an o2m has a belongsTo back to the parent (sharing the SAME FK) so the reverse
@@ -885,10 +910,15 @@ export class PluginAppBuilderServer extends Plugin {
             const opt = (cfg.chart = cfg.chart || {}).option || {};
             const system = chartRefineSystemPrompt();
             const schema = { type: 'object', properties: { raw: { type: 'string', description: 'Code ECharts MỚI (JS trả về option)' }, explain: { type: 'string' } }, required: ['raw'] };
+            // A select/statusFlow dimension stores slugs → give the AI the value→label map so the refined
+            // raw shows labels (the ECharts Pro block does this automatically; a hand-written raw must too).
+            const dimField = dims[0];
+            const dimLabelMap = dimField ? await this.enumLabelMapOf((query.collectionPath || [])[1], dimField) : null;
             const base = (extra = '') => [
-              'Code ECharts HIỆN TẠI của biểu đồ:', opt.raw || '(chưa có raw — chart đang dùng builder mặc định; hãy viết mới hoàn chỉnh)',
+              'Code ECharts HIỆN TẠI của biểu đồ:', opt.raw || '(chưa có raw — chart đang dùng builder mặc định / ECharts Pro; hãy viết mới hoàn chỉnh theo PHONG CÁCH MẶC ĐỊNH)',
               '', `Data: \`ctx.data.objects\` = mảng row, mỗi row có key: ${dataKeys.map((k) => 'x.' + k).join(', ') || '(theo query của chart)'}.`,
               `Loại chart hiện tại: ${opt.builder?.type || '(tuỳ code)'}.`,
+              ...(dimLabelMap ? [`MAP nhãn cho field phân loại "${dimField}" (mã→nhãn) — PHẢI map khi hiển thị tên/trục (dữ liệu vẫn là mã): ${JSON.stringify(dimLabelMap)}`] : []),
               '', `YÊU CẦU SỬA: ${instruction}`,
               '', 'Trả về TOÀN BỘ code mới.' + extra,
             ].join('\n');
@@ -996,6 +1026,94 @@ export class PluginAppBuilderServer extends Plugin {
           await next();
         },
 
+        // {pageSchemaUid, description} → locate the dashboard's grid + AI-design ONE widget (chart/score/
+        // filter) from its collection, and return everything the CLIENT needs to build the block (reusing
+        // dashboard.tsx's builders) + createModelAsync-append it + call patchGrid. Read-only here.
+        aiAddWidget: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const pageUid = String(v.pageSchemaUid || '').trim();
+          const instruction = String(v.description || v.instruction || '').trim();
+          if (!pageUid || !instruction) { ctx.body = { ok: false, error: 'Thiếu pageSchemaUid hoặc mô tả' }; await next(); return; }
+          const rowsOf = (res: any) => (Array.isArray(res?.[0]) ? res[0] : (Array.isArray(res) ? res : []));
+          const parentOf: Record<string, string> = {};
+          try { rowsOf(await this.db.sequelize.query("SELECT uid, json_extract(options,'$.parentId') AS parentId FROM flowModels")).forEach((r: any) => { if (r.parentId) parentOf[r.uid] = r.parentId; }); } catch {}
+          const underPage = (u: string) => { let cur: any = u; for (let i = 0; i < 16 && cur; i++) { cur = parentOf[cur]; if (cur === pageUid) return true; } return false; };
+          let gridUid = '';
+          try { const g = rowsOf(await this.db.sequelize.query("SELECT uid FROM flowModels WHERE json_extract(options,'$.use')='BlockGridModel'")).find((x: any) => underPage(x.uid)); gridUid = g?.uid || ''; } catch {}
+          if (!gridUid) { ctx.body = { ok: false, error: 'Không tìm thấy lưới (grid) của dashboard này' }; await next(); return; }
+          let collName = ''; const chartUids: string[] = []; const scoreUids: string[] = []; let maxSort = 0;
+          try {
+            for (const r of rowsOf(await this.db.sequelize.query(`SELECT uid, options FROM flowModels WHERE options LIKE '%"parentId":"${gridUid}"%'`))) {
+              let o: any; try { o = typeof r.options === 'string' ? JSON.parse(r.options) : r.options; } catch { continue; }
+              if (o.parentId !== gridUid) continue;
+              const s = Number(o.sortIndex) || 0; if (s > maxSort) maxSort = s;
+              if (o.use === 'ChartBlockModel') chartUids.push(r.uid); else if (o.use === 'CustomHtmlBlockModel') scoreUids.push(r.uid);
+              const cp = o.stepParams?.chartSettings?.configure?.query?.collectionPath; if (!collName && Array.isArray(cp) && cp[1]) collName = cp[1];
+            }
+          } catch {}
+          if (!collName) { ctx.body = { ok: false, error: 'Không xác định được bảng dữ liệu của dashboard' }; await next(); return; }
+          const collection: any = this.db.getCollection(collName);
+          if (!collection) { ctx.body = { ok: false, error: 'Không thấy collection: ' + collName }; await next(); return; }
+          const fields: any[] = [];
+          collection.fields.forEach((f: any) => { const o = f.options || {}; if (['belongsToMany', 'hasMany', 'hasOne', 'password'].includes(o.type)) return; fields.push({ name: f.name, type: o.type, interface: o.interface, title: (o.uiSchema?.title || o.title || f.name) }); });
+          const fieldNames = new Set<string>(fields.map((f) => f.name));
+          const { provider, error } = await getAiProvider(this.app);
+          if (error) { ctx.body = { ok: false, error }; await next(); return; }
+          const system = [
+            'Bạn là chuyên gia dashboard. Thiết kế ĐÚNG MỘT widget để THÊM vào dashboard có sẵn, theo yêu cầu. Trả DUY NHẤT JSON { "widget": {...} }.',
+            'widget.kind ∈ "score" | "chart" | "filter":',
+            '  score: {kind:"score", label, measure:{field(số/"id"), aggregation:"sum"|"count"|"avg"|"max"|"min"}, icon?, unit?, scale?}.',
+            '  chart: {kind:"chart", title, chartType:"line"|"bar"|"pie", measure:{field,aggregation}, dimension:{field, format?:"YYYY-MM"}}.',
+            '  filter: {kind:"filter", fields:[tên field để lọc]}.',
+            'CHỈ dùng field có thật (đúng "name"). measure là field SỐ hoặc "id"+count. dimension thời gian=field ngày (+format), phân loại=select/statusFlow/quan hệ.',
+          ].join('\n');
+          const schema = { type: 'object', properties: { widget: { type: 'string', description: 'JSON của 1 widget' }, explain: { type: 'string' } }, required: ['widget'] };
+          const base = (extra = '') => `Bảng: "${collName}"\nField: ${JSON.stringify(fields)}\nYÊU CẦU: ${instruction}\n\nTrả JSON {"widget":{...}} thuần.${extra}`;
+          let human = base(); let widget: any = null; let explain = ''; let lastError = '';
+          for (let attempt = 0; attempt < 3 && !widget; attempt++) {
+            let raw = '';
+            try { const r: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'widget', description: 'widget + giải thích' } }); const p = r && typeof r === 'object' && 'parsed' in r ? r.parsed : r; raw = p?.widget || ''; explain = String(p?.explain || ''); } catch {}
+            if (!raw) { try { raw = aiText(await provider.invoke({ messages: [['system', system + '\n\nTrả DUY NHẤT JSON {"widget":{...}}.'], ['human', human]] })); } catch {} }
+            raw = stripFences(raw);
+            let parsed: any; try { parsed = JSON.parse(raw); } catch (e: any) { lastError = 'JSON lỗi: ' + e?.message; human = base('\n\nLần trước KHÔNG phải JSON hợp lệ.'); continue; }
+            const w = parsed?.widget || parsed;
+            const ok = (fn: string) => fn === 'id' || fieldNames.has(fn);
+            const valid = w && (
+              (w.kind === 'score' && w.measure && ok(w.measure.field)) ||
+              (w.kind === 'chart' && w.measure && ok(w.measure.field) && w.dimension && ok(w.dimension.field)) ||
+              (w.kind === 'filter' && Array.isArray(w.fields) && (w.fields = w.fields.filter((f: string) => fieldNames.has(f))).length)
+            );
+            if (valid) { widget = w; break; }
+            lastError = 'Widget không hợp lệ (field không khớp)'; human = base('\n\n' + lastError + '. Chỉ dùng field có thật.');
+          }
+          if (!widget) { ctx.body = { ok: false, error: lastError || 'AI không thiết kế được widget' }; await next(); return; }
+          ctx.body = { ok: true, widget, explain, gridUid, collection: collName, chartUids, scoreUids, nextSort: maxSort + 1 };
+          await next();
+        },
+
+        // {gridUid, layoutRow, filterManagerEntries?} → append the row to the grid's layout (both props +
+        // stepParams copies) and merge any filter-manager fan-out entries. The widget model itself is created
+        // client-side via createModelAsync (so filter subtrees + client-only field bindings are built there).
+        patchGrid: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const gridUid = String(v.gridUid || '').trim();
+          const layoutRow = v.layoutRow;
+          const fmEntries = Array.isArray(v.filterManagerEntries) ? v.filterManagerEntries : [];
+          if (!gridUid || !layoutRow) { ctx.body = { ok: false, error: 'Thiếu gridUid hoặc layoutRow' }; await next(); return; }
+          const repo = this.db.getRepository('flowModels');
+          const rec: any = await repo.findOne({ filter: { uid: gridUid } });
+          if (!rec) { ctx.body = { ok: false, error: 'Không thấy grid: ' + gridUid }; await next(); return; }
+          const options = typeof rec.options === 'string' ? JSON.parse(rec.options) : (rec.options || {});
+          const pushRow = (lay: any) => { if (lay && Array.isArray(lay.rows)) lay.rows.push(layoutRow); };
+          pushRow(((options.props = options.props || {}).layout = options.props.layout || { version: 2, rows: [] }));
+          const cfgLay = ((((options.stepParams = options.stepParams || {}).gridSettings = options.stepParams.gridSettings || {}).grid = options.stepParams.gridSettings.grid || {}).layout = options.stepParams.gridSettings.grid.layout || { version: 2, rows: [] });
+          pushRow(cfgLay);
+          if (fmEntries.length) options.filterManager = [...(Array.isArray(options.filterManager) ? options.filterManager : []), ...fmEntries];
+          await repo.update({ filter: { uid: gridUid }, values: { options } });
+          ctx.body = { ok: true };
+          await next();
+        },
+
         // {instruction} → AGENTIC: AI lập plan gọi các primitive (dùng trạng thái hiện tại làm "mắt").
         // KHÔNG chạy — trả steps để client preview + execute (data→server tool, page→flowEngine).
         aiPlan: async (ctx: any, next: any) => {
@@ -1048,7 +1166,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'listCharts', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'listCharts', 'aiAddWidget', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 
