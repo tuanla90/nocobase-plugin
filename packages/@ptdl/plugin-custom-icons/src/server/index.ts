@@ -14,6 +14,7 @@ export class PluginCustomIconsServer extends Plugin {
   async beforeLoad() {
     this.db.collection({
       name: 'ptdlIconRemaps',
+      title: 'Icon remaps',
       fields: [
         { type: 'string', name: 'sourceKey', unique: true },
         { type: 'string', name: 'lucideKey' },

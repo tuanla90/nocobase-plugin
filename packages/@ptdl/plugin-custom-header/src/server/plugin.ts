@@ -9,6 +9,7 @@ export class PluginCustomHeaderServer extends Plugin {
   async beforeLoad() {
     this.db.collection({
       name: 'ptdlFieldStyles',
+      title: 'Field styles',
       fields: [
         { type: 'string', name: 'dataSource', defaultValue: 'main' },
         { type: 'string', name: 'collectionName' },

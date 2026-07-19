@@ -2177,6 +2177,7 @@ export class PluginAiColumnServer extends Plugin {
     // runtime so the plugin is self-contained; harmless if the table already exists.
     this.db.collection({
       name: 'ptdlAiAutorun',
+      title: 'AI Autorun',
       fields: [
         { type: 'string', name: 'key', unique: true },
         { type: 'string', name: 'collectionName' },

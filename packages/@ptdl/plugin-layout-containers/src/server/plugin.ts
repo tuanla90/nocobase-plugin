@@ -13,6 +13,7 @@ export class PluginBlockTabsServer extends Plugin {
   async beforeLoad() {
     this.db.collection({
       name: RESOURCE,
+      title: 'Tab styles',
       fields: [
         // NOTE: avoid the column name `key` — it is a reserved SQL keyword and breaks queries.
         { type: 'string', name: 'settingKey', unique: true },

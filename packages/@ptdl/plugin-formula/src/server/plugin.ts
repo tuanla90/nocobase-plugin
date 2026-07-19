@@ -97,7 +97,7 @@ export class PluginFormulaServer extends Plugin {
     // --- Scan/costing rules: config for the stateful ordered-scan mode (FIFO / weighted-average) ---
     this.db.collection({
       name: 'ptdlScanRules',
-      title: 'Giá vốn — sổ có trạng thái (Scan rules)',
+      title: 'Scan rules',
       fields: [
         { type: 'string', name: 'key', unique: true, uiSchema: ui('Key (auto)', 'Input', { 'x-read-pretty': true }) },
         { type: 'string', name: 'title', uiSchema: ui('Tên') },
