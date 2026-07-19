@@ -69,7 +69,7 @@ const buildConfig = (t: (s: string) => string): any[] => [
       'x-component': 'Switch',
       default: true,
     },
-    showLabel: { title: t('Show data labels'), type: 'boolean', 'x-decorator': 'FormItem', 'x-component': 'Switch' },
+    showLabel: { title: t('Show data labels'), type: 'boolean', 'x-decorator': 'FormItem', 'x-component': 'Switch', default: true },
     height: {
       title: t('Height (px)'),
       type: 'number',
@@ -191,11 +191,12 @@ export function makeEChartsProChart(deps: { Chart: any; t?: (s: string) => strin
             yField: yFields.map((f: any) => f.value),
             seriesField: inferred.seriesField ? inferred.seriesField.value : undefined,
             showLegend: true,
+            showLabel: true,
             height: 400,
           },
         };
       } catch (e) {
-        return { general: { chartType: 'line', showLegend: true, height: 400 } };
+        return { general: { chartType: 'line', showLegend: true, showLabel: true, height: 400 } };
       }
     }
 

@@ -6,16 +6,21 @@
  */
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import { registerProThemes, detectDark, LIGHT_THEME_NAME, DARK_THEME_NAME } from './theme';
+
+// Register the light/dark "ECharts Pro" themes once (before any init reads them by name).
+registerProThemes(echarts);
 
 export const ProEChart: React.FC<any> = (props) => {
   const { option, jsonOption, height } = props || {};
   const elRef = useRef<HTMLDivElement>(null);
   const instRef = useRef<any>(null);
 
-  // Create / dispose the chart instance once.
+  // Create / dispose the chart instance once — init WITH the modern theme (auto light/dark by surface).
   useEffect(() => {
     if (!elRef.current) return;
-    const inst = echarts.init(elRef.current);
+    const themeName = detectDark(elRef.current) ? DARK_THEME_NAME : LIGHT_THEME_NAME;
+    const inst = echarts.init(elRef.current, themeName);
     instRef.current = inst;
     let ro: any;
     if (typeof ResizeObserver !== 'undefined') {

@@ -22,7 +22,6 @@ export interface DashboardWidget {
 }
 export interface DashboardSpec { title: string; collection: string; menuGroup?: string; icon?: string; parentId?: number | null; widgets: DashboardWidget[]; }
 
-const ACCENT = '#7C3AED';
 const CARD_BG = ['#6a5294', '#2d6a5a', '#8a4d63', '#3f5a86', '#7a5230'];
 const DATEISH = new Set(['date', 'datetime', 'createdAt', 'updatedAt', 'time', 'datetimeNoTz', 'unixTimestamp']);
 const esc = (s: any) => String(s == null ? '' : s).replace(/[`\\$]/g, '');
@@ -44,31 +43,9 @@ function scoreBlock(ds: string, coll: string, w: DashboardWidget, i: number, id:
   };
 }
 
-// ── chart (core ECharts, custom raw option) ───────────────────────────────────────────────────────
-interface DimInfo { fieldPath: string[]; dataKey: string; format?: string; labels?: Record<string, string> }
+// ── chart (ECharts Pro block — render-time theme + enum→label, no baked raw) ───────────────────────
+interface DimInfo { fieldPath: string[]; dataKey: string; format?: string }
 
-/** value→label map for an enum field (select / multipleSelect / radioGroup / statusFlow) so a chart grouped
- *  on it shows the human label ("Đang giao") instead of the stored slug ("dang_giao"). The labels live in
- *  `uiSchema.enum` ([{value,label}]) — but a **statusFlow** field's TOP-LEVEL `uiSchema.enum` is `[]` (the
- *  interface's default) while the real options sit at `options.uiSchema.enum`. `[]` is truthy, so a naive
- *  `a || b` grabs the empty one → pick the first NON-EMPTY source instead. (`options.statusFlow` only holds
- *  `kinds` keyed by slug — no labels — so it's not a source.) */
-function enumLabels(field: any): Record<string, string> | undefined {
-  const candidates = [
-    field?.uiSchema?.enum,
-    field?.options?.uiSchema?.enum,
-    field?.enum,
-  ];
-  const opts = candidates.find(
-    (c: any) => Array.isArray(c) && c.length && c.some((o: any) => o && o.value != null && o.label != null),
-  );
-  if (!Array.isArray(opts) || !opts.length) return undefined;
-  const m: Record<string, string> = {};
-  opts.forEach((o: any) => {
-    if (o && o.value != null) m[String(o.value)] = String(o.label != null ? o.label : o.value);
-  });
-  return Object.keys(m).length ? m : undefined;
-}
 /** Resolve a chart dimension to a QUERYABLE field path + the result-row key. A m2o RELATION can't be a
  *  dimension by its bare name (SQL error) — it must group by the target's title field, whose result key is
  *  the DOTTED path `<rel>.<title>` (so the raw reads `x['khach_hang.ho_ten']`, not `x.khach_hang`). */
@@ -85,28 +62,8 @@ function resolveDimension(app: any, coll: string, w: DashboardWidget): DimInfo {
       if (titleField) return { fieldPath: [dim, titleField], dataKey: `${dim}.${titleField}` };   // group by name
       return { fieldPath: [`${dim}_id`], dataKey: `${dim}_id` };                                    // fallback: FK id
     }
-    // scalar dimension — attach the enum value→label map so a select/statusFlow shows labels, not slugs.
-    return { fieldPath: [dim], dataKey: dim, format: w.dimension!.format, labels: enumLabels(f) };
   } catch { /* not resolvable → treat as scalar */ }
   return { fieldPath: [dim], dataKey: dim, format: w.dimension!.format };
-}
-function chartRaw(w: DashboardWidget, dim: DimInfo): string {
-  const mx = `x[${JSON.stringify(w.measure!.field)}]`;
-  const rawDx = `x[${JSON.stringify(dim.dataKey)}]`;
-  // Category NAME: map the stored enum value → its label (select/statusFlow) when we have the map; else raw.
-  const nameExpr = dim.labels && Object.keys(dim.labels).length
-    ? `(function(v){var L=${JSON.stringify(dim.labels)};return v==null?'—':(L[v]!=null?L[v]:String(v));})(${rawDx})`
-    : `(${rawDx} == null ? '—' : String(${rawDx}))`;
-  const axisText = "'#9ca3af'";
-  // self-labelling title (block has no header) — mid-gray reads on both light & dark themes.
-  const title = w.title ? `title:{text:'${esc(w.title)}',left:'left',top:4,textStyle:{fontSize:14,fontWeight:600,color:${axisText}}}, ` : '';
-  if (w.chartType === 'pie') {
-    return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'item'}, legend:{top:${w.title ? 30 : 4},textStyle:{color:${axisText}}}, series:[{ type:'pie', radius:['42%','70%'], center:['50%','${w.title ? 60 : 54}%'], avoidLabelOverlap:true, itemStyle:{borderColor:'transparent',borderWidth:2}, label:{color:${axisText},formatter:'{b}: {d}%'}, data: data.map(function(x){ return { name:${nameExpr}, value:${mx} }; }) }] };`;
-  }
-  if (w.chartType === 'bar') {
-    return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', data:data.map(function(x){return ${nameExpr};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'bar', barWidth:'55%', itemStyle:{color:'${ACCENT}', borderRadius:[6,6,0,0]}, data:data.map(function(x){return ${mx};}) }] };`;
-  }
-  return `var data = ctx.data.objects || []; return { ${title}textStyle:{fontFamily:'Inter'}, tooltip:{trigger:'axis'}, grid:{left:10,right:14,top:${w.title ? 48 : 20},bottom:10,containLabel:true}, xAxis:{type:'category', boundaryGap:false, data:data.map(function(x){return ${nameExpr};}), axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:${axisText}}}, yAxis:{type:'value', splitLine:{lineStyle:{color:'rgba(148,163,184,0.15)'}}, axisLabel:{color:${axisText}}}, series:[{ type:'line', smooth:true, showSymbol:false, data:data.map(function(x){return ${mx};}), lineStyle:{width:3,color:'${ACCENT}'}, itemStyle:{color:'${ACCENT}'}, areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(124,58,237,0.4)'},{offset:1,color:'rgba(124,58,237,0)'}]}} }] };`;
 }
 // A dashboard chart = an **ECharts Pro** chart block (mode:'basic', the plugin renders via getProps →
 // buildOption). Render-time: the theme + enum→label mapping apply from LIVE field metadata, so labels are

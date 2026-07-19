@@ -2,6 +2,7 @@
 import { Plugin } from '@nocobase/client';
 import DataVisualizationClient, { Chart } from '@nocobase/plugin-data-visualization/client';
 import { makeEChartsProChart } from '../common/makeChart';
+import { enumValueFormatter } from '../common/buildOption';
 import viVN from '../locale/vi-VN.json';
 
 const NS = '@ptdl/plugin-data-visualization-echarts-pro/client';
@@ -20,6 +21,12 @@ export class PluginDataVisualizationEChartsProClient extends Plugin {
       // eslint-disable-next-line no-console
       console.warn('[echarts-pro] @nocobase/plugin-data-visualization (v1) not found; chart not registered');
       return;
+    }
+    try {
+      dv.registerFieldInterfaceConfig?.('statusFlow', { valueFormatter: enumValueFormatter });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[echarts-pro] registerFieldInterfaceConfig(statusFlow) failed', e);
     }
     dv.charts.addGroup('echartsPro', {
       title: 'ECharts Pro',

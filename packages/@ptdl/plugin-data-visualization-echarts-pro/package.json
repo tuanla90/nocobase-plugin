@@ -5,7 +5,7 @@
   "displayName.zh-CN": "数据可视化：ECharts Pro",
   "description": "A flexible ECharts chart type for the Data Visualization block: line, area, bar, column, pie and scatter with smooth/stack/donut/legend/label toggles, custom fonts and number formatting, a JS data transform, and a raw ECharts option override for full control.",
   "description.zh-CN": "为数据可视化区块提供更灵活的 ECharts 图表类型：自定义字体、数字格式、数据转换（JS）与原始 ECharts option 覆盖（JSON style）。",
-  "version": "0.1.0",
+  "version": "0.2.4",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "devDependencies": {
