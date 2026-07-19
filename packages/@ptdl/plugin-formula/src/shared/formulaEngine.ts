@@ -44,6 +44,11 @@ const formulajs: Record<string, any> =
 const _s = (v: any) => (v === null || v === undefined ? '' : String(v));
 const _esc = escapeHtml;
 
+// A well-known symbol the auto-pluck array Proxy answers with its UNDERLYING array (see `wrap`). Lets the
+// indexed FILTER reach the stable, cached row array behind a per-call Proxy so a hash index built on it
+// survives across evaluateFormula() calls (the loadTable cache reuses one array until the table changes).
+const RAW: unique symbol = Symbol('ptdl.raw');
+
 const TAG_COLORS: Record<string, string> = {
   red: '#cf1322', volcano: '#d4380d', orange: '#d46b08', gold: '#d48806', yellow: '#d4b106',
   lime: '#7cb305', green: '#389e0d', cyan: '#08979c', blue: '#096dd9', geekblue: '#1d39c4',
@@ -142,6 +147,76 @@ function __FILTER_ROWS(tableArr: any, condFn: (r: any) => any, retFn: (r: any) =
   }
   return out;
 }
+// ---------------- INDEXED lazy FILTER (equality fast-path) ----------------
+// __FILTER_ROWS_IDX(t, col, condFn, retFn, keyFn) returns the SAME result as
+// __FILTER_ROWS(t, condFn, retFn) but when the condition has a top-level `t.col == <key>` conjunct, it uses a
+// hash index on `col` (built once per underlying array, cached in a WeakMap) to fetch only the rows whose
+// `col` equals `key`, then still runs the full condFn on them (so ranges / extra conjuncts stay correct).
+// This turns a config-table fan-out (M facts each scanning N lookup rows) from O(M·N) into O(M + N).
+const _INDEX_CACHE: WeakMap<any[], Map<string, Map<string, any[]>>> = new WeakMap();
+const _INDEX_MIN_ROWS = 48; // below this, a linear scan is cheaper than building an index
+
+// Canonical bucket key so every JS `==` match for a real lookup key (finite number / non-empty string) lands
+// in ONE bucket — no false negatives. Booleans → 1/0 and numeric strings collapse to their number, matching
+// `5 == "5" == "5.0" == (1==true)`. `want` of any OTHER type triggers a full scan (see __FILTER_ROWS_IDX), so
+// the non-transitive `==` corners (0 == "" == false, yet "" != "0") can never drop a row.
+function _keyOf(v: any): string {
+  if (v === null || v === undefined) return ' N';
+  if (typeof v === 'boolean') return v ? '1' : '0';
+  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : ' ' + String(v);
+  const s = String(v);
+  const t = s.trim();
+  if (t !== '' && /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(t)) {
+    const n = Number(t);
+    if (Number.isFinite(n)) return String(n);
+  }
+  // Empty/whitespace strings coerce to 0 under JS `==` (`"" == 0`, `"  " == 0`, `"" == false`) → put them in
+  // the SAME bucket as 0/false so a `want === 0` lookup can't miss them. Worst case is a harmless false
+  // positive that condFn re-filters — never a dropped row.
+  if (t === '') return '0';
+  return s;
+}
+function _rawArr(a: any): any[] {
+  try { const r = a && a[RAW]; if (Array.isArray(r)) return r; } catch { /* not our proxy */ }
+  return Array.isArray(a) ? a : a == null ? [] : [a];
+}
+function _bucketOf(rows: any[], col: string, want: any): any[] {
+  let byCol = _INDEX_CACHE.get(rows);
+  if (!byCol) { byCol = new Map(); _INDEX_CACHE.set(rows, byCol); }
+  let idx = byCol.get(col);
+  if (!idx) {
+    idx = new Map();
+    for (const r of rows) {
+      const k = _keyOf(r == null ? undefined : (r as any)[col]);
+      let b = idx.get(k);
+      if (!b) { b = []; idx.set(k, b); }
+      b.push(r);
+    }
+    byCol.set(col, idx);
+  }
+  return idx.get(_keyOf(want)) || [];
+}
+function __FILTER_ROWS_IDX(
+  tableArr: any, col: string, condFn: (r: any) => any, retFn: (r: any) => any, keyFn: () => any,
+): any[] {
+  const rows = _rawArr(tableArr);
+  let candidates: any[] = rows;
+  if (rows.length >= _INDEX_MIN_ROWS && col) {
+    let want: any;
+    try { want = keyFn(); } catch { want = undefined; }
+    // Only index the two real lookup-key types; anything else falls back to the full scan below.
+    if ((typeof want === 'number' && Number.isFinite(want)) || (typeof want === 'string' && want !== '')) {
+      try { candidates = _bucketOf(rows, col, want); } catch { candidates = rows; }
+    }
+  }
+  const out: any[] = [];
+  for (const r of candidates) {
+    let keep = false;
+    try { keep = !!condFn(r); } catch { keep = false; }
+    if (keep) { try { out.push(retFn(r)); } catch { /* skip */ } }
+  }
+  return out;
+}
 // Conditional aggregates routed through our FILTER (→ boolean-aware `_crit` + auto-pluck arrays), so
 // SUMIFS(data.items.amount, data.items.active, true) works over a to-many relation. These OVERRIDE
 // formula.js's native versions (CUSTOM_FNS wins on name clash) — string-operator criteria (">40") and
@@ -155,7 +230,7 @@ function AVERAGEIFS(sumRange: any, ...crit: any[]): number { const k = FILTER(su
 function AVERAGEIF(range: any, criteria: any, sumRange?: any): number { const k = FILTER(sumRange !== undefined ? sumRange : range, range, criteria); return k.length ? _sum(k) / k.length : 0; }
 
 export const CUSTOM_FNS: Record<string, (...a: any[]) => any> = {
-  FILTER, filter: FILTER, SELECT: FILTER, select: FILTER, __FILTER_ROWS,
+  FILTER, filter: FILTER, SELECT: FILTER, select: FILTER, __FILTER_ROWS, __FILTER_ROWS_IDX,
   SUMIFS, sumifs: SUMIFS, SUMIF, sumif: SUMIF,
   COUNTIFS, countifs: COUNTIFS, COUNTIF, countif: COUNTIF,
   AVERAGEIFS, averageifs: AVERAGEIFS, AVERAGEIF, averageif: AVERAGEIF,
@@ -174,6 +249,7 @@ export function wrap(v: any): any {
   if (Array.isArray(v)) {
     return new Proxy(v, {
       get(t, k) {
+        if (k === RAW) return t; // unwrap to the underlying array (for the indexed FILTER cache)
         if (
           typeof k === 'symbol' ||
           ARR_PASS.has(k as string) ||
@@ -271,6 +347,63 @@ function _rebind(expr: string, tbl: string): string {
   }
   return out;
 }
+// Split a condition on TOP-LEVEL `&&` (string/paren aware) → conjuncts. `AND(...)` form is not split (falls
+// back to a plain scan). Used to find an indexable equality among the AND-ed conditions of a lazy FILTER.
+function _splitAmp(s: string): string[] {
+  const parts: string[] = []; let depth = 0; let q: string | null = null; let cur = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) { cur += c; if (c === q && s[i - 1] !== '\\') q = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { q = c; cur += c; continue; }
+    if (c === '(' || c === '[' || c === '{') depth++;
+    else if (c === ')' || c === ']' || c === '}') depth--;
+    if (depth === 0 && c === '&' && s[i + 1] === '&') { parts.push(cur); cur = ''; i++; continue; }
+    cur += c;
+  }
+  if (cur.trim() !== '') parts.push(cur);
+  return parts;
+}
+// Position of the first TOP-LEVEL `==`/`===` (not `!= <= >= ===`-tail, not inside strings/parens).
+function _topEq(s: string): { start: number; end: number } | null {
+  let depth = 0; let q: string | null = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) { if (c === q && s[i - 1] !== '\\') q = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { q = c; continue; }
+    if (c === '(' || c === '[' || c === '{') { depth++; continue; }
+    if (c === ')' || c === ']' || c === '}') { depth--; continue; }
+    if (depth !== 0) continue;
+    if (c === '=' && s[i + 1] === '=') {
+      const prev = s[i - 1];
+      if (prev === '!' || prev === '<' || prev === '>' || prev === '=') continue; // part of !== <== >== ===head
+      let end = i + 2;
+      if (s[end] === '=') end++; // ===
+      return { start: i, end };
+    }
+  }
+  return null;
+}
+function _refsTbl(expr: string, escTbl: string): boolean {
+  return new RegExp('(^|[^.\\w$])' + escTbl + '\\.').test(expr);
+}
+// If a lazy-FILTER condition (raw, pre-rebind) AND-contains `tbl.col == <key>` (or `<key> == tbl.col`) where
+// <key> does NOT reference the table, return {col, valExpr} so the caller can index on `col`. Else null.
+function _indexableEq(condRaw: string, tbl: string): { col: string; valExpr: string } | null {
+  const escTbl = tbl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const colOnly = new RegExp('^' + escTbl + '\\.([A-Za-z_$][\\w$]*)$');
+  for (const raw of _splitAmp(condRaw)) {
+    const part = raw.trim();
+    const eq = _topEq(part);
+    if (!eq) continue;
+    const lhs = part.slice(0, eq.start).trim();
+    const rhs = part.slice(eq.end).trim();
+    let m = colOnly.exec(lhs);
+    if (m && !_refsTbl(rhs, escTbl)) return { col: m[1], valExpr: rhs };
+    m = colOnly.exec(rhs);
+    if (m && !_refsTbl(lhs, escTbl)) return { col: m[1], valExpr: lhs };
+  }
+  return null;
+}
 export function transformFilters(src: string): string {
   let out = ''; let i = 0; let q: string | null = null;
   while (i < src.length) {
@@ -291,7 +424,14 @@ export function transformFilters(src: string): string {
             const ret2 = _rebind(transformFilters(args[0]), tbl);
             const cond2 = _rebind(transformFilters(args[1]), tbl);
             // arrow fns (expression body, NO `return` keyword) so we don't trip wrapExpression's return-detection.
-            out += `__FILTER_ROWS(${tbl}, (__r) => (${cond2}), (__r) => (${ret2}))`;
+            const eq = _indexableEq(args[1], tbl);
+            if (eq) {
+              // keyFn runs in the OUTER scope (references data.*, not the row) → NOT rebound to __r.
+              const keyE = transformFilters(eq.valExpr);
+              out += `__FILTER_ROWS_IDX(${tbl}, ${JSON.stringify(eq.col)}, (__r) => (${cond2}), (__r) => (${ret2}), () => (${keyE}))`;
+            } else {
+              out += `__FILTER_ROWS(${tbl}, (__r) => (${cond2}), (__r) => (${ret2}))`;
+            }
             i = close + 1; continue;
           }
         }

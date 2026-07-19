@@ -115,6 +115,15 @@ Ví dụ đủ 3 loại: `data.quantity * data.product.unit_price` (local + look
 
 **Hàm CÓ:** SUM/AVERAGE/MIN/MAX/COUNT · SUMIF(S)/COUNTIF(S)/AVERAGEIF(S) (kể cả `">40"`, `"<"&data.id`) · **FILTER/SELECT** (cú pháp tự nhiên, xem trên) · VLOOKUP (mảng 2D trong field JSON) · INDEX/MATCH · IF/IFS/SWITCH/CHOOSE · ngày `TODAY/EDATE/DAYS/DATEDIF/YEAR/MONTH…` · text `CONCAT/LEFT/MID/UPPER/TEXT…` · ~400 hàm Excel. **KHÔNG có:** XLOOKUP, mảng-động Excel `FILTER(arr, boolArr)`.
 
+**⚡ SELECT/FILTER dạng `bảng.cột == khoá` được ĐÁNH INDEX (v0.1.64):** khi điều kiện lazy-FILTER có một
+vế `==` top-level (`bảng.cột == <khoá>`, kể cả kèm range/điều kiện khác bằng `&&`), engine dựng **hash index**
+trên cột đó (1 lần / mảng bảng, cache theo `WeakMap` mảng gốc — tự vô hiệu khi bảng đổi vì `loadTable` cấp
+mảng mới) rồi chỉ quét **các dòng khớp khoá** thay vì cả bảng. Fan-out `M fact × N dòng bảng` từ **O(M·N) →
+O(M+N)** (đo được ~29× nhanh hơn ở 5000×5000, kết quả y hệt). `condFn` vẫn chạy trên ứng viên nên range/điều
+kiện còn lại vẫn đúng. Bảng < 48 dòng, hoặc khoá không phải số hữu hạn / chuỗi khác rỗng → tự quay về quét
+tuyến tính (an toàn tuyệt đối, không sót dòng). Nhờ vậy tra bảng đích **lớn** (kể cả bảng giao dịch) đỡ đau
+hơn nhiều — xem [MIGRATE-SQL-TO-COMPUTED.md §6.1](MIGRATE-SQL-TO-COMPUTED.md).
+
 **⚠️ Bảng tra cứu KHÔNG hỗ trợ NESTED quan hệ:** `bang.quan_he.cot` KHÔNG chạy — `loadTable` nạp **phẳng** (`find({})`, 0 appends) nên quan hệ của bảng tra cứu không được load (auto-pluck engine thì nestable, nhưng dữ liệu không nạp sâu). `data.a.b.c` (2+ tầng quan hệ dòng hiện tại) cũng vậy — appends chỉ suy ra 1 tầng. **Cách né:** (1) so **khoá id** trực tiếp `bang.rel_id == data.x_id` thay vì `bang.rel.field` — đủ cho hầu hết ca "khớp theo quan hệ"; (2) cần GIÁ TRỊ field lồng → đặt 1 **computed field trên CHÍNH bảng tra cứu** làm phẳng value đó thành 1 cột rồi tham chiếu cột đó (đúng triết lý "multi-hop = tách per-hop").
 
 **"Tính khi" = 3 trigger tick nhiều được (`runOn`, giống plugin AI)** — điều khiển chi phí & độ tươi. Lưu dạng chuỗi phẩy `create,update,source` (token cũ `both/create/self/update` vẫn đọc được):
