@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plugin, Icon, icons } from '@nocobase/client-v2';
-import { Button, Input, message, Modal, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
+import { Button, Input, message, Modal, Popover, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
   FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
@@ -97,6 +97,184 @@ function useFlowSettingsEnabled(): boolean {
     };
   }, []);
   return on;
+}
+
+// ── ✨ Hover "Edit chart with AI" overlay ────────────────────────────────────────────────────────────
+// When the /v/ UI-editor is ON, every Chart / Custom-HTML block on the page gets a small ✨ button
+// (revealed on hover). Click → type an instruction → the server rewrites that block's ECharts `raw` /
+// HTML code (appBuilder:aiRefineChart) → the block re-renders IN PLACE (no page reload). One-step Undo
+// restores the previous code (appBuilder:setChartRaw). Gated to edit mode — blocks only carry
+// `data-model-uid` (the anchor we hook) while the float settings menu is active, i.e. UI-editor on.
+
+// Re-apply a block's config flow and redraw from `raw`, WITHOUT a full page reload. Returns false when the
+// live model isn't reachable (the caller then falls back to a reload).
+async function refreshBlockLive(app: any, uid: string, blockKind: 'chart' | 'html', raw: string): Promise<boolean> {
+  const model = app?.flowEngine?.getModel?.(uid);
+  if (!model) return false;
+  try {
+    if (blockKind === 'html') {
+      const cur = model.getStepParams?.('customHtmlSettings', 'code') || {};
+      model.setStepParams?.('customHtmlSettings', 'code', { ...cur, code: raw });
+    } else {
+      const cur = model.getStepParams?.('chartSettings', 'configure') || {};
+      const opt = (cur.chart && cur.chart.option) || {};
+      model.setStepParams?.('chartSettings', 'configure', { chart: { option: { ...opt, mode: 'custom', raw } } });
+      try { if (model.props?.chart) model.props.chart.optionRaw = raw; } catch { /* noop */ }
+    }
+  } catch { /* stepParams shape drift — still try to re-run below */ }
+  let ok = false;
+  const flowKey = blockKind === 'html' ? 'customHtmlSettings' : 'chartSettings';
+  try { if (typeof model.applyFlow === 'function') { await model.applyFlow(flowKey); ok = true; } } catch { /* flow key may differ across versions */ }
+  try { if (typeof model.rerender === 'function') { await model.rerender(); ok = true; } } catch { /* noop */ }
+  return ok;
+}
+
+type OverlayChart = { uid: string; title: string; blockKind: 'chart' | 'html'; el: HTMLElement };
+
+const ChartAiButton: React.FC<{
+  chart: OverlayChart; open: boolean; busy: boolean; instr: string; canUndo: boolean;
+  t: (s: string) => string;
+  onOpenChange: (o: boolean) => void; onInstr: (s: string) => void; onRefine: () => void; onUndo: () => void;
+}> = ({ chart, open, busy, instr, canUndo, t, onOpenChange, onInstr, onRefine, onUndo }) => {
+  const content = (
+    <div style={{ width: 264 }} onClick={(e) => e.stopPropagation()}>
+      <Typography.Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+        ✨ {t('Edit with AI')}{chart.title ? ` — ${chart.title}` : ''}
+      </Typography.Text>
+      <Input.TextArea
+        autoFocus value={instr} onChange={(e) => onInstr(e.target.value)} rows={3} disabled={busy}
+        placeholder={t('e.g. switch to a column chart, blue, add % labels')}
+        onPressEnter={(e) => { if ((e as any).ctrlKey || (e as any).metaKey) { e.preventDefault(); onRefine(); } }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <Button size="small" disabled={!canUndo || busy} onClick={onUndo}
+          icon={<LIcon type="lucide-undo2" fallback={<span>↶</span>} size={13} />}>
+          {t('Undo')}
+        </Button>
+        <Button size="small" type="primary" loading={busy} onClick={onRefine}>{t('Apply')}</Button>
+      </div>
+    </div>
+  );
+  return (
+    <div className={'ptdl-chart-ai-btn' + (open ? ' ptdl-open' : '')} style={{ position: 'absolute', top: 6, right: 6, zIndex: 20 }}>
+      <Popover open={open} onOpenChange={onOpenChange} trigger="click" placement="bottomRight" content={content}>
+        <Button size="small" type="primary" ghost
+          icon={<LIcon type="lucide-sparkles" fallback={<span>✨</span>} size={14} />}
+          style={{ background: 'rgba(255,255,255,0.94)', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
+          {t('AI')}
+        </Button>
+      </Popover>
+    </div>
+  );
+};
+
+function createChartAiOverlay(app: any, t: (s: string) => string): React.FC<{ children?: React.ReactNode }> {
+  const ChartAiOverlay: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+    const editMode = useFlowSettingsEnabled();
+    const [charts, setCharts] = useState<OverlayChart[]>([]);
+    const [openUid, setOpenUid] = useState<string | null>(null);
+    const [instr, setInstr] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [prevRaw, setPrevRaw] = useState<Record<string, string>>({}); // uid → code BEFORE last AI edit (for Undo)
+    const pageRef = React.useRef<string>('');
+
+    // hover-reveal CSS for the ✨ button, injected once
+    React.useEffect(() => {
+      const id = 'ptdl-chart-ai-style';
+      if (document.getElementById(id)) return;
+      const s = document.createElement('style');
+      s.id = id;
+      s.textContent = '.ptdl-chart-ai-btn{opacity:0;pointer-events:none;transition:opacity .15s ease}[data-model-uid]:hover>.ptdl-chart-ai-btn,.ptdl-chart-ai-btn.ptdl-open{opacity:1;pointer-events:auto}';
+      document.head.appendChild(s);
+    }, []);
+
+    const pageUid = () => { try { return (window.location.pathname.match(/\/v\/[^/]+\/([^/?#]+)/) || [])[1] || ''; } catch { return ''; } };
+
+    // Match each chart uid to its on-screen block element; drop those not currently rendered.
+    const resolve = React.useCallback((list: Array<{ uid: string; title: string; blockKind: 'chart' | 'html' }>) => {
+      const out: OverlayChart[] = [];
+      for (const c of list) {
+        const el = document.querySelector(`[data-model-uid="${c.uid}"]`) as HTMLElement | null;
+        if (el) out.push({ ...c, el });
+      }
+      setCharts((prev) => (prev.length === out.length && prev.every((p, i) => p.uid === out[i].uid && p.el === out[i].el) ? prev : out));
+    }, []);
+
+    // Load the page's chart list once, then keep re-matching DOM nodes on a light interval (charts render
+    // async + flow re-renders can swap nodes; a page nav re-loads the list). Active only in edit mode.
+    React.useEffect(() => {
+      if (!editMode) { setCharts([]); setOpenUid(null); return; }
+      let stop = false;
+      let listCache: Array<{ uid: string; title: string; blockKind: 'chart' | 'html' }> = [];
+      const reload = async () => {
+        const pu = pageUid(); pageRef.current = pu;
+        try {
+          const res = await app.apiClient.request({ url: 'appBuilder:listCharts', method: 'post', data: { pageSchemaUid: pu } }).then((r: any) => r?.data?.data ?? r?.data);
+          listCache = (res?.charts || []).map((c: any) => ({ uid: c.uid, title: c.title || t('Chart'), blockKind: c.blockKind === 'html' ? 'html' : 'chart' }));
+        } catch { listCache = []; }
+        if (!stop) resolve(listCache);
+      };
+      reload();
+      const iv = window.setInterval(() => {
+        if (stop) return;
+        if (pageUid() !== pageRef.current) { reload(); return; }
+        resolve(listCache);
+      }, 1500);
+      return () => { stop = true; window.clearInterval(iv); };
+    }, [editMode, resolve, t]);
+
+    const onRefine = async (c: OverlayChart) => {
+      const instruction = instr.trim();
+      if (!instruction) { message.warning(t('Type what to change')); return; }
+      setBusy(true);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:aiRefineChart', method: 'post', data: { chartUid: c.uid, instruction } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('AI could not edit the chart')); return; }
+        setPrevRaw((m) => ({ ...m, [c.uid]: res.prevRaw || '' }));
+        setInstr('');
+        message.success(res.explain || t('Chart updated'));
+        const live = await refreshBlockLive(app, c.uid, c.blockKind, res.raw);
+        if (!live) { message.info(t('Reloading to show the change…')); setTimeout(() => { try { window.location.reload(); } catch { /* noop */ } }, 900); }
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally { setBusy(false); }
+    };
+
+    const onUndo = async (c: OverlayChart) => {
+      const raw = prevRaw[c.uid];
+      if (raw == null) return;
+      setBusy(true);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:setChartRaw', method: 'post', data: { chartUid: c.uid, raw } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('Could not undo')); return; }
+        setPrevRaw((m) => { const n = { ...m }; delete n[c.uid]; return n; });
+        message.success(t('Reverted to the previous version'));
+        const live = await refreshBlockLive(app, c.uid, c.blockKind, raw);
+        if (!live) setTimeout(() => { try { window.location.reload(); } catch { /* noop */ } }, 900);
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally { setBusy(false); }
+    };
+
+    return (
+      <>
+        {children}
+        {editMode && charts.map((c) => createPortal(
+          <ChartAiButton
+            chart={c} open={openUid === c.uid} busy={busy} instr={openUid === c.uid ? instr : ''}
+            canUndo={prevRaw[c.uid] != null} t={t}
+            onOpenChange={(o) => { setOpenUid(o ? c.uid : null); if (o) setInstr(''); }}
+            onInstr={setInstr} onRefine={() => onRefine(c)} onUndo={() => onUndo(c)}
+          />, c.el, c.uid,
+        ))}
+      </>
+    );
+  };
+  return ChartAiOverlay;
 }
 
 function createLauncher(app: any, t: (s: string) => string): React.FC<{ children?: React.ReactNode }> {
@@ -721,6 +899,10 @@ export class PluginAppBuilderClientV2 extends Plugin {
     try {
       app.addProvider(createLauncher(app, t));
     } catch { /* never break client load over the launcher */ }
+
+    try {
+      app.addProvider(createChartAiOverlay(app, t)); // ✨ hover-to-edit-with-AI on every chart (edit mode only)
+    } catch { /* never break client load over the overlay */ }
   }
 }
 

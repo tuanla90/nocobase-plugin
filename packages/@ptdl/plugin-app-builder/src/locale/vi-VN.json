@@ -87,5 +87,14 @@
   "Replace the current spec?": "Thay toàn bộ spec hiện tại?",
   "“Generate” builds a NEW app and REPLACES the spec in the editor. To ADD to the current spec instead, Cancel and use “Refine spec (AI)” at the bottom (e.g. “add a teachers table”).": "“Sinh bằng AI” dựng app MỚI và THAY toàn bộ spec trong ô soạn. Muốn THÊM vào spec hiện tại thì bấm Huỷ rồi dùng “Refine spec (AI)” ở dưới (vd “thêm bảng giảng viên”).",
   "Generate new": "Sinh mới",
-  "Cancel": "Huỷ"
+  "Cancel": "Huỷ",
+  "Edit with AI": "Sửa bằng AI",
+  "e.g. switch to a column chart, blue, add % labels": "vd đổi sang biểu đồ cột, màu xanh, thêm nhãn %",
+  "Undo": "Hoàn tác",
+  "Apply": "Áp dụng",
+  "AI": "AI",
+  "Reverted to the previous version": "Đã hoàn tác về bản trước",
+  "Could not undo": "Không hoàn tác được",
+  "Reloading to show the change…": "Đang tải lại để hiện thay đổi…",
+  "Chart": "Biểu đồ"
 }

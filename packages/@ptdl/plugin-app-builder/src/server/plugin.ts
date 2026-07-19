@@ -908,6 +908,7 @@ export class PluginAppBuilderServer extends Plugin {
 
           if (isChart) {
             const opt = (cfg.chart = cfg.chart || {}).option || {};
+            const prevRaw = String(opt.raw || ''); // code BEFORE this edit — returned so the client can offer one-step Undo
             const system = chartRefineSystemPrompt();
             const schema = { type: 'object', properties: { raw: { type: 'string', description: 'Code ECharts MỚI (JS trả về option)' }, explain: { type: 'string' } }, required: ['raw'] };
             // A select/statusFlow dimension stores slugs → give the AI the value→label map so the refined
@@ -940,7 +941,7 @@ export class PluginAppBuilderServer extends Plugin {
             cfg.chart.option = { ...opt, mode: 'custom', raw };
             options.props = options.props || {}; options.props.chart = { ...(options.props.chart || {}), optionRaw: raw };
             await repo.update({ filter: { uid: chartUid }, values: { options } });
-            ctx.body = { ok: true, raw, explain };
+            ctx.body = { ok: true, raw, explain, prevRaw };
             await next();
             return;
           }
@@ -974,7 +975,39 @@ export class PluginAppBuilderServer extends Plugin {
           if (!code) { ctx.body = { ok: false, error: lastError || 'AI không sửa được code thẻ' }; await next(); return; }
           codeCfg.code = code;
           await repo.update({ filter: { uid: chartUid }, values: { options } });
-          ctx.body = { ok: true, raw: code, explain };
+          ctx.body = { ok: true, raw: code, explain, prevRaw: currentCode };
+          await next();
+        },
+
+        // {chartUid, raw} → write a specific ECharts `raw` (Chart) or HTML `code` (Custom-HTML) straight back
+        // into a block, syntax-checked, WITHOUT AI. Powers the hover overlay's one-step Undo (restore prevRaw)
+        // and any "set code" path. Same write shape as aiRefineChart so behaviour is identical on reload.
+        setChartRaw: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const chartUid = String(v.chartUid || '').trim();
+          const raw = typeof v.raw === 'string' ? v.raw : '';
+          if (!chartUid) { ctx.body = { ok: false, error: 'Thiếu chartUid' }; await next(); return; }
+          const repo = this.db.getRepository('flowModels');
+          const rec: any = await repo.findOne({ filter: { uid: chartUid } });
+          if (!rec) { ctx.body = { ok: false, error: 'Không thấy chart: ' + chartUid }; await next(); return; }
+          const options = typeof rec.options === 'string' ? JSON.parse(rec.options) : (rec.options || {});
+          const isHtml = options.use === 'CustomHtmlBlockModel';
+          const isChart = options.use === 'ChartBlockModel';
+          if (!isHtml && !isChart) { ctx.body = { ok: false, error: 'Không phải Chart/Custom-HTML block (' + options.use + ')' }; await next(); return; }
+          try { if (isChart) new Function('ctx', raw); else new Function('data', 'rows', 'helpers', 'scope', raw); }
+          catch (e: any) { ctx.body = { ok: false, error: 'Lỗi cú pháp: ' + (e?.message || e) }; await next(); return; }
+          if (isChart) {
+            const cfg = (((options.stepParams = options.stepParams || {}).chartSettings = options.stepParams.chartSettings || {}).configure = options.stepParams.chartSettings.configure || {});
+            const opt = (cfg.chart = cfg.chart || {}).option || {};
+            cfg.chart.option = { ...opt, mode: 'custom', raw };
+            options.props = options.props || {}; options.props.chart = { ...(options.props.chart || {}), optionRaw: raw };
+          } else {
+            const htmlCfg = ((options.stepParams = options.stepParams || {}).customHtmlSettings = options.stepParams.customHtmlSettings || {});
+            const codeCfg = (htmlCfg.code = htmlCfg.code || {});
+            codeCfg.code = raw;
+          }
+          await repo.update({ filter: { uid: chartUid }, values: { options } });
+          ctx.body = { ok: true, raw };
           await next();
         },
 
@@ -1166,7 +1199,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'listCharts', 'aiAddWidget', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'setChartRaw', 'listCharts', 'aiAddWidget', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 
