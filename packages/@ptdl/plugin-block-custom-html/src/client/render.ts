@@ -141,9 +141,10 @@ export const HELPERS_REF: Array<{ sig: string; desc: string }> = [
   { sig: "helpers.count(data)", desc: 'số dòng' },
   { sig: "helpers.min/max(data,'col')", desc: 'nhỏ nhất / lớn nhất' },
   { sig: "helpers.groupBy(data,'col')", desc: 'gom nhóm theo cột → { key: rows[] }' },
-  { sig: "helpers.fmt(số)", desc: 'định dạng nghìn (vi-VN). fmt(n,{locale,...})' },
+  { sig: "helpers.fmt(n)", desc: "định dạng SỐ nghìn (vi-VN). Tuỳ chọn: fmt(n,{maximumFractionDigits:2}) · tiền tệ fmt(n,{style:'currency',currency:'VND'})" },
   { sig: "helpers.date(v,'DD/MM/YYYY HH:mm')", desc: 'định dạng ngày giờ (tokens YYYY MM DD HH mm ss)' },
   { sig: "helpers.timeAgo(v)", desc: 'thời gian tương đối — 2 giờ trước' },
+  { sig: "helpers.esc(chuỗi)", desc: 'escape HTML khi in giá trị người dùng (chống chèn thẻ)' },
   { sig: "helpers.icon('shopping-cart',{size:22,color:'#2490ef'})", desc: 'icon Lucide bất kỳ (kebab-case) qua registry của icon-kit' },
 ];
 

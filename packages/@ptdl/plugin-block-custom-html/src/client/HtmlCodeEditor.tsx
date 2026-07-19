@@ -99,12 +99,19 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
       return { ok: false, error: e?.message || String(e) };
     }
   };
+  // Feed the AI the REAL helper API (single source of truth = HELPERS_REF) + the real data shape, so it
+  // stops inventing helpers like `formatNumber`/`format` (the number helper is `helpers.fmt`).
   const getAiContext = () => ({
     columns: columnOptions.map((c) => ({ name: c.value })),
     sampleRows: rows.slice(0, 3),
-    extra:
-      'Đoạn JS PHẢI `return` một chuỗi HTML. Có sẵn: data (object dòng đầu), rows (mảng dòng), ' +
-      'helpers (sum/avg/min/max/count/formatNumber/formatDate/icon…), scope. Không import, không async.',
+    helpers: HELPERS_REF.map((h) => h.sig),
+    extra: [
+      "QUAN TRỌNG — `data` VÀ `rows` là CÙNG một MẢNG các dòng kết quả (mỗi dòng là object theo cột ở trên), KHÔNG phải object đơn. Dòng đầu: data[0] hoặc helpers.first(data,'cột'). Tổng/đếm: helpers.sum(data,'cột')…",
+      'Đoạn JS PHẢI `return` một chuỗi HTML (template string `...`). KHÔNG import, KHÔNG async, KHÔNG khai báo function.',
+      'CHỈ dùng ĐÚNG các helper dưới đây — mọi tên khác là SAI. KHÔNG có: formatNumber, formatDate, format, numeral, moment, lodash, _.',
+      ...HELPERS_REF.map((h) => `  • ${h.sig} — ${h.desc}`),
+      "Định dạng SỐ = helpers.fmt(n): vd helpers.fmt(1234567) → \"1.234.567\"; tiền tệ helpers.fmt(n,{style:'currency',currency:'VND'}); 2 số lẻ helpers.fmt(n,{maximumFractionDigits:2}). Định dạng NGÀY = helpers.date(v,'DD/MM/YYYY').",
+    ].join('\n'),
   });
 
   const box: React.CSSProperties = { flex: '1 1 340px', minWidth: 300 };
@@ -143,6 +150,7 @@ export const HtmlCodeEditor: React.FC<any> = (props) => {
           getCurrent={() => code}
           getContext={getAiContext}
           validate={validateJs}
+          preview={(js) => ({ html: renderCustomHtml({ js, rows: rows && rows.length ? rows : SAMPLE_DATA, uid: 'ai-preview' }) })}
           callGenerate={callGenerate}
           onInsert={(v) => {
             setCode(v);

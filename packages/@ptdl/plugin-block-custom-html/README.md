@@ -12,6 +12,7 @@
 - When you add it, the block **asks for a data source (table) just like adding a chart**, then you configure the query the familiar Chart way: **Builder / SQL**, **preview**, **filter**, **refresh (Run query)**.
 - **No new menu, no new Settings page.** Everything is edited **right on the block**.
 - The block's ⚙ gains a **“Custom HTML”** config item: it opens a **code editor** with **6 ready-made templates**, a **live preview**, a **column picker**, a **“Let AI write it”** button, and a **helper functions list**.
+- **Readable block titles** — the ⚙ now also has a **“Block title”** item. Chart and Custom-HTML blocks are headerless, so NocoBase's **Filter form → “Connect fields”** dialog used to list them as unhelpful IDs like *“Custom HTML #b287”*. Now each block reports a **meaningful title**: whatever you type in **Block title**, or — if left empty — an **auto-derived** name from its own config (the chart's title, or its measure/dimension). So the connect-fields picker shows *“Doanh thu #b287”* instead. (Also improves any place the block's title is shown.)
 - ⚠️ This block requires the **Data Visualization** plugin (the Chart block) to be enabled. If it isn't, the block **won't appear** in the picker.
 
 ## Where to configure

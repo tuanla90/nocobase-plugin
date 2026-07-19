@@ -10,6 +10,124 @@ import { renderCustomHtml, DEFAULT_JS, cacheData } from './render';
 import { HtmlCodeEditor } from './HtmlCodeEditor';
 import { te } from './i18n';
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Block title — make Chart / Custom-HTML blocks report a MEANINGFUL model.title.
+ *
+ * Why: the /v/ "Connect fields" dialog (Filter form block) labels every target
+ * block as `${model.title} #${uid.slice(0,4)}`. Core BlockModel.title has no
+ * setter and falls back to the class label, so headerless chart/custom-html
+ * blocks all read "Charts #c6ff" / "Custom HTML #b287" — impossible to tell
+ * apart. We override the getter to resolve, in order:
+ *   1. an explicit user title (the `blockTitle` flow-step below),
+ *   2. a title derived from the block's own config (chart title.text, or the
+ *      query's measure alias / measure & dimension field names, or collection),
+ *   3. the original class-label default (unchanged behaviour).
+ * The patch lives on ChartBlockModel.prototype so real charts AND the
+ * CustomHtmlBlockModel subclass both benefit. See NocoBase client-v2 bundle:
+ * `hI()` connect-fields dialog → `s5(blockGrid)` → reads each model `.title`.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Strip a `{{t("…")}}` i18n wrapper and trim; returns '' for empty/nullish. */
+function cleanI18n(s: any): string {
+  if (s == null) return '';
+  return String(s)
+    .replace(/\{\{\s*t\(\s*["']([^"']+)["'][^}]*\)\s*\}\}/g, '$1')
+    .trim();
+}
+
+/** Best-effort human title from a block's data config. '' when nothing usable. */
+function deriveBlockTitle(model: any): string {
+  try {
+    const cfg: any = (model.getStepParams && model.getStepParams('chartSettings', 'configure')) || {};
+    // 1) the chart's own ECharts title.text (app-builder / hand-built charts bake it in)
+    const raw: string =
+      (cfg.chart && cfg.chart.option && cfg.chart.option.raw) ||
+      (model.props && model.props.chart && model.props.chart.optionRaw) ||
+      '';
+    if (raw) {
+      const m = /title\s*:\s*\{[^}]*?\btext\s*:\s*(["'])([^"']+)\1/.exec(raw);
+      if (m && m[2]) return cleanI18n(m[2]);
+    }
+    // 2) from the query — SAME "agg(measure) theo dimension" formula as app-builder's `listCharts` action,
+    //    so the Filter block's "Connect fields" picker reads the identical label to the app-builder AI-refine
+    //    chart picker instead of bare column names. First measure + first dimension only (matches listCharts).
+    const q: any = cfg.query || {};
+    const leaf = (f: any): any => (Array.isArray(f) ? f[f.length - 1] : f);
+    const mea: any = (q.measures || [])[0];
+    if (mea) {
+      const dim: any = (q.dimensions || [])[0];
+      const measureLeaf = leaf(mea.field) || '';
+      const dimensionLeaf = dim ? leaf(dim.field) : '';
+      return `${mea.aggregation || ''}(${measureLeaf})${dimensionLeaf ? ` theo ${dimensionLeaf}` : ''}`;
+    }
+    // 3) fall back to the collection's display name
+    let coll: any = null;
+    try { coll = model.collection; } catch (e) { coll = null; }
+    const ct = cleanI18n(coll && coll.title);
+    if (ct) return ct;
+  } catch (e) {
+    /* ignore — caller falls back to the original default title */
+  }
+  return '';
+}
+
+/** Idempotently override `get/set title` on ChartBlockModel.prototype. */
+function patchBlockTitle(ChartBlockModel: any): void {
+  const proto = ChartBlockModel && ChartBlockModel.prototype;
+  if (!proto || (proto as any).__ptdlTitlePatched) return;
+  // Capture the inherited (base BlockModel) title descriptor for the default fallback.
+  let p: any = proto;
+  let desc: PropertyDescriptor | undefined;
+  while (p && !(desc = Object.getOwnPropertyDescriptor(p, 'title'))) p = Object.getPrototypeOf(p);
+  const origGet = desc && desc.get;
+  const origSet = desc && desc.set;
+  Object.defineProperty(proto, 'title', {
+    configurable: true,
+    enumerable: false,
+    get(this: any) {
+      try {
+        const user = cleanI18n(((this.getStepParams && this.getStepParams('blockTitle', 'title')) || {}).title);
+        if (user) return user;
+        const derived = deriveBlockTitle(this);
+        if (derived) return derived;
+      } catch (e) {
+        /* fall through to the original default */
+      }
+      return origGet ? origGet.call(this) : this._title;
+    },
+    set(this: any, v: any) {
+      if (origSet) origSet.call(this, v);
+      else this._title = v;
+    },
+  });
+  Object.defineProperty(proto, '__ptdlTitlePatched', { value: true, configurable: true });
+}
+
+/** ⚙ settings step: let the user type an explicit block title (overrides the auto-derived one). */
+function blockTitleFlow() {
+  return {
+    key: 'blockTitle',
+    sort: 50,
+    title: te('Tiêu đề block'),
+    steps: {
+      title: {
+        title: te('Tiêu đề block'),
+        uiSchema: {
+          title: {
+            type: 'string',
+            'x-decorator': 'FormItem',
+            'x-component': 'Input',
+            'x-component-props': { placeholder: te('Để trống để tự đặt tên theo dữ liệu') },
+          },
+        },
+        defaultParams: (ctx: any) => ({
+          title: (((ctx.model.getStepParams && ctx.model.getStepParams('blockTitle', 'title')) || {}).title) || '',
+        }),
+      },
+    },
+  };
+}
+
 function htmlFlow() {
   return {
     key: 'customHtmlSettings',
@@ -53,6 +171,20 @@ export async function registerCustomHtmlBlock(fe: any): Promise<void> {
     // eslint-disable-next-line no-console
     console.warn('[custom-html] ChartBlockModel not found — enable the Data Visualization plugin.');
     return;
+  }
+
+  // Meaningful block titles (for the /v/ "Connect fields" dialog & everywhere model.title shows).
+  // Patch the shared ChartBlockModel BEFORE defining the subclass so both inherit it. Guarded so
+  // repeated loads / the two lanes don't double-register.
+  try {
+    patchBlockTitle(ChartBlockModel);
+    if (!(ChartBlockModel as any).__ptdlBlockTitleFlow) {
+      ChartBlockModel.registerFlow(blockTitleFlow());
+      Object.defineProperty(ChartBlockModel, '__ptdlBlockTitleFlow', { value: true, configurable: true });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[custom-html] block-title patch failed', e);
   }
 
   class CustomHtmlBlockModel extends ChartBlockModel {

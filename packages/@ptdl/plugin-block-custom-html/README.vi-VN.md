@@ -12,6 +12,7 @@
 - Khi thêm, khối **hỏi nguồn dữ liệu (bảng) y như thêm biểu đồ**, rồi bạn cấu hình truy vấn theo cách quen thuộc của Chart: **Builder / SQL**, **xem trước**, **lọc**, **làm mới (Run query)**.
 - **Không thêm menu, không thêm trang Settings** nào. Mọi thứ chỉnh **ngay trên khối**.
 - Trong ⚙ của khối có thêm mục cấu hình **“Custom HTML”**: mở ra một **cửa sổ soạn code** với **6 mẫu dựng sẵn**, **ô xem trước trực tiếp**, **bộ chọn cột**, nút **“AI viết hộ”** và **danh sách hàm trợ giúp**.
+- **Tên khối dễ đọc** — trong ⚙ nay có thêm mục **“Tiêu đề block”**. Khối Biểu đồ và Custom HTML không có header, nên hộp thoại **Filter form → “Connect fields”** của NocoBase trước đây liệt kê chúng bằng ID khó hiểu như *“Custom HTML #b287”*. Giờ mỗi khối **báo cáo một tiêu đề có nghĩa**: là chuỗi bạn gõ ở **Tiêu đề block**, hoặc — nếu để trống — **tự suy ra** từ chính cấu hình khối (tiêu đề biểu đồ, hoặc measure/dimension). Nhờ vậy dialog nối trường hiện *“Doanh thu #b287”* thay vì ID. (Cũng cải thiện mọi nơi khác có hiển thị tiêu đề khối.)
 - ⚠️ Khối này cần bật sẵn plugin **Data Visualization** (khối Biểu đồ). Nếu chưa bật, khối **sẽ không xuất hiện** trong bảng chọn.
 
 ## Cấu hình ở đâu?
