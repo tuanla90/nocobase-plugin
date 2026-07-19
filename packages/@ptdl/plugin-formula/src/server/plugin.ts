@@ -2,7 +2,7 @@ import { Plugin } from '@nocobase/server';
 import { ComputedManager } from './computed';
 import { WindowManager } from './window';
 import { ScanManager } from './scan';
-import { buildFormulaSystemPrompt } from '../shared/formulaKnowledge';
+import { buildFormulaSystemPrompt, buildAppsheetConvertSystemPrompt } from '../shared/formulaKnowledge';
 
 // LLM output helpers (shared by all AI formula tools).
 function stripFences(s: any): string {
@@ -308,6 +308,11 @@ export class PluginFormulaServer extends Plugin {
           ctx.body = await this.aiExplainFormula(v.collection, v.formula);
           await next();
         },
+        aiConvert: async (ctx: any, next: any) => {
+          const v = ctx.action?.params?.values || {};
+          ctx.body = await this.aiConvertFormula(v.collection, v.appsheet, v.sampleId);
+          await next();
+        },
       },
     });
     // `collections` runs for EVERY user at client load (loadComputedCollections → auto-refresh list) and
@@ -332,6 +337,7 @@ export class PluginFormulaServer extends Plugin {
         'ptdlComputed:aiWrite',
         'ptdlComputed:aiSuggest',
         'ptdlComputed:aiExplain',
+        'ptdlComputed:aiConvert',
         'ptdlScanRules:create',
         'ptdlScanRules:update',
         'ptdlScanRules:updateOrCreate',
@@ -439,6 +445,31 @@ export class PluginFormulaServer extends Plugin {
     if (!options.length) return { error: 'AI không trả về phương án nào' };
     for (const o of options) o.test = await this.computed.testFormula(collection, o.formula, sampleId);
     return { options };
+  }
+
+  /** AI CONVERTS an AppSheet formula → a NocoBase formula, then SELF-VALIDATES via `testFormula`,
+   *  retrying with the error fed back — up to 3 tries. Same loop as aiWrite but with the AppSheet prompt. */
+  async aiConvertFormula(collection: string, appsheet: string, sampleId?: any): Promise<any> {
+    if (!collection) return { error: 'Thiếu bảng' };
+    if (!appsheet?.trim()) return { error: 'Thiếu công thức AppSheet' };
+    const { provider, error } = await this.getAiProvider();
+    if (error) return { error };
+    const system = buildAppsheetConvertSystemPrompt(this.computed.describeCollection(collection));
+    let human = `Chuyển công thức AppSheet này sang NocoBase:\n${appsheet}`;
+    let formula = '', explanation = '', test: any = null, tries = 0;
+    for (let i = 0; i < 3; i++) {
+      tries++;
+      try {
+        ({ formula, explanation } = await this.invokeFormula(provider, system, human));
+      } catch (e: any) {
+        return { error: 'Gọi AI lỗi: ' + (e?.message || e), formula, tries };
+      }
+      if (!formula) return { error: 'AI không trả về công thức', tries };
+      test = await this.computed.testFormula(collection, formula, sampleId);
+      if (!test?.error) break; // valid → done
+      human = `Bản chuyển bạn vừa cho: ${formula}\nChạy thử bị LỖI: ${test.error}\nSửa lại, CHỈ dùng field/quan hệ/bảng CÓ THẬT trong schema. Trả công thức NocoBase mới.`;
+    }
+    return { formula, explanation, test, tries };
   }
 
   /** AI explains an existing formula in plain Vietnamese (no re-writing). */

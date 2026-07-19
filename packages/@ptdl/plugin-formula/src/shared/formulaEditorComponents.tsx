@@ -55,12 +55,12 @@ export function FormulaCodeInput(props: any) {
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiMsg, setAiMsg] = React.useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  const callAi = async (description: string, fixFormula?: string) => {
+  const callAi = async (url: string, extra: Record<string, any>) => {
     try {
       const res = await api.request({
-        url: 'ptdlComputed:aiWrite',
+        url,
         method: 'post',
-        data: { collection: props.collection, dataSourceKey: props.dataSourceKey, description, fixFormula },
+        data: { collection: props.collection, dataSourceKey: props.dataSourceKey, ...extra },
       });
       const d = res?.data?.data || {};
       if (d.error) return { error: d.error };
@@ -79,12 +79,16 @@ export function FormulaCodeInput(props: any) {
     }
   };
 
-  const runAi = async (mode: 'write' | 'fix') => {
+  const runAi = async (mode: 'write' | 'fix' | 'convert') => {
     if (!hasApi) { setAiMsg({ type: 'err', text: st('Thiếu bảng hoặc kết nối API') }); return; }
     if (mode === 'write' && !instr.trim()) { setAiMsg({ type: 'err', text: t('Hãy mô tả bạn muốn tính') }); return; }
+    if (mode === 'convert' && !instr.trim()) { setAiMsg({ type: 'err', text: st('Dán công thức AppSheet vào ô trên') }); return; }
     setAiBusy(true);
     setAiMsg(null);
-    const r: any = await callAi(instr.trim(), mode === 'fix' ? value || '' : undefined);
+    let r: any;
+    if (mode === 'convert') r = await callAi('ptdlComputed:aiConvert', { appsheet: instr.trim() });
+    else if (mode === 'fix') r = await callAi('ptdlComputed:aiWrite', { description: instr.trim(), fixFormula: value || '' });
+    else r = await callAi('ptdlComputed:aiWrite', { description: instr.trim() });
     setAiBusy(false);
     if (r.error) { setAiMsg({ type: 'err', text: r.error }); return; }
     onChange?.(r.code); // write into the field → the Preview box updates itself
@@ -152,7 +156,7 @@ export function FormulaCodeInput(props: any) {
             value={instr}
             onChange={(e) => setInstr(e.target.value)}
             autoSize={{ minRows: 2, maxRows: 4 }}
-            placeholder={st('Mô tả bạn muốn tính (vd: tổng tiền = số lượng × đơn giá, có định dạng tiền)')}
+            placeholder={st('Mô tả bạn muốn tính (vd: tổng tiền = số lượng × đơn giá) — HOẶC dán công thức AppSheet rồi bấm "Chuyển từ AppSheet"')}
             onPressEnter={(e: any) => {
               if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
@@ -163,6 +167,9 @@ export function FormulaCodeInput(props: any) {
           <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Button type="primary" size="small" loading={aiBusy} onClick={() => runAi('write')}>
               ✨ {t('Sinh công thức')}
+            </Button>
+            <Button size="small" loading={aiBusy} onClick={() => runAi('convert')} title={st('Dán công thức AppSheet vào ô trên rồi bấm đây')}>
+              ⇄ {st('Chuyển từ AppSheet')}
             </Button>
             <Button size="small" loading={aiBusy} disabled={!String(value || '').trim()} onClick={() => runAi('fix')}>
               {t('Sửa công thức hiện tại')}

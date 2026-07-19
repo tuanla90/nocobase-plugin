@@ -67,6 +67,34 @@ export const FORMULA_RULES = [
   'Cột đích có thể là số / text / date / boolean — trả đúng kiểu (so sánh → boolean, ghép chuỗi/IF → text, EDATE/TODAY → date).',
 ].join('\n');
 
+/** AppSheet → NocoBase conversion knowledge (single source of truth for the AI converter + the UI hint).
+ *  Full guide: APPSHEET-TO-FORMULA.md. */
+export const APPSHEET_RULES = [
+  'Tham chiếu field: AppSheet [col] → NocoBase data.col. Dòng hiện tại [_THISROW] → data. Chính field này [_THIS]/[_this] → value.',
+  'Deref quan hệ 1 tầng: [ref].[field] → data.ref.field. NHƯNG 2+ tầng ([a].[b].[c]) KHÔNG chạy → cảnh báo cần "flatten" (đặt computed phẳng từng chặng), đừng bịa data.a.b.c.',
+  'So sánh: AppSheet = → NocoBase == ; <> → != . Nối chuỗi & GIỮ NGUYÊN. VÀ/HOẶC: AND()/OR() giữ nguyên hoặc && / ||.',
+  'Gộp bảng con SUM(SELECT(child[col], [fk]=[_THISROW].[id])) → nếu có quan hệ hasMany: SUM(data.<quan_hệ>.col); nếu không: SUM(SELECT(child.col, child.fk == data.id)) (điều kiện == được index).',
+  'SELECT(table[col], cond) → SELECT(table.col, cond). Trong cond: cột bảng đang lọc = table.col, cột dòng hiện tại = data.col. ANY(x) → INDEX(x, 1). LOOKUP(v,"t",k,r) → INDEX(SELECT(t.r, t.k == v), 1). MAX(SELECT(t[c],TRUE)) → MAX(t.c).',
+  'Hàm giữ NGUYÊN vì engine đã có: IF IFS SWITCH AND OR NOT SUM MIN MAX AVERAGE IN LIST ANY SPLIT STARTSWITH ENDSWITH CONTAINS ISNOTBLANK ISBLANK NOW TODAY TEXT LEFT RIGHT MID LEN TRIM CONCATENATE. Đổi tên: NUMBER→VALUE.',
+  '⚠️ COUNT: AppSheet COUNT(list) đếm SỐ PHẦN TỬ của list → dùng COUNTA (Excel/engine COUNT chỉ đếm Ô SỐ). VD AppSheet count(split(x," ")) → COUNTA(SPLIT(x," ")).',
+  'KHÔNG map thành công thức (báo cho người dùng, đừng bịa): UNIQUEID() (id tự sinh), USERSETTINGS() (người dùng hiện tại → field hệ thống Created by), LIST(...) cho quyền xem (ACL). Valid If dạng FILTER("t",…) = data scope của trường quan hệ, không phải công thức.',
+].join('\n');
+
+/** Few-shot: AppSheet formula → NocoBase formula (from a real production app). */
+export const APPSHEET_MAP: Array<[string, string]> = [
+  ['[so_luong]*[don_gia]', 'data.so_luong * data.don_gia'],
+  ['[ma_npl].[don_vi]', 'data.ma_npl.don_vi'],
+  ['[id_san_pham].[sku] & [mau_viet_tat]', 'data.id_san_pham.sku & data.mau_viet_tat'],
+  ['SUM(SELECT(phieu_tra_hang[xs_th], [ggc_id] = [_THISROW].[id]))', 'SUM(SELECT(phieu_tra_hang.xs_th, phieu_tra_hang.ggc_id == data.id))'],
+  ['MAX(SELECT(nha_cung_cap[stt], TRUE)) + 1', 'MAX(nha_cung_cap.stt) + 1'],
+  ['ANY(SELECT(config_luong[ID], AND([ten_bang]="NV", [stt]=MIN(SELECT(config_luong[stt],[ten_bang]="NV")))))', 'INDEX(SELECT(config_luong.ID, config_luong.ten_bang == "NV" && config_luong.stt == MIN(SELECT(config_luong.stt, config_luong.ten_bang == "NV"))), 1)'],
+  ['IF(IN([tt].[ten], LIST("Nhận hàng","Đã QC")), [xs_th]+[xs_qcloi], 0)', 'IF(IN(data.tt.ten, LIST("Nhận hàng","Đã QC")), data.xs_th + data.xs_qcloi, 0)'],
+  ['IF(STARTSWITH([SKU],"DN"), NUMBER(RIGHT([SKU],4)), "")', 'IF(STARTSWITH(data.SKU,"DN"), VALUE(RIGHT(data.SKU,4)), "")'],
+  ['IF(ISNOTBLANK([sku_1]),1,0)', 'IF(ISNOTBLANK(data.sku_1),1,0)'],
+  ['INDEX(SPLIT([ho_va_ten]," "), COUNT(SPLIT([ho_va_ten]," ")))', 'INDEX(SPLIT(data.ho_va_ten," "), COUNTA(SPLIT(data.ho_va_ten," ")))'],
+  ['LOOKUP(USERSETTINGS("User name"),"nhan_vien","id","ho_va_ten")', 'INDEX(SELECT(nhan_vien.ho_va_ten, nhan_vien.id == value), 1)  /* USERSETTINGS→người dùng hiện tại: cân nhắc field hệ thống */'],
+];
+
 /** Build the AI system prompt: rules + capability + few-shot + the live collection schema (injected). */
 export function buildFormulaSystemPrompt(schemaText: string): string {
   const fns = FORMULA_FUNCTIONS.map(([g, f]) => `- ${g}: ${f}`).join('\n');
@@ -87,5 +115,23 @@ export function buildFormulaSystemPrompt(schemaText: string): string {
     '',
     'SCHEMA của collection bạn đang viết công thức cho:',
     schemaText,
+  ].join('\n');
+}
+
+/** System prompt for CONVERTING an AppSheet formula → a NocoBase formula (reuses the base rules/schema). */
+export function buildAppsheetConvertSystemPrompt(schemaText: string): string {
+  const shots = APPSHEET_MAP.map(([a, b]) => `- AppSheet: ${a}\n  NocoBase: ${b}`).join('\n');
+  return [
+    'Bạn CHUYỂN một công thức từ AppSheet sang công thức "computed field" của NocoBase (@ptdl/plugin-formula).',
+    'Chỉ trả về BIỂU THỨC NocoBase — không markdown. Nếu có phần không chuyển được (UNIQUEID/USERSETTINGS/quyền xem/2+ tầng quan hệ), nêu ngắn trong phần giải thích và chọn cách gần nhất.',
+    '',
+    'LUẬT CHUYỂN ĐỔI APPSHEET → NOCOBASE:',
+    APPSHEET_RULES,
+    '',
+    'VÍ DỤ CHUYỂN ĐỔI:',
+    shots,
+    '',
+    '--- Bên dưới là LUẬT CÚ PHÁP + CAPABILITY + SCHEMA của NocoBase phải tuân thủ ---',
+    buildFormulaSystemPrompt(schemaText),
   ].join('\n');
 }

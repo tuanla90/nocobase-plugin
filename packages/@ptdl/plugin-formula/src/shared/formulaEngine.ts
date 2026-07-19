@@ -229,11 +229,32 @@ function COUNTIF(range: any, criteria: any): number { return FILTER(range, range
 function AVERAGEIFS(sumRange: any, ...crit: any[]): number { const k = FILTER(sumRange, ...crit); return k.length ? _sum(k) / k.length : 0; }
 function AVERAGEIF(range: any, criteria: any, sumRange?: any): number { const k = FILTER(sumRange !== undefined ? sumRange : range, range, criteria); return k.length ? _sum(k) / k.length : 0; }
 
+// ---------------- AppSheet-parity helpers (formulajs lacks these; keeps converted AppSheet formulas 1:1) ----
+function SPLIT(text: any, sep: any = ','): any[] { const s = _s(text); return s === '' ? [] : s.split(_s(sep)); }
+function STARTSWITH(text: any, s: any): boolean { return _s(text).startsWith(_s(s)); }
+function ENDSWITH(text: any, s: any): boolean { return _s(text).endsWith(_s(s)); }
+function CONTAINS(text: any, s: any): boolean { return _s(text).indexOf(_s(s)) >= 0; }
+function ISNOTBLANK(x: any): boolean { return !(x === null || x === undefined || x === ''); }
+// AppSheet LIST(a, b, …) → a flat list value (nested lists flattened).
+function LIST(...args: any[]): any[] { const out: any[] = []; for (const a of args) { if (Array.isArray(a)) out.push(...a); else out.push(a); } return out; }
+// AppSheet IN(x, list) → membership (loose, string-tolerant like AppSheet). NOTE: register UPPER-CASE ONLY —
+// a lower-case `in` param name would be a reserved word and throw under strict/SES.
+function IN(x: any, list: any): boolean {
+  const arr = Array.isArray(list) ? list : list == null ? [] : [list];
+  return arr.some((v) => v === x || _s(v) === _s(x));
+}
+// AppSheet ANY(list) → the first element (≈ INDEX(list, 1)).
+function ANY(list: any): any { const arr = Array.isArray(list) ? list : list == null ? [] : [list]; return arr.length ? arr[0] : ''; }
+
 export const CUSTOM_FNS: Record<string, (...a: any[]) => any> = {
   FILTER, filter: FILTER, SELECT: FILTER, select: FILTER, __FILTER_ROWS, __FILTER_ROWS_IDX,
   SUMIFS, sumifs: SUMIFS, SUMIF, sumif: SUMIF,
   COUNTIFS, countifs: COUNTIFS, COUNTIF, countif: COUNTIF,
   AVERAGEIFS, averageifs: AVERAGEIFS, AVERAGEIF, averageif: AVERAGEIF,
+  // AppSheet-parity (see APPSHEET-TO-FORMULA.md). `IN` upper-case only (lower `in` = reserved word).
+  SPLIT, split: SPLIT, STARTSWITH, startswith: STARTSWITH, ENDSWITH, endswith: ENDSWITH,
+  CONTAINS, contains: CONTAINS, ISNOTBLANK, isnotblank: ISNOTBLANK,
+  LIST, list: LIST, ANY, any: ANY, IN,
 };
 
 const RESERVED = new Set(
@@ -477,7 +498,7 @@ export function listFunctionNames(): string[] {
   return Object.keys(formulajs)
     .filter((k) => typeof (formulajs as any)[k] === 'function')
     .concat(Object.keys(HTML_FNS))
-    .concat(['FILTER', 'SELECT'])
+    .concat(['FILTER', 'SELECT', 'SPLIT', 'STARTSWITH', 'ENDSWITH', 'CONTAINS', 'ISNOTBLANK', 'LIST', 'IN', 'ANY'])
     .sort();
 }
 

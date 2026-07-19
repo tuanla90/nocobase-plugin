@@ -67,6 +67,7 @@ export function ComputedRuleEditor({
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiOptions, setAiOptions] = useState<any[] | null>(null);
   const [aiExplainText, setAiExplainText] = useState('');
+  const [aiAppsheet, setAiAppsheet] = useState('');
   const taRef = useRef<any>(null);
   const req = (url: string, opts: any = {}) => api?.request?.({ url, ...opts });
   const withCurrent = (opts: { value: string; label: string }[], cur?: string) =>
@@ -145,6 +146,7 @@ export function ComputedRuleEditor({
   const aiSuggest = () => { if (!aiDesc.trim()) return message.warning(t('Nhập mô tả bạn muốn tính')); aiCall('suggest', 'ptdlComputed:aiSuggest', { description: aiDesc, count: 3 }, (d) => { if (d.error) setAiResult(d); else setAiOptions(d.options || []); }); };
   const aiExplain = () => { if (!value.formula?.trim()) return message.warning(t('Ô công thức đang trống')); aiCall('explain', 'ptdlComputed:aiExplain', { formula: value.formula }, (d) => { if (d.error) setAiResult(d); else setAiExplainText(d.explanation || ''); }); };
   const aiFix = () => { if (!value.formula?.trim()) return message.warning(t('Ô công thức đang trống')); aiCall('fix', 'ptdlComputed:aiWrite', { fixFormula: value.formula, description: aiDesc }, (d) => { setAiResult(d); if (d.formula) set({ formula: d.formula }); }); };
+  const aiConvert = () => { if (!aiAppsheet.trim()) return message.warning(t('Dán công thức AppSheet')); aiCall('convert', 'ptdlComputed:aiConvert', { appsheet: aiAppsheet }, (d) => { setAiResult(d); if (d.formula) set({ formula: d.formula }); }); };
 
   const examplesPopover = (
     <div style={{ width: 470, maxHeight: 360, overflow: 'auto' }}>
@@ -179,6 +181,12 @@ export function ComputedRuleEditor({
         <span style={{ fontSize: 11, color: 'var(--colorTextTertiary)' }}>{t('Trên công thức đang có:')}</span>
         <Button size="small" loading={aiBusy === 'explain'} disabled={!value.formula?.trim()} onClick={aiExplain}>{t('Giải thích')}</Button>
         <Button size="small" loading={aiBusy === 'fix'} disabled={!value.formula?.trim()} onClick={aiFix}>{t('AI sửa lỗi')}</Button>
+      </div>
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--colorBorderSecondary, #eee)' }}>
+        <span style={{ fontSize: 11, color: 'var(--colorTextTertiary)' }}>{t('Có công thức AppSheet? Dán vào đây để AI chuyển:')}</span>
+        <Input.TextArea rows={2} value={aiAppsheet} onChange={(e) => setAiAppsheet(e.target.value)} style={{ marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
+          placeholder={'SUM(SELECT(items[amount], [order_id] = [_THISROW].[id]))'} />
+        <Button style={{ marginTop: 6 }} size="small" loading={aiBusy === 'convert'} onClick={aiConvert}>⇄ {t('Chuyển từ AppSheet')}</Button>
       </div>
       {aiExplainText && <div style={{ marginTop: 10, fontSize: 12, color: 'var(--colorTextSecondary)', background: 'var(--colorFillQuaternary, #f7f7f7)', padding: 8, borderRadius: 4 }}>{aiExplainText}</div>}
       {aiResult && (
