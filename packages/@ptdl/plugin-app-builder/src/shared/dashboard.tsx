@@ -18,7 +18,7 @@ export interface DashboardWidget {
   // chart:
   chartType?: 'line' | 'pie' | 'bar'; dimension?: { field: string; format?: string }; title?: string;
   // filter:
-  fields?: string[];
+  fields?: string[]; filterLabels?: Record<string, string>;   // optional per-field display-name override
 }
 export interface DashboardSpec { title: string; collection: string; menuGroup?: string; icon?: string; parentId?: number | null; widgets: DashboardWidget[]; }
 
@@ -113,11 +113,12 @@ function filterPathFor(app: any, ds: string, fn: string, fieldObj: any): string 
 // page's FilterManager. The real, plural connection is a `filterManager:[{filterId,targetId,filterPaths}]`
 // array stored on the shared BlockGridModel (read by BlockGridModel.onInit) — we build it ourselves because
 // createModelAsync never runs the interactive onModelCreated hook. Returns {block, filterManagerEntries}.
-function filterBlock(engine: any, app: any, ds: string, coll: string, fields: string[], collection: any, targetUids: string[], id: string) {
+function filterBlock(engine: any, app: any, ds: string, coll: string, fields: string[], collection: any, targetUids: string[], id: string, labels?: Record<string, string>) {
   const FilterItem: any = engine?.getModelClass?.('FilterFormItemModel');
   const firstTargetUid = targetUids[0];
   const items = fields.map((fn) => {
     const meta = fieldMeta(collection, fn);
+    const label = (labels && labels[fn] && String(labels[fn]).trim()) || meta.title;   // manual display-name override wins
     const fieldObj = collection?.getField?.(fn);
     const iid = uid();
     // Every filter item MUST carry a `field` sub-model or it renders label-only with no value picker (the
@@ -142,7 +143,7 @@ function filterBlock(engine: any, app: any, ds: string, coll: string, fields: st
       stepParams: {
         fieldSettings: { init: { dataSourceKey: ds, collectionName: coll, fieldPath: fn } },
         // defaultTargetUid kept for parity (feeds FilterFormBlockModel's target-deleted cleanup) — NOT what makes the filter live.
-        filterFormItemSettings: { init: { filterField: { name: fn, title: meta.title, interface: meta.interface, type: meta.type }, ...(firstTargetUid ? { defaultTargetUid: firstTargetUid } : {}) } },
+        filterFormItemSettings: { init: { filterField: { name: fn, title: label, interface: meta.interface, type: meta.type }, ...(firstTargetUid ? { defaultTargetUid: firstTargetUid } : {}) } },
       },
     };
     if (fieldUse) model.subModels = { field: { use: fieldUse, ...(fieldProps ? { props: fieldProps } : {}) } };
@@ -179,7 +180,7 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
   const scoreBlocks = scores.map((w, i) => scoreBlock(ds, coll, w, i, uid()));
   const scoreUids = scoreBlocks.map((b) => b.uid);
   // The filter fans out to every chart AND every KPI card so the whole dashboard reacts to it.
-  const filterResults = filters.map((w) => filterBlock(engine, app, ds, coll, w.fields || [], collection, [...chartUids, ...scoreUids], uid()));
+  const filterResults = filters.map((w) => filterBlock(engine, app, ds, coll, w.fields || [], collection, [...chartUids, ...scoreUids], uid(), w.filterLabels));
   const filterBlocks = filterResults.map((r) => r.block);
   const filterManagerEntries = filterResults.flatMap((r) => r.filterManagerEntries);
 
@@ -203,7 +204,12 @@ export async function createDashboard(app: any, spec: DashboardSpec): Promise<{ 
     subModels: { tabs: [{ uid: tabSchemaUid, use: 'RootPageTabModel', props: { route: { type: 'tabs', schemaUid: tabSchemaUid, tabSchemaName, hidden: true } }, subModels: { grid: { use: 'BlockGridModel', props: { layout }, stepParams: { gridSettings: { grid: { layout } } }, filterManager: filterManagerEntries, subModels: { items } } } }] },
   });
   await pageModel.save();
-  const chartsOut = charts.map((w, i) => ({ uid: chartBlocks[i].uid, title: w.title, chartType: w.chartType }));
+  // Return BOTH ECharts charts and HTML KPI cards so the launcher's "Edit a chart with AI" list can refine
+  // either (aiRefineChart branches on the block's `use`). Score cards carry chartType:'html'.
+  const chartsOut = [
+    ...charts.map((w, i) => ({ uid: chartBlocks[i].uid, title: w.title, chartType: w.chartType })),
+    ...scores.map((w, i) => ({ uid: scoreBlocks[i].uid, title: w.label, chartType: 'html' })),
+  ];
   return { pageSchemaUid, url: `${clientPrefix()}/admin/${pageSchemaUid}`, charts: chartsOut };
 }
 
@@ -221,7 +227,7 @@ export async function addWidgetToDashboard(app: any, info: { widget: DashboardWi
   try {
     if (w.kind === 'chart' && w.measure && w.dimension) block = chartBlock(ds, coll, w, id, resolveDimension(app, coll, w));
     else if (w.kind === 'score' && w.measure) block = scoreBlock(ds, coll, w, scoreUids.length, id);
-    else if (w.kind === 'filter' && (w.fields || []).length) { const r = filterBlock(engine, app, ds, coll, w.fields || [], collection, [...chartUids, ...scoreUids], id); block = r.block; filterManagerEntries = r.filterManagerEntries; }
+    else if (w.kind === 'filter' && (w.fields || []).length) { const r = filterBlock(engine, app, ds, coll, w.fields || [], collection, [...chartUids, ...scoreUids], id, w.filterLabels); block = r.block; filterManagerEntries = r.filterManagerEntries; }
     else return { ok: false, error: 'Widget không hợp lệ' };
   } catch (e: any) { return { ok: false, error: 'Dựng widget lỗi: ' + (e?.message || e) }; }
   const layoutRow = { id: uid(), cells: [{ id: uid(), items: [id] }], sizes: [24] };

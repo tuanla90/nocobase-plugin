@@ -28,11 +28,13 @@ const NS = '@ptdl/plugin-app-builder/client';
 
 /** Render a Lucide icon from the custom-icons registry (`<Icon type="lucide-*">`), guarded by `icons.has()`
  *  so it degrades to an antd fallback when @ptdl/plugin-custom-icons isn't installed. Lucide draws a raw
- *  <svg stroke="currentColor"> → size via fontSize, colour inherited. */
+ *  <svg stroke="currentColor"> → size via fontSize, colour inherited.
+ *  `inline-flex` (not the default inline SVG) removes the baseline descender gap that otherwise pushes the
+ *  glyph visually ABOVE the text centre; `verticalAlign:-0.125em` matches how antd's own icons sit inline. */
 const LIcon: React.FC<{ type: string; fallback?: React.ReactNode; size?: number; style?: React.CSSProperties }> =
   ({ type, fallback = null, size = 14, style }) =>
     Icon && (icons as any)?.has?.(type)
-      ? <Icon type={type} style={{ fontSize: size, lineHeight: 0, ...(style || {}) }} />
+      ? <Icon type={type} style={{ fontSize: size, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: '-0.125em', ...(style || {}) }} />
       : <>{fallback}</>;
 
 // ── AI-Dashboard side panel — split view (no mask), replicating detail-panel's mechanism WITHOUT importing
@@ -156,10 +158,10 @@ const ChartAiButton: React.FC<{
       </div>
     </div>
   );
-  // bottom-right corner — the native block toolbar (drag / linkage / ⚙ menu) sits TOP-right, so we sit opposite it
+  // top-centre of the chart (user's choice) — the native block toolbar (drag / linkage / ⚙ menu) sits TOP-right, so centre is clear
   return (
-    <div className={'ptdl-chart-ai-btn' + (open ? ' ptdl-open' : '')} style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 20 }}>
-      <Popover open={open} onOpenChange={onOpenChange} trigger="click" placement="topRight" content={content}>
+    <div className={'ptdl-chart-ai-btn' + (open ? ' ptdl-open' : '')} style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+      <Popover open={open} onOpenChange={onOpenChange} trigger="click" placement="bottom" content={content}>
         <Button size="small" type="primary" ghost
           icon={<LIcon type="lucide-sparkles" fallback={<span>✨</span>} size={14} />}
           style={{ background: 'rgba(255,255,255,0.94)', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
@@ -327,6 +329,13 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [addInstr, setAddInstr] = useState('');
     const [addBusy, setAddBusy] = useState(false);
     const [chartScope, setChartScope] = useState<'page' | 'app'>('page'); // list charts on THIS page vs whole app
+    // 🔽 Manual "add a filter column" — pick field(s) from THIS dashboard's collection (+ optional display
+    //    name) and drop them in as a filter bar wired to every chart/KPI. dashInfo = the dashboardFields payload.
+    const [dashInfo, setDashInfo] = useState<{ gridUid: string; collection: string; chartUids: string[]; scoreUids: string[]; nextSort: number; fields: Array<{ name: string; title: string; interface?: string; type?: string }> } | null>(null);
+    const [dashInfoBusy, setDashInfoBusy] = useState(false);
+    const [pickFilterFields, setPickFilterFields] = useState<string[]>([]);
+    const [filterLabels, setFilterLabels] = useState<Record<string, string>>({}); // field name → custom display name
+    const [addFilterBusy, setAddFilterBusy] = useState(false);
     // the /v/ page schemaUid from the URL (…/v/admin/<uid>) — used to scope the chart list to this dashboard
     const currentPageUid = () => { try { return (window.location.pathname.match(/\/v\/[^/]+\/([^/?#]+)/) || [])[1] || ''; } catch { return ''; } };
     // Existing menu GROUPS the dashboard can be placed under (else it becomes a top-level menu item).
@@ -455,6 +464,45 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         message.error(e?.message || String(e));
       } finally {
         setAddBusy(false);
+      }
+    };
+    // 🔽 Load THIS dashboard's grid info + filterable fields (no AI), for the manual filter-column picker.
+    const loadDashInfo = async () => {
+      const pageSchemaUid = currentPageUid();
+      if (!pageSchemaUid) { message.warning(t('Open a dashboard page first')); return; }
+      setDashInfoBusy(true);
+      try {
+        const res = await app.apiClient
+          .request({ url: 'appBuilder:dashboardFields', method: 'post', data: { pageSchemaUid } })
+          .then((r: any) => r?.data?.data ?? r?.data);
+        if (!res?.ok) { message.error(res?.error || t('Could not read the dashboard fields')); return; }
+        setDashInfo(res);
+        setPickFilterFields([]); setFilterLabels({});
+        if (!res.fields?.length) message.info(t('No filterable fields found'));
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setDashInfoBusy(false);
+      }
+    };
+    // Build a filter widget from the picked field(s) + label overrides → insert it (reuses addWidgetToDashboard).
+    const onAddFilterFields = async () => {
+      if (!dashInfo) return;
+      if (!pickFilterFields.length) { message.warning(t('Pick at least one field')); return; }
+      setAddFilterBusy(true);
+      try {
+        const labels: Record<string, string> = {};
+        pickFilterFields.forEach((fn) => { const v = (filterLabels[fn] || '').trim(); if (v) labels[fn] = v; });
+        const widget = { kind: 'filter' as const, fields: pickFilterFields, ...(Object.keys(labels).length ? { filterLabels: labels } : {}) };
+        const res = await addWidgetToDashboard(app, { widget, gridUid: dashInfo.gridUid, collection: dashInfo.collection, chartUids: dashInfo.chartUids, scoreUids: dashInfo.scoreUids, nextSort: dashInfo.nextSort });
+        if (!res.ok) { message.error(res.error || t('Could not add the widget')); return; }
+        setPickFilterFields([]); setFilterLabels({});
+        message.success(t('Filter added') + ' — ' + t('reloading…'));
+        setTimeout(() => { try { window.location.reload(); } catch { /* noop */ } }, 1100);
+      } catch (e: any) {
+        message.error(e?.message || String(e));
+      } finally {
+        setAddFilterBusy(false);
       }
     };
 
@@ -790,7 +838,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                             {dashResult.charts.map((c) => (
                               <Space.Compact key={c.uid} style={{ width: '100%', marginTop: 6 }}>
                                 <Input
-                                  addonBefore={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><LIcon type="lucide-line-chart" fallback={<LineChartOutlined />} size={12} />{c.title || c.chartType || 'chart'}</span>}
+                                  addonBefore={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><LIcon type={c.chartType === 'html' ? 'lucide-hash' : 'lucide-line-chart'} fallback={c.chartType === 'html' ? <NumberOutlined /> : <LineChartOutlined />} size={12} />{c.title || c.chartType || 'chart'}</span>}
                                   value={chartRefine[c.uid] || ''}
                                   onChange={(e) => setChartRefine((m) => ({ ...m, [c.uid]: e.target.value }))}
                                   onPressEnter={() => onRefineChart(c.uid)}
@@ -826,6 +874,44 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                         <Input value={addInstr} onChange={(e) => setAddInstr(e.target.value)} onPressEnter={onAddWidget} placeholder={t('e.g. add a revenue-by-quarter bar chart, add a filter by customer')} disabled={addBusy} />
                         <Button type="primary" loading={addBusy} onClick={onAddWidget} icon={<LIcon type="lucide-plus" fallback={<PlusOutlined />} />}>{t('Add')}</Button>
                       </Space.Compact>
+                    </div>
+                    {/* 🔽 Manual filter-column picker — pick field(s) + optional display name → one filter bar wired to every chart/KPI. */}
+                    <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
+                      <Typography.Text strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <LIcon type="lucide-filter" fallback={<FilterOutlined />} size={13} />{t('Add a filter column (manual)')}
+                      </Typography.Text>
+                      <Typography.Paragraph type="secondary" style={{ fontSize: 11, margin: '3px 0 6px' }}>
+                        {t('Open the dashboard, load its fields, then pick field(s) to add as a filter bar — set a display name if you like.')}
+                      </Typography.Paragraph>
+                      {!dashInfo ? (
+                        <Button loading={dashInfoBusy} onClick={loadDashInfo} icon={<LIcon type="lucide-refresh-cw" fallback={<ReloadOutlined />} />}>{t('Load fields')}</Button>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                            <Select
+                              mode="multiple" showSearch value={pickFilterFields} onChange={setPickFilterFields} optionFilterProp="label"
+                              placeholder={t('Choose field(s) to filter by…')}
+                              options={dashInfo.fields.map((f) => ({ value: f.name, label: `${f.title} · ${f.name}` }))}
+                              style={{ flex: 1, minWidth: 200 }}
+                            />
+                            <Button loading={dashInfoBusy} onClick={loadDashInfo} icon={<LIcon type="lucide-refresh-cw" fallback={<ReloadOutlined />} />} title={t('Reload')} />
+                          </div>
+                          {pickFilterFields.length > 0 && (
+                            <div style={{ marginBottom: 6 }}>
+                              {pickFilterFields.map((fn) => {
+                                const f = dashInfo.fields.find((x) => x.name === fn);
+                                return (
+                                  <div key={fn} style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0' }}>
+                                    <span style={{ fontSize: 11, minWidth: 92, maxWidth: 92, color: 'var(--colorTextTertiary, #999)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fn}>{fn}</span>
+                                    <Input size="small" value={filterLabels[fn] || ''} onChange={(e) => setFilterLabels((m) => ({ ...m, [fn]: e.target.value }))} placeholder={f?.title || fn} />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <Button type="primary" loading={addFilterBusy} onClick={onAddFilterFields} disabled={!pickFilterFields.length} icon={<LIcon type="lucide-plus" fallback={<PlusOutlined />} />}>{t('Add filter')}</Button>
+                        </>
+                      )}
                     </div>
                     <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '0 0 8px' }}>
                       {t('Or refine an existing chart: pick any chart already on a dashboard and describe the change — the AI rewrites it.')}

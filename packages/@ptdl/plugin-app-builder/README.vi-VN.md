@@ -4,7 +4,7 @@
 > **bảng dữ liệu, quan hệ, dữ liệu mẫu, cột tính tự động, luồng trạng thái, trang và menu** — hiện ngay
 > trên giao diện **/v/**. Cần chỉnh app đã có? AI cũng **thêm/sửa từng bước** giúp bạn.
 
-**Nhóm:** Công cụ dựng app (Low-code Builder) · **Chạy trên:** Chỉ **/v/** (modern) · **Phiên bản:** 0.3.1
+**Nhóm:** Công cụ dựng app (Low-code Builder) · **Chạy trên:** Chỉ **/v/** (modern) · **Phiên bản:** 0.6.10
 
 ## Sau khi cài, có gì mới?
 
@@ -12,6 +12,7 @@
 - **Không thêm** trang trong Settings, **không đụng** vào các menu/trang/khối dữ liệu hiện có của bạn.
 - Trong hộp thoại có **3 cách dựng**: để **AI viết từ mô tả**, để **AI dựng/sửa từng bước**, hoặc **dán / nạp App-Spec (JSON)** rồi bấm tạo.
 - Tạo xong sẽ hiện **“Các trang đã tạo”** kèm **link bấm vào dùng ngay**, và nút **“🗑 Xoá app vừa tạo”** để hoàn tác nhanh.
+- **📊 Dashboard + ✨ Sửa biểu đồ bằng AI:** thanh nút nổi còn **tạo dashboard** (thẻ KPI + biểu đồ + thanh lọc) và cho **sửa từng biểu đồ ngay trên trang bằng AI** — xem mục **[Dashboard & biểu đồ (AI)](#dashboard--biểu-đồ-ai)** bên dưới.
 - ⚠️ Trên giao diện **classic (`/admin`)** plugin **không hiện gì** — cố ý, vì trang do plugin sinh ra là trang **/v/**.
 
 ## Cấu hình ở đâu?
@@ -77,6 +78,23 @@ Khi bấm **Tạo app**, plugin biên dịch App-Spec thành 2 tầng:
 > 💡 Bảng của demo có tiền tố `ab_` nên **không đè** lên bảng thật của bạn. Demo này minh hoạ đủ: quan hệ **đơn ↔ dòng hàng**, **cột tính** *Thành tiền*, **luồng trạng thái** đơn, và widget **thanh tiến độ**.
 
 > 🗑 **Lỡ tay?** Ngay sau khi tạo, bấm **“🗑 Xoá app vừa tạo”** để xoá đúng phần vừa dựng (bảng + trang). Nút chỉ hoàn tác **lần tạo gần nhất trong phiên** này.
+
+## Dashboard & biểu đồ (AI)
+
+Ngoài dựng app, plugin còn **tạo dashboard** và cho **sửa biểu đồ bằng AI ngay tại chỗ**. Các nút nằm trong **thanh nút nổi** ở góc dưới bên phải (chỉ hiện khi **bật UI-editor** của /v/):
+
+| Việc | Làm thế nào |
+|---|---|
+| **📊 Tạo dashboard** | Bấm **📊 Dashboard** → chọn **một bảng** (và tuỳ chọn **nhóm menu**) → mô tả trọng tâm nếu muốn → AI thiết kế **thẻ KPI + biểu đồ (đường / cột / tròn) + thanh lọc** rồi dựng thành **một trang dashboard** hoàn chỉnh |
+| **✨ Sửa biểu đồ bằng AI (tại chỗ)** | Trên trang dashboard, khi **UI-editor đang bật**, **rê chuột lên bất kỳ biểu đồ / thẻ KPI** nào → nút **✨ AI** hiện ở **chính giữa cạnh trên** → gõ yêu cầu → AI **viết lại** biểu đồ và **đổi ngay tại chỗ** (không tải lại trang) |
+| **↶ Hoàn tác** | Ngay trong ô sửa, bấm **↶ Hoàn tác** để quay về **bản trước** của biểu đồ đó |
+| **➕ Thêm widget** | Mở một dashboard rồi mô tả *“thêm biểu đồ cột doanh thu theo quý”* / *“thêm filter theo khách hàng”* → AI dựng và **chèn** widget vào |
+
+Ví dụ câu lệnh sửa biểu đồ: *“đổi sang biểu đồ cột”*, *“màu xanh dương”*, *“thêm nhãn %”*, *“gộp theo tháng”*, *“sắp xếp giảm dần”*.
+
+> 💡 Cột dạng **chọn / luồng trạng thái** hiển thị **tên chứ không phải mã** (vd `dang_giao` → *Đang giao*), và biểu đồ dùng **theme hiện đại** mặc định (bảng màu sạch, số rút gọn K/M, có nhãn dữ liệu).
+
+> 🤖 Các tính năng AI này cần **`@nocobase/plugin-ai`** đã bật + có model, giống 2 nút dựng app. Nút ✨ trên biểu đồ **chỉ hiện khi bật UI-editor** (chế độ chỉnh giao diện /v/) — người xem thường không thấy.
 
 ## Mẹo & lưu ý
 

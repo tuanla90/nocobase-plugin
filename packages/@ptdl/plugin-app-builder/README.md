@@ -5,7 +5,7 @@
 > pages and menu** — right in the **/v/** interface. Need to change an existing app? AI **adds/modifies
 > it step by step** too.
 
-**Group:** Low-code builder · **Runs on:** /v/ (modern) only · **Version:** 0.3.1
+**Group:** Low-code builder · **Runs on:** /v/ (modern) only · **Version:** 0.6.10
 
 ## What's new after installing?
 
@@ -13,6 +13,7 @@
 - **No Settings page** is added, and **nothing is touched** in your existing menus/pages/data blocks.
 - The dialog offers **3 ways to build**: let **AI write from a description**, let **AI build/modify step by step**, or **paste / load an App-Spec (JSON)** and click create.
 - When it finishes, it shows **“Created pages”** with **clickable links to use them right away**, plus a **“🗑 Delete the app I just built”** button for a quick undo.
+- **📊 Dashboard + ✨ Edit charts with AI:** the floating dock also **generates dashboards** (KPI cards + charts + a filter bar) and lets you **edit each chart right on the page with AI** — see **[Dashboards & charts (AI)](#dashboards--charts-ai)** below.
 - ⚠️ On the **classic (`/admin`)** interface the plugin **shows nothing** — by design, because the pages it generates are **/v/** pages.
 
 ## Where to configure
@@ -78,6 +79,23 @@ When you click **Create app**, the plugin compiles the App-Spec into 2 tiers:
 > 💡 The demo's collections are prefixed `ab_` so they **never overwrite** your real ones. It demonstrates everything: the **order ↔ line-item** relation, a **computed** *line total* column, the order **status flow**, and a **progress-bar** widget.
 
 > 🗑 **Made a mistake?** Right after creating, click **“🗑 Delete the app I just built”** to remove exactly what was just built (collections + pages). The button only undoes the **most recent build in this session**.
+
+## Dashboards & charts (AI)
+
+Beyond building apps, the plugin also **generates dashboards** and lets you **edit any chart with AI in place**. These live in the **floating dock** at the bottom-right (only shown while the **/v/ UI-editor is ON**):
+
+| Task | How |
+|---|---|
+| **📊 Generate a dashboard** | Click **📊 Dashboard** → pick **one collection** (and optionally a **menu group**) → describe a focus if you like → AI designs **KPI cards + charts (line / column / pie) + a filter bar** and builds them into **one complete dashboard page** |
+| **✨ Edit a chart with AI (in place)** | On a dashboard page, with the **UI-editor ON**, **hover over any chart or KPI card** → an **✨ AI** button appears at the **top centre** → type your request → the AI **rewrites** the chart and it **updates in place** (no page reload) |
+| **↶ Undo** | In the same edit box, click **↶ Undo** to revert that chart to its **previous version** |
+| **➕ Add a widget** | Open a dashboard, then describe *“add a revenue-by-quarter column chart”* / *“add a filter by customer”* → the AI builds and **inserts** the widget |
+
+Example chart-edit prompts: *“turn it into a column chart”*, *“make it blue”*, *“add % labels”*, *“group by month”*, *“sort descending”*.
+
+> 💡 **Select / status-flow** columns show **labels, not stored codes** (e.g. `dang_giao` → *In transit*), and charts use a clean **modern default theme** (tidy palette, compact K/M numbers, data labels).
+
+> 🤖 These AI features need **`@nocobase/plugin-ai`** enabled + a model configured, same as the two build buttons. The ✨ button on a chart **only appears while the UI-editor is ON** (the /v/ design mode) — regular viewers won't see it.
 
 ## Tips & notes
 
