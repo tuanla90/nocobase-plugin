@@ -13,7 +13,7 @@ import { Button, Input, message, Modal, Popover, Segmented, Select, Space, Tabs,
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
   FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
-  EyeOutlined, PlayCircleOutlined, DeleteOutlined, RocketOutlined,
+  PlayCircleOutlined, DeleteOutlined, RocketOutlined,
 } from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
@@ -104,7 +104,8 @@ function useFlowSettingsEnabled(): boolean {
 // (revealed on hover). Click → type an instruction → the server rewrites that block's ECharts `raw` /
 // HTML code (appBuilder:aiRefineChart) → the block re-renders IN PLACE (no page reload). One-step Undo
 // restores the previous code (appBuilder:setChartRaw). Gated to edit mode — blocks only carry
-// `data-model-uid` (the anchor we hook) while the float settings menu is active, i.e. UI-editor on.
+// `data-float-menu-model-uid` (the FULL-block anchor we hook — not the small `data-model-uid` toolbar
+// strip) while the float settings menu is active, i.e. UI-editor on.
 
 // Re-apply a block's config flow and redraw from `raw`, WITHOUT a full page reload. Returns false when the
 // live model isn't reachable (the caller then falls back to a reload).
@@ -185,7 +186,7 @@ function createChartAiOverlay(app: any, t: (s: string) => string): React.FC<{ ch
       if (document.getElementById(id)) return;
       const s = document.createElement('style');
       s.id = id;
-      s.textContent = '.ptdl-chart-ai-btn{opacity:0;pointer-events:none;transition:opacity .15s ease}[data-model-uid]:hover>.ptdl-chart-ai-btn,.ptdl-chart-ai-btn.ptdl-open{opacity:1;pointer-events:auto}';
+      s.textContent = '.ptdl-chart-ai-btn{opacity:0;pointer-events:none;transition:opacity .15s ease}[data-float-menu-model-uid]:hover>.ptdl-chart-ai-btn,.ptdl-chart-ai-btn.ptdl-open{opacity:1;pointer-events:auto}';
       document.head.appendChild(s);
     }, []);
 
@@ -195,7 +196,7 @@ function createChartAiOverlay(app: any, t: (s: string) => string): React.FC<{ ch
     const resolve = React.useCallback((list: Array<{ uid: string; title: string; blockKind: 'chart' | 'html' }>) => {
       const out: OverlayChart[] = [];
       for (const c of list) {
-        const el = document.querySelector(`[data-model-uid="${c.uid}"]`) as HTMLElement | null;
+        const el = document.querySelector(`[data-float-menu-model-uid="${c.uid}"]`) as HTMLElement | null;
         if (el) out.push({ ...c, el });
       }
       setCharts((prev) => (prev.length === out.length && prev.every((p, i) => p.uid === out[i].uid && p.el === out[i].el) ? prev : out));
@@ -285,7 +286,6 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     // The shared draggable/collapsible launcher dock — the two buttons portal into it (see launcherDock.ts).
     const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
     React.useEffect(() => { if (editMode) setDockEl(ensureLauncherDock()); }, [editMode]);
-    const [specView, setSpecView] = useState<'preview' | 'json'>('preview');
     const [text, setText] = useState(() => JSON.stringify(SAMPLE_BAN_HANG, null, 2));
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<{ pages: Array<{ title: string; collection: string; url: string; schemaUid: string }> } | null>(null);
@@ -297,8 +297,12 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [planLog, setPlanLog] = useState<any[] | null>(null);
     const [lastArtifacts, setLastArtifacts] = useState<{ collections?: string[]; pages?: any[]; groups?: any[] } | null>(null);
     const [delBusy, setDelBusy] = useState(false);
-    const [refineText, setRefineText] = useState('');
     const [refineBusy, setRefineBusy] = useState(false);
+    // Build-app modal is split into 3 tabs: 'new' (describe → create/refine one spec), 'existing' (AI plans
+    // edits to the ALREADY-built app), 'json' (raw App-Spec editor). Tab 2 has its own input so it doesn't
+    // fight tab 1's description box.
+    const [appTab, setAppTab] = useState<'new' | 'existing' | 'json'>('new');
+    const [planDesc, setPlanDesc] = useState('');
     // 📊 Dashboard launcher (separate flow: pick a collection → AI designs KPI + charts + filter board)
     const [dashOpen, setDashOpen] = useState(false);
     const [dashColl, setDashColl] = useState<string | undefined>(undefined);
@@ -514,15 +518,15 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     // box. Flow: preview → see something to fix → type the change → Refine → re-preview → Create.
     const onRefine = async () => {
       const spec = parse(); if (!spec) return;
-      if (!refineText.trim()) { message.warning(t('Type what to change')); return; }
+      if (!desc.trim()) { message.warning(t('Type what to change')); return; }
       setRefineBusy(true);
       try {
         const res = await app.apiClient
-          .request({ url: 'appBuilder:aiRefine', method: 'post', data: { spec, instruction: refineText } })
+          .request({ url: 'appBuilder:aiRefine', method: 'post', data: { spec, instruction: desc } })
           .then((r: any) => r?.data?.data ?? r?.data);
         if (!res?.ok) { message.error(res?.error || t('AI could not refine the spec')); return; }
         setText(JSON.stringify(res.spec, null, 2));
-        setRefineText('');
+        setDesc('');
         message.success(res.explain || t('Spec updated — review then Create app'));
       } catch (e: any) {
         message.error(e?.message || String(e));
@@ -533,11 +537,11 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     // 🔧 Agentic: instruction → AI plans a sequence of tool calls (build new OR modify existing app,
     // using the live state as its eyes). Preview the steps, then Run executes them one by one.
     const onPlan = async () => {
-      if (!desc.trim()) { message.warning(t('Describe your app first')); return; }
+      if (!planDesc.trim()) { message.warning(t('Describe your app first')); return; }
       setPlanBusy(true); setPlan(null); setPlanLog(null);
       try {
         const res = await app.apiClient
-          .request({ url: 'appBuilder:aiPlan', method: 'post', data: { instruction: desc } })
+          .request({ url: 'appBuilder:aiPlan', method: 'post', data: { instruction: planDesc } })
           .then((r: any) => r?.data?.data ?? r?.data);
         if (!res?.ok) { message.error(res?.error || t('AI could not plan')); return; }
         setPlan(res.steps);
@@ -585,6 +589,43 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       }
     };
 
+    // ── Shared bits of the Build-app modal, reused across its tabs ──────────────────────────────
+    // Is there a real spec in the editor right now? Gates the "Edit spec" (refine) button.
+    let hasCurrentSpec = false;
+    try { const cur = JSON.parse(text); hasCurrentSpec = Array.isArray(cur?.collections) && cur.collections.length > 0; } catch { /* invalid JSON = nothing to refine */ }
+    // Visual App-Spec preview (used on the "New module" tab).
+    const specPreviewNode = (
+      <div style={{ maxHeight: 420, overflow: 'auto', paddingRight: 4 }}>
+        {(() => {
+          try { return <SpecPreview spec={JSON.parse(text)} />; }
+          catch (e: any) { return <Typography.Text type="danger">{t('Invalid JSON')}: {String(e?.message || e)}</Typography.Text>; }
+        })()}
+      </div>
+    );
+    // Create-app / Delete buttons + created-pages result — shown on both spec tabs (New module + JSON).
+    const renderCreateActions = () => (
+      <>
+        <Space style={{ marginTop: 12 }} wrap>
+          <Button type="primary" loading={busy} onClick={onBuild} icon={<LIcon type="lucide-rocket" fallback={<RocketOutlined />} />}>{t('Create app')}</Button>
+          {lastArtifacts && (
+            <Button danger loading={delBusy} onClick={onDeleteApp} icon={<LIcon type="lucide-trash" fallback={<DeleteOutlined />} />}>{t('Delete the app I just built')}</Button>
+          )}
+        </Space>
+        {result && (
+          <div style={{ marginTop: 16 }}>
+            <Typography.Text strong>{t('Created pages')}:</Typography.Text>
+            <ul style={{ marginTop: 6 }}>
+              {result.pages.map((p) => (
+                <li key={p.schemaUid}>
+                  <a href={p.url}>{p.title}</a> — <code>{p.collection}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </>
+    );
+
     return (
       <>
         {children}
@@ -601,92 +642,88 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
             </Button>
           </Tooltip>, dockEl)}
         <Modal open={open} onCancel={() => setOpen(false)} width={800} title={t('Build app from spec')} footer={null} destroyOnClose>
-          <Typography.Text strong>✨ {t('Describe → build with AI')}</Typography.Text>
-          <Input.TextArea
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            rows={2}
-            placeholder={t('e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn')}
-            style={{ margin: '6px 0 8px' }}
+          <Tabs
+            activeKey={appTab}
+            onChange={(k) => setAppTab(k as 'new' | 'existing' | 'json')}
+            items={[
+              {
+                key: 'new',
+                label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} size={14} />{t('New module')}</span>,
+                children: (
+                  <>
+                    <Input.TextArea
+                      value={desc}
+                      onChange={(e) => setDesc(e.target.value)}
+                      rows={3}
+                      placeholder={t('e.g. App quản lý bán hàng: khách hàng, sản phẩm, đơn hàng có dòng chi tiết + trạng thái đơn')}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Space style={{ marginBottom: 8 }} wrap>
+                      <Button type="primary" loading={aiBusy} onClick={onAiGenerate} icon={<LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} />}>{t('Create new spec')}</Button>
+                      <Button loading={refineBusy} onClick={onRefine} disabled={!hasCurrentSpec} icon={<LIcon type="lucide-wand-sparkles" fallback={<EditOutlined />} />}>{t('Edit spec')}</Button>
+                    </Space>
+                    <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 10 }}>
+                      {t('“Create new spec” builds a fresh app (replaces the spec). “Edit spec” applies your text to the current spec.')}
+                    </Typography.Paragraph>
+                    {specPreviewNode}
+                    {renderCreateActions()}
+                  </>
+                ),
+              },
+              {
+                key: 'existing',
+                label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LIcon type="lucide-wrench" fallback={<ToolOutlined />} size={14} />{t('Modify running app')}</span>,
+                children: (
+                  <>
+                    <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 8 }}>
+                      {t('Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.')}
+                    </Typography.Paragraph>
+                    <Input.TextArea
+                      value={planDesc}
+                      onChange={(e) => setPlanDesc(e.target.value)}
+                      rows={3}
+                      placeholder={t('e.g. add a Teachers table and a page for it; add a status field to Orders')}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Button type="primary" loading={planBusy} onClick={onPlan} icon={<LIcon type="lucide-list-checks" fallback={<ToolOutlined />} />}>{t('Plan the change')}</Button>
+                    {plan && (
+                      <div style={{ marginTop: 14, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 6, padding: 10 }}>
+                        <Space style={{ marginBottom: 6 }} wrap>
+                          <Typography.Text strong>{t('Plan')} ({plan.length}):</Typography.Text>
+                          <Button type="primary" loading={runBusy} onClick={onRunPlan} icon={<LIcon type="lucide-play" fallback={<PlayCircleOutlined />} />}>{t('Run plan')}</Button>
+                        </Space>
+                        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, maxHeight: 220, overflow: 'auto' }}>
+                          {plan.map((s, i) => {
+                            const log = planLog?.[i];
+                            return (
+                              <li key={i} style={{ color: log ? (log.ok ? '#389e0d' : '#cf1322') : undefined }}>
+                                <code>{s.tool}</code>(<span style={{ opacity: 0.75 }}>{s.args?.collection || s.args?.name || s.args?.title || s.args?.label || ''}</span>)
+                                {log ? (log.ok ? ' ✓' : ` ✕ ${log.error || ''}`) : ''}
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      </div>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: 'json',
+                label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><LIcon type="lucide-braces" fallback={<EditOutlined />} size={14} />JSON</span>,
+                children: (
+                  <>
+                    <Space style={{ marginBottom: 8 }} wrap>
+                      <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))} icon={<LIcon type="lucide-folder-open" fallback={<FolderOutlined />} />}>{t('Load demo')}</Button>
+                      <Button onClick={onValidate} icon={<LIcon type="lucide-circle-check" fallback={<CheckOutlined />} />}>{t('Validate')}</Button>
+                    </Space>
+                    <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={14} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+                    {renderCreateActions()}
+                  </>
+                ),
+              },
+            ]}
           />
-          <Space style={{ marginBottom: 8 }} wrap>
-            <Button type="primary" loading={aiBusy} onClick={onAiGenerate} icon={<LIcon type="lucide-sparkles" fallback={<ThunderboltOutlined />} />}>{t('Generate with AI')}</Button>
-            <Button loading={planBusy} onClick={onPlan} icon={<LIcon type="lucide-list-checks" fallback={<ToolOutlined />} />}>{t('Build/modify step-by-step')}</Button>
-          </Space>
-          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
-            {t('“Generate” fills the App-Spec below (a new app). “Step-by-step” lets AI plan tool calls — it can also MODIFY an existing app (e.g. add a status field / a page).')}
-          </Typography.Paragraph>
-          {plan && (
-            <div style={{ marginBottom: 14, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 6, padding: 10 }}>
-              <Space style={{ marginBottom: 6 }} wrap>
-                <Typography.Text strong>{t('Plan')} ({plan.length}):</Typography.Text>
-                <Button type="primary" loading={runBusy} onClick={onRunPlan} icon={<LIcon type="lucide-play" fallback={<PlayCircleOutlined />} />}>{t('Run plan')}</Button>
-              </Space>
-              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, maxHeight: 170, overflow: 'auto' }}>
-                {plan.map((s, i) => {
-                  const log = planLog?.[i];
-                  return (
-                    <li key={i} style={{ color: log ? (log.ok ? '#389e0d' : '#cf1322') : undefined }}>
-                      <code>{s.tool}</code>(<span style={{ opacity: 0.75 }}>{s.args?.collection || s.args?.name || s.args?.title || s.args?.label || ''}</span>)
-                      {log ? (log.ok ? ' ✓' : ` ✕ ${log.error || ''}`) : ''}
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          )}
-          <Space style={{ marginTop: 0, marginBottom: 8, width: '100%', justifyContent: 'space-between' }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('…or paste / load a demo App-Spec:')}</Typography.Text>
-            <Segmented
-              size="small"
-              value={specView}
-              onChange={(v) => setSpecView(v as 'preview' | 'json')}
-              options={[{ label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><LIcon type="lucide-eye" fallback={<EyeOutlined />} size={12} />{t('Preview')}</span>, value: 'preview' }, { label: 'JSON', value: 'json' }]}
-            />
-          </Space>
-          {specView === 'json' ? (
-            <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={14} style={{ fontFamily: 'monospace', fontSize: 12 }} />
-          ) : (
-            <div style={{ maxHeight: 480, overflow: 'auto', paddingRight: 4 }}>
-              {(() => {
-                try {
-                  return <SpecPreview spec={JSON.parse(text)} />;
-                } catch (e: any) {
-                  return <Typography.Text type="danger">{t('Invalid JSON')}: {String(e?.message || e)}</Typography.Text>;
-                }
-              })()}
-            </div>
-          )}
-          <Space.Compact style={{ width: '100%', marginTop: 10 }}>
-            <Input
-              value={refineText}
-              onChange={(e) => setRefineText(e.target.value)}
-              placeholder={t('Chat to edit this spec — e.g. add a Notes column to Customers')}
-              onPressEnter={onRefine}
-              disabled={refineBusy}
-            />
-            <Button loading={refineBusy} onClick={onRefine} icon={<LIcon type="lucide-wand-sparkles" fallback={<EditOutlined />} />}>{t('Refine spec (AI)')}</Button>
-          </Space.Compact>
-          <Space style={{ marginTop: 12 }} wrap>
-            <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))}>{t('Load demo')}</Button>
-            <Button onClick={onValidate}>{t('Validate')}</Button>
-            <Button type="primary" loading={busy} onClick={onBuild} icon={<LIcon type="lucide-rocket" fallback={<RocketOutlined />} />}>{t('Create app')}</Button>
-            {lastArtifacts && (
-              <Button danger loading={delBusy} onClick={onDeleteApp} icon={<LIcon type="lucide-trash" fallback={<DeleteOutlined />} />}>{t('Delete the app I just built')}</Button>
-            )}
-          </Space>
-          {result && (
-            <div style={{ marginTop: 16 }}>
-              <Typography.Text strong>{t('Created pages')}:</Typography.Text>
-              <ul style={{ marginTop: 6 }}>
-                {result.pages.map((p) => (
-                  <li key={p.schemaUid}>
-                    <a href={p.url}>{p.title}</a> — <code>{p.collection}</code>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </Modal>
         {dockEl && createPortal(
           <Tooltip title={t('Generate a dashboard with AI')} placement="left">

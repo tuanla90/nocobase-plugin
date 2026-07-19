@@ -96,5 +96,13 @@
   "Reverted to the previous version": "Đã hoàn tác về bản trước",
   "Could not undo": "Không hoàn tác được",
   "Reloading to show the change…": "Đang tải lại để hiện thay đổi…",
-  "Chart": "Biểu đồ"
+  "Chart": "Biểu đồ",
+  "New module": "Thêm module mới",
+  "Create new spec": "Tạo spec mới",
+  "Edit spec": "Sửa spec",
+  "“Create new spec” builds a fresh app (replaces the spec). “Edit spec” applies your text to the current spec.": "“Tạo spec mới” dựng app mới (thay toàn bộ spec). “Sửa spec” áp mô tả của bạn vào spec hiện tại.",
+  "Modify running app": "Sửa module hiện tại",
+  "Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.": "Sửa app ĐÃ dựng — AI lập kế hoạch các bước (thêm bảng, field trạng thái, trang…); xem lại rồi bấm Chạy.",
+  "e.g. add a Teachers table and a page for it; add a status field to Orders": "vd thêm bảng Giảng viên và một trang cho nó; thêm field trạng thái vào Đơn hàng",
+  "Plan the change": "Lập kế hoạch"
 }

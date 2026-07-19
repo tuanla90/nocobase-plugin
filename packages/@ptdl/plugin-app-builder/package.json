@@ -1,6 +1,6 @@
 {
   "name": "@ptdl/plugin-app-builder",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "displayName": "App Builder",
   "displayName.vi-VN": "Dựng app từ mô tả",
   "description": "Compile a high-level App-Spec into a whole NocoBase app — collections, relations, seed data, pages and menu — and extract an existing app back into a spec. The foundation for generating apps from a natural-language description.",

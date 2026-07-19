@@ -96,5 +96,13 @@
   "Reverted to the previous version": "Reverted to the previous version",
   "Could not undo": "Could not undo",
   "Reloading to show the change…": "Reloading to show the change…",
-  "Chart": "Chart"
+  "Chart": "Chart",
+  "New module": "New module",
+  "Create new spec": "Create new spec",
+  "Edit spec": "Edit spec",
+  "“Create new spec” builds a fresh app (replaces the spec). “Edit spec” applies your text to the current spec.": "“Create new spec” builds a fresh app (replaces the spec). “Edit spec” applies your text to the current spec.",
+  "Modify running app": "Modify running app",
+  "Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.": "Change the app that is ALREADY built — AI plans the steps (add a table, a status field, a page…); review them, then Run.",
+  "e.g. add a Teachers table and a page for it; add a status field to Orders": "e.g. add a Teachers table and a page for it; add a status field to Orders",
+  "Plan the change": "Plan the change"
 }
