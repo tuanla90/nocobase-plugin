@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Table, Input, Button, Switch, Select, Space, message, Popconfirm, Typography, Modal, Tag, Popover, Tooltip, Empty, Cascader, Checkbox } from 'antd';
+import { Table, Input, Button, Switch, Select, Space, message, Popconfirm, Typography, Modal, Tag, Popover, Tooltip, Empty, Cascader, Checkbox, theme } from 'antd';
 import { PlusOutlined, ReloadOutlined, PartitionOutlined, FunctionOutlined, LinkOutlined, FilterOutlined, CalculatorOutlined, ArrowUpOutlined, ArrowDownOutlined, PushpinOutlined, TableOutlined, BulbOutlined, PlayCircleOutlined, RobotOutlined } from '@ant-design/icons';
 import { SettingCard, SettingRow, Hint, FieldPickerCascader, getCaretElement, insertAtCaret, getFields } from '@ptdl/shared';
 import { FORMULA_EXAMPLES as EXAMPLES, FORMULA_FUNCTIONS as FN_HELP, TRIGGER_OPTIONS, splitTriggers } from './formulaKnowledge';
@@ -18,6 +18,27 @@ import { t } from './i18n';
 
 // Inline compact-row label: auto-width + never breaks (a fixed labelWidth clipped longer English labels).
 const INLINE_LBL: React.CSSProperties = { color: 'var(--colorTextTertiary, rgba(0,0,0,0.45))', fontSize: 12, whiteSpace: 'nowrap', flex: 'none' };
+
+// Bridge antd theme TOKENS → the `--colorX` CSS vars this file styles with. antd exposes its own
+// `--ant-*` vars (not `--colorX`), so our `var(--colorX, <light-fallback>)` silently used the LIGHT
+// fallback → white lines / black text in dark mode, esp. inside Modal/Popover PORTALS (which don't
+// inherit page-scoped vars). Applying this on every portal root + the page root resolves them all to
+// the live theme value. Values come from `theme.useToken()` so they track light/dark automatically.
+function themeVars(token: any): React.CSSProperties {
+  const m: Record<string, string> = {
+    '--colorText': token.colorText, '--colorTextSecondary': token.colorTextSecondary,
+    '--colorTextTertiary': token.colorTextTertiary, '--colorTextQuaternary': token.colorTextQuaternary,
+    '--colorBorder': token.colorBorder, '--colorBorderSecondary': token.colorBorderSecondary,
+    '--colorBgContainer': token.colorBgContainer, '--colorBgLayout': token.colorBgLayout,
+    '--colorFillSecondary': token.colorFillSecondary, '--colorFillTertiary': token.colorFillTertiary,
+    '--colorFillQuaternary': token.colorFillQuaternary, '--colorPrimary': token.colorPrimary,
+    '--colorPrimaryBorder': token.colorPrimaryBorder, '--colorInfo': token.colorInfo,
+    '--colorWarning': token.colorWarning, '--colorWarningBg': token.colorWarningBg,
+    '--colorWarningBorder': token.colorWarningBorder, '--colorSuccess': token.colorSuccess,
+    '--colorError': token.colorError,
+  };
+  return m as unknown as React.CSSProperties;
+}
 
 type Rule = { id?: number; key?: string; dataSourceKey?: string; collectionName: string; targetField: string; formula: string; runOn?: string; enabled?: boolean; onError?: string };
 
@@ -173,6 +194,9 @@ export function ComputedRulesManager({ api }: { api: any }) {
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiOptions, setAiOptions] = useState<any[] | null>(null);
   const [aiExplainText, setAiExplainText] = useState('');
+  const [aiAppsheet, setAiAppsheet] = useState('');
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   const taRef = useRef<any>(null);
 
   const req = (url: string, opts: any = {}) => api?.request?.({ url, ...opts });
@@ -193,6 +217,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
   const aiSuggest = () => { if (!aiDesc.trim()) return message.warning(t('Nhập mô tả bạn muốn tính')); aiCall('suggest', 'ptdlComputed:aiSuggest', { description: aiDesc, count: 3 }, (d) => { if (d.error) setAiResult(d); else setAiOptions(d.options || []); }); };
   const aiExplain = () => { if (!modal?.formula?.trim()) return message.warning(t('Ô công thức đang trống')); aiCall('explain', 'ptdlComputed:aiExplain', { formula: modal.formula }, (d) => { if (d.error) setAiResult(d); else setAiExplainText(d.explanation || ''); }); };
   const aiFix = () => { if (!modal?.formula?.trim()) return message.warning(t('Ô công thức đang trống')); aiCall('fix', 'ptdlComputed:aiWrite', { fixFormula: modal.formula, description: aiDesc }, (d) => { setAiResult(d); if (d.formula) setModal({ ...modal!, formula: d.formula }); }); };
+  const aiConvert = () => { if (!aiAppsheet.trim()) return message.warning(t('Dán công thức AppSheet')); aiCall('convert', 'ptdlComputed:aiConvert', { appsheet: aiAppsheet }, (d) => { setAiResult(d); if (d.formula) setModal({ ...modal!, formula: d.formula }); }); };
 
   const load = async () => {
     if (!api?.request) return;
@@ -324,7 +349,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
   ];
 
   const helpPopover = (
-    <div style={{ width: 420, maxHeight: 320, overflow: 'auto' }}>
+    <div style={{ width: 420, maxHeight: 320, overflow: 'auto', ...tv }}>
       <Typography.Paragraph style={{ marginBottom: 8 }}>
         <span dangerouslySetInnerHTML={{ __html: t('Cách tham chiếu dữ liệu:<br/>• <b>Cột của dòng hiện tại</b> → <code>data.&lt;tên_cột&gt;</code> (vd <code>data.subtotal</code>).<br/>• <b>Qua quan hệ</b> → <code>data.&lt;tên_quan_hệ&gt;.&lt;cột&gt;</code> (vd <code>SUM(data.items.line_amount)</code>, <code>data.product.unit_price</code>).<br/>• <b>Bảng tra cứu</b> (một collection khác) → gõ thẳng <code>&lt;tên_collection&gt;.&lt;cột&gt;</code> — KHÔNG có <code>data.</code> (vd <code>bang_gia.he_so</code>).<br/>Nối chuỗi dùng <b>&amp;</b>. Tên hàm HOA/thường đều được.') }} />
       </Typography.Paragraph>
@@ -332,7 +357,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
     </div>
   );
   const examplesPopover = (
-    <div style={{ width: 470, maxHeight: 360, overflow: 'auto' }}>
+    <div style={{ width: 470, maxHeight: 360, overflow: 'auto', ...tv }}>
       {EXAMPLES.map(([label, f]) => (
         <div key={label} style={{ marginBottom: 9, cursor: 'pointer', padding: 4, borderRadius: 4 }}
           onClick={() => { if (modal) insertAtCaret(getCaretElement(taRef.current), f, modal.formula || '', (v) => setModal({ ...modal, formula: v })); }}
@@ -345,10 +370,10 @@ export function ComputedRulesManager({ api }: { api: any }) {
     </div>
   );
   const testBadge = (tr: any, tries?: number) => !tr ? null : (tr.error
-    ? <span style={{ color: '#d48806' }}>{t('Chạy thử lỗi')}{tries ? ` (${tries} ${t('lần')})` : ''}: {tr.error}</span>
-    : <span style={{ color: '#389e0d' }}>{t('Chạy thử OK')}{tries ? ` (${tries} ${t('lần')})` : ''} → <b>{JSON.stringify(tr.value)}</b></span>);
+    ? <span style={{ color: 'var(--colorWarning, #d48806)' }}>{t('Chạy thử lỗi')}{tries ? ` (${tries} ${t('lần')})` : ''}: {tr.error}</span>
+    : <span style={{ color: 'var(--colorSuccess, #389e0d)' }}>{t('Chạy thử OK')}{tries ? ` (${tries} ${t('lần')})` : ''} → <b>{JSON.stringify(tr.value)}</b></span>);
   const aiPopover = (
-    <div style={{ width: 430 }}>
+    <div style={{ width: 430, ...tv }}>
       <Input.TextArea rows={2} value={aiDesc} onChange={(e) => setAiDesc(e.target.value)}
         placeholder={t('Mô tả bằng lời, vd: "tổng tiền các dòng đang active", "số ngày từ ngày tạo đến hôm nay"')} />
       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -360,10 +385,16 @@ export function ComputedRulesManager({ api }: { api: any }) {
         <Button size="small" loading={aiBusy === 'explain'} disabled={!modal?.formula?.trim()} onClick={aiExplain}>{t('Giải thích')}</Button>
         <Button size="small" loading={aiBusy === 'fix'} disabled={!modal?.formula?.trim()} onClick={aiFix}>{t('AI sửa lỗi')}</Button>
       </div>
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--colorBorderSecondary, #eee)' }}>
+        <span style={{ fontSize: 11, color: 'var(--colorTextTertiary)' }}>{t('Có công thức AppSheet? Dán vào đây để AI chuyển:')}</span>
+        <Input.TextArea rows={2} value={aiAppsheet} onChange={(e) => setAiAppsheet(e.target.value)} style={{ marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
+          placeholder={'SUM(SELECT(items[amount], [order_id] = [_THISROW].[id]))'} />
+        <Button style={{ marginTop: 6 }} size="small" loading={aiBusy === 'convert'} onClick={aiConvert}>⇄ {t('Chuyển từ AppSheet')}</Button>
+      </div>
       {aiExplainText && <div style={{ marginTop: 10, fontSize: 12, color: 'var(--colorTextSecondary)', background: 'var(--colorFillQuaternary, #f7f7f7)', padding: 8, borderRadius: 4 }}>{aiExplainText}</div>}
       {aiResult && (
         <div style={{ marginTop: 10, fontSize: 12, borderTop: '1px solid var(--colorBorderSecondary, #f0f0f0)', paddingTop: 8 }}>
-          {aiResult.error ? <div style={{ color: '#cf1322' }}>{t('Lỗi')}: {aiResult.error}</div> : (
+          {aiResult.error ? <div style={{ color: 'var(--colorError, #cf1322)' }}>{t('Lỗi')}: {aiResult.error}</div> : (
             <>
               {aiResult.formula && <div>{t('Đã điền')}: <code style={{ fontSize: 11.5 }}>{aiResult.formula}</code></div>}
               {aiResult.explanation && <div style={{ color: 'var(--colorTextSecondary)', marginTop: 4 }}>{aiResult.explanation}</div>}
@@ -393,7 +424,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
   const isEdit = !!(modal?.id || modal?.key);
 
   return (
-    <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8 }}>
+    <div style={{ padding: 20, maxWidth: 1200, margin: '8px auto 16px', background: 'var(--colorBgContainer, #fff)', border: '0.8px solid var(--colorBorderSecondary, #f0f0f0)', borderRadius: 8, ...tv }}>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
         <span dangerouslySetInnerHTML={{ __html: t('Cột computed là <b>field thật</b> (số / chữ / ngày / boolean) server tự tính lại khi dữ liệu liên quan đổi (cùng dòng, gộp quan hệ, kéo quan hệ — mọi độ sâu). Phụ thuộc tự phát hiện từ công thức. Lưu là tự tính lại dòng cũ + đồng bộ về sau.') }} />
       </Typography.Paragraph>
@@ -414,7 +445,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
 
       <Modal open={!!modal} title={<Space><CalculatorOutlined />{isEdit ? t('Sửa công thức') : t('Thêm công thức')}</Space>} onCancel={() => setModal(null)} onOk={() => save(modal)} okText={t('Lưu')} cancelText={t('Huỷ')} width={800} destroyOnClose>
         {modal && (
-          <div style={{ paddingTop: 8 }}>
+          <div style={{ paddingTop: 8, ...tv }}>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                 <SettingRow layout="vertical" label={t('Bảng (collection)')}>

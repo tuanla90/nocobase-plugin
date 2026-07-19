@@ -1,5 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Input, Button, Switch, Select, Space, message, Tag, Popover, Tooltip, Cascader, Checkbox } from 'antd';
+import { Input, Button, Switch, Select, Space, message, Tag, Popover, Tooltip, Cascader, Checkbox, theme } from 'antd';
+
+// Bridge antd theme tokens → the `--colorX` CSS vars used below, so Modal/Popover PORTALS (which don't
+// inherit page-scoped vars) render in the live theme instead of the light fallbacks. See computedRulesManager.
+function themeVars(token: any): React.CSSProperties {
+  const m: Record<string, string> = {
+    '--colorText': token.colorText, '--colorTextSecondary': token.colorTextSecondary,
+    '--colorTextTertiary': token.colorTextTertiary, '--colorTextQuaternary': token.colorTextQuaternary,
+    '--colorBorder': token.colorBorder, '--colorBorderSecondary': token.colorBorderSecondary,
+    '--colorBgContainer': token.colorBgContainer, '--colorBgLayout': token.colorBgLayout,
+    '--colorFillSecondary': token.colorFillSecondary, '--colorFillTertiary': token.colorFillTertiary,
+    '--colorFillQuaternary': token.colorFillQuaternary, '--colorPrimary': token.colorPrimary,
+    '--colorPrimaryBorder': token.colorPrimaryBorder, '--colorInfo': token.colorInfo,
+    '--colorWarning': token.colorWarning, '--colorSuccess': token.colorSuccess, '--colorError': token.colorError,
+  };
+  return m as unknown as React.CSSProperties;
+}
 import { PartitionOutlined, FunctionOutlined, TableOutlined, BulbOutlined, PlayCircleOutlined, RobotOutlined } from '@ant-design/icons';
 import { SettingRow, FieldPickerCascader, getCaretElement, insertAtCaret, getFields } from '@ptdl/shared';
 import { FORMULA_EXAMPLES as EXAMPLES, FORMULA_FUNCTIONS as FN_HELP, TRIGGER_OPTIONS, splitTriggers } from './formulaKnowledge';
@@ -55,6 +71,8 @@ export function ComputedRuleEditor({
   isEdit?: boolean;
 }) {
   const set = (patch: Partial<RuleValue>) => onChange(patch);
+  const { token } = theme.useToken();
+  const tv = themeVars(token);
   const [collOptions, setCollOptions] = useState<{ value: string; label: string }[]>([]);
   const [numericOpts, setNumericOpts] = useState<{ value: string; label: string }[]>([]);
   const [recordOpts, setRecordOpts] = useState<{ value: any; label: string }[]>([]);
@@ -149,7 +167,7 @@ export function ComputedRuleEditor({
   const aiConvert = () => { if (!aiAppsheet.trim()) return message.warning(t('Dán công thức AppSheet')); aiCall('convert', 'ptdlComputed:aiConvert', { appsheet: aiAppsheet }, (d) => { setAiResult(d); if (d.formula) set({ formula: d.formula }); }); };
 
   const examplesPopover = (
-    <div style={{ width: 470, maxHeight: 360, overflow: 'auto' }}>
+    <div style={{ width: 470, maxHeight: 360, overflow: 'auto', ...tv }}>
       {EXAMPLES.map(([label, f]) => (
         <div key={label} style={{ marginBottom: 9, cursor: 'pointer', padding: 4, borderRadius: 4 }}
           onClick={() => insertAtCaret(getCaretElement(taRef.current), f, value.formula || '', (v) => set({ formula: v }))}
@@ -162,7 +180,7 @@ export function ComputedRuleEditor({
     </div>
   );
   const helpPopover = (
-    <div style={{ width: 440, maxHeight: 340, overflow: 'auto' }}>
+    <div style={{ width: 440, maxHeight: 340, overflow: 'auto', ...tv }}>
       {FN_HELP.map(([g, fns]) => <div key={g} style={{ marginBottom: 6 }}><div style={{ fontSize: 12, fontWeight: 600, color: 'var(--colorTextTertiary, #888)' }}>{t(g)}</div><div style={{ fontSize: 12, fontFamily: 'monospace' }}>{t(fns)}</div></div>)}
     </div>
   );
@@ -170,7 +188,7 @@ export function ComputedRuleEditor({
     ? <span style={{ color: '#d48806' }}>{t('Chạy thử lỗi')}{tries ? ` (${tries} ${t('lần')})` : ''}: {tr.error}</span>
     : <span style={{ color: '#389e0d' }}>{t('Chạy thử OK')}{tries ? ` (${tries} ${t('lần')})` : ''} → <b>{JSON.stringify(tr.value)}</b></span>);
   const aiPopover = (
-    <div style={{ width: 430 }}>
+    <div style={{ width: 430, ...tv }}>
       <Input.TextArea rows={2} value={aiDesc} onChange={(e) => setAiDesc(e.target.value)}
         placeholder={t('Mô tả bằng lời, vd: "tổng tiền các dòng đang active", "số ngày từ ngày tạo đến hôm nay"')} />
       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -191,7 +209,7 @@ export function ComputedRuleEditor({
       {aiExplainText && <div style={{ marginTop: 10, fontSize: 12, color: 'var(--colorTextSecondary)', background: 'var(--colorFillQuaternary, #f7f7f7)', padding: 8, borderRadius: 4 }}>{aiExplainText}</div>}
       {aiResult && (
         <div style={{ marginTop: 10, fontSize: 12, borderTop: '1px solid var(--colorBorderSecondary, #f0f0f0)', paddingTop: 8 }}>
-          {aiResult.error ? <div style={{ color: '#cf1322' }}>{t('Lỗi')}: {aiResult.error}</div> : (
+          {aiResult.error ? <div style={{ color: 'var(--colorError, #cf1322)' }}>{t('Lỗi')}: {aiResult.error}</div> : (
             <>
               {aiResult.formula && <div>{t('Đã điền')}: <code style={{ fontSize: 11.5 }}>{aiResult.formula}</code></div>}
               {aiResult.explanation && <div style={{ color: 'var(--colorTextSecondary)', marginTop: 4 }}>{aiResult.explanation}</div>}
@@ -220,7 +238,7 @@ export function ComputedRuleEditor({
   );
 
   return (
-    <div>
+    <div style={tv}>
       {(showCollectionField || showTargetField) && (
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {showCollectionField && (
