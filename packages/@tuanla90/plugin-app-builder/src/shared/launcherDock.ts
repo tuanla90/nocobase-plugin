@@ -73,6 +73,22 @@ export function ensureLauncherDock(): HTMLElement {
   document.body.appendChild(dock);
   applyCollapsed();
 
+  // Hide the whole dock on auth routes (sign-in / sign-up / reset-password / verification) — the launchers
+  // are meaningless before login, and the dock is a persistent body-level element that would otherwise
+  // linger on the sign-in screen. Re-checked on every SPA navigation (popstate + patched push/replaceState).
+  const AUTH_RE = /(^|\/)(signin|signup|sign-in|sign-up|reset-password|verification)(\/|$)/i;
+  const syncAuthVisibility = () => { try { dock.style.display = AUTH_RE.test(location.pathname) ? 'none' : 'flex'; } catch { /* ignore */ } };
+  syncAuthVisibility();
+  window.addEventListener('popstate', syncAuthVisibility);
+  window.addEventListener('ptdl:navigation', syncAuthVisibility);
+  if (!(window as any).__ptdlNavHooked) {
+    (window as any).__ptdlNavHooked = true;
+    for (const m of ['pushState', 'replaceState'] as const) {
+      const orig = (history as any)[m];
+      (history as any)[m] = function (this: any, ...args: any[]) { const r = orig.apply(this, args); try { window.dispatchEvent(new Event('ptdl:navigation')); } catch { /* ignore */ } return r; };
+    }
+  }
+
   // Match the handle to the ACTUAL rendered primary-button colour (the CSS-var read above is often blank in
   // NocoBase's theme, leaving a mismatched fallback). Buttons portal in slightly after; watch for the first
   // `.ant-btn-primary` and copy its computed background onto the handle, once.

@@ -20,9 +20,9 @@
     {
       "packageName": "@tuanla90/plugin-app-builder",
       "slug": "app-builder",
-      "version": "0.6.24",
+      "version": "0.6.25",
       "displayName": "App Builder",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.24.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.25.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-block-custom-html",
@@ -153,9 +153,9 @@
     {
       "packageName": "@tuanla90/plugin-instant-create-page",
       "slug": "instant-create-page",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "displayName": "Instant Create Page",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-instant-create-page-0.1.7.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-instant-create-page-0.1.8.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-ip-guard",
