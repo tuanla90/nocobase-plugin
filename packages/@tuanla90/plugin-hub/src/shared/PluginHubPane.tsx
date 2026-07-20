@@ -59,6 +59,12 @@ export function PluginHubPane({ api }: { api: any }) {
   const req = (url: string, data?: any) =>
     api.request({ url, method: 'post', data }).then((r: any) => r?.data?.data ?? r?.data);
 
+  // A notification-suppressed client for the restart-window polls: during a pm restart the app is DOWN and
+  // every poll returns 502/503, which NocoBase's global handler would toast on each try. `api.silent()` mutes it.
+  const silentApi = () => (typeof api.silent === 'function' ? api.silent() : api);
+  const silentReq = (url: string, data?: any) =>
+    silentApi().request({ url, method: 'post', data }).then((r: any) => r?.data?.data ?? r?.data);
+
   useEffect(() => {
     (async () => {
       try {
@@ -70,14 +76,17 @@ export function PluginHubPane({ api }: { api: any }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onCheck = async (urlOverride?: string) => {
+  // `quiet` = the auto-refresh after an op (the app may still be mid-restart → tolerate 502/503 silently).
+  // The manual "Check now" button calls it non-quiet so genuine errors still surface.
+  const onCheck = async (urlOverride?: string, quiet = false) => {
     setChecking(true);
     try {
-      const res = await req('ptdlPluginHub:check', { manifestUrl: urlOverride ?? cfg.manifestUrl });
-      if (!res?.ok) { message.error(res?.error || t('Could not load the manifest')); return; }
+      const doReq = quiet ? silentReq : req;
+      const res = await doReq('ptdlPluginHub:check', { manifestUrl: urlOverride ?? cfg.manifestUrl });
+      if (!res?.ok) { if (!quiet) message.error(res?.error || t('Could not load the manifest')); return; }
       setItems(res.items || []);
       setCfg((c) => ({ ...c, updatesAvailable: res.updatesAvailable ?? 0, lastChecked: new Date().toISOString() }));
-    } catch (e) { message.error(errMsg(e)); }
+    } catch (e) { if (!quiet) message.error(errMsg(e)); }
     finally { setChecking(false); }
   };
 
@@ -96,7 +105,7 @@ export function PluginHubPane({ api }: { api: any }) {
     const start = Date.now();
     await sleep(3000); // let it enter maintenance first
     while (Date.now() - start < maxMs) {
-      try { await api.request({ url: 'app:getInfo', method: 'get' }); return true; }
+      try { await silentApi().request({ url: 'app:getInfo', method: 'get' }); return true; }
       catch { await sleep(2500); }
     }
     return false;
@@ -110,7 +119,7 @@ export function PluginHubPane({ api }: { api: any }) {
     await sleep(4000); // give the restart a moment to begin
     while (Date.now() - start < maxMs) {
       try {
-        const res = await req('ptdlPluginHub:check', { manifestUrl: cfg.manifestUrl });
+        const res = await silentReq('ptdlPluginHub:check', { manifestUrl: cfg.manifestUrl });
         if (res?.ok) {
           setItems(res.items || []);
           const it = (res.items || []).find((i: Item) => i.packageName === packageName);
@@ -158,7 +167,7 @@ export function PluginHubPane({ api }: { api: any }) {
       setProgress(t('The app is reloading — please wait…'));
       await waitAppReady();
       setProgress(t('Refreshing the list…'));
-      await onCheck();
+      await onCheck(undefined, true);
       message.success(successMsg);
       return true;
     } catch (e) { message.error(errMsg(e)); return false; }
@@ -170,7 +179,7 @@ export function PluginHubPane({ api }: { api: any }) {
     setBusy(it.packageName);
     try {
       const err = await advancePlugin(it, (s) => setProgress(`${s}: ${it.displayName}`));
-      await onCheck();
+      await onCheck(undefined, true);
       if (err) message.error(`${it.displayName}: ${err}`, 10);
       else message.success(t('Installed and enabled'));
     } catch (e) { message.error(errMsg(e)); }
@@ -194,7 +203,7 @@ export function PluginHubPane({ api }: { api: any }) {
         } catch { /* keep going */ }
       }
       setProgress(t('Refreshing the list…'));
-      await onCheck();
+      await onCheck(undefined, true);
       message.success(t('Update all done'));
     } finally { setBusy(null); setProgress(''); }
   };
@@ -217,7 +226,7 @@ export function PluginHubPane({ api }: { api: any }) {
         } catch (e: any) { fails.push(`${it.displayName}: ${e?.message || e}`); }
       }
       setProgress(t('Refreshing the list…'));
-      await onCheck();
+      await onCheck(undefined, true);
       setSelectedKeys([]);
       if (fails.length) message.error(`${t('Some items failed')} — ${fails.join(' · ')}`, 12);
       else message.success(t('Batch done'));
