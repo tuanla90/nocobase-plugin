@@ -36,7 +36,7 @@ fs.writeFileSync(path.join(ROOT, 'latest', 'index.json'), JSON.stringify(manifes
 
 // 2) INSTALL.md
 const hub = plugins.find((p) => p.slug === 'hub');
-const lag = new Set(['app-builder', 'branding', 'gsheet-sync']); // latest/ trails uncommitted source
+const lag = new Set([]); // plugins whose latest/ tgz trails uncommitted source (none right now)
 let md = `# Cài @ptdl plugins vào NocoBase (không cần upload file)
 
 Các plugin trong repo này được đóng gói sẵn (\`.tgz\` ở \`latest/@ptdl/\`). Cài vào **bất kỳ NocoBase 2.x** nào **mà không upload file qua trình duyệt** — server tự tải từ URL. Hợp khi thiết bị/mạng chặn upload \`.tgz\`, và để share cho instance người khác host.
