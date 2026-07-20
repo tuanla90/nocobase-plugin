@@ -14,7 +14,7 @@ import React from 'react';
 import { Tooltip, Modal, message } from 'antd';
 import { CalculatorOutlined } from '@ant-design/icons';
 import { fi, onWsMessage, refreshFlowBlocks, LIVE_REFRESH_TYPE } from '@ptdl/shared';
-import { registerFormulaComponents } from './formulaEditorComponents';
+import { registerFormulaComponents, highlightFormula } from './formulaEditorComponents';
 import { ComputedRuleEditor } from './ComputedRuleEditor';
 import type { RuleValue } from './ComputedRuleEditor';
 import { splitTriggers } from './formulaKnowledge';
@@ -322,8 +322,26 @@ const ComputedHintIcon: React.FC<{ rule: any; cf: any; editable: boolean }> = ({
   const [open, setOpen] = React.useState(false);
   const [val, setVal] = React.useState<RuleValue | null>(null);
   const [saving, setSaving] = React.useState(false);
-  const formulaLabel = `${rt('Giá trị tự tính (server)')}: ${rule.formula}`;
-  const tip = editable ? `${formulaLabel}\n(${rt('bấm để sửa công thức')})` : formulaLabel;
+  const tipContent = (
+    <div>
+      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>{rt('Giá trị tự tính (server)')}:</div>
+      <div
+        style={{
+          fontFamily: 'monospace',
+          fontSize: 12,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.14)',
+          borderRadius: 4,
+          padding: '6px 8px',
+        }}
+      >
+        {highlightFormula(rule.formula)}
+      </div>
+      {editable ? <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>({rt('bấm để sửa công thức')})</div> : null}
+    </div>
+  );
 
   const openEditor = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -366,7 +384,7 @@ const ComputedHintIcon: React.FC<{ rule: any; cf: any; editable: boolean }> = ({
   return (
     <>
       <Tooltip
-        title={<span style={{ whiteSpace: 'pre-line' }}>{tip}</span>}
+        title={tipContent}
         overlayStyle={{ maxWidth: 460 }}
         overlayInnerStyle={{ maxWidth: 460 }}
       >

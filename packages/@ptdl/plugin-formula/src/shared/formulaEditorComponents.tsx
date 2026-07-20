@@ -26,6 +26,48 @@ const HELP_GROUPS: Array<[string, string]> = [
   ['HTML', 'B · I · U · BR · COLOR(x,màu) · BG · TAG(text,màu) · DOT(màu,size) · LINK(url,text) · IMG(src,size)'],
 ];
 
+// ---- Lightweight formula syntax highlighter (regex tokenizer, NO external dependency) ----
+// Colors are a small fixed palette tuned for antd Tooltip's dark bubble background (`colorBgSpotlight`,
+// which stays dark-near-black regardless of the app's light/dark theme — confirmed no override in the
+// branding plugin) — unlike the rest of this plugin's UI, this specific backdrop is NOT theme-dependent,
+// so a hardcoded (VS Code Dark+ -like) palette is safe here.
+const HL_STRING = '#ce9178'; // "literal text"
+const HL_NUMBER = '#b5cea8'; // 42 / TRUE / FALSE
+const HL_FN = '#dcdcaa'; // SUM( IF( SELECT(
+const HL_REF = '#9cdcfe'; // data.field / table.col
+// Alternation order = priority at a given position (regex tries left→right, first success wins):
+// string → data.<path> → <table>.<path> → TRUE/FALSE → number → <fn-name>( — everything else (operators,
+// punctuation, whitespace, bare unqualified identifiers) is left as plain, uncolored text.
+const FORMULA_TOKEN_RE =
+  /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(data(?:\.[A-Za-z_$][\w$]*)+)|([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)|(\bTRUE\b|\bFALSE\b)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*(?=\s*\())/gi;
+
+/** Render a formula string with lightweight syntax coloring — strings/field-refs/numbers/function names get
+ *  a distinct color, like a code editor. Pure regex tokenizer (no CodeMirror/Prism dependency); unmatched
+ *  spans (operators, punctuation, plain identifiers) render as plain text so it degrades gracefully on any
+ *  input, including formulas the tokenizer doesn't fully understand. */
+export function highlightFormula(formula: string): React.ReactNode {
+  if (!formula) return formula;
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  FORMULA_TOKEN_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = FORMULA_TOKEN_RE.exec(formula))) {
+    if (m.index > last) out.push(formula.slice(last, m.index));
+    const [, str, dataPath, dotPath, bool, num, fn] = m;
+    const color = str !== undefined ? HL_STRING
+      : dataPath !== undefined || dotPath !== undefined ? HL_REF
+      : bool !== undefined || num !== undefined ? HL_NUMBER
+      : fn !== undefined ? HL_FN
+      : undefined;
+    out.push(color ? <span key={key++} style={{ color }}>{m[0]}</span> : m[0]);
+    last = m.index + m[0].length;
+    if (m[0].length === 0) FORMULA_TOKEN_RE.lastIndex++; // safety: never loop on a zero-length match
+  }
+  if (last < formula.length) out.push(formula.slice(last));
+  return out;
+}
+
 // Formula textarea + a "ƒ" help popover + an INLINE "✨ AI viết hộ" panel (no modal). When the uiSchema
 // passes `collection`+`getApi` (display-field / column models), the AI writes/fixes straight into the
 // field via the proven server writer `ptdlComputed:aiWrite` (NL → formula, self-validated via
