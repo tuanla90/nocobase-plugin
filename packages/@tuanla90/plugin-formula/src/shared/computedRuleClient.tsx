@@ -292,6 +292,18 @@ async function saveRule(api: any, cf: any, formula: string, runOn: string, onErr
   ruleCache.set(ck, values);
 }
 
+// Resolve a model's collectionField, walking up `.parent` (mirrors patchComputedHint's render-time walk —
+// SOME contexts, notably a SubTableColumnModel's column model, don't carry `collectionField` directly on
+// themselves; it lives on a parent). Without this, the rule-editor dialog opened from a sub-table column's
+// ⚙ can silently resolve `cf` to nothing (or the wrong ancestor), which shows as "Test on record" listing
+// the wrong/empty collection ("Bảng chưa có bản ghi") even though the real target collection has rows.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 let flowRegistered = false;
 
 export function registerComputedRuleFlow({
@@ -340,7 +352,7 @@ export function registerComputedRuleFlow({
           // Host the SAME full editor as the Settings page (toolbar field-picker/ví dụ/hàm/AI + triggers +
           // Khi lỗi + Chạy thử) — just with the Bảng/Cột-đích pickers hidden (known from this column).
           uiSchema: (ctx: any) => {
-            const cf = ctx?.model?.collectionField;
+            const cf = resolveCf(ctx?.model);
             const api = ctx?.app?.apiClient || ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api;
             return {
               rule: {
@@ -353,12 +365,12 @@ export function registerComputedRuleFlow({
           defaultParams(ctx: any) {
             // legacy single tokens → the equivalent combo value so the checkboxes show right
             const combo = (v: any) => (({ both: 'create,update,source', self: 'create,update', update: 'update,source' } as any)[v] || v || 'create,update,source');
-            const cf = ctx?.model?.collectionField;
+            const cf = resolveCf(ctx?.model);
             const r = cf ? ruleCache.get(cacheKey(cf.dataSourceKey || 'main', cf.collectionName, cf.name)) : null;
             return { rule: { formula: r?.formula || '', runOn: combo(r?.runOn), onError: r?.onError || 'null' } };
           },
           async handler(ctx: any, params: any) {
-            const cf = ctx?.model?.collectionField;
+            const cf = resolveCf(ctx?.model);
             if (!cf) return;
             const api = ctx.model.context?.api;
             const rule = params?.rule || {};
