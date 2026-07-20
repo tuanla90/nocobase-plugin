@@ -90,6 +90,12 @@ a:hover{text-decoration:underline}
       <a class="nav-link" href="#reference" data-text="reference tham khảo hàm helper functions helpers handlebars excel formula sum if vlookup"><span class="lang lang-vi">Hàm &amp; Helper dùng chung</span><span class="lang lang-en" hidden>Shared functions &amp; helpers</span></a>
     </div>
     <div class="nav-group">
+      <div class="nav-cat"><span class="lang lang-vi">Quản trị / Công cụ</span><span class="lang lang-en" hidden>Admin &amp; tools</span></div>
+      <a class="nav-link" href="#nb-cloner" data-text="nhân bản ứng dụng app cloner (export / import) nhân bản toàn bộ một app nocobase tự xây giữa các bản cài. xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uischemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi upsert sang một app cùng phiên bản mà không xoá dữ liệu đang có. phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. đích postgresql. clone a whole self-built nocobase app between installs. exports the schema (collections + fields + categories), the ui (uischemas + flow-engine models + desktop/mobile menus + block templates), roles &amp; permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then upsert-imports it into another same-version app without deleting existing data. classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. postgresql target."><span class="lang lang-vi">Nhân bản ứng dụng</span><span class="lang lang-en" hidden>App Cloner (export / import)</span></a>
+      <a class="nav-link" href="#hub" data-text="trung tâm plugin plugin hub cài và cập nhật các plugin @tuanla90 từ một chỗ. trỏ tới một manifest url; nó liệt kê mọi plugin kèm bản đang cài vs bản mới nhất, cài/cập nhật từng cái (hoặc tất cả) từ url trong manifest — dùng chính plugin manager của nocobase, khỏi upload .tgz qua trình duyệt — và kiểm tra cập nhật hàng tuần, chỉ báo (không tự động áp dụng). install and update your @tuanla90 plugins from one place. point it at a manifest url; it lists every plugin with its installed vs available version, installs/updates any (or all) from the manifest urls — driving nocobase's own plugin manager, no browser .tgz upload — and checks weekly for updates, notifying you (never auto-applies)."><span class="lang lang-vi">Trung tâm Plugin</span><span class="lang lang-en" hidden>Plugin Hub</span></a>
+    </div>
+
+    <div class="nav-group">
       <div class="nav-cat"><span class="lang lang-vi">Trường / Field</span><span class="lang lang-en" hidden>Fields</span></div>
       <a class="nav-link" href="#formula" data-text="công thức &amp; trường tự tính formula &amp; computed fields excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing. excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing."><span class="lang lang-vi">Công thức &amp; Trường tự tính</span><span class="lang lang-en" hidden>Formula &amp; Computed Fields</span></a>
       <a class="nav-link" href="#ai-column" data-text="cột ai ai column airtable-style ai columns: generate text, read images/pdf/audio (ocr, stt), classify a value against a master collection, turn a document into sub-table rows, create images, or text-to-speech. adds bulk table actions, a per-record ai function button, and server-side auto-run on save. airtable-style ai columns: generate text, read images/pdf/audio (ocr, stt), classify a value against a master collection, turn a document into sub-table rows, create images, or text-to-speech. adds bulk table actions, a per-record ai function button, and server-side auto-run on save."><span class="lang lang-vi">Cột AI</span><span class="lang lang-en" hidden>AI Column</span></a>
@@ -119,7 +125,6 @@ a:hover{text-decoration:underline}
       <a class="nav-link" href="#branding" data-text="thương hiệu &amp; giao diện branding &amp; theme app-wide branding: skin presets and gradient colors for the sidebar, header, cards and content; accent color and density; app-wide font and table styling; app name, favicon, logo (light/dark) and header tweaks. theme-aware, with config import/export. app-wide branding: skin presets and gradient colors for the sidebar, header, cards and content; accent color and density; app-wide font and table styling; app name, favicon, logo (light/dark) and header tweaks. theme-aware, with config import/export."><span class="lang lang-vi">Thương hiệu &amp; Giao diện</span><span class="lang lang-en" hidden>Branding &amp; Theme</span></a>
       <a class="nav-link" href="#custom-header" data-text="tiêu đề tùy biến custom header style titles and labels across both clients — page header, table column headers, form/detail field labels, and block titles. set a prefix icon, text color, size, bold, background (solid or gradient), and alignment. field-level defaults show the style in every view. style titles and labels across both clients — page header, table column headers, form/detail field labels, and block titles. set a prefix icon, text color, size, bold, background (solid or gradient), and alignment. field-level defaults show the style in every view."><span class="lang lang-vi">Tiêu đề tùy biến</span><span class="lang lang-en" hidden>Custom Header</span></a>
       <a class="nav-link" href="#global-search" data-text="tìm kiếm toàn cục global search a header search box plus a cmd/ctrl+k command palette that searches across collections and jumps to records — grouped live results, a per-collection open behavior (page, detail view, or preview drawer), and a settings page to pick fields and style the pill. classic and modern clients. a header search box plus a cmd/ctrl+k command palette that searches across collections and jumps to records — grouped live results, a per-collection open behavior (page, detail view, or preview drawer), and a settings page to pick fields and style the pill. classic and modern clients."><span class="lang lang-vi">Tìm kiếm toàn cục</span><span class="lang lang-en" hidden>Global Search</span></a>
-      <a class="nav-link" href="#hub" data-text="trung tâm plugin plugin hub cài và cập nhật các plugin @tuanla90 từ một chỗ. trỏ tới một manifest url; nó liệt kê mọi plugin kèm bản đang cài vs bản mới nhất, cài/cập nhật từng cái (hoặc tất cả) từ url trong manifest — dùng chính plugin manager của nocobase, khỏi upload .tgz qua trình duyệt — và kiểm tra cập nhật hàng tuần, chỉ báo (không tự động áp dụng). install and update your @tuanla90 plugins from one place. point it at a manifest url; it lists every plugin with its installed vs available version, installs/updates any (or all) from the manifest urls — driving nocobase's own plugin manager, no browser .tgz upload — and checks weekly for updates, notifying you (never auto-applies)."><span class="lang lang-vi">Trung tâm Plugin</span><span class="lang lang-en" hidden>Plugin Hub</span></a>
     </div>
 
     <div class="nav-group">
@@ -162,7 +167,6 @@ a:hover{text-decoration:underline}
 
     <div class="nav-group">
       <div class="nav-cat"><span class="lang lang-vi">nocobase</span><span class="lang lang-en" hidden>nocobase</span></div>
-      <a class="nav-link" href="#nb-cloner" data-text="nhân bản ứng dụng app cloner (export / import) nhân bản toàn bộ một app nocobase tự xây giữa các bản cài. xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uischemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi upsert sang một app cùng phiên bản mà không xoá dữ liệu đang có. phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. đích postgresql. clone a whole self-built nocobase app between installs. exports the schema (collections + fields + categories), the ui (uischemas + flow-engine models + desktop/mobile menus + block templates), roles &amp; permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then upsert-imports it into another same-version app without deleting existing data. classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. postgresql target."><span class="lang lang-vi">Nhân bản ứng dụng</span><span class="lang lang-en" hidden>App Cloner (export / import)</span></a>
       <a class="nav-link" href="#inline-field" data-text="thêm cột tại chỗ inline field thêm cột mới ngay khi đang sửa bảng — không phải vào collection để tạo field. mục ‘➕ thêm cột mới…’ trong menu ⚙ của khối bảng mở hộp thoại khai báo field (văn bản, số, lựa chọn, ngày, có/không…); field được tạo trên collection, cột vật lý được migrate, và cột hiện luôn trong bảng đang sửa. client /v/. add a new column while editing a table view — no trip to the collection manager. a ‘➕ new column…’ item in a table block’s settings menu opens a dialog to define a scalar field (text, number, choice, date, checkbox, …); it is created on the collection, the physical column is migrated, and the column is dropped straight into the block being edited. modern /v/ client."><span class="lang lang-vi">Thêm cột tại chỗ</span><span class="lang lang-en" hidden>Inline Field</span></a>
     </div>
         <div class="nav-empty" id="empty"><span class="lang lang-vi">Không tìm thấy plugin phù hợp.</span><span class="lang lang-en" hidden>No matching plugin found.</span></div>
@@ -1003,6 +1007,514 @@ a:hover{text-decoration:underline}
 <p><em>Generated from code — update at: <code>plugin-formula/src/shared/formulaKnowledge.ts</code> + <code>formulaEngine.ts</code> (family 1), <code>plugin-print-template/src/shared/HelperDocs.tsx</code> + <code>helpers.ts</code> (family 2), <code>plugin-block-custom-html/src/client/render.ts</code> (family 3).</em></p>
 </div>
     </section>
+    <section class="plugin" id="nb-cloner" data-text="nhân bản ứng dụng app cloner (export / import) nhân bản toàn bộ một app nocobase tự xây giữa các bản cài. xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uischemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi upsert sang một app cùng phiên bản mà không xoá dữ liệu đang có. phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. đích postgresql. clone a whole self-built nocobase app between installs. exports the schema (collections + fields + categories), the ui (uischemas + flow-engine models + desktop/mobile menus + block templates), roles &amp; permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then upsert-imports it into another same-version app without deleting existing data. classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. postgresql target. admin">
+      <div class="plugin-head">
+        <h2><span class="lang lang-vi">Nhân bản ứng dụng</span><span class="lang lang-en" hidden>App Cloner (export / import)</span></h2>
+        <span class="chip chip-cat"><span class="lang lang-vi">Quản trị / Công cụ</span><span class="lang lang-en" hidden>Admin &amp; tools</span></span>
+        <span class="chip">v1.9.3</span>
+        <a class="chip chip-top" href="#top" title="Top">↑</a>
+      </div>
+      <div class="prose lang lang-vi"><blockquote>
+<p>Nhân bản toàn bộ một app NocoBase tự xây — collections, giao diện, menu, phân quyền và dữ liệu được
+chọn — từ bản cài này sang bản cài khác bằng một file <strong><code>.nbc.gz</code></strong> duy nhất. Import là <strong>UPSERT</strong>
+(không bao giờ xoá dữ liệu đang có).</p>
+</blockquote>
+<p><strong>Nhóm:</strong> Quản trị / Di trú (Migration) · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>CSDL:</strong> chỉ PostgreSQL · <strong>Phiên bản:</strong> 1.9.3</p>
+<h3>Sau khi cài, có gì mới?</h3>
+<ul>
+<li><strong>Một trang cấu hình mới trong Settings: “NB Cloner”</strong> (biểu tượng copy) với hai tab: <strong>Xuất (Export)</strong> và <strong>Nhập (Import)</strong>.</li>
+<li><strong>Không thêm menu, nút hay field</strong> nào lên các trang/khối dữ liệu của bạn.</li>
+<li>Không có gì chạy tự động — mọi lần xuất/nhập đều do bạn bấm từ trang này.</li>
+</ul>
+<h3>Cấu hình ở đâu?</h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Đường dẫn tới trang</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Hiện đại (<code>/v/</code>)</strong></td>
+<td>⚙ <strong>Settings</strong> → <strong>“NB Cloner”</strong></td>
+</tr>
+<tr>
+<td><strong>Cổ điển (<code>/admin</code>)</strong></td>
+<td><strong>Settings</strong> → <strong>“NB Cloner”</strong> (đường dẫn <code>/admin/settings/ptdl-nb-cloner</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Cả hai client mở <strong>cùng một trang</strong> và gọi cùng các endpoint phía server.</p>
+<h3>Những gì được clone</h3>
+<table>
+<thead>
+<tr>
+<th>Phần</th>
+<th>Có</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Collections + Fields</strong></td>
+<td>✅</td>
+<td>Cấu trúc các bảng nghiệp vụ (bảng hệ thống KHÔNG bị đụng khi import).</td>
+</tr>
+<tr>
+<td><strong>Nhóm bảng (categories)</strong></td>
+<td>✅</td>
+<td>Các nhóm hiển thị trong collection manager.</td>
+</tr>
+<tr>
+<td><strong>Giao diện (UI)</strong></td>
+<td>tuỳ chọn</td>
+<td>uiSchemas, flow-engine models (nội dung trang/khối của <code>/v/</code>), block template.</td>
+</tr>
+<tr>
+<td><strong>Menu / routes</strong></td>
+<td>✅ (kèm UI)</td>
+<td>routes desktop + mobile và các bảng closure/path — thiếu chúng thì app đích trắng menu.</td>
+</tr>
+<tr>
+<td><strong>Vai trò &amp; phân quyền</strong></td>
+<td>tuỳ chọn</td>
+<td>Chỉ role tự tạo (<code>root</code>/<code>admin</code>/<code>member</code> được bỏ qua để không ghi đè role mặc định của app đích).</td>
+</tr>
+<tr>
+<td><strong>Workflows</strong></td>
+<td>tuỳ chọn</td>
+<td>Chỉ định nghĩa + node — <strong>không</strong> lấy executions/jobs.</td>
+</tr>
+<tr>
+<td><strong>Dữ liệu nghiệp vụ</strong></td>
+<td>theo từng bảng</td>
+<td>Mặc định tắt; bật <strong>“Chép dữ liệu”</strong> cho bảng nào bạn muốn lấy cả dòng.</td>
+</tr>
+<tr>
+<td><strong>File đính kèm / upload</strong></td>
+<td>❌</td>
+<td>File nhị phân <strong>không</strong> được clone — chỉ có dòng DB.</td>
+</tr>
+</tbody>
+</table>
+<h3>Cách dùng (từng bước)</h3>
+<h4>Xuất (app nguồn)</h4>
+<ol>
+<li>
+<p>Mở <strong>Settings → “NB Cloner” → Xuất</strong>.</p>
+<ul>
+<li><strong>Nút mục tiêu nhanh</strong> (nhanh nhất): bấm <strong>📦 Sao lưu</strong> (toàn bộ app + dữ liệu), <strong>🧬 Nhân bản</strong> (cấu trúc + giao diện, không data — bản trống), hoặc <strong>↺ Mặc định</strong> (đặt lại). Một preset sẽ bật đúng tùy chọn + chọn sẵn bảng của bạn trong 1 cú bấm; sau đó vẫn chỉnh tay được. Các bước dưới là cách làm thủ công tương đương.</li>
+</ul>
+</li>
+<li>
+<p>Đặt <strong>Tên app</strong> (dùng trong tên file tải về).</p>
+</li>
+<li>
+<p>Bật các tuỳ chọn <strong>Hệ thống</strong> bạn muốn: <em>Cấu trúc bảng</em>, <em>Giao diện / Menu</em>, <em>Vai trò &amp; phân quyền</em>, <em>Quy trình</em>.</p>
+</li>
+<li>
+<p>Trong <strong>Danh sách bảng</strong>, dùng bộ lọc theo nhóm để tập trung vào thứ bạn cần. Mỗi bảng được phân loại:</p>
+<ul>
+<li><strong>Của tôi</strong> — các bảng bạn tự tạo (dữ liệu nghiệp vụ thật). <em>Đây là view mặc định, và chỉ những bảng này được chọn sẵn.</em></li>
+<li><strong>Plugin</strong> — bảng do plugin định nghĩa cho cấu hình/dữ liệu của nó.</li>
+<li><strong>Hệ thống</strong> — bảng khung của NocoBase (fields, uiSchemas, roles…).</li>
+<li><strong>Đã xóa</strong> — bảng managed nhưng bảng vật lý đã mất (orphan).</li>
+</ul>
+<p>Tích các bảng cần lấy và bật <strong>“Chép dữ liệu”</strong> cho bảng nào muốn lấy cả dòng (dùng <strong>Tất cả / Không</strong>). Đây là lý do một app “mới” vẫn liệt kê 100+ bảng — phần lớn là bảng plugin/hệ thống; bộ lọc giấu chúng đi để bạn chỉ export bảng của mình.</p>
+</li>
+<li>
+<p>Bấm <strong>“Xuất → Tải .nbc.gz”</strong>. Trình duyệt tải về file <code>nb-clone-&lt;app&gt;-&lt;ngày&gt;.nbc.gz</code>.</p>
+</li>
+</ol>
+<h4>Nhập (app đích)</h4>
+<blockquote>
+<p>⚠️ <strong>App đích PHẢI CÙNG phiên bản NocoBase với app nguồn.</strong> Flow-engine đổi định dạng lưu giữa các
+version, nên import chéo phiên bản sẽ làm hỏng giao diện.</p>
+</blockquote>
+<ol>
+<li>Mở <strong>Settings → “NB Cloner” → Nhập</strong> trên app <strong>đích</strong>.</li>
+<li>Đọc phần cảnh báo, rồi kéo thả file <code>.nbc.gz</code> vào ô tải lên.</li>
+<li>Chờ báo cáo từng bước — <strong>đừng đóng hay reload trang</strong> khi đang chạy (app lớn có thể mất 1–2 phút).</li>
+<li>Xong thì <strong>Restart app</strong> để bảng và giao diện nạp đủ.</li>
+</ol>
+<p>Bảng kết quả liệt kê từng bước (<code>schema.collections</code>, <code>db.sync</code>, <code>ui.schemas</code>, <code>data.&lt;bảng&gt;</code>, …) kèm trạng thái <code>ok</code> / <code>bỏ qua</code> / <code>lỗi</code> và số dòng.</p>
+<blockquote>
+<p>Cập nhật chính plugin thì làm theo cách thường — Plugin Manager → <strong>Add &amp; Update</strong> → upload file <code>.tgz</code>
+mới, rồi restart.</p>
+</blockquote>
+<h3>Yêu cầu &amp; giới hạn</h3>
+<ul>
+<li><strong>Chỉ PostgreSQL.</strong> Xuất/nhập dùng SQL đặc thù PostgreSQL (<code>ON CONFLICT</code> upsert, dò khóa chính qua
+<code>information_schema</code>). Trên dialect khác, plugin <strong>báo lỗi rõ ràng và dừng ngay</strong> thay vì làm hỏng app đích.</li>
+<li><strong>Cùng phiên bản NocoBase</strong> ở hai đầu (xem cảnh báo import ở trên).</li>
+<li><strong>Import là UPSERT</strong> — cập nhật/chèn, không xoá. Muốn kết quả sạch, import vào một app <strong>trắng, vừa cài</strong>.</li>
+<li><strong>Bundle lớn:</strong> nội dung flow-engine có thể vượt giới hạn request mặc định 10 MB của NocoBase. Nếu import
+lỗi trên app lớn, đặt env <strong><code>REQUEST_BODY_LIMIT=50mb</code></strong> (hoặc cao hơn) rồi restart.</li>
+<li><strong>File đính kèm không được clone</strong> — copy storage riêng nếu cần file.</li>
+<li><strong>Bắt buộc restart</strong> sau import để bảng + giao diện xuất hiện.</li>
+</ul>
+<h3>Bảo mật</h3>
+<p>Các endpoint export / import rất mạnh: export đọc <strong>mọi</strong> bảng nghiệp vụ, import ghi schema/UI/role của
+app đích. Chúng được cấp cho <code>loggedIn</code> — giống các plugin cấu hình @tuanla90 khác — và chỉ vào được qua trang
+<strong>Settings</strong> (vốn chỉ admin thấy). <strong>Nếu app của bạn cho người dùng không tin cậy đăng nhập, hãy giới hạn
+quyền bằng role của NocoBase</strong> (hoặc đừng bật plugin ở đó).</p>
+<h3>Định dạng <code>.nbc.gz</code></h3>
+<p>File <code>.nbc.gz</code> là một JSON bundle duy nhất (manifest + schema + ui + acl + workflows + businessData) nén
+bằng gzip. Manifest mang version của định dạng bundle; importer sẽ từ chối bundle có major version cũ hơn
+mức nó hiểu và yêu cầu bạn export lại.</p>
+<h3>Xử lý sự cố</h3>
+<table>
+<thead>
+<tr>
+<th>Hiện tượng</th>
+<th>Nguyên nhân / cách xử lý</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>“NB Cloner supports PostgreSQL only …”</td>
+<td>App không chạy PostgreSQL. Tool này chỉ hỗ trợ PostgreSQL theo thiết kế.</td>
+</tr>
+<tr>
+<td>Import lỗi trên app lớn</td>
+<td>Tăng <code>REQUEST_BODY_LIMIT</code> (vd <code>50mb</code>) rồi restart, thử lại.</td>
+</tr>
+<tr>
+<td>Menu / trang app đích trống sau import</td>
+<td>Đảm bảo đã bật <strong>Giao diện / Menu</strong> khi export, và <strong>Restart</strong> app đích sau import.</td>
+</tr>
+<tr>
+<td>Vài bước <code>data.&lt;bảng&gt;</code> báo <code>lỗi</code></td>
+<td>Các dòng đó bị bỏ qua (thường do thứ tự FK hoặc lệch cột); phần còn lại của import vẫn áp dụng. Restart rồi chạy lại nếu cần.</td>
+</tr>
+<tr>
+<td>Tag version hiện màu cam “code v… · restart để đồng bộ”</td>
+<td>Code đang chạy khác version ghi trong DB — hãy restart app.</td>
+</tr>
+</tbody>
+</table>
+</div>
+      <div class="prose lang lang-en" hidden><blockquote>
+<p>Clone a whole self-built NocoBase app — its collections, UI, menus, roles and hand-picked data —
+from one install to another as a single <strong><code>.nbc.gz</code></strong> file. Import is an <strong>UPSERT</strong> (it never deletes
+what’s already there).</p>
+</blockquote>
+<p><strong>Group:</strong> Admin / Migration · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Database:</strong> PostgreSQL only · <strong>Version:</strong> 1.9.3</p>
+<h3>What’s new after installing?</h3>
+<ul>
+<li><strong>A new Settings page: “NB Cloner”</strong> (copy icon) with two tabs: <strong>Export</strong> and <strong>Import</strong>.</li>
+<li><strong>No new menu, button or field</strong> is added to your data pages/blocks.</li>
+<li>Nothing runs automatically — you drive every export and import from that page.</li>
+</ul>
+<h3>Where to configure</h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Path to the page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Modern (<code>/v/</code>)</strong></td>
+<td>⚙ <strong>Settings</strong> → <strong>“NB Cloner”</strong></td>
+</tr>
+<tr>
+<td><strong>Classic (<code>/admin</code>)</strong></td>
+<td><strong>Settings</strong> → <strong>“NB Cloner”</strong> (path <code>/admin/settings/ptdl-nb-cloner</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Both clients open the <strong>same page</strong> and hit the same server endpoints.</p>
+<h3>What gets cloned</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Included</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Collections + Fields</strong></td>
+<td>✅</td>
+<td>Business collections’ schema (system collections are never modified on import).</td>
+</tr>
+<tr>
+<td><strong>Collection categories</strong></td>
+<td>✅</td>
+<td>The table groups shown in the collection manager.</td>
+</tr>
+<tr>
+<td><strong>UI</strong></td>
+<td>optional</td>
+<td>uiSchemas, flow-engine models (the <code>/v/</code> page/block content), block templates.</td>
+</tr>
+<tr>
+<td><strong>Menus / routes</strong></td>
+<td>✅ (with UI)</td>
+<td>desktop + mobile routes and their closure/path tables — without these the target has no menu.</td>
+</tr>
+<tr>
+<td><strong>Roles &amp; permissions</strong></td>
+<td>optional</td>
+<td>Custom roles only (<code>root</code>/<code>admin</code>/<code>member</code> are skipped to avoid clobbering the target’s defaults).</td>
+</tr>
+<tr>
+<td><strong>Workflows</strong></td>
+<td>optional</td>
+<td>Definitions + nodes only — <strong>not</strong> executions/jobs.</td>
+</tr>
+<tr>
+<td><strong>Business data</strong></td>
+<td>per-collection</td>
+<td>Off by default; turn on <strong>“Copy Data”</strong> for each collection you want rows from.</td>
+</tr>
+<tr>
+<td><strong>File attachments / uploads</strong></td>
+<td>❌</td>
+<td>Binary files are <strong>not</strong> cloned — only the DB rows.</td>
+</tr>
+</tbody>
+</table>
+<h3>How to use (step by step)</h3>
+<h4>Export (source app)</h4>
+<ol>
+<li>
+<p>Open <strong>Settings → “NB Cloner” → Export</strong>.</p>
+<ul>
+<li><strong>Quick goal presets</strong> (fastest): click <strong>📦 Backup</strong> (your whole app + all data), <strong>🧬 Clone</strong> (structure + UI, no data — a blank copy), or <strong>↺ Default</strong> (reset). A preset sets the toggles + selects your collections in one click; you can still fine-tune afterward. The steps below are the manual equivalent.</li>
+</ul>
+</li>
+<li>
+<p>Set an <strong>App name</strong> (used in the download filename).</p>
+</li>
+<li>
+<p>Toggle the <strong>System</strong> options you want: <em>Collections Schema</em>, <em>UI / Menus</em>, <em>Roles &amp; Permissions</em>, <em>Workflows</em>.</p>
+</li>
+<li>
+<p>In <strong>Collections</strong>, use the category filter to focus on what you want. Every collection is classified:</p>
+<ul>
+<li><strong>My collections</strong> — the tables you created (real business data). <em>This is the default view, and only these are pre-selected.</em></li>
+<li><strong>Plugin</strong> — tables a plugin defined for its own config/data.</li>
+<li><strong>System</strong> — NocoBase framework tables (fields, uiSchemas, roles…).</li>
+<li><strong>Deleted</strong> — a managed collection whose physical table is gone (an orphan).</li>
+</ul>
+<p>Tick the collections to include and flip <strong>“Copy Data”</strong> on the ones whose rows you also want (use <strong>All / None</strong>). This is why a “fresh” app can list 100+ collections — most are plugin/system tables; the filter hides them so you export just yours.</p>
+</li>
+<li>
+<p>Click <strong>“Export → Download .nbc.gz”</strong>. Your browser downloads <code>nb-clone-&lt;app&gt;-&lt;date&gt;.nbc.gz</code>.</p>
+</li>
+</ol>
+<h4>Import (target app)</h4>
+<blockquote>
+<p>⚠️ <strong>The target must be the SAME NocoBase version as the source.</strong> The flow-engine changes its stored
+format between versions, so a cross-version import produces a broken UI.</p>
+</blockquote>
+<ol>
+<li>Open <strong>Settings → “NB Cloner” → Import</strong> on the <strong>target</strong> app.</li>
+<li>Read the warnings, then drag the <code>.nbc.gz</code> into the upload box.</li>
+<li>Wait for the step report — <strong>do not close or reload the page</strong> while it runs (a large app can take 1–2 minutes).</li>
+<li>When it finishes, <strong>Restart the app</strong> so the new tables and UI load fully.</li>
+</ol>
+<p>The result table lists every step (<code>schema.collections</code>, <code>db.sync</code>, <code>ui.schemas</code>, <code>data.&lt;collection&gt;</code>, …) with an <code>ok</code> / <code>skipped</code> / <code>error</code> status and a row count.</p>
+<blockquote>
+<p>Updating the plugin itself is done the normal way — Plugin Manager → <strong>Add &amp; Update</strong> → upload the newer
+<code>.tgz</code>, then restart.</p>
+</blockquote>
+<h3>Requirements &amp; limits</h3>
+<ul>
+<li><strong>PostgreSQL only.</strong> Export/import use PostgreSQL-specific SQL (<code>ON CONFLICT</code> upsert, <code>information_schema</code>
+primary-key discovery). On any other dialect the plugin <strong>fails fast with a clear message</strong> rather than
+corrupting the target.</li>
+<li><strong>Same NocoBase version</strong> on both ends (see the import warning above).</li>
+<li><strong>Import is an UPSERT</strong> — it updates/inserts, it does not delete. For a clean result, import into a
+<strong>blank, freshly installed</strong> app.</li>
+<li><strong>Large bundles:</strong> the flow-engine content can exceed NocoBase’s default 10 MB request limit. If import
+fails on a big app, set the env var <strong><code>REQUEST_BODY_LIMIT=50mb</code></strong> (or higher) and restart.</li>
+<li><strong>Attachments are not cloned</strong> — copy your storage separately if you need the files.</li>
+<li>A <strong>restart is required</strong> after import for tables + UI to appear.</li>
+</ul>
+<h3>Security</h3>
+<p>The export / import endpoints are powerful: export reads <strong>every</strong> business table and import writes the
+target’s schema/UI/roles. They are granted to <code>loggedIn</code> — the same pattern the other @tuanla90 settings
+plugins use — and are reached only through the admin-gated <strong>Settings</strong> surface. <strong>If untrusted users can
+sign in to your app, restrict access with NocoBase roles</strong> (or don’t enable this plugin there).</p>
+<h3>The <code>.nbc.gz</code> format</h3>
+<p>A <code>.nbc.gz</code> file is a single JSON bundle (manifest + schema + ui + acl + workflows + businessData) compressed
+with gzip. The manifest carries a bundle-format version; the importer refuses a bundle whose major version is
+older than it understands and tells you to re-export.</p>
+<h3>Troubleshooting</h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause / fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>“NB Cloner supports PostgreSQL only …”</td>
+<td>The app isn’t on PostgreSQL. This tool is PostgreSQL-only by design.</td>
+</tr>
+<tr>
+<td>Import fails on a large app</td>
+<td>Raise <code>REQUEST_BODY_LIMIT</code> (e.g. <code>50mb</code>) and restart, then retry.</td>
+</tr>
+<tr>
+<td>Target menu / pages are empty after import</td>
+<td>Make sure <strong>UI / Menus</strong> was enabled on export, and <strong>Restart</strong> the target after import.</td>
+</tr>
+<tr>
+<td>Some <code>data.&lt;collection&gt;</code> steps show <code>error</code></td>
+<td>Those rows were skipped (often FK order or a column mismatch); the rest of the import still applied. Re-run after a restart if needed.</td>
+</tr>
+<tr>
+<td>Version tag shows an orange “code v… · restart to sync”</td>
+<td>The running code differs from the DB-recorded version — restart the app.</td>
+</tr>
+</tbody>
+</table>
+</div>
+    </section>
+
+    <section class="plugin" id="hub" data-text="trung tâm plugin plugin hub cài và cập nhật các plugin @tuanla90 từ một chỗ. trỏ tới một manifest url; nó liệt kê mọi plugin kèm bản đang cài vs bản mới nhất, cài/cập nhật từng cái (hoặc tất cả) từ url trong manifest — dùng chính plugin manager của nocobase, khỏi upload .tgz qua trình duyệt — và kiểm tra cập nhật hàng tuần, chỉ báo (không tự động áp dụng). install and update your @tuanla90 plugins from one place. point it at a manifest url; it lists every plugin with its installed vs available version, installs/updates any (or all) from the manifest urls — driving nocobase's own plugin manager, no browser .tgz upload — and checks weekly for updates, notifying you (never auto-applies). admin">
+      <div class="plugin-head">
+        <h2><span class="lang lang-vi">Trung tâm Plugin</span><span class="lang lang-en" hidden>Plugin Hub</span></h2>
+        <span class="chip chip-cat"><span class="lang lang-vi">Quản trị / Công cụ</span><span class="lang lang-en" hidden>Admin &amp; tools</span></span>
+        <span class="chip">v0.1.1</span>
+        <a class="chip chip-top" href="#top" title="Top">↑</a>
+      </div>
+      <div class="prose lang lang-vi"><blockquote>
+<p>Cài <strong>một plugin duy nhất</strong>, rồi từ đó <strong>cài và cập nhật mọi plugin @tuanla90 khác</strong> — không cần upload
+file <code>.tgz</code> qua trình duyệt, không cần vào server. Trỏ tới một <strong>manifest URL</strong>, bấm một nút là xong.</p>
+</blockquote>
+<p><strong>Nhóm:</strong> Giao diện (UI) · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>Phiên bản:</strong> 0.1.0</p>
+<h3>Vì sao cần?</h3>
+<p>Cài plugin trên NocoBase thường phải <strong>upload file <code>.tgz</code></strong> qua trình duyệt — nhiều thiết bị/mạng công ty
+<strong>chặn</strong> kiểu upload này. Plugin Hub đi đường khác: <strong>server tự tải</strong> plugin từ một URL, nên rào cản upload
+trình duyệt không còn ý nghĩa. Và thay vì dán URL cho từng plugin (30+ lần), bạn cài Hub <strong>một lần</strong> rồi nó
+lo hết phần còn lại — kể cả <strong>cập nhật</strong> về sau.</p>
+<h3>Sau khi cài, có gì mới?</h3>
+<ul>
+<li><strong>Một trang mới trong Settings</strong>: <strong>“Trung tâm Plugin”</strong>. Đây là nơi duy nhất bạn thao tác.</li>
+<li><strong>Không thêm menu/nút/field</strong> nào lên trang dữ liệu của bạn.</li>
+<li><strong>Kiểm tra cập nhật hàng tuần</strong> — chỉ <strong>báo</strong> “có N bản mới”, <strong>không tự động cài</strong> (an toàn: không tự
+đưa code mới vào khi bạn chưa xem).</li>
+</ul>
+<h3>Cấu hình ở đâu?</h3>
+<table>
+<thead>
+<tr>
+<th>Giao diện</th>
+<th>Đường tới trang</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Modern (<code>/v/</code>)</strong></td>
+<td>⚙ <strong>Settings</strong> → <strong>“Trung tâm Plugin”</strong></td>
+</tr>
+<tr>
+<td><strong>Classic (<code>/admin</code>)</strong></td>
+<td><strong>Settings</strong> → <strong>“Trung tâm Plugin”</strong> (<code>/admin/settings/ptdl-plugin-hub</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3>Dùng thế nào?</h3>
+<ol>
+<li><strong>Nguồn</strong> — ô <strong>Manifest URL</strong> (mặc định = <code>latest/index.json</code> của repo @tuanla90 công khai). Manifest là một
+file JSON liệt kê <code>{ packageName, version, url }</code> cho từng plugin.</li>
+<li>Bấm <strong>Kiểm tra ngay</strong> → bảng hiện <strong>mọi plugin</strong> kèm <em>bản đang cài · bản mới nhất · trạng thái</em>:
+<ul>
+<li><strong>Chưa cài</strong> → nút <strong>Cài</strong> (<code>pm add</code>), rồi <strong>Bật</strong> (<code>pm enable</code>).</li>
+<li><strong>Đã cài (chưa bật)</strong> → nút <strong>Bật</strong>.</li>
+<li><strong>Có bản mới</strong> → nút <strong>Cập nhật</strong> (<code>pm update</code>).</li>
+<li><strong>Mới nhất</strong> → ✓.</li>
+</ul>
+</li>
+<li><strong>Cập nhật tất cả</strong> — cập nhật tuần tự mọi plugin đang có bản mới, kèm thanh tiến trình.</li>
+</ol>
+<blockquote>
+<p>Mỗi lần Cài/Bật/Cập nhật, NocoBase <strong>tải lại app</strong> một chút (vào maintenance) — Hub <strong>tự chờ app sống lại</strong>
+rồi làm mới danh sách. Bình thường; với “Cập nhật tất cả” nhiều plugin sẽ hơi lâu.</p>
+</blockquote>
+<h3>Lưu ý</h3>
+<ul>
+<li><strong>Chỉ role <code>root</code></strong> mới cài/cập nhật được (thao tác động tới code).</li>
+<li><strong>Railway / Docker</strong>: plugin cài lúc chạy nằm ở <code>storage/plugins</code> → cần <strong>mount volume vào
+<code>/app/nocobase/storage</code></strong>, nếu không plugin <strong>mất khi redeploy</strong>.</li>
+<li><strong>Con gà–quả trứng</strong>: Hub cũng là một plugin, nên <strong>lần đầu</strong> phải cài Hub bằng URL (Plugin manager → Add →
+URL → dán link <code>plugin-hub-*.tgz</code>). Từ đó Hub lo mọi thứ.</li>
+</ul>
+</div>
+      <div class="prose lang lang-en" hidden><blockquote>
+<p>Install <strong>one plugin</strong>, then install &amp; update <strong>every other @tuanla90 plugin</strong> from it — no browser <code>.tgz</code>
+upload, no server shell. Point it at a <strong>manifest URL</strong>, click a button.</p>
+</blockquote>
+<p><strong>Group:</strong> UI · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Version:</strong> 0.1.0</p>
+<h3>Why?</h3>
+<p>Installing a NocoBase plugin normally means <strong>uploading a <code>.tgz</code></strong> through the browser — which many devices
+/ corporate networks <strong>block</strong>. Plugin Hub takes the other route: the <strong>server downloads</strong> each plugin from a
+URL, so a browser upload block no longer matters. And instead of pasting a URL for every plugin (30+ times),
+you install the Hub <strong>once</strong> and it manages the rest — including <strong>updates</strong> later.</p>
+<h3>What it adds</h3>
+<ul>
+<li><strong>One new Settings page</strong>: <strong>“Plugin Hub”</strong> — the only place you interact.</li>
+<li><strong>No menu / button / field</strong> on your data pages.</li>
+<li>A <strong>weekly update check that only NOTIFIES</strong> (“N updates available”) — it never auto-applies (installing
+new code without review is opt-out by design).</li>
+</ul>
+<h3>Where to configure</h3>
+<table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Modern (<code>/v/</code>)</strong></td>
+<td>⚙ <strong>Settings</strong> → <strong>“Plugin Hub”</strong></td>
+</tr>
+<tr>
+<td><strong>Classic (<code>/admin</code>)</strong></td>
+<td><strong>Settings</strong> → <strong>“Plugin Hub”</strong> (<code>/admin/settings/ptdl-plugin-hub</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3>How to use</h3>
+<ol>
+<li><strong>Source</strong> — the <strong>Manifest URL</strong> field (default = the public @tuanla90 repo’s <code>latest/index.json</code>), a JSON
+listing <code>{ packageName, version, url }</code> per plugin.</li>
+<li><strong>Check now</strong> → a table of every plugin with its <em>installed · latest · status</em>:
+<ul>
+<li><strong>Not installed</strong> → <strong>Install</strong> (<code>pm add</code>), then <strong>Enable</strong> (<code>pm enable</code>).</li>
+<li><strong>Installed (disabled)</strong> → <strong>Enable</strong>.</li>
+<li><strong>Update available</strong> → <strong>Update</strong> (<code>pm update</code>).</li>
+<li><strong>Up to date</strong> → ✓.</li>
+</ul>
+</li>
+<li><strong>Update all</strong> — updates every out-of-date plugin sequentially, with a progress line.</li>
+</ol>
+<blockquote>
+<p>Each Install/Enable/Update makes NocoBase <strong>reload</strong> briefly (maintenance mode); the Hub <strong>waits for the
+app to come back</strong> and refreshes the list. Normal — “Update all” across many plugins takes a while.</p>
+</blockquote>
+<h3>Notes</h3>
+<ul>
+<li>Only the <strong><code>root</code> role</strong> can install/update (these change code).</li>
+<li><strong>Railway / Docker</strong>: runtime-installed plugins live in <code>storage/plugins</code> → mount a <strong>volume at
+<code>/app/nocobase/storage</code></strong>, or they vanish on redeploy.</li>
+<li><strong>Chicken-and-egg</strong>: the Hub is itself a plugin, so install it <strong>once via URL</strong> (Plugin manager → Add → URL
+→ the <code>plugin-hub-*.tgz</code> link). After that, the Hub handles everything.</li>
+</ul>
+</div>
+    </section>
+
     <section class="plugin" id="formula" data-text="công thức &amp; trường tự tính formula &amp; computed fields excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing. excel-style formulas (400+ functions) throughout nocobase: display columns (html, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and fifo/average inventory costing. fields">
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Công thức &amp; Trường tự tính</span><span class="lang lang-en" hidden>Formula &amp; Computed Fields</span></h2>
@@ -6475,7 +6987,7 @@ No manual block/column/popup wiring. The result is a native NocoBase page you ca
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Thương hiệu &amp; Giao diện</span><span class="lang lang-en" hidden>Branding &amp; Theme</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.4.9</span>
+        <span class="chip">v0.4.10</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -7282,141 +7794,6 @@ config write is ACL-open to <code>loggedIn</code> (the Settings UI is admin-only
 header-pill container with <code>window.__PTDL_SEARCH_HEADER_SELECTOR__ = '&lt;css selector&gt;'</code> for unusual layouts.
 Build compiles all three lanes (<code>nocobase-build --tar</code>); keep the <code>client-v2.js</code> root stub or the modern
 client’s <code>pm:listEnabledV2</code> skips the plugin and nothing renders on <code>/v/</code>.</p>
-</div>
-    </section>
-
-    <section class="plugin" id="hub" data-text="trung tâm plugin plugin hub cài và cập nhật các plugin @tuanla90 từ một chỗ. trỏ tới một manifest url; nó liệt kê mọi plugin kèm bản đang cài vs bản mới nhất, cài/cập nhật từng cái (hoặc tất cả) từ url trong manifest — dùng chính plugin manager của nocobase, khỏi upload .tgz qua trình duyệt — và kiểm tra cập nhật hàng tuần, chỉ báo (không tự động áp dụng). install and update your @tuanla90 plugins from one place. point it at a manifest url; it lists every plugin with its installed vs available version, installs/updates any (or all) from the manifest urls — driving nocobase's own plugin manager, no browser .tgz upload — and checks weekly for updates, notifying you (never auto-applies). ui">
-      <div class="plugin-head">
-        <h2><span class="lang lang-vi">Trung tâm Plugin</span><span class="lang lang-en" hidden>Plugin Hub</span></h2>
-        <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.1.0</span>
-        <a class="chip chip-top" href="#top" title="Top">↑</a>
-      </div>
-      <div class="prose lang lang-vi"><blockquote>
-<p>Cài <strong>một plugin duy nhất</strong>, rồi từ đó <strong>cài và cập nhật mọi plugin @tuanla90 khác</strong> — không cần upload
-file <code>.tgz</code> qua trình duyệt, không cần vào server. Trỏ tới một <strong>manifest URL</strong>, bấm một nút là xong.</p>
-</blockquote>
-<p><strong>Nhóm:</strong> Giao diện (UI) · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>Phiên bản:</strong> 0.1.0</p>
-<h3>Vì sao cần?</h3>
-<p>Cài plugin trên NocoBase thường phải <strong>upload file <code>.tgz</code></strong> qua trình duyệt — nhiều thiết bị/mạng công ty
-<strong>chặn</strong> kiểu upload này. Plugin Hub đi đường khác: <strong>server tự tải</strong> plugin từ một URL, nên rào cản upload
-trình duyệt không còn ý nghĩa. Và thay vì dán URL cho từng plugin (30+ lần), bạn cài Hub <strong>một lần</strong> rồi nó
-lo hết phần còn lại — kể cả <strong>cập nhật</strong> về sau.</p>
-<h3>Sau khi cài, có gì mới?</h3>
-<ul>
-<li><strong>Một trang mới trong Settings</strong>: <strong>“Trung tâm Plugin”</strong>. Đây là nơi duy nhất bạn thao tác.</li>
-<li><strong>Không thêm menu/nút/field</strong> nào lên trang dữ liệu của bạn.</li>
-<li><strong>Kiểm tra cập nhật hàng tuần</strong> — chỉ <strong>báo</strong> “có N bản mới”, <strong>không tự động cài</strong> (an toàn: không tự
-đưa code mới vào khi bạn chưa xem).</li>
-</ul>
-<h3>Cấu hình ở đâu?</h3>
-<table>
-<thead>
-<tr>
-<th>Giao diện</th>
-<th>Đường tới trang</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Modern (<code>/v/</code>)</strong></td>
-<td>⚙ <strong>Settings</strong> → <strong>“Trung tâm Plugin”</strong></td>
-</tr>
-<tr>
-<td><strong>Classic (<code>/admin</code>)</strong></td>
-<td><strong>Settings</strong> → <strong>“Trung tâm Plugin”</strong> (<code>/admin/settings/ptdl-plugin-hub</code>)</td>
-</tr>
-</tbody>
-</table>
-<h3>Dùng thế nào?</h3>
-<ol>
-<li><strong>Nguồn</strong> — ô <strong>Manifest URL</strong> (mặc định = <code>latest/index.json</code> của repo @tuanla90 công khai). Manifest là một
-file JSON liệt kê <code>{ packageName, version, url }</code> cho từng plugin.</li>
-<li>Bấm <strong>Kiểm tra ngay</strong> → bảng hiện <strong>mọi plugin</strong> kèm <em>bản đang cài · bản mới nhất · trạng thái</em>:
-<ul>
-<li><strong>Chưa cài</strong> → nút <strong>Cài</strong> (<code>pm add</code>), rồi <strong>Bật</strong> (<code>pm enable</code>).</li>
-<li><strong>Đã cài (chưa bật)</strong> → nút <strong>Bật</strong>.</li>
-<li><strong>Có bản mới</strong> → nút <strong>Cập nhật</strong> (<code>pm update</code>).</li>
-<li><strong>Mới nhất</strong> → ✓.</li>
-</ul>
-</li>
-<li><strong>Cập nhật tất cả</strong> — cập nhật tuần tự mọi plugin đang có bản mới, kèm thanh tiến trình.</li>
-</ol>
-<blockquote>
-<p>Mỗi lần Cài/Bật/Cập nhật, NocoBase <strong>tải lại app</strong> một chút (vào maintenance) — Hub <strong>tự chờ app sống lại</strong>
-rồi làm mới danh sách. Bình thường; với “Cập nhật tất cả” nhiều plugin sẽ hơi lâu.</p>
-</blockquote>
-<h3>Lưu ý</h3>
-<ul>
-<li><strong>Chỉ role <code>root</code></strong> mới cài/cập nhật được (thao tác động tới code).</li>
-<li><strong>Railway / Docker</strong>: plugin cài lúc chạy nằm ở <code>storage/plugins</code> → cần <strong>mount volume vào
-<code>/app/nocobase/storage</code></strong>, nếu không plugin <strong>mất khi redeploy</strong>.</li>
-<li><strong>Con gà–quả trứng</strong>: Hub cũng là một plugin, nên <strong>lần đầu</strong> phải cài Hub bằng URL (Plugin manager → Add →
-URL → dán link <code>plugin-hub-*.tgz</code>). Từ đó Hub lo mọi thứ.</li>
-</ul>
-</div>
-      <div class="prose lang lang-en" hidden><blockquote>
-<p>Install <strong>one plugin</strong>, then install &amp; update <strong>every other @tuanla90 plugin</strong> from it — no browser <code>.tgz</code>
-upload, no server shell. Point it at a <strong>manifest URL</strong>, click a button.</p>
-</blockquote>
-<p><strong>Group:</strong> UI · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Version:</strong> 0.1.0</p>
-<h3>Why?</h3>
-<p>Installing a NocoBase plugin normally means <strong>uploading a <code>.tgz</code></strong> through the browser — which many devices
-/ corporate networks <strong>block</strong>. Plugin Hub takes the other route: the <strong>server downloads</strong> each plugin from a
-URL, so a browser upload block no longer matters. And instead of pasting a URL for every plugin (30+ times),
-you install the Hub <strong>once</strong> and it manages the rest — including <strong>updates</strong> later.</p>
-<h3>What it adds</h3>
-<ul>
-<li><strong>One new Settings page</strong>: <strong>“Plugin Hub”</strong> — the only place you interact.</li>
-<li><strong>No menu / button / field</strong> on your data pages.</li>
-<li>A <strong>weekly update check that only NOTIFIES</strong> (“N updates available”) — it never auto-applies (installing
-new code without review is opt-out by design).</li>
-</ul>
-<h3>Where to configure</h3>
-<table>
-<thead>
-<tr>
-<th>Client</th>
-<th>Path</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Modern (<code>/v/</code>)</strong></td>
-<td>⚙ <strong>Settings</strong> → <strong>“Plugin Hub”</strong></td>
-</tr>
-<tr>
-<td><strong>Classic (<code>/admin</code>)</strong></td>
-<td><strong>Settings</strong> → <strong>“Plugin Hub”</strong> (<code>/admin/settings/ptdl-plugin-hub</code>)</td>
-</tr>
-</tbody>
-</table>
-<h3>How to use</h3>
-<ol>
-<li><strong>Source</strong> — the <strong>Manifest URL</strong> field (default = the public @tuanla90 repo’s <code>latest/index.json</code>), a JSON
-listing <code>{ packageName, version, url }</code> per plugin.</li>
-<li><strong>Check now</strong> → a table of every plugin with its <em>installed · latest · status</em>:
-<ul>
-<li><strong>Not installed</strong> → <strong>Install</strong> (<code>pm add</code>), then <strong>Enable</strong> (<code>pm enable</code>).</li>
-<li><strong>Installed (disabled)</strong> → <strong>Enable</strong>.</li>
-<li><strong>Update available</strong> → <strong>Update</strong> (<code>pm update</code>).</li>
-<li><strong>Up to date</strong> → ✓.</li>
-</ul>
-</li>
-<li><strong>Update all</strong> — updates every out-of-date plugin sequentially, with a progress line.</li>
-</ol>
-<blockquote>
-<p>Each Install/Enable/Update makes NocoBase <strong>reload</strong> briefly (maintenance mode); the Hub <strong>waits for the
-app to come back</strong> and refreshes the list. Normal — “Update all” across many plugins takes a while.</p>
-</blockquote>
-<h3>Notes</h3>
-<ul>
-<li>Only the <strong><code>root</code> role</strong> can install/update (these change code).</li>
-<li><strong>Railway / Docker</strong>: runtime-installed plugins live in <code>storage/plugins</code> → mount a <strong>volume at
-<code>/app/nocobase/storage</code></strong>, or they vanish on redeploy.</li>
-<li><strong>Chicken-and-egg</strong>: the Hub is itself a plugin, so install it <strong>once via URL</strong> (Plugin manager → Add → URL
-→ the <code>plugin-hub-*.tgz</code> link). After that, the Hub handles everything.</li>
-</ul>
 </div>
     </section>
 
@@ -10459,379 +10836,6 @@ the login page <strong>still uses the plugin’s default skin</strong> (gradient
 <hr>
 <h4>For developers</h4>
 <p>The plugin <strong>overrides</strong> <code>AuthLayout</code> + <code>SignInPage</code> on <strong>both lanes</strong> (<code>/</code> classic and <code>/v/</code> modern). Config is stored in the <strong><code>login_configs</code></strong> table — each row has <code>options</code> (JSON), <code>type = 'home'</code>, and an <code>enabled</code> flag. The <strong><code>getActiveConfig</code></strong> action is <strong>public only</strong> for <code>type = 'home'</code>; <strong>enabling</strong> one configuration <strong>automatically disables</strong> the others of the same type (only one active). The settings page is registered via <code>pluginSettingsManager.add</code> (classic) and <code>addMenuItem</code> + <code>addPageTabItem</code> (v2), both editing the same record. Framework-free helpers live in <code>@tuanla90/shared</code> (<code>loginKit</code>) and are bundled into the plugin. Sign-in inputs mirror their placeholder into <code>aria-label</code> for screen readers. Dual-licensed AGPL-3.0 / NocoBase Commercial — please keep the footer attribution line.</p>
-</div>
-    </section>
-
-    <section class="plugin" id="nb-cloner" data-text="nhân bản ứng dụng app cloner (export / import) nhân bản toàn bộ một app nocobase tự xây giữa các bản cài. xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uischemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi upsert sang một app cùng phiên bản mà không xoá dữ liệu đang có. phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. đích postgresql. clone a whole self-built nocobase app between installs. exports the schema (collections + fields + categories), the ui (uischemas + flow-engine models + desktop/mobile menus + block templates), roles &amp; permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then upsert-imports it into another same-version app without deleting existing data. classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. postgresql target. nocobase">
-      <div class="plugin-head">
-        <h2><span class="lang lang-vi">Nhân bản ứng dụng</span><span class="lang lang-en" hidden>App Cloner (export / import)</span></h2>
-        <span class="chip chip-cat"><span class="lang lang-vi">nocobase</span><span class="lang lang-en" hidden>nocobase</span></span>
-        <span class="chip">v1.9.3</span>
-        <a class="chip chip-top" href="#top" title="Top">↑</a>
-      </div>
-      <div class="prose lang lang-vi"><blockquote>
-<p>Nhân bản toàn bộ một app NocoBase tự xây — collections, giao diện, menu, phân quyền và dữ liệu được
-chọn — từ bản cài này sang bản cài khác bằng một file <strong><code>.nbc.gz</code></strong> duy nhất. Import là <strong>UPSERT</strong>
-(không bao giờ xoá dữ liệu đang có).</p>
-</blockquote>
-<p><strong>Nhóm:</strong> Quản trị / Di trú (Migration) · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>CSDL:</strong> chỉ PostgreSQL · <strong>Phiên bản:</strong> 1.9.3</p>
-<h3>Sau khi cài, có gì mới?</h3>
-<ul>
-<li><strong>Một trang cấu hình mới trong Settings: “NB Cloner”</strong> (biểu tượng copy) với hai tab: <strong>Xuất (Export)</strong> và <strong>Nhập (Import)</strong>.</li>
-<li><strong>Không thêm menu, nút hay field</strong> nào lên các trang/khối dữ liệu của bạn.</li>
-<li>Không có gì chạy tự động — mọi lần xuất/nhập đều do bạn bấm từ trang này.</li>
-</ul>
-<h3>Cấu hình ở đâu?</h3>
-<table>
-<thead>
-<tr>
-<th>Client</th>
-<th>Đường dẫn tới trang</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Hiện đại (<code>/v/</code>)</strong></td>
-<td>⚙ <strong>Settings</strong> → <strong>“NB Cloner”</strong></td>
-</tr>
-<tr>
-<td><strong>Cổ điển (<code>/admin</code>)</strong></td>
-<td><strong>Settings</strong> → <strong>“NB Cloner”</strong> (đường dẫn <code>/admin/settings/ptdl-nb-cloner</code>)</td>
-</tr>
-</tbody>
-</table>
-<p>Cả hai client mở <strong>cùng một trang</strong> và gọi cùng các endpoint phía server.</p>
-<h3>Những gì được clone</h3>
-<table>
-<thead>
-<tr>
-<th>Phần</th>
-<th>Có</th>
-<th>Ghi chú</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Collections + Fields</strong></td>
-<td>✅</td>
-<td>Cấu trúc các bảng nghiệp vụ (bảng hệ thống KHÔNG bị đụng khi import).</td>
-</tr>
-<tr>
-<td><strong>Nhóm bảng (categories)</strong></td>
-<td>✅</td>
-<td>Các nhóm hiển thị trong collection manager.</td>
-</tr>
-<tr>
-<td><strong>Giao diện (UI)</strong></td>
-<td>tuỳ chọn</td>
-<td>uiSchemas, flow-engine models (nội dung trang/khối của <code>/v/</code>), block template.</td>
-</tr>
-<tr>
-<td><strong>Menu / routes</strong></td>
-<td>✅ (kèm UI)</td>
-<td>routes desktop + mobile và các bảng closure/path — thiếu chúng thì app đích trắng menu.</td>
-</tr>
-<tr>
-<td><strong>Vai trò &amp; phân quyền</strong></td>
-<td>tuỳ chọn</td>
-<td>Chỉ role tự tạo (<code>root</code>/<code>admin</code>/<code>member</code> được bỏ qua để không ghi đè role mặc định của app đích).</td>
-</tr>
-<tr>
-<td><strong>Workflows</strong></td>
-<td>tuỳ chọn</td>
-<td>Chỉ định nghĩa + node — <strong>không</strong> lấy executions/jobs.</td>
-</tr>
-<tr>
-<td><strong>Dữ liệu nghiệp vụ</strong></td>
-<td>theo từng bảng</td>
-<td>Mặc định tắt; bật <strong>“Chép dữ liệu”</strong> cho bảng nào bạn muốn lấy cả dòng.</td>
-</tr>
-<tr>
-<td><strong>File đính kèm / upload</strong></td>
-<td>❌</td>
-<td>File nhị phân <strong>không</strong> được clone — chỉ có dòng DB.</td>
-</tr>
-</tbody>
-</table>
-<h3>Cách dùng (từng bước)</h3>
-<h4>Xuất (app nguồn)</h4>
-<ol>
-<li>
-<p>Mở <strong>Settings → “NB Cloner” → Xuất</strong>.</p>
-<ul>
-<li><strong>Nút mục tiêu nhanh</strong> (nhanh nhất): bấm <strong>📦 Sao lưu</strong> (toàn bộ app + dữ liệu), <strong>🧬 Nhân bản</strong> (cấu trúc + giao diện, không data — bản trống), hoặc <strong>↺ Mặc định</strong> (đặt lại). Một preset sẽ bật đúng tùy chọn + chọn sẵn bảng của bạn trong 1 cú bấm; sau đó vẫn chỉnh tay được. Các bước dưới là cách làm thủ công tương đương.</li>
-</ul>
-</li>
-<li>
-<p>Đặt <strong>Tên app</strong> (dùng trong tên file tải về).</p>
-</li>
-<li>
-<p>Bật các tuỳ chọn <strong>Hệ thống</strong> bạn muốn: <em>Cấu trúc bảng</em>, <em>Giao diện / Menu</em>, <em>Vai trò &amp; phân quyền</em>, <em>Quy trình</em>.</p>
-</li>
-<li>
-<p>Trong <strong>Danh sách bảng</strong>, dùng bộ lọc theo nhóm để tập trung vào thứ bạn cần. Mỗi bảng được phân loại:</p>
-<ul>
-<li><strong>Của tôi</strong> — các bảng bạn tự tạo (dữ liệu nghiệp vụ thật). <em>Đây là view mặc định, và chỉ những bảng này được chọn sẵn.</em></li>
-<li><strong>Plugin</strong> — bảng do plugin định nghĩa cho cấu hình/dữ liệu của nó.</li>
-<li><strong>Hệ thống</strong> — bảng khung của NocoBase (fields, uiSchemas, roles…).</li>
-<li><strong>Đã xóa</strong> — bảng managed nhưng bảng vật lý đã mất (orphan).</li>
-</ul>
-<p>Tích các bảng cần lấy và bật <strong>“Chép dữ liệu”</strong> cho bảng nào muốn lấy cả dòng (dùng <strong>Tất cả / Không</strong>). Đây là lý do một app “mới” vẫn liệt kê 100+ bảng — phần lớn là bảng plugin/hệ thống; bộ lọc giấu chúng đi để bạn chỉ export bảng của mình.</p>
-</li>
-<li>
-<p>Bấm <strong>“Xuất → Tải .nbc.gz”</strong>. Trình duyệt tải về file <code>nb-clone-&lt;app&gt;-&lt;ngày&gt;.nbc.gz</code>.</p>
-</li>
-</ol>
-<h4>Nhập (app đích)</h4>
-<blockquote>
-<p>⚠️ <strong>App đích PHẢI CÙNG phiên bản NocoBase với app nguồn.</strong> Flow-engine đổi định dạng lưu giữa các
-version, nên import chéo phiên bản sẽ làm hỏng giao diện.</p>
-</blockquote>
-<ol>
-<li>Mở <strong>Settings → “NB Cloner” → Nhập</strong> trên app <strong>đích</strong>.</li>
-<li>Đọc phần cảnh báo, rồi kéo thả file <code>.nbc.gz</code> vào ô tải lên.</li>
-<li>Chờ báo cáo từng bước — <strong>đừng đóng hay reload trang</strong> khi đang chạy (app lớn có thể mất 1–2 phút).</li>
-<li>Xong thì <strong>Restart app</strong> để bảng và giao diện nạp đủ.</li>
-</ol>
-<p>Bảng kết quả liệt kê từng bước (<code>schema.collections</code>, <code>db.sync</code>, <code>ui.schemas</code>, <code>data.&lt;bảng&gt;</code>, …) kèm trạng thái <code>ok</code> / <code>bỏ qua</code> / <code>lỗi</code> và số dòng.</p>
-<blockquote>
-<p>Cập nhật chính plugin thì làm theo cách thường — Plugin Manager → <strong>Add &amp; Update</strong> → upload file <code>.tgz</code>
-mới, rồi restart.</p>
-</blockquote>
-<h3>Yêu cầu &amp; giới hạn</h3>
-<ul>
-<li><strong>Chỉ PostgreSQL.</strong> Xuất/nhập dùng SQL đặc thù PostgreSQL (<code>ON CONFLICT</code> upsert, dò khóa chính qua
-<code>information_schema</code>). Trên dialect khác, plugin <strong>báo lỗi rõ ràng và dừng ngay</strong> thay vì làm hỏng app đích.</li>
-<li><strong>Cùng phiên bản NocoBase</strong> ở hai đầu (xem cảnh báo import ở trên).</li>
-<li><strong>Import là UPSERT</strong> — cập nhật/chèn, không xoá. Muốn kết quả sạch, import vào một app <strong>trắng, vừa cài</strong>.</li>
-<li><strong>Bundle lớn:</strong> nội dung flow-engine có thể vượt giới hạn request mặc định 10 MB của NocoBase. Nếu import
-lỗi trên app lớn, đặt env <strong><code>REQUEST_BODY_LIMIT=50mb</code></strong> (hoặc cao hơn) rồi restart.</li>
-<li><strong>File đính kèm không được clone</strong> — copy storage riêng nếu cần file.</li>
-<li><strong>Bắt buộc restart</strong> sau import để bảng + giao diện xuất hiện.</li>
-</ul>
-<h3>Bảo mật</h3>
-<p>Các endpoint export / import rất mạnh: export đọc <strong>mọi</strong> bảng nghiệp vụ, import ghi schema/UI/role của
-app đích. Chúng được cấp cho <code>loggedIn</code> — giống các plugin cấu hình @tuanla90 khác — và chỉ vào được qua trang
-<strong>Settings</strong> (vốn chỉ admin thấy). <strong>Nếu app của bạn cho người dùng không tin cậy đăng nhập, hãy giới hạn
-quyền bằng role của NocoBase</strong> (hoặc đừng bật plugin ở đó).</p>
-<h3>Định dạng <code>.nbc.gz</code></h3>
-<p>File <code>.nbc.gz</code> là một JSON bundle duy nhất (manifest + schema + ui + acl + workflows + businessData) nén
-bằng gzip. Manifest mang version của định dạng bundle; importer sẽ từ chối bundle có major version cũ hơn
-mức nó hiểu và yêu cầu bạn export lại.</p>
-<h3>Xử lý sự cố</h3>
-<table>
-<thead>
-<tr>
-<th>Hiện tượng</th>
-<th>Nguyên nhân / cách xử lý</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>“NB Cloner supports PostgreSQL only …”</td>
-<td>App không chạy PostgreSQL. Tool này chỉ hỗ trợ PostgreSQL theo thiết kế.</td>
-</tr>
-<tr>
-<td>Import lỗi trên app lớn</td>
-<td>Tăng <code>REQUEST_BODY_LIMIT</code> (vd <code>50mb</code>) rồi restart, thử lại.</td>
-</tr>
-<tr>
-<td>Menu / trang app đích trống sau import</td>
-<td>Đảm bảo đã bật <strong>Giao diện / Menu</strong> khi export, và <strong>Restart</strong> app đích sau import.</td>
-</tr>
-<tr>
-<td>Vài bước <code>data.&lt;bảng&gt;</code> báo <code>lỗi</code></td>
-<td>Các dòng đó bị bỏ qua (thường do thứ tự FK hoặc lệch cột); phần còn lại của import vẫn áp dụng. Restart rồi chạy lại nếu cần.</td>
-</tr>
-<tr>
-<td>Tag version hiện màu cam “code v… · restart để đồng bộ”</td>
-<td>Code đang chạy khác version ghi trong DB — hãy restart app.</td>
-</tr>
-</tbody>
-</table>
-</div>
-      <div class="prose lang lang-en" hidden><blockquote>
-<p>Clone a whole self-built NocoBase app — its collections, UI, menus, roles and hand-picked data —
-from one install to another as a single <strong><code>.nbc.gz</code></strong> file. Import is an <strong>UPSERT</strong> (it never deletes
-what’s already there).</p>
-</blockquote>
-<p><strong>Group:</strong> Admin / Migration · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Database:</strong> PostgreSQL only · <strong>Version:</strong> 1.9.3</p>
-<h3>What’s new after installing?</h3>
-<ul>
-<li><strong>A new Settings page: “NB Cloner”</strong> (copy icon) with two tabs: <strong>Export</strong> and <strong>Import</strong>.</li>
-<li><strong>No new menu, button or field</strong> is added to your data pages/blocks.</li>
-<li>Nothing runs automatically — you drive every export and import from that page.</li>
-</ul>
-<h3>Where to configure</h3>
-<table>
-<thead>
-<tr>
-<th>Client</th>
-<th>Path to the page</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Modern (<code>/v/</code>)</strong></td>
-<td>⚙ <strong>Settings</strong> → <strong>“NB Cloner”</strong></td>
-</tr>
-<tr>
-<td><strong>Classic (<code>/admin</code>)</strong></td>
-<td><strong>Settings</strong> → <strong>“NB Cloner”</strong> (path <code>/admin/settings/ptdl-nb-cloner</code>)</td>
-</tr>
-</tbody>
-</table>
-<p>Both clients open the <strong>same page</strong> and hit the same server endpoints.</p>
-<h3>What gets cloned</h3>
-<table>
-<thead>
-<tr>
-<th>Area</th>
-<th>Included</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Collections + Fields</strong></td>
-<td>✅</td>
-<td>Business collections’ schema (system collections are never modified on import).</td>
-</tr>
-<tr>
-<td><strong>Collection categories</strong></td>
-<td>✅</td>
-<td>The table groups shown in the collection manager.</td>
-</tr>
-<tr>
-<td><strong>UI</strong></td>
-<td>optional</td>
-<td>uiSchemas, flow-engine models (the <code>/v/</code> page/block content), block templates.</td>
-</tr>
-<tr>
-<td><strong>Menus / routes</strong></td>
-<td>✅ (with UI)</td>
-<td>desktop + mobile routes and their closure/path tables — without these the target has no menu.</td>
-</tr>
-<tr>
-<td><strong>Roles &amp; permissions</strong></td>
-<td>optional</td>
-<td>Custom roles only (<code>root</code>/<code>admin</code>/<code>member</code> are skipped to avoid clobbering the target’s defaults).</td>
-</tr>
-<tr>
-<td><strong>Workflows</strong></td>
-<td>optional</td>
-<td>Definitions + nodes only — <strong>not</strong> executions/jobs.</td>
-</tr>
-<tr>
-<td><strong>Business data</strong></td>
-<td>per-collection</td>
-<td>Off by default; turn on <strong>“Copy Data”</strong> for each collection you want rows from.</td>
-</tr>
-<tr>
-<td><strong>File attachments / uploads</strong></td>
-<td>❌</td>
-<td>Binary files are <strong>not</strong> cloned — only the DB rows.</td>
-</tr>
-</tbody>
-</table>
-<h3>How to use (step by step)</h3>
-<h4>Export (source app)</h4>
-<ol>
-<li>
-<p>Open <strong>Settings → “NB Cloner” → Export</strong>.</p>
-<ul>
-<li><strong>Quick goal presets</strong> (fastest): click <strong>📦 Backup</strong> (your whole app + all data), <strong>🧬 Clone</strong> (structure + UI, no data — a blank copy), or <strong>↺ Default</strong> (reset). A preset sets the toggles + selects your collections in one click; you can still fine-tune afterward. The steps below are the manual equivalent.</li>
-</ul>
-</li>
-<li>
-<p>Set an <strong>App name</strong> (used in the download filename).</p>
-</li>
-<li>
-<p>Toggle the <strong>System</strong> options you want: <em>Collections Schema</em>, <em>UI / Menus</em>, <em>Roles &amp; Permissions</em>, <em>Workflows</em>.</p>
-</li>
-<li>
-<p>In <strong>Collections</strong>, use the category filter to focus on what you want. Every collection is classified:</p>
-<ul>
-<li><strong>My collections</strong> — the tables you created (real business data). <em>This is the default view, and only these are pre-selected.</em></li>
-<li><strong>Plugin</strong> — tables a plugin defined for its own config/data.</li>
-<li><strong>System</strong> — NocoBase framework tables (fields, uiSchemas, roles…).</li>
-<li><strong>Deleted</strong> — a managed collection whose physical table is gone (an orphan).</li>
-</ul>
-<p>Tick the collections to include and flip <strong>“Copy Data”</strong> on the ones whose rows you also want (use <strong>All / None</strong>). This is why a “fresh” app can list 100+ collections — most are plugin/system tables; the filter hides them so you export just yours.</p>
-</li>
-<li>
-<p>Click <strong>“Export → Download .nbc.gz”</strong>. Your browser downloads <code>nb-clone-&lt;app&gt;-&lt;date&gt;.nbc.gz</code>.</p>
-</li>
-</ol>
-<h4>Import (target app)</h4>
-<blockquote>
-<p>⚠️ <strong>The target must be the SAME NocoBase version as the source.</strong> The flow-engine changes its stored
-format between versions, so a cross-version import produces a broken UI.</p>
-</blockquote>
-<ol>
-<li>Open <strong>Settings → “NB Cloner” → Import</strong> on the <strong>target</strong> app.</li>
-<li>Read the warnings, then drag the <code>.nbc.gz</code> into the upload box.</li>
-<li>Wait for the step report — <strong>do not close or reload the page</strong> while it runs (a large app can take 1–2 minutes).</li>
-<li>When it finishes, <strong>Restart the app</strong> so the new tables and UI load fully.</li>
-</ol>
-<p>The result table lists every step (<code>schema.collections</code>, <code>db.sync</code>, <code>ui.schemas</code>, <code>data.&lt;collection&gt;</code>, …) with an <code>ok</code> / <code>skipped</code> / <code>error</code> status and a row count.</p>
-<blockquote>
-<p>Updating the plugin itself is done the normal way — Plugin Manager → <strong>Add &amp; Update</strong> → upload the newer
-<code>.tgz</code>, then restart.</p>
-</blockquote>
-<h3>Requirements &amp; limits</h3>
-<ul>
-<li><strong>PostgreSQL only.</strong> Export/import use PostgreSQL-specific SQL (<code>ON CONFLICT</code> upsert, <code>information_schema</code>
-primary-key discovery). On any other dialect the plugin <strong>fails fast with a clear message</strong> rather than
-corrupting the target.</li>
-<li><strong>Same NocoBase version</strong> on both ends (see the import warning above).</li>
-<li><strong>Import is an UPSERT</strong> — it updates/inserts, it does not delete. For a clean result, import into a
-<strong>blank, freshly installed</strong> app.</li>
-<li><strong>Large bundles:</strong> the flow-engine content can exceed NocoBase’s default 10 MB request limit. If import
-fails on a big app, set the env var <strong><code>REQUEST_BODY_LIMIT=50mb</code></strong> (or higher) and restart.</li>
-<li><strong>Attachments are not cloned</strong> — copy your storage separately if you need the files.</li>
-<li>A <strong>restart is required</strong> after import for tables + UI to appear.</li>
-</ul>
-<h3>Security</h3>
-<p>The export / import endpoints are powerful: export reads <strong>every</strong> business table and import writes the
-target’s schema/UI/roles. They are granted to <code>loggedIn</code> — the same pattern the other @tuanla90 settings
-plugins use — and are reached only through the admin-gated <strong>Settings</strong> surface. <strong>If untrusted users can
-sign in to your app, restrict access with NocoBase roles</strong> (or don’t enable this plugin there).</p>
-<h3>The <code>.nbc.gz</code> format</h3>
-<p>A <code>.nbc.gz</code> file is a single JSON bundle (manifest + schema + ui + acl + workflows + businessData) compressed
-with gzip. The manifest carries a bundle-format version; the importer refuses a bundle whose major version is
-older than it understands and tells you to re-export.</p>
-<h3>Troubleshooting</h3>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause / fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>“NB Cloner supports PostgreSQL only …”</td>
-<td>The app isn’t on PostgreSQL. This tool is PostgreSQL-only by design.</td>
-</tr>
-<tr>
-<td>Import fails on a large app</td>
-<td>Raise <code>REQUEST_BODY_LIMIT</code> (e.g. <code>50mb</code>) and restart, then retry.</td>
-</tr>
-<tr>
-<td>Target menu / pages are empty after import</td>
-<td>Make sure <strong>UI / Menus</strong> was enabled on export, and <strong>Restart</strong> the target after import.</td>
-</tr>
-<tr>
-<td>Some <code>data.&lt;collection&gt;</code> steps show <code>error</code></td>
-<td>Those rows were skipped (often FK order or a column mismatch); the rest of the import still applied. Re-run after a restart if needed.</td>
-</tr>
-<tr>
-<td>Version tag shows an orange “code v… · restart to sync”</td>
-<td>The running code differs from the DB-recorded version — restart the app.</td>
-</tr>
-</tbody>
-</table>
 </div>
     </section>
 
