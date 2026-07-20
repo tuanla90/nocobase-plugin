@@ -12,20 +12,21 @@ const PKGS = path.join(REPO, 'packages', '@tuanla90');
 
 const md = new MarkdownIt({ html: true, linkify: true, typographer: true, breaks: false });
 
-const CAT_ORDER = ['Fields', 'Blocks', 'UI', 'Menu', 'Actions', 'Data', 'Charts', 'Icons', 'Security', 'Auth'];
+const CAT_ORDER = ['Admin', 'Fields', 'Blocks', 'UI', 'Menu', 'Actions', 'Data', 'Charts', 'Icons', 'Security', 'Auth'];
 const CAT_LABEL_VI = {
-  Fields: 'Trường / Field', Blocks: 'Khối (Block)', UI: 'Giao diện', Menu: 'Menu',
+  Admin: 'Quản trị / Công cụ', Fields: 'Trường / Field', Blocks: 'Khối (Block)', UI: 'Giao diện', Menu: 'Menu',
   Actions: 'Hành động', Data: 'Dữ liệu', Charts: 'Biểu đồ', Icons: 'Icon', Security: 'Bảo mật', Auth: 'Đăng nhập',
 };
 const CAT_LABEL_EN = {
-  Fields: 'Fields', Blocks: 'Blocks', UI: 'Interface', Menu: 'Menu',
+  Admin: 'Admin & tools', Fields: 'Fields', Blocks: 'Blocks', UI: 'Interface', Menu: 'Menu',
   Actions: 'Actions', Data: 'Data', Charts: 'Charts', Icons: 'Icons', Security: 'Security', Auth: 'Sign-in',
 };
 // Authoritative category per plugin (from PLUGIN-REGISTRY) — package.json keywords[0] is inconsistent.
 const SLUG_CAT = {
+  'hub': 'Admin', 'nb-cloner': 'Admin',
   'ai-column': 'Fields', 'device-kit': 'Fields', 'field-enhancements': 'Fields', 'field-order': 'Fields', 'formula': 'Fields', 'status-flow': 'Fields',
   'block-custom-html': 'Blocks', 'conditional-format': 'Blocks', 'detail-panel': 'Blocks', 'enhanced-table-block': 'Blocks', 'filter-tree': 'Blocks', 'layout-containers': 'Blocks', 'spreadsheet-view': 'Blocks', 'subtable-pro': 'Blocks',
-  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'hub': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI',
+  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI',
   'menu-enhancements': 'Menu',
   'action-enhancements': 'Actions', 'print-template': 'Actions',
   'change-log': 'Data', 'gsheet-sync': 'Data', 'line-generator': 'Data',
