@@ -16,6 +16,17 @@ import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
  * Áp cho cả option dropdown lẫn giá trị đã chọn (single + multiple).
  */
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Without this, target-collection lookups can silently
+// resolve to nothing or the wrong ancestor's field.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 // ---- helpers copy từ core recordSelectShared (không export) ------------------------------------
 type FN = { label: string; value: string };
 function normFilterTargetKey(k: any): string | undefined {
@@ -272,7 +283,7 @@ export function registerRichSelectModel(deps: {
       const model: any = this;
       const p: any = model.props || {};
       const cfg = rscfgFromProps(p);
-      const target = model.context?.collectionField?.targetCollection;
+      const target = resolveCf(model)?.targetCollection;
       const fieldNames = normalizeFieldNames(p.fieldNames, target);
       const isMultiple = Boolean(p.multiple && p.allowMultiple);
 
@@ -369,7 +380,7 @@ export function registerRichSelectModel(deps: {
           title: t('Rich display settings'),
           uiMode: { type: 'dialog', props: { width: 780 } },
           uiSchema: (ctx: any) => {
-            const cf = ctx?.model?.collectionField;
+            const cf = resolveCf(ctx?.model);
             const target = cf?.targetCollection;
             const api = ctx?.app?.apiClient || ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api;
             let fieldOptions: any[] = [];
@@ -537,7 +548,7 @@ export function registerRichSelectModel(deps: {
     label: t('Rich select'), flow: { ...richFlow, key: 'ptdlRichSelectDisplay' },
     render: (p: any, model: any) => {
       const cfg = rscfgFromProps(p);
-      const target = model?.context?.collectionField?.targetCollection;
+      const target = resolveCf(model)?.targetCollection;
       const fieldNames = normalizeFieldNames(p.fieldNames, target);
       const isMultiple = Array.isArray(p.value);
       const list = isMultiple ? p.value : (p.value ? [p.value] : []);

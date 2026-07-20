@@ -3,7 +3,7 @@ import { Button, Checkbox, Input, InputNumber, List, Modal, Select, Tag, Tooltip
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { SparklesIcon, collectValues, registerFlowComponentsOnce } from './aiColumn';
+import { SparklesIcon, collectValues, registerFlowComponentsOnce, resolveCf } from './aiColumn';
 import { FieldTokenTextArea, getFields, ColumnSelect, cleanLabel, ConditionRow } from '@tuanla90/shared';
 import { NS, t } from './i18n';
 
@@ -43,7 +43,7 @@ function useCurrentCollection(): { coll?: string; dsk: string } {
   try {
     const ctx: any = useFlowSettingsContext();
     const model: any = ctx?.model;
-    const cf = model?.context?.collectionField;
+    const cf = resolveCf(model);
     coll = cf?.collectionName || model?.context?.blockModel?.collection?.name;
     dsk = cf?.dataSourceKey || 'main';
   } catch {

@@ -24,15 +24,26 @@ type Settings = {
   display: string;
 };
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). `model.collectionField` is a getter whose body is just
+// `return this.context.collectionField` — so `model.collectionField || model.context?.collectionField` is
+// NOT a real fallback (same read twice). Walking `.parent` is the only real fix.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
 function resolveOptions(model: any): Opt[] {
   const p = model?.props || {};
   if (Array.isArray(p.options) && p.options.length) return p.options;
-  const cf = model?.collectionField || model?.context?.collectionField;
+  const cf = resolveCf(model);
   const en = cf?.enum || cf?.uiSchema?.enum;
   return Array.isArray(en) ? en : [];
 }
 function isMultiField(model: any): boolean {
-  const cf = model?.collectionField || model?.context?.collectionField;
+  const cf = resolveCf(model);
   if (cf?.interface === 'multipleSelect') return true;
   if (Array.isArray(model?.props?.value)) return true;
   return false;

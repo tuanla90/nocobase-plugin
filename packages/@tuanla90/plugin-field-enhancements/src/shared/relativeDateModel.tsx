@@ -5,6 +5,18 @@ import { observer, useForm } from '@formily/react';
 import { SegmentedGroup, ColumnSelect, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, registerFlowComponentsOnce } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix (the getter's
+// body is just `return this.context.collectionField`, so `model.collectionField || model.context?.collectionField`
+// would be a no-op).
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * "Relative date" display widget (field-enhancements).
  * Per-field DISPLAY component for date/time columns: renders a date as its distance from a reference —
@@ -234,8 +246,9 @@ export function registerRelativeDateModel(deps: {
           title: t('Relative date settings'),
           uiMode: { type: 'dialog', props: { width: 580 } },
           uiSchema: (ctx: any) => {
-            const coll = ctx?.model?.collection || ctx?.model?.context?.collection || ctx?.model?.context?.collectionField?.collection;
-            const selfName = ctx?.model?.collectionField?.name;
+            const cf = resolveCf(ctx?.model);
+            const coll = ctx?.model?.collection || ctx?.model?.context?.collection || cf?.collection;
+            const selfName = cf?.name;
             const DATE_IFACES = new Set(['date', 'dateOnly', 'datetime', 'datetimeNoTz', 'unixTimestamp', 'createdAt', 'updatedAt']);
             let dateFieldOptions: any[] = [];
             try {

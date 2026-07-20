@@ -5,6 +5,17 @@ import DOMPurify from 'dompurify';
 import { SegmentedGroup, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS, registerFlowComponentsOnce } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix. Without it, a
+// wrong/undefined `iface` here makes richText render as escaped raw HTML instead of sanitised markup.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * "Clamp text" display widget (field-enhancements) — for long-text fields (`textarea` / `markdown` / `richText`).
  * Clamps the cell to N lines with a show-more toggle or a full-text tooltip, so long content doesn't blow up
@@ -107,7 +118,7 @@ export function registerLongTextModel(deps: {
     renderComponent(value: any, wrap: any) {
       const p: any = (this as any).props || {};
       if (value == null || value === '') return super.renderComponent?.(value, wrap) ?? null;
-      const iface = (this as any).collectionField?.interface;
+      const iface = resolveCf(this)?.interface;
       const isHtml = iface === 'richText';
       return <LongTextView value={value} isHtml={isHtml} cfg={ltFromProps(p)} />;
     }

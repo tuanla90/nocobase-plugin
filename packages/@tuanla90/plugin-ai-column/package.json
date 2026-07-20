@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Cột AI",
   "displayName.zh-CN": "AI 字段",
   "description": "Airtable-style AI columns: generate text, read images/PDF/audio (OCR, STT), classify a value against a master collection, turn a document into sub-table rows, create images, or text-to-speech. Adds bulk table actions, a per-record AI Function button, and server-side auto-run on save.",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

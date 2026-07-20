@@ -6,6 +6,18 @@ import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix (the getter's
+// body is just `return this.context.collectionField`, so `model.collectionField || model.context?.collectionField`
+// would be a no-op).
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * No-code widget: field SỐ (number/integer) + PERCENT → thanh Progress (antd).
  * - Editable: type `line` cho KÉO/BẤM trực tiếp lên thanh (giống Rate); type `circle`/`gauge` nhập bằng InputNumber.
@@ -129,7 +141,7 @@ async function fetchColumnMax(api: any, collection: string, field: string, ds?: 
 }
 
 function resolveMaxCtx(model: any): { api: any; collection: string; field: string; ds?: string } | null {
-  const cf = model?.collectionField || model?.context?.collectionField;
+  const cf = resolveCf(model);
   const field = cf?.name;
   const collection = cf?.collectionName || model?.collection?.name || model?.context?.collection?.name;
   const ds = cf?.dataSourceKey || model?.collection?.dataSourceKey || model?.context?.collection?.dataSourceKey;
@@ -312,8 +324,7 @@ export function registerProgressFieldModel(deps: {
     }
   }
 
-  const isPercentField = (model: any) =>
-    (model?.collectionField || model?.context?.collectionField)?.interface === 'percent';
+  const isPercentField = (model: any) => resolveCf(model)?.interface === 'percent';
 
   class PtdlProgressFieldModel extends Base {
     render() {
@@ -344,7 +355,7 @@ export function registerProgressFieldModel(deps: {
           title: t('Progress bar settings'),
           uiMode: { type: 'dialog', props: { width: 600 } },
           uiSchema: (ctx: any) => {
-            const isPercent = (ctx?.model?.collectionField || ctx?.model?.context?.collectionField)?.interface === 'percent';
+            const isPercent = resolveCf(ctx?.model)?.interface === 'percent';
             return {
               ...globalToggleField(t),
               preview: {
@@ -499,7 +510,7 @@ export function registerProgressFieldModel(deps: {
     label: t('Progress bar'), flow: { ...progressFlow, key: 'ptdlProgressDisplay' },
     render: (p: any, model: any) => {
       const cfg = pcfgFromProps(p);
-      const isPercent = (model?.collectionField || model?.context?.collectionField)?.interface === 'percent';
+      const isPercent = resolveCf(model)?.interface === 'percent';
       return <ProgressView cfg={cfg} percent={computePercent(p.value, cfg, isPercent)} />;
     },
   });

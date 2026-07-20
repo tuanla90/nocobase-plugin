@@ -3,7 +3,7 @@ import { Button, Checkbox, Input, InputNumber, Select, Tag, Tooltip, message, th
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { SparklesIcon, collectValues, syncAutorunRule, gateConfig, registerFlowComponentsOnce } from './aiColumn';
+import { SparklesIcon, collectValues, syncAutorunRule, gateConfig, registerFlowComponentsOnce, resolveCf } from './aiColumn';
 import { extractTypeTagLabel, type MapRow } from './aiExtract';
 import { getFields, fieldJsonMeta, SegmentedGroup, ColumnSelect } from '@tuanla90/shared';
 import { NS, t } from './i18n';
@@ -62,7 +62,7 @@ function useParentCollection(): { coll?: string; dsk: string } {
   try {
     const ctx: any = useFlowSettingsContext();
     const model: any = ctx?.model;
-    const cf = model?.context?.collectionField;
+    const cf = resolveCf(model);
     const blockColl = model?.context?.blockModel?.collection;
     coll = cf?.collectionName || blockColl?.name;
     dsk = cf?.dataSourceKey || blockColl?.dataSourceKey || 'main';
@@ -544,7 +544,7 @@ export const AiExtractRowsEditable: React.FC<{ model: any; baseRender: () => Rea
 
     // Sync the SERVER-side auto-run rule (kind 'extractRows') for the onServerUpdate trigger.
     useEffect(() => {
-      const cf = model?.context?.collectionField;
+      const cf = resolveCf(model);
       const sourceField = cf?.name;
       syncAutorunRule(model, {
         kind: 'extractRows',

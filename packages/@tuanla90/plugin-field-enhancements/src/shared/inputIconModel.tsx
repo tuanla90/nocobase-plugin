@@ -5,6 +5,18 @@ import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix. SECURITY-RELEVANT
+// here: `isPassword` gates whether readPretty shows the raw value or `••••••••` — a wrong/undefined
+// resolution would leak a password-interface field's value.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 // Giá trị mặc định (dùng cho defaultParams lẫn nút Reset). iconColor/iconBg trống = tự theo màu chữ / theme.
 const DEFAULTS = {
   icon: undefined as string | undefined, iconColor: '', placeholderMode: 'title', customPlaceholder: '',
@@ -168,7 +180,7 @@ export function registerInputIconModel(deps: {
       const model: any = this;
       const p = model.props || {};
       const cfg = cfgFromProps(p);
-      const cf = model.collectionField || model.context?.collectionField;
+      const cf = resolveCf(model);
       const placeholder = computePlaceholder(cfg, cf?.title);
       const isPassword = cf?.interface === 'password';
       if (p.pattern === 'readPretty') {
@@ -200,7 +212,7 @@ export function registerInputIconModel(deps: {
           title: t('Input with icon settings'),
           uiMode: { type: 'dialog', props: { width: 600 } },
           uiSchema: (ctx: any) => {
-            const cf = ctx?.model?.collectionField || ctx?.model?.context?.collectionField;
+            const cf = resolveCf(ctx?.model);
             const fieldTitle = cf?.title;
             const isPassword = cf?.interface === 'password';
             const grid = (props: any) => ({ type: 'void', 'x-component': 'II_Grid', 'x-component-props': { minColWidth: 180 }, properties: props });
@@ -301,7 +313,7 @@ export function registerInputIconModel(deps: {
     label: t('Input with icon'), flow: { ...inputIconFlow, key: 'ptdlInputIconDisplay' },
     render: (p: any, model: any) => {
       const cfg = cfgFromProps(p);
-      const cf = model?.collectionField || model?.context?.collectionField;
+      const cf = resolveCf(model);
       const isPassword = cf?.interface === 'password';
       const text = p.value == null ? '' : isPassword ? '••••••••' : String(p.value);
       const icon = cfg.icon ? <span style={{ display: 'inline-flex', lineHeight: 0, color: cfg.iconColor || 'inherit' }}><IconByKey type={cfg.icon} /></span> : null;

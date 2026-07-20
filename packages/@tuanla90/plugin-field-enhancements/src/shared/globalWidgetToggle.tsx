@@ -3,6 +3,17 @@ import { registerFlowComponentsOnce } from '@tuanla90/shared';
 import { Switch, theme } from 'antd';
 import { upsertFieldWidget } from './fieldWidgetStore';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Without this, `saveWidgetGlobal` can silently no-op
+// (or write against the wrong ancestor's field) when called from a nested widget's handler.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * Shared "Apply to all views" toggle for the no-code widget dialogs.
  *
@@ -56,7 +67,7 @@ export function globalToggleField(t: (s: string) => any): Record<string, any> {
 /** Persist the widget+config to the global store when the toggle is on. Call at the end of the handler. */
 export async function saveWidgetGlobal(ctx: any, params: any, widgetModel: string, config: any): Promise<void> {
   if (!params?.applyGlobal) return;
-  const cf = ctx?.model?.collectionField || ctx?.model?.context?.collectionField;
+  const cf = resolveCf(ctx?.model);
   const api = ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api || (ctx?.app?.apiClient);
   if (!cf || !api) return;
   const ds = cf.dataSourceKey;

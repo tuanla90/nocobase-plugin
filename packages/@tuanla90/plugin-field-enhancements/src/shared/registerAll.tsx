@@ -19,6 +19,18 @@ import { loadFieldWidgetCache, bindFieldWidgetAutoRefresh, fieldWidgetFor } from
 import { registerGlobalWidgetComponents } from './globalWidgetToggle';
 import viVN from '../locale/vi-VN.json';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). `model.collectionField` is a getter whose body is just
+// `return this.context.collectionField` — so `model.collectionField || model.context?.collectionField` is
+// NOT a real fallback (same read twice). Walking `.parent` is the only real fix.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * GLOBAL (field-level) widgets: patch the common display base `render()` so a field that has a global
  * widget assignment (collection `ptdlFieldWidget`) renders THAT widget in every table/detail — no
@@ -38,7 +50,7 @@ function patchGlobalFieldWidget(flowEngine: any, DisplayTextFieldModel: any) {
       // global store) → rendering `this` directly shows nothing. Borrowing with the GLOBAL config fixes
       // that. Borrow calls renderComponent (not render) → no recursion.
       try {
-        const cf = this.collectionField || this.context?.collectionField;
+        const cf = resolveCf(this);
         const g = cf ? fieldWidgetFor(cf.dataSourceKey, cf.collectionName || cf.collection?.name, cf.name) : null;
         if (cf && g?.widgetModel) {
           const proto: any = flowEngine.getModelClass(g.widgetModel)?.prototype;

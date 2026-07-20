@@ -13,9 +13,9 @@
     {
       "packageName": "@tuanla90/plugin-ai-column",
       "slug": "ai-column",
-      "version": "0.7.4",
+      "version": "0.7.5",
       "displayName": "AI Column",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.4.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.5.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-app-builder",
@@ -97,9 +97,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.23",
+      "version": "0.2.24",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.23.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.24.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",

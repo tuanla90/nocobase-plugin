@@ -3,7 +3,7 @@ import { Alert, Button, Checkbox, Input, Modal, Select, Tag, Tooltip, message, t
 import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { getFields, ColumnSelect, cleanLabel, ConditionRow } from '@tuanla90/shared';
-import { SparklesIcon, collectValues, registerFlowComponentsOnce } from './aiColumn';
+import { SparklesIcon, collectValues, registerFlowComponentsOnce, resolveCf } from './aiColumn';
 import { resolveFilterPayload } from './aiClassify';
 import { NS, t } from './i18n';
 
@@ -477,7 +477,7 @@ export const AiClassifyDeepEditable: React.FC<{ model: any; baseRender: () => Re
   // relationMode: this field is a belongsTo relation → the master collection is the relation target,
   // auto-derived from the field's collectionField (no need to configure it; a configured aiMaster still
   // wins so the display-column picker can work). Picking a candidate writes the real FK via model.change.
-  const cf: any = relationMode ? (model?.collectionField || model?.context?.collectionField) : null;
+  const cf: any = relationMode ? resolveCf(model) : null;
   const masterColl = master.collection || cf?.target || '';
   const masterDsk = master.dataSourceKey || cf?.collection?.dataSourceKey || cf?.dataSourceKey || 'main';
   const canGen = !!masterColl && Array.isArray(p.aiQueryFields) && p.aiQueryFields.length > 0;

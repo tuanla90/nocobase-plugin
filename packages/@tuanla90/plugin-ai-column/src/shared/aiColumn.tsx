@@ -6,6 +6,20 @@ import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { FieldTokenTextArea, SettingsGrid } from '@tuanla90/shared';
 import { NS, t } from './i18n';
 
+/** Resolve `collectionField` for a field model, walking up the model chain when it isn't set
+ *  directly on the field's own model — e.g. a `SubTableColumnModel` (column inside a sub-table)
+ *  or an inner field-model rendered inside a form, where `collectionField` actually lives on a
+ *  PARENT model. `model.collectionField` is a getter whose body is just `this.context.
+ *  collectionField`, so reading either form directly is reliable only for a plain top-level
+ *  `TableColumnModel` — nested contexts need this walk. Exported for reuse by the sibling
+ *  aiClassify/aiClassifyDeep/aiExtract/aiExtractRows/aiImage modules. */
+export function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /** Lucide "sparkles" icon (self-contained SVG, inherits color via currentColor). Exported for
  *  reuse by aiExtract.tsx's own button (same visual language, no need to duplicate). */
 export const SparklesIcon: React.FC = () => (
@@ -196,11 +210,11 @@ const PtdlAiPromptInput: React.FC<any> = observer((props: any) => {
     const ctx: any = useFlowSettingsContext();
     const model: any = ctx?.model;
     coll =
-      model?.context?.collectionField?.collectionName ||
+      resolveCf(model)?.collectionName ||
       model?.collection?.name ||
       model?.context?.collection?.name;
     dsk =
-      model?.context?.collectionField?.dataSourceKey ||
+      resolveCf(model)?.dataSourceKey ||
       model?.collection?.dataSourceKey ||
       model?.context?.collection?.dataSourceKey ||
       'main';
@@ -414,7 +428,7 @@ function parseOptions(raw: any): string[] {
 /** Options fallback: the field's own enum (select fields) when the user typed none. */
 function fieldEnumOptions(model: any): string[] {
   try {
-    const en = model?.context?.collectionField?.enum;
+    const en = resolveCf(model)?.enum;
     if (Array.isArray(en)) return en.map((e: any) => (e && typeof e === 'object' ? e.value ?? e.label : e)).filter(Boolean);
   } catch {
     /* ignore */
@@ -443,7 +457,7 @@ export function syncAutorunRule(
 ) {
   try {
     if (!API) return;
-    const cf = model?.context?.collectionField;
+    const cf = resolveCf(model);
     const collectionName = cf?.collectionName;
     const targetField = opts.targetField;
     if (!collectionName || !targetField) return;
@@ -491,7 +505,7 @@ export function gateConfig(p: any): { onlyWhenEmpty?: boolean; condition?: any }
 function syncAutorun(model: any) {
   const p: any = model?.props || {};
   const prompt = String(p.aiPrompt || '');
-  const cf = model?.context?.collectionField;
+  const cf = resolveCf(model);
   syncAutorunRule(model, {
     kind: 'generate',
     targetField: cf?.name,

@@ -4,7 +4,7 @@ import { observer, useForm } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
 import { getFields, ColumnSelect } from '@tuanla90/shared';
-import { SparklesIcon, collectValues, syncAutorunRule, extractDeps, triggerArray, gateConfig, PtdlAutorunGate, registerFlowComponentsOnce } from './aiColumn';
+import { SparklesIcon, collectValues, syncAutorunRule, extractDeps, triggerArray, gateConfig, PtdlAutorunGate, registerFlowComponentsOnce, resolveCf } from './aiColumn';
 import { NS, t } from './i18n';
 
 /**
@@ -66,7 +66,7 @@ const MediaGenEditable: React.FC<{ model: any; baseRender: () => React.ReactNode
     // Keep the server-side auto-run rule in sync with this field's config (fires on
     // automation/API/bulk saves — the only trigger that makes sense for media generation). No-op
     // unless the user ticked the "Server" trigger; de-duped inside syncAutorunRule.
-    const cf = model?.context?.collectionField;
+    const cf = resolveCf(model);
     useEffect(() => {
       const imageSource = spec.sourceFieldProp ? p[spec.sourceFieldProp] || undefined : undefined;
       syncAutorunRule(model, {
@@ -289,8 +289,8 @@ const PtdlImageSourceSelect: React.FC<any> = observer((props: any) => {
   try {
     const ctx: any = useFlowSettingsContext();
     const model: any = ctx?.model;
-    coll = model?.context?.collectionField?.collectionName;
-    dsk = model?.context?.collectionField?.dataSourceKey || 'main';
+    coll = resolveCf(model)?.collectionName;
+    dsk = resolveCf(model)?.dataSourceKey || 'main';
   } catch {
     /* no context — stays empty */
   }
@@ -434,7 +434,7 @@ const PtdlImageTemplateSelect: React.FC<any> = observer(() => {
   let selfName: string | undefined;
   try {
     const ctx: any = useFlowSettingsContext();
-    selfName = ctx?.model?.context?.collectionField?.name;
+    selfName = resolveCf(ctx?.model)?.name;
   } catch {
     /* no context */
   }

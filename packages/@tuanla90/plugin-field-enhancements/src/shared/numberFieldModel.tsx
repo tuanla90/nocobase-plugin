@@ -6,6 +6,16 @@ import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * No-code widget: field SỐ (number/integer/percent) → InputNumber có ICON/prefix + FORMAT (phân tách nghìn,
  * số thập phân) + ĐƠN VỊ (fixed cứng hoặc lấy từ cột khác của record). Tham khảo ảnh user: `$ 1,000.00  USD ⌄`.
@@ -192,8 +202,9 @@ export function registerNumberFieldModel(deps: {
           title: t('Number with unit settings'),
           uiMode: { type: 'dialog', props: { width: 600 } },
           uiSchema: (ctx: any) => {
-            const coll = ctx?.model?.collection || ctx?.model?.context?.collection || ctx?.model?.context?.collectionField?.collection;
-            const selfName = ctx?.model?.collectionField?.name;
+            const cf = resolveCf(ctx?.model);
+            const coll = ctx?.model?.collection || ctx?.model?.context?.collection || cf?.collection;
+            const selfName = cf?.name;
             let fieldOptions: any[] = [];
             try {
               const fields = coll?.getFields?.() || [];

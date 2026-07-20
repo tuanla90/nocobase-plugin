@@ -3,7 +3,7 @@ import { Button, Input, Select, Tag, Tooltip, message, theme } from 'antd';
 import { observer } from '@formily/react';
 import { FormTab } from '@formily/antd-v5';
 import { useFlowSettingsContext } from '@nocobase/flow-engine';
-import { SparklesIcon, collectValues, syncAutorunRule, gateConfig, registerFlowComponentsOnce } from './aiColumn';
+import { SparklesIcon, collectValues, syncAutorunRule, gateConfig, registerFlowComponentsOnce, resolveCf } from './aiColumn';
 import { buildFieldCascaderOptions, getFields, fieldJsonMeta, ColumnSelect } from '@tuanla90/shared';
 import { NS, t } from './i18n';
 
@@ -99,7 +99,7 @@ export const PtdlExtractMapping: React.FC<any> = observer((props: any) => {
   try {
     const ctx: any = useFlowSettingsContext();
     const model: any = ctx?.model;
-    const cf = model?.context?.collectionField;
+    const cf = resolveCf(model);
     const blockColl = model?.context?.blockModel?.collection;
     coll = cf?.collectionName || blockColl?.name;
     dsk = cf?.dataSourceKey || blockColl?.dataSourceKey || 'main';
@@ -286,7 +286,7 @@ export const AiExtractEditable: React.FC<{ model: any; baseRender: () => React.R
     // Sync the SERVER-side auto-run rule (kind 'extract') so `onServerUpdate` runs on automation/API
     // saves. Keyed by the source attachment field; the rule writes the mapped fields server-side.
     useEffect(() => {
-      const cf = model?.context?.collectionField;
+      const cf = resolveCf(model);
       const sourceField = cf?.name;
       syncAutorunRule(model, {
         kind: 'extract',

@@ -5,6 +5,16 @@ import { observer as fObserver, useForm, useField } from '@formily/react';
 import { SegmentedGroup, colorToString, ColorField, setIconRegistry, IconByKey, RegistryIconPicker, registerFlowComponentsOnce } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * "Value tag" field component (moved here from @tuanla90/plugin-conditional-format 2026-07-13).
  * A per-field DISPLAY widget: maps a cell's value → a colored tag (text/bg colour, icon, border, radius, text
@@ -239,7 +249,7 @@ export function registerConditionalModel({
   class ConditionalStatusFieldModel extends Base {
     resolveLabel(value: any): any {
       try {
-        const cf: any = (this as any).collectionField;
+        const cf: any = resolveCf(this);
         const opts =
           cf?.enum || cf?.uiSchema?.enum || cf?.options || cf?.uiSchema?.['x-component-props']?.options || [];
         if (Array.isArray(opts) && opts.length) {

@@ -5,6 +5,16 @@ import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
+// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
+// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
+// it can live on a parent (e.g. a FormItemModel). Walking `.parent` is the only real fix.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 /**
  * No-code widget: field text (url/email/phone/input) → LINK bấm được + icon.
  * - Kind: url (mở https) | email (mailto:) | phone (tel:) | text (điều hướng nội bộ/href thô).
@@ -189,7 +199,7 @@ export function registerLinkFieldModel(deps: {
       const model: any = this;
       const p = model.props || {};
       const cfg = lcfgFromProps(p);
-      const cf = model.collectionField || model.context?.collectionField;
+      const cf = resolveCf(model);
       if (p.pattern === 'readPretty') {
         return <LinkView cfg={cfg} model={model} value={p.value} fieldTitle={cf?.title} />;
       }
@@ -315,7 +325,7 @@ export function registerLinkFieldModel(deps: {
     flowEngine, Base, name: 'PtdlLinkDisplayFieldModel', interfaces: ['url', 'email', 'phone', 'input'],
     label: t('Link'), flow: { ...linkFlow, key: 'ptdlLinkDisplay' },
     render: (p: any, model: any) => {
-      const cf = model?.collectionField || model?.context?.collectionField;
+      const cf = resolveCf(model);
       return <LinkView cfg={lcfgFromProps(p)} model={model} value={p.value} fieldTitle={cf?.title} />;
     },
   });
