@@ -6,6 +6,9 @@ import { t } from './pluginHubClient';
 const { Text, Paragraph, Title } = Typography;
 
 const DEFAULT_MANIFEST = 'https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/index.json';
+// Per-plugin docs page on the GitHub-Pages site — same `#<slug>` convention every plugin's package.json
+// `homepage` uses, so it's derived from the row's slug (no manifest/server change needed).
+const DOCS_BASE = 'https://tuanla90.github.io/nocobase-plugin/#';
 
 interface HubConfig { manifestUrl: string; weeklyCheck: boolean; lastChecked: string | null; updatesAvailable: number; }
 interface Item {
@@ -278,6 +281,13 @@ export function PluginHubPane({ api }: { api: any }) {
         <div>
           <div style={{ fontWeight: 600 }}>{it.displayName}</div>
           <Text type="secondary" style={{ fontSize: 11 }}>{it.packageName}</Text>
+          {it.slug ? (
+            <div style={{ marginTop: 2 }}>
+              <a href={`${DOCS_BASE}${it.slug}`} target="_blank" rel="noreferrer" style={{ fontSize: 11 }}>
+                📖 {t('Docs')}
+              </a>
+            </div>
+          ) : null}
         </div>
       ),
     },
