@@ -207,9 +207,13 @@ export function ComputedRulesManager({ api }: { api: any }) {
   const [graph, setGraph] = useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
   // A focus request for the DAG (bumped `.n` re-triggers even for the same node). Set by the table's ◎ button.
   const [focusReq, setFocusReq] = useState<{ id: string; n: number }>({ id: '', n: 0 });
+  // The DAG card can be far above a long rule table (100+ rows) — scroll the WHOLE PAGE to it too, not just
+  // the DAG's own internal scroll to the node, so one click is enough (no manual scroll-up per click).
+  const dagSectionRef = useRef<HTMLDivElement>(null);
   const focusInDag = (r: Rule) => {
     const n = graph.nodes.find((x: any) => x.collection === r.collectionName && x.field === r.targetField);
     if (!n) { message.info(t('Cột này chưa có trong sơ đồ (lưu công thức trước).')); return; }
+    dagSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setFocusReq((p) => ({ id: n.id, n: p.n + 1 }));
   };
   const [collOptions, setCollOptions] = useState<{ value: string; label: string }[]>([]);
@@ -461,13 +465,15 @@ export function ComputedRulesManager({ api }: { api: any }) {
         <span dangerouslySetInnerHTML={{ __html: t('Cột computed là <b>field thật</b> (số / chữ / ngày / boolean) server tự tính lại khi dữ liệu liên quan đổi (cùng dòng, gộp quan hệ, kéo quan hệ — mọi độ sâu). Phụ thuộc tự phát hiện từ công thức. Lưu là tự tính lại dòng cũ + đồng bộ về sau.') }} />
       </Typography.Paragraph>
 
-      <SettingCard style={{ marginBottom: 16, padding: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)', fontWeight: 600 }}>
-          <PartitionOutlined /> {t('Sơ đồ phụ thuộc (DAG)')}
-          <Hint tip={t('Node = cột computed, xếp theo tầng topo (nguồn trái → kết quả phải). Mũi tên: nguồn → cột được tính. Rê chuột lên node để làm nổi bật chuỗi & xem công thức. Lọc theo bảng khi nhiều cột.')} />
-        </div>
-        <div style={{ padding: 12 }}><Dag nodes={graph.nodes} edges={graph.edges} focus={focusReq} /></div>
-      </SettingCard>
+      <div ref={dagSectionRef} style={{ scrollMarginTop: 12 }}>
+        <SettingCard style={{ marginBottom: 16, padding: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--colorBorderSecondary, #f0f0f0)', fontWeight: 600 }}>
+            <PartitionOutlined /> {t('Sơ đồ phụ thuộc (DAG)')}
+            <Hint tip={t('Node = cột computed, xếp theo tầng topo (nguồn trái → kết quả phải). Mũi tên: nguồn → cột được tính. Rê chuột lên node để làm nổi bật chuỗi & xem công thức. Lọc theo bảng khi nhiều cột.')} />
+          </div>
+          <div style={{ padding: 12 }}><Dag nodes={graph.nodes} edges={graph.edges} focus={focusReq} /></div>
+        </SettingCard>
+      </div>
 
       <Space style={{ marginBottom: 8 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setModal({ collectionName: '', targetField: '', formula: '', runOn: 'both', onError: 'null', enabled: true, dataSourceKey: 'main' })}>{t('Thêm công thức')}</Button>
