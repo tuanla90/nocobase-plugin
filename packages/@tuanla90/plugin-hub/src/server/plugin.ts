@@ -77,17 +77,19 @@ export class PluginPluginHubServer extends Plugin {
         getConfig: this.getConfig,
         saveConfig: this.saveConfig,
         check: this.check,
-        // NOTE: handler methods must NOT be named install/enable/update/upgrade — those collide with
-        // the Plugin lifecycle methods (Plugin.install() etc.), which NocoBase calls with no ctx.
+        // NOTE (2 traps): (1) handler METHODS must NOT be named install/enable/update/upgrade — they collide
+        // with the Plugin lifecycle methods (Plugin.install() etc.) NocoBase calls with no ctx; (2) the ACTION
+        // name 'update' is a RESERVED resourcer action → NocoBase auto-enforces `filterByTk` on it ("to do
+        // update action, filter or filterByTk is required"), rejecting our handler. So expose it as 'updatePlugin'.
         install: this.installAction,
         enable: this.enableAction,
-        update: this.updateAction,
+        updatePlugin: this.updateAction,
       },
-      only: ['getConfig', 'saveConfig', 'check', 'install', 'enable', 'update'],
+      only: ['getConfig', 'saveConfig', 'check', 'install', 'enable', 'updatePlugin'],
     });
     // System collection isn't covered by the admin role strategy → grant explicitly. Reads are for any
     // logged-in user; mutating actions additionally require the `root` role (checked in-handler).
-    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'enable', 'update'], 'loggedIn');
+    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'enable', 'updatePlugin'], 'loggedIn');
 
     // Weekly NOTIFY check (never auto-applies). Start after the app is up.
     this.app.on('afterStart', () => {

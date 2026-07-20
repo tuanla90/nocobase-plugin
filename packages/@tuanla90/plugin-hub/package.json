@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Trung tâm Plugin",
   "description": "Install and update your @tuanla90 plugins from one place. Point it at a manifest URL; it lists every plugin with its installed vs available version, installs/updates any (or all) from the manifest URLs — driving NocoBase's own plugin manager, no browser .tgz upload — and checks weekly for updates, notifying you (never auto-applies).",
   "description.vi-VN": "Cài và cập nhật các plugin @tuanla90 từ một chỗ. Trỏ tới một manifest URL; nó liệt kê mọi plugin kèm bản đang cài vs bản mới nhất, cài/cập nhật từng cái (hoặc tất cả) từ URL trong manifest — dùng chính plugin manager của NocoBase, khỏi upload .tgz qua trình duyệt — và kiểm tra cập nhật hàng tuần, chỉ báo (không tự động áp dụng).",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

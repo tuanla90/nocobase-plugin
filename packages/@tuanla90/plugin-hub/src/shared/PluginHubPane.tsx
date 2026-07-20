@@ -119,7 +119,7 @@ export function PluginHubPane({ api }: { api: any }) {
 
   const onInstall = (it: Item) => runOp(t('Installed — now Enable it'), it.packageName, 'ptdlPluginHub:install', { url: it.url });
   const onEnable = (it: Item) => runOp(t('Enabled'), it.packageName, 'ptdlPluginHub:enable', { packageName: it.packageName });
-  const onUpdate = (it: Item) => runOp(t('Updated'), it.packageName, 'ptdlPluginHub:update', { url: it.url });
+  const onUpdate = (it: Item) => runOp(t('Updated'), it.packageName, 'ptdlPluginHub:updatePlugin', { url: it.url });
 
   const onUpdateAll = async () => {
     const todo = (items || []).filter((i) => i.status === 'update');
@@ -129,7 +129,7 @@ export function PluginHubPane({ api }: { api: any }) {
       for (let i = 0; i < todo.length; i++) {
         setProgress(`${t('Updating')} ${i + 1}/${todo.length}: ${todo[i].displayName}`);
         try {
-          const res = await req('ptdlPluginHub:update', { url: todo[i].url });
+          const res = await req('ptdlPluginHub:updatePlugin', { url: todo[i].url });
           if (res?.ok) await waitAppReady();
         } catch { /* keep going */ }
       }
@@ -151,7 +151,7 @@ export function PluginHubPane({ api }: { api: any }) {
         const verb = it.status === 'not-installed' ? t('Installing') : it.status === 'disabled' ? t('Enabling') : t('Updating');
         setProgress(`${verb} ${i + 1}/${todo.length}: ${it.displayName}`);
         try {
-          const url = it.status === 'disabled' ? 'ptdlPluginHub:enable' : it.status === 'update' ? 'ptdlPluginHub:update' : 'ptdlPluginHub:install';
+          const url = it.status === 'disabled' ? 'ptdlPluginHub:enable' : it.status === 'update' ? 'ptdlPluginHub:updatePlugin' : 'ptdlPluginHub:install';
           const data = it.status === 'disabled' ? { packageName: it.packageName } : { url: it.url };
           const res = await req(url, data);
           if (res?.ok) await waitAppReady();
