@@ -6,13 +6,13 @@ cd "$ROOT"
 # silently diverge on shared logic. Fails the build if they do — see checks/quickview-sync.mjs.
 node "$ROOT/checks/quickview-sync.mjs"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-app-builder"
+PKG="@tuanla90/plugin-app-builder"
 PKGDIR="$ROOT/packages/plugins/$PKG"
 
 # Sync src + the FULL package.json + root lane markers from the workspace (source of truth). Like
-# instant-create-page, this plugin imports NOTHING from @ptdl/shared (appSpec.ts is self-contained; the
+# instant-create-page, this plugin imports NOTHING from @tuanla90/shared (appSpec.ts is self-contained; the
 # page tier reuses flowEngine at runtime), so there is no shared/@formily bundling machinery to set up.
-SRC="$ROOT/../packages/@ptdl/plugin-app-builder"
+SRC="$ROOT/../packages/@tuanla90/plugin-app-builder"
 rm -rf "$PKGDIR"; mkdir -p "$PKGDIR"
 cp -r "$SRC/src" "$PKGDIR/src"; echo "synced src <- $SRC"
 cp "$SRC/package.json" "$PKGDIR/package.json"; echo "synced package.json <- $SRC"

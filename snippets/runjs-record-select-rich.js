@@ -80,7 +80,7 @@ function RichAssociationSelect() {
   }, []);
 
   // Icon lucide cho trạng thái active — load qua CDN (RunJS không đọc được registry icon nội bộ, xem
-  // docs/ICON-ARCHITECTURE.md). Version khớp lucide-react mà @ptdl/plugin-custom-icons pin (0.469.0).
+  // docs/ICON-ARCHITECTURE.md). Version khớp lucide-react mà @tuanla90/plugin-custom-icons pin (0.469.0).
   useEffect(() => {
     if (!ACTIVE_FIELD) return;
     let cancelled = false;

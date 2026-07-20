@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /*
- * publish-ghp.cjs — Publish the @ptdl plugin tarballs to GitHub Packages under
+ * publish-ghp.cjs — Publish the @tuanla90 plugin tarballs to GitHub Packages under
  * the @tuanla90 scope, WITHOUT touching source, recipes or the build.
  *
  * Why a rewrite step? GitHub Packages requires the npm scope to equal the GitHub
- * owner. `@ptdl` is taken by someone else, so packages must ship as `@tuanla90/*`.
+ * owner. `@tuanla90` is taken by someone else, so packages must ship as `@tuanla90/*`.
  * Instead of renaming 31 packages + 31 recipes (name==folder is assumed all over
- * the build), we keep the workspace as `@ptdl` and only rewrite the name INSIDE
+ * the build), we keep the workspace as `@tuanla90` and only rewrite the name INSIDE
  * each .tgz at publish time. Same published result, zero build risk.
  *
  * Usage (run from the repo root; the actual token stays in YOUR shell env):
@@ -16,7 +16,7 @@
  *   # publish ONE plugin (recommended first real publish, to validate the token):
  *   GITHUB_TOKEN=ghp_xxx node build-env/publish-ghp.cjs field-order
  *
- *   # publish everything in latest/@ptdl:
+ *   # publish everything in latest/@tuanla90:
  *   GITHUB_TOKEN=ghp_xxx node build-env/publish-ghp.cjs
  *
  * Env:
@@ -24,9 +24,9 @@
  *                 (+ read:packages) owned by GitHub user `tuanla90`.
  *   DRY_RUN=1     do everything except `npm publish`.
  *   GHP_REGISTRY  default https://npm.pkg.github.com
- *   FROM_SCOPE    default @ptdl        (scope inside your tarballs)
+ *   FROM_SCOPE    default @tuanla90        (scope inside your tarballs)
  *   TO_SCOPE      default @tuanla90    (scope to publish under = your GitHub login)
- *   SRC_DIR       default <repo>/latest/@ptdl
+ *   SRC_DIR       default <repo>/latest/@tuanla90
  *
  * Notes:
  *   - GitHub Packages (like npmjs) refuses to overwrite an already-published
@@ -46,10 +46,10 @@ const REPO = path.resolve(BUILD_ENV, '..');
 const tar = require(path.join(BUILD_ENV, 'node_modules', 'tar'));
 
 const REGISTRY = process.env.GHP_REGISTRY || 'https://npm.pkg.github.com';
-const FROM = process.env.FROM_SCOPE || '@ptdl';
+const FROM = process.env.FROM_SCOPE || '@tuanla90';
 const TO = process.env.TO_SCOPE || '@tuanla90';
 const DRY = process.env.DRY_RUN === '1' || process.argv.includes('--dry-run');
-const SRC_DIR = process.env.SRC_DIR || path.join(REPO, 'latest', '@ptdl');
+const SRC_DIR = process.env.SRC_DIR || path.join(REPO, 'latest', '@tuanla90');
 const filter = process.argv.slice(2).find((a) => !a.startsWith('-')) || '';
 const TOKEN_PLACEHOLDER = 'PASTE_YOUR_GITHUB_TOKEN_HERE';
 let TOKEN = process.env.GITHUB_TOKEN || '';

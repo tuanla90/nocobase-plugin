@@ -3,13 +3,13 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-custom-header"
+PKG="@tuanla90/plugin-custom-header"
 
 echo "node: $(node -v)"
 
 # Sync source from the canonical workspace into build-env's build tree.
-SRC="$ROOT/../packages/@ptdl/plugin-custom-header"
-DST="$ROOT/packages/plugins/@ptdl/plugin-custom-header"
+SRC="$ROOT/../packages/@tuanla90/plugin-custom-header"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-custom-header"
 rm -rf "$DST"
 mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"

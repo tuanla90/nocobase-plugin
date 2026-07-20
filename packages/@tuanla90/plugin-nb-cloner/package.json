@@ -1,0 +1,37 @@
+{
+  "name": "@tuanla90/plugin-nb-cloner",
+  "displayName": "App Cloner (export / import)",
+  "displayName.vi-VN": "Nhân bản ứng dụng",
+  "description": "Clone a whole self-built NocoBase app between installs. Exports the schema (collections + fields + categories), the UI (uiSchemas + flow-engine models + desktop/mobile menus + block templates), roles & permissions, optional workflow definitions and hand-picked business data into a single compressed .nbc.gz bundle, then UPSERT-imports it into another SAME-VERSION app without deleting existing data. Classifies every collection (your data / plugin / system / deleted) with a filter so you pick only your real tables, plus a per-collection data picker and an import step report. PostgreSQL target.",
+  "description.vi-VN": "Nhân bản toàn bộ một app NocoBase tự xây giữa các bản cài. Xuất cấu trúc (collections + fields + nhóm bảng), giao diện (uiSchemas + flow-engine models + menu desktop/mobile + block template), phân quyền, định nghĩa workflow (tuỳ chọn) và dữ liệu nghiệp vụ được chọn vào một file nén .nbc.gz duy nhất, rồi UPSERT sang một app CÙNG PHIÊN BẢN mà không xoá dữ liệu đang có. Phân loại từng bảng (của bạn / plugin / hệ thống / đã xóa) kèm bộ lọc để chỉ chọn bảng thật của bạn, có bộ chọn dữ liệu theo từng bảng và báo cáo từng bước import. Đích PostgreSQL.",
+  "version": "1.9.3",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@tuanla90/shared": "*",
+    "@nocobase/actions": "2.x",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "2.x",
+    "@nocobase/server": "2.x",
+    "@ant-design/icons": "5.x",
+    "antd": "5.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "1.x || 2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "antd": "5.x"
+  },
+  "keywords": [
+    "nocobase",
+    "clone",
+    "export",
+    "import",
+    "migration",
+    "backup"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#nb-cloner"
+}

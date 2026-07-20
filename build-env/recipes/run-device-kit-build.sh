@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-device-kit"
+PKG="@tuanla90/plugin-device-kit"
 
 echo "node: $(node -v)"
 
-SRC="$ROOT/../packages/@ptdl/plugin-device-kit"
-DST="$ROOT/packages/plugins/@ptdl/plugin-device-kit"
+SRC="$ROOT/../packages/@tuanla90/plugin-device-kit"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-device-kit"
 
 rm -rf "$DST"
 mkdir -p "$DST"
@@ -24,7 +24,7 @@ mkstub() {
   printf '{"name":"%s","version":"%s"}\n' "$name" "$ver" > "$NM/$name/package.json"
   echo "stub      : $name@$ver"
 }
-# Framework deps are externalized at build time; @ptdl/shared (inlined) pulls antd/formily/nocobase,
+# Framework deps are externalized at build time; @tuanla90/shared (inlined) pulls antd/formily/nocobase,
 # so those must resolve during the build too.
 mkstub react 18.3.1
 mkstub react-dom 18.3.1

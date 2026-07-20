@@ -1,6 +1,6 @@
 # BRD v2 — Spreadsheet View cho NocoBase
 
-> Package: `@ptdl/plugin-spreadsheet-view` · Version khởi điểm `0.1.0` · Target NocoBase **2.1.19**
+> Package: `@tuanla90/plugin-spreadsheet-view` · Version khởi điểm `0.1.0` · Target NocoBase **2.1.19**
 > Là plugin **#2** trong [PLAN.md](../PLAN.md). Bản v2 này thay BRD gốc, đã hiệu chỉnh theo
 > kiểm chứng source NocoBase 2.1.19 thực tế (nb-local) ngày 2026-07-08.
 
@@ -28,13 +28,13 @@ cùng lúc, sửa tại chỗ. Mục tiêu: *"Excel-like data entry trên nền 
 | # | Quyết định | Căn cứ |
 |---|-----------|--------|
 | D1 | **Là BLOCK, không phải "View Type"** — NocoBase không có registry view cấp collection. "1 collection nhiều view" = đặt nhiều block instance, mỗi block tự mang config riêng → multi-view có sẵn miễn phí. | Kiến trúc uiSchema/block của NocoBase |
-| D2 | **Target chính: modern client `/v/`** — đăng ký qua FlowEngine `BlockModel` (lane `client-v2`, như `plugin-block-list`). Toàn bộ hệ @ptdl đã chuẩn hoá chạy /v/. Nhớ **marker `client-v2.js` ở gốc package** (xem memory `nocobase-v2-client-marker`). Lane legacy: làm sau nếu cần. | plugin-block-list dist/client-v2 |
+| D2 | **Target chính: modern client `/v/`** — đăng ký qua FlowEngine `BlockModel` (lane `client-v2`, như `plugin-block-list`). Toàn bộ hệ @tuanla90 đã chuẩn hoá chạy /v/. Nhớ **marker `client-v2.js` ở gốc package** (xem memory `nocobase-v2-client-marker`). Lane legacy: làm sau nếu cần. | plugin-block-list dist/client-v2 |
 | D3 | **Config view lưu trong block props** (`x-decorator-props` / props của BlockModel): danh sách cột, width, editable, formula, formatting rules. Không tạo collection riêng cho config. | Chuẩn chung các block core |
 | D4 | **API action-style, KHÔNG REST**: `POST /api/<collection>:update?filterByTk=<id>`, `:create`, `:destroy`. Core **không có bulk create per-row** (đã soi `@nocobase/actions`: chỉ create/update/destroy/list/get/firstOrCreate/updateOrCreate/toggle/add/remove/set; `plugin-action-bulk-update` chỉ áp *cùng 1 giá trị*). | @nocobase/actions/lib/actions |
 | D5 | **v1 client-only**: commit tuần tự per-row (giới hạn paste, xem §5). **v1.1 thêm server action** `spreadsheet:bulkSync` gom create/update/destroy trong **1 transaction** — đây là điểm PLAN.md đánh dấu ⚠️. | Không có bulk API core |
 | D6 | **Quyền derive từ ACL core, KHÔNG tự chế role**: list response đã kèm `allowedActions` per-record (middleware `with-acl-meta` của plugin-acl) + field-level permission → quyết định cell nào editable, nút xoá hiện không. Quyền sửa formula/formatting = quyền **UI configuration** sẵn có. Enforcement thật nằm ở server core; client chỉ phản chiếu để UX đúng. | plugin-acl with-acl-meta.js |
 | D7 | **AG Grid Community** (MIT) — bundle thật `ag-grid-community` + `ag-grid-react` (tgz nặng, như echarts-pro). Các tính năng Enterprise **phải tự code**: clipboard range, fill-down, range selection. Row model: **Client-Side** (dataset nhỏ) / **Infinite** (lớn) — Viewport/Server-Side Row Model là Enterprise, không dùng. `undoRedoCellEditing` là Community — dùng được. | Bảng license AG Grid |
-| D8 | **Tái dùng, không implement lại**: renderer giàu ← **#3 RunJS cell**; formatting có điều kiện ← **`@ptdl/plugin-conditional-format`** (đang chạy); engine biểu thức ← **mathjs chung với #6/#7**. Tránh 2 hệ config formatting song song trên cùng instance. | PLAN.md #2/#3/#7 |
+| D8 | **Tái dùng, không implement lại**: renderer giàu ← **#3 RunJS cell**; formatting có điều kiện ← **`@tuanla90/plugin-conditional-format`** (đang chạy); engine biểu thức ← **mathjs chung với #6/#7**. Tránh 2 hệ config formatting song song trên cùng instance. | PLAN.md #2/#3/#7 |
 
 ## 4. Giới hạn cứng (chấp nhận, KHÔNG làm trong scope)
 
@@ -113,7 +113,7 @@ Sửa nhiều cell → Dirty Row State (client) → Commit → API
 
 ## 8. Conditional formatting & rich renderer
 
-- **Không implement mới** — tích hợp `@ptdl/plugin-conditional-format` làm nguồn rule
+- **Không implement mới** — tích hợp `@tuanla90/plugin-conditional-format` làm nguồn rule
   (màu nền/chữ/icon theo điều kiện, vd `stock == 0 → nền đỏ`). Adapter đọc rule và áp vào
   `cellStyle`/`cellClass` của AG Grid.
 - Renderer giàu (progress, star, badge, mini-bar) → dùng renderer descriptor của **#3 RunJS

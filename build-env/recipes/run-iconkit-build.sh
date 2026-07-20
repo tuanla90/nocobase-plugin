@@ -3,7 +3,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-icon-kit"
+PKG="@tuanla90/plugin-icon-kit"
 
 echo "node: $(node -v)"
 

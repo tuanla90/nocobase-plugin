@@ -12,7 +12,7 @@ Verified against: NocoBase **2.1.19** host (`nb-local`), lucide-react **1.23.0**
 
 ## 0. The rule (TL;DR)
 
-> **Exactly ONE plugin (`@ptdl/plugin-icon-kit`, the "provider") bundles the icon library
+> **Exactly ONE plugin (`@tuanla90/plugin-icon-kit`, the "provider") bundles the icon library
 > (lucide-react) and registers every icon into NocoBase's shared icon registry.
 > EVERY other plugin is a "consumer": it renders/picks icons through that registry and
 > NEVER imports lucide-react (or any icon library) itself.**
@@ -36,7 +36,7 @@ Measured in this workspace:
 | Plugin | Bundles lucide? | Built client bundle |
 |---|---|---|
 | Old "merged" plugin (icons + conditional-format together) | yes | **~745 KB** |
-| `@ptdl/plugin-conditional-format` after the split (consumer) | **no** | **~20 KB** |
+| `@tuanla90/plugin-conditional-format` after the split (consumer) | **no** | **~20 KB** |
 
 So with N icon-using plugins each importing lucide, the browser downloads **N × ~168 KB gzip** of the
 *same* library. The provider/consumer pattern collapses that to **1 copy total**.
@@ -48,7 +48,7 @@ So with N icon-using plugins each importing lucide, the browser downloads **N ×
 NocoBase has a process-wide icon registry. The provider fills it once; consumers read from it.
 
 ```
-@ptdl/plugin-icon-kit (PROVIDER)                     any CONSUMER plugin
+@tuanla90/plugin-icon-kit (PROVIDER)                     any CONSUMER plugin
   bundles lucide-react (~745 KB, once)                 bundles NO icon lib (~20 KB)
   registerIcon('lucide-check', <comp>)  ─────►  icons: Map<string, Component>  ◄─────  reads keys + renders
                                                    ├─ antd icons (core, ALWAYS present)
@@ -111,7 +111,7 @@ icon is Lucide or Ant Design.
 ## 5. Recipe — writing a CONSUMER plugin (the common case)
 
 > Canonical example to copy from:
-> `build-env/packages/plugins/@ptdl/plugin-conditional-format/src/shared/conditionalModel.tsx`
+> `build-env/packages/plugins/@tuanla90/plugin-conditional-format/src/shared/conditionalModel.tsx`
 
 ### 5a. Render an icon by key — zero icon-lib import
 
@@ -197,7 +197,7 @@ mkstub "@nocobase/flow-engine" 2.1.19
 mkstub "@nocobase/server" 2.1.19
 mkstub "@formily/antd-v5" 1.2.3   # only if you use ArrayTable / other @formily/antd-v5 components
 mkstub "@formily/react" 2.3.7     # only if you use observer / useForm / useField
-node "$NM/@nocobase/build/bin/nocobase-build.js" "@ptdl/<plugin>" --tar --no-dts
+node "$NM/@nocobase/build/bin/nocobase-build.js" "@tuanla90/<plugin>" --tar --no-dts
 ```
 
 `package.json` should have **empty `dependencies`** (nothing to bundle). If you ever add a real
@@ -229,7 +229,7 @@ Register `RegistryIconPicker` into the flow-settings scope so a uiSchema can ref
 
 ## 6. The PROVIDER (reference only — you rarely touch this)
 
-> Canonical file: `build-env/packages/plugins/@ptdl/plugin-icon-kit/src/shared/iconKit.tsx`
+> Canonical file: `build-env/packages/plugins/@tuanla90/plugin-icon-kit/src/shared/iconKit.tsx`
 
 It bundles lucide-react and registers the set. The essence:
 
@@ -259,7 +259,7 @@ extend the set you edit only this one plugin and rebuild it; every consumer bene
   `antd`, `@ant-design/icons`. `@nocobase/build` externalizes these by scope automatically.
 - **Bundled (adds to your size):** anything else you `import` (lucide-react, markdown-it, …). This is
   exactly why only ONE plugin should own lucide.
-- **Cross-plugin imports don't help:** `import … from '@ptdl/plugin-icon-kit'` is NOT external, so it
+- **Cross-plugin imports don't help:** `import … from '@tuanla90/plugin-icon-kit'` is NOT external, so it
   would bundle that code into your plugin. Share via the **runtime registry**, not imports.
 - **Root stubs:** the build only emits a `client`/`client-v2` lane if a root `client.js`/`client-v2.js`
   exists in source (`module.exports = require('./dist/<lane>/index.js')` + a `.d.ts`). `--tar` may strip
@@ -302,8 +302,8 @@ extend the set you edit only this one plugin and rebuild it; every consumer bene
 
 ## 10. Canonical examples & how to verify the API
 
-- **Provider:** `build-env/packages/plugins/@ptdl/plugin-icon-kit/src/shared/iconKit.tsx`
-- **Consumer:** `build-env/packages/plugins/@ptdl/plugin-conditional-format/src/shared/conditionalModel.tsx`
+- **Provider:** `build-env/packages/plugins/@tuanla90/plugin-icon-kit/src/shared/iconKit.tsx`
+- **Consumer:** `build-env/packages/plugins/@tuanla90/plugin-conditional-format/src/shared/conditionalModel.tsx`
   and its `src/client(-v2)/index.tsx` (shows the `Icon` + `icons` injection).
 
 Before trusting the API on a new host version, verify it still exists:

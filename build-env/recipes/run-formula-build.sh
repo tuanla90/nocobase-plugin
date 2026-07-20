@@ -3,14 +3,17 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-formula"
+PKG="@tuanla90/plugin-formula"
 
-# Sync src từ workspace packages/@ptdl (nguồn chân lý) — trước đây build bản stale trong build-env.
-SRC="$ROOT/../packages/@ptdl/plugin-formula"
-DST="$ROOT/packages/plugins/@ptdl/plugin-formula"
+# Sync src từ workspace packages/@tuanla90 (nguồn chân lý) — trước đây build bản stale trong build-env.
+SRC="$ROOT/../packages/@tuanla90/plugin-formula"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-formula"
+mkdir -p "$DST"
 if [ -d "$SRC/src" ]; then
   rm -rf "$DST/src"
   cp -r "$SRC/src" "$DST/src"
+  cp "$SRC/package.json" "$DST/package.json"
+  cp "$SRC"/*.js "$SRC"/*.d.ts "$DST/" 2>/dev/null || true
   echo "synced src <- $SRC"
 fi
 # Sync version from the workspace package.json into the build-env copy (recipe only syncs `src`,

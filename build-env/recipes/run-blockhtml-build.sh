@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # NOTE (2026-07-10): replaces the stale run-build-block-html.sh, which still invoked
 # nocobase-build on the pre-scope-migration name `@nocobase/plugin-block-custom-html`
-# (source has been `@ptdl/plugin-block-custom-html` since the scope rename) and never
+# (source has been `@tuanla90/plugin-block-custom-html` since the scope rename) and never
 # staged fresh source — it only happened to work while the staged copy was untouched.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-block-custom-html"
-SRC="$ROOT/../packages/@ptdl/plugin-block-custom-html"
-DST="$ROOT/packages/plugins/@ptdl/plugin-block-custom-html"
+PKG="@tuanla90/plugin-block-custom-html"
+SRC="$ROOT/../packages/@tuanla90/plugin-block-custom-html"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-block-custom-html"
 
 echo "node: $(node -v)"
 rm -rf "$DST"; mkdir -p "$DST"

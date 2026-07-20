@@ -1,7 +1,7 @@
 // Sync the "Phiên bản"/"Version" meta line in each plugin README to package.json version.
 const fs = require('fs');
 const path = require('path');
-const base = path.join(process.argv[2], 'packages', '@ptdl');
+const base = path.join(process.argv[2], 'packages', '@tuanla90');
 const changed = [];
 for (const d of fs.readdirSync(base)) {
   if (!d.startsWith('plugin-')) continue;

@@ -59,7 +59,7 @@ async function draw(raw) {
     // Load lucide qua CDN (ctx.requireAsync — UMD). RunJS không truy cập được registry icon nội bộ
     // của @nocobase/client-v2 (xem docs/ICON-ARCHITECTURE.md) nên đây là cách đúng cho RunJS, không phải
     // vi phạm pattern provider/consumer — RunJS không phải "plugin bundle". Version khớp lucide-react mà
-    // @ptdl/plugin-custom-icons (provider icon đang active) pin, để tránh lệch tên icon giữa các version.
+    // @tuanla90/plugin-custom-icons (provider icon đang active) pin, để tránh lệch tên icon giữa các version.
     const lucide = await ctx.requireAsync('lucide@0.469.0/dist/umd/lucide.min.js');
 
     // 'thumbs-up' -> 'ThumbsUp' (key trong lucide.icons là PascalCase)

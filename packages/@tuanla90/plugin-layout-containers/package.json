@@ -1,0 +1,22 @@
+{
+  "name": "@tuanla90/plugin-layout-containers",
+  "displayName": "Layout Containers (Tabs / Collapse)",
+  "displayName.vi-VN": "Khối bố cục (Tabs / Collapse)",
+  "description": "Layout blocks for organizing pages and forms: a Tabs block and a Collapse/Sections block (both nestable, with in-form field-group variants). Also restyles the built-in page/popup tabs — Line, Pill, Segment, Card, Step or Text — with an app-wide, per-theme default.",
+  "version": "0.4.3",
+  "license": "AGPL-3.0",
+  "main": "dist/server/index.js",
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "2.x"
+  },
+  "devDependencies": {
+    "@tuanla90/shared": "*"
+  },
+  "keywords": [
+    "Blocks"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#layout-containers"
+}

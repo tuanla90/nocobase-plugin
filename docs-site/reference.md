@@ -1,6 +1,6 @@
-# Shared functions & helpers (@ptdl) — Reference
+# Shared functions & helpers (@tuanla90) — Reference
 
-> A **reference** page listing every **shared** function/helper across the @ptdl plugins, in 3 families: **Excel-like formulas** (used by *Formula* + *Spreadsheet View*), **Handlebars helpers** (used by *Print Template*), and **HTML-block helpers** (used by *Block: Custom HTML*). The list is generated straight from the code — nothing here is outside the source.
+> A **reference** page listing every **shared** function/helper across the @tuanla90 plugins, in 3 families: **Excel-like formulas** (used by *Formula* + *Spreadsheet View*), **Handlebars helpers** (used by *Print Template*), and **HTML-block helpers** (used by *Block: Custom HTML*). The list is generated straight from the code — nothing here is outside the source.
 
 ## 1. 🧮 Excel-like formulas (Formula DSL) · used by: Formula, Spreadsheet View
 

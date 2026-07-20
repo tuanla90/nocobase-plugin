@@ -1,10 +1,10 @@
-# DEVICE KIT — thiết kế đề xuất `@ptdl/plugin-device-kit`
+# DEVICE KIT — thiết kế đề xuất `@tuanla90/plugin-device-kit`
 
 > **Mục tiêu:** dùng **full power của thiết bị** (điện thoại/tablet chạy NocoBase qua trình duyệt/PWA) cho nhập liệu
 > hiện trường kiểu AppSheet: **quét QR/barcode · chụp ảnh tại chỗ · định vị GPS · chữ ký · ghi âm**.
 > Mở rộng từ PLAN.md #5 (QR Scanner) thành 1 plugin "Device Kit" duy nhất.
 > Trạng thái: 🔨 **P1a ĐÃ BUILD v0.1.0** (2026-07-16) — camera+watermark+metadata + field GPS `ptdlLocation`; tgz
-> `latest/@ptdl/plugin-device-kit-0.1.0.tgz` sẵn sàng upload qua Plugin Manager UI; **CHỜ user test trên điện thoại
+> `latest/@tuanla90/plugin-device-kit-0.1.0.tgz` sẵn sàng upload qua Plugin Manager UI; **CHỜ user test trên điện thoại
 > thật qua Railway**. Target NocoBase 2.1.19, lane chính `/v/`. Chi tiết cài + tính năng: plugin README.md.
 >
 > **Quyết định user (2026-07-16):**
@@ -24,7 +24,7 @@
 | **`plugin-block-workbench`** | Action "Scan QR code" trong block Action panel, **cả lane client-v2** (`ActionPanelScanActionModel`, `components/qrcode-scanner/useScanner`). Lib = **`html5-qrcode` ^2.3.8** (bundle sẵn zxing). Hành vi: quét → coi kết quả là URL → **navigate**. | **Tham khảo pattern** (viewfinder + scan file ảnh). KHÔNG tái dùng trực tiếp được cho "quét → điền field / lookup record" — nó chỉ điều hướng, và scoped trong Action panel. Chọn cùng lib `html5-qrcode` cho đồng bộ. |
 | **`plugin-map`** | Field interface `point/lineString/polygon/circle` + client-v2 models đầy đủ (`PointFieldModel`, `DisplayPointFieldModel`…), có gọi `getCurrentPosition` trong picker. Lane v2 đăng ký qua `app.addFieldInterfaces(...)` + `app.addFieldInterfaceGroups({map:{label:'Map-based geometry',order:300}})` → field point CÓ trong Add field nhưng nấp dưới group đó. Provider = **AMap (Gaode) + Google** — cả hai **cần API key**. | **KHÔNG dùng (user chốt).** Picker/display đòi key, UX không ưng → Device Kit **tự làm field type `ptdlLocation`** (xem §2C). Chỉ mượn plugin-map làm **mẫu code** cho việc đăng ký field interface + group riêng ở lane v2. |
 | **`plugin-file-manager`** | Client-v2 có **`UploadFieldModel extends FieldModel`** (có `set customRequest(fn)`) + `uploadFieldUtils`. API upload `attachments:create` (branding đã dùng để upload logo). | **Subclass `UploadFieldModel`** cho widget "Chụp ảnh" (pattern y hệt subtable-pro subclass `SubTableFieldModel`) — giữ nguyên plumbing value/submit/preview native, chỉ thêm nguồn ảnh = camera. |
-| **`plugin-mobile`** | **Deprecated ở 2.x** ("replaced by the new ui-layout plugin, still under development"). | Bỏ qua. Mobile của mình = **`/v/` responsive + `@ptdl/plugin-pwa`** (đã live 0.4.1) — đúng hướng đang đi. |
+| **`plugin-mobile`** | **Deprecated ở 2.x** ("replaced by the new ui-layout plugin, still under development"). | Bỏ qua. Mobile của mình = **`/v/` responsive + `@tuanla90/plugin-pwa`** (đã live 0.4.1) — đúng hướng đang đi. |
 | **antd 5** | Có sẵn component **`<QRCode>`** (@rc-component/qrcode). | **Sinh/hiển thị QR = 0 KB bundle** — widget "QR của bản ghi" gần như miễn phí. |
 
 ### 1.2 Tài sản workspace ăn khớp
@@ -36,7 +36,7 @@
 - **`plugin-ai-column` 0.3.x** — đọc ảnh/audio → field (multi-row extract, STT) → **chụp hoá đơn tại chỗ → AI bóc thành dòng**; ghi âm → STT.
 - **`plugin-print-template`** — in tem/nhãn: sinh QR per-record (antd QRCode) → in → dán → quét lại = **khép vòng asset/kho**.
 - **`plugin-formula` window/scan mode** — quét kho vào `stock_movements` → tồn kho/giá vốn tự chạy.
-- **`@ptdl/shared` + settings-kit + i18n R1/R2** — bắt buộc dùng như mọi plugin (bilingual en+vi, SettingsGrid/CollapsibleSection/ColorField/FieldPickerCascader).
+- **`@tuanla90/shared` + settings-kit + i18n R1/R2** — bắt buộc dùng như mọi plugin (bilingual en+vi, SettingsGrid/CollapsibleSection/ColorField/FieldPickerCascader).
 
 ### 1.3 Ràng buộc nền tảng (quan trọng — đọc trước khi code)
 
@@ -50,7 +50,7 @@
 
 ---
 
-## 2. Giải pháp đề xuất — 1 plugin `@ptdl/plugin-device-kit`
+## 2. Giải pháp đề xuất — 1 plugin `@tuanla90/plugin-device-kit`
 
 **Vì sao 1 plugin:** cùng nhóm "device capabilities", dùng chung modal camera + permission UX + i18n; registry đang chuộng gộp (menu-enhancements, layout-containers). Tên hiển thị: **"Device Kit (QR · Camera · GPS)" / vi "Thiết bị: quét mã · chụp ảnh · định vị"**. Client-only (server lane no-op) — mọi ghi dữ liệu qua API sẵn có (`attachments:create`, `resource.update`).
 
@@ -67,7 +67,7 @@
   3. Không thấy → tuỳ chọn "mở form tạo mới, điền sẵn mã vào field X".
 - **Continuous mode**: không đóng modal, dedupe cùng mã trong 2s, đếm số lần quét — dành cho kiểm kho/soát vé.
 
-**A3. Display widget "QR của bản ghi"** (P2, gần free) — bind display các field text: render antd `<QRCode>` từ template token `{{field}}` (chuẩn @ptdl, vd `{{code}}` hoặc URL deep-link `/v/...?filterByTk={{id}}`), size/level config. Kết hợp print-template để in tem.
+**A3. Display widget "QR của bản ghi"** (P2, gần free) — bind display các field text: render antd `<QRCode>` từ template token `{{field}}` (chuẩn @tuanla90, vd `{{code}}` hoặc URL deep-link `/v/...?filterByTk={{id}}`), size/level config. Kết hợp print-template để in tem.
 
 **Lib:** `html5-qrcode` ^2.3.8 (đúng version NocoBase pin) — **dep thật, bundle** (~320KB min, tương tự tiền lệ ag-grid/echarts), lazy-load khi mở modal lần đầu (dynamic import → không phình first-load).
 
@@ -114,7 +114,7 @@
 ## 3. Kiến trúc kỹ thuật (theo pattern nhà)
 
 ```
-@ptdl/plugin-device-kit
+@tuanla90/plugin-device-kit
  ├─ src/shared/
  │   ├─ scanModal.tsx        # modal viewfinder html5-qrcode (lazy import), dùng chung A1/A2
  │   ├─ cameraModal.tsx      # modal getUserMedia + canvas + watermark + nén, dùng chung B/C2
@@ -124,14 +124,14 @@
  │   ├─ checkinAction.tsx    # C2  action model (v2) — memory reference_nocobase_v2_action_models
  │   ├─ scanInputModel.tsx   # A1  PtdlScanInputFieldModel extends FieldModel (P1b)
  │   ├─ scanLookupAction.tsx # A2  (P1b)
- │   └─ i18n.ts              # NS @ptdl/plugin-device-kit/client, en+vi (R1)
+ │   └─ i18n.ts              # NS @tuanla90/plugin-device-kit/client, en+vi (R1)
  ├─ src/client/ + src/client-v2/   # registerAll per-lane (pattern field-enhancements registerAllFieldModels)
  └─ src/server/               # no-op Plugin (main entry)
 ```
 
 - **Bind interface:** camera/scan = `bindModelToInterface` `isDefault:false` trên interface có sẵn (attachment/input…) — user tự chọn "Field component" (như Button group/Value tag). Model resolve base qua `flowEngine.getModelClass` (UploadFieldModel của file-manager — nhớ bẫy build-env=stubs, resolve runtime).
 - **Field interface mới (`ptdlLocation`):** `app.addFieldInterfaces` + `addFieldInterfaceGroups` (mẫu = plugin-map client-v2); dbType `json` → server core xử lý native, plugin vẫn client-only; model editable/display của mình `isDefault:true` cho interface này.
-- **Config dialogs:** settings-kit (SettingsGrid/CollapsibleSection/SEG_PROPS + live preview); field mapping dùng `FieldPickerCascader`; template token `{{field}}` chuẩn @ptdl.
+- **Config dialogs:** settings-kit (SettingsGrid/CollapsibleSection/SEG_PROPS + live preview); field mapping dùng `FieldPickerCascader`; template token `{{field}}` chuẩn @tuanla90.
 - **Build:** recipe mới `run-device-kit-build.sh`; `html5-qrcode` cài THẬT trong build-env (dep bundle như ag-grid); antd QRCode = external sẵn. **add-markers bắt buộc** (bẫy cũ). Deploy nb-local như thường lệ.
 - **ACL/an toàn:** widget chỉ ghi qua resource API hiện có → kế thừa ACL server, không mở endpoint mới.
 
@@ -150,7 +150,7 @@
 | **P2 (GAP còn lại)** | A2 mở-record/tạo-mới (hiện mới cart/filter/toast) · NFC/Web-Share/offline · (responsive-table = plugin RIÊNG, không thuộc device-kit). | cắt nhỏ / tách plugin |
 | **Tách khỏi device-kit** | **IP whitelist/blacklist** (server đọc `request.ip`) → feature area riêng (không thuộc device-kit). | — |
 
-**Rủi ro chính:** (1) iOS getUserMedia quirks (gesture, orientation, front/back switch) — dồn vào P0 spike; (2) GPS trong nhà accuracy kém (±100m+) → ngưỡng màu + cho nhập tay, đừng hard-block; (3) bundle html5-qrcode (P1b) — tiền lệ ag-grid, lazy-load; (4) **deploy lên Railway** — quy trình cài @ptdl tgz lên instance Railway (volume `storage/plugins` / custom image) cần chốt trước khi ship P1a.
+**Rủi ro chính:** (1) iOS getUserMedia quirks (gesture, orientation, front/back switch) — dồn vào P0 spike; (2) GPS trong nhà accuracy kém (±100m+) → ngưỡng màu + cho nhập tay, đừng hard-block; (3) bundle html5-qrcode (P1b) — tiền lệ ag-grid, lazy-load; (4) **deploy lên Railway** — quy trình cài @tuanla90 tgz lên instance Railway (volume `storage/plugins` / custom image) cần chốt trước khi ship P1a.
 
 ## 5. Quyết định đã chốt (2026-07-16) + việc còn mở
 

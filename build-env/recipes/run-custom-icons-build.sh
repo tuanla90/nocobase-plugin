@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Build @ptdl/plugin-custom-icons (Lucide provider + icon-remap, merged) into a tgz.
+# Build @tuanla90/plugin-custom-icons (Lucide provider + icon-remap, merged) into a tgz.
 # lucide-react is NOT stubbed — real dependency, must be bundled.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-custom-icons"
+PKG="@tuanla90/plugin-custom-icons"
 NAME="plugin-custom-icons"
 
-SRC="$ROOT/../packages/@ptdl/$NAME"
-DST="$ROOT/packages/plugins/@ptdl/$NAME"
+SRC="$ROOT/../packages/@tuanla90/$NAME"
+DST="$ROOT/packages/plugins/@tuanla90/$NAME"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"

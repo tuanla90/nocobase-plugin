@@ -1,0 +1,25 @@
+{
+  "name": "@tuanla90/plugin-instant-create-page",
+  "version": "0.1.7",
+  "displayName": "Instant Create Page",
+  "displayName.vi-VN": "Tạo trang nhanh",
+  "description": "One click turns a collection + chosen columns into a ready-to-use /v/ menu page: a Table block plus working View / Edit / Add popups showing those columns. Output is native NocoBase and stays fully editable.",
+  "keywords": [
+    "nocobase"
+  ],
+  "license": "Apache-2.0",
+  "main": "./dist/server/index.js",
+  "devDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  },
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#instant-create-page"
+}

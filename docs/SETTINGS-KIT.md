@@ -1,6 +1,6 @@
-# @ptdl Settings Kit — house style for plugin config dialogs
+# @tuanla90 Settings Kit — house style for plugin config dialogs
 
-Canonical primitives live in **`@ptdl/shared` (`src/settingsKit.tsx`)**, bundled into every plugin (no
+Canonical primitives live in **`@tuanla90/shared` (`src/settingsKit.tsx`)**, bundled into every plugin (no
 runtime dep). Use them so config dialogs look and behave the same across plugins.
 
 ## Two lanes — pick the one your settings live in
@@ -10,7 +10,7 @@ runtime dep). Use them so config dialogs look and behave the same across plugins
 | **What** | flow-engine **model settings** — a `uiSchema` of `fi()` cells inside void containers, driven by `registerFlow` | a `pluginSettingsManager` **page**, or a plain-React editor registered as one `value`/`onChange` component |
 | **Values** | flat in `form.values` (void containers make no data path) | your own `useState` |
 | **Use** | `SettingsGrid` · `fi` · `rx`/`visibleWhen` · `ResetButton` · `PreviewBox` · `CollapsibleSection` · `colorStrip` · `livePreview`/`previewField` · `registerSettingsKit` · `SEG_PROPS` | `SettingRow` · `ControlGrid` · `SettingCard` · `Hint` · `SaveBar` · `PreviewPane` |
-| **Shared by both** | `ColorField`, `RegistryIconPicker`/`IconByKey`, condition kit (`@ptdl/shared/condition`), the field picker | |
+| **Shared by both** | `ColorField`, `RegistryIconPicker`/`IconByKey`, condition kit (`@tuanla90/shared/condition`), the field picker | |
 | **Reference plugin** | `custom-header`, `layout-containers` | `global-search` (`Settings.tsx`) |
 
 The (A) primitives that call `useForm()` — **`fi` / `rx` / `ResetButton`** — do **not** work in lane (B).
@@ -26,7 +26,7 @@ Always use the function form: `'x-reactions': rx(v => !!v.enabled)` or `visibleW
 Register the kit once, then build the schema as **void `CollapsibleSection` (defaultOpen) → void grid → labeled `fi()` cells**, with a live preview pinned first:
 
 ```ts
-import { registerSettingsKit, fi, rx, visibleWhen, colorStrip, livePreview, previewField, SEG_PROPS } from '@ptdl/shared';
+import { registerSettingsKit, fi, rx, visibleWhen, colorStrip, livePreview, previewField, SEG_PROPS } from '@tuanla90/shared';
 
 registerSettingsKit(flowEngine.flowSettings, { MyLeafComponent });   // + SettingsGrid, CollapsibleSection
 
@@ -56,7 +56,7 @@ never a local re-implementation.
 ## (B) Plain-React lane — layout recipe
 
 ```tsx
-import { SettingRow, ControlGrid, SettingCard, Hint, SaveBar, PreviewPane, ColorField } from '@ptdl/shared';
+import { SettingRow, ControlGrid, SettingCard, Hint, SaveBar, PreviewPane, ColorField } from '@tuanla90/shared';
 
 function AppearancePanel({ apiClient }) {
   const [cfg, setCfg] = useState(load);
@@ -86,7 +86,7 @@ set `allowAlpha` only where rgba is meaningful (backgrounds, not text).
 
 ## Not yet in the kit (future consolidation — see SHARED-LIBS-PROPOSAL / HANDOFF)
 
-- **Condition row** — ✅ **done**: `ConditionRow` in `@ptdl/shared/condition` (field Cascader + operator
+- **Condition row** — ✅ **done**: `ConditionRow` in `@tuanla90/shared/condition` (field Cascader + operator
   + `ConditionValueInput` + remove) is the shared row shell, adopted by `menu-enhancements` and
   `conditional-format`. Canonical `path: string[]`; a dot-string caller adapts in `onChange`. Props for
   the divergent bits: `connector`, `renderRemove`, `cascaderWidth`, `emptyLabel`, `placeholder`,

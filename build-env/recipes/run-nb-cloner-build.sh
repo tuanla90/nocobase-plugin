@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Build @ptdl/plugin-nb-cloner (NocoBase app export/import).
+# Build @tuanla90/plugin-nb-cloner (NocoBase app export/import).
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-nb-cloner"
+PKG="@tuanla90/plugin-nb-cloner"
 NAME="plugin-nb-cloner"
 echo "node: $(node -v)"
 
 # Stage source + lane markers from the workspace (source of truth).
-SRC="$ROOT/../packages/@ptdl/$NAME"
-DST="$ROOT/packages/plugins/@ptdl/$NAME"
+SRC="$ROOT/../packages/@tuanla90/$NAME"
+DST="$ROOT/packages/plugins/@tuanla90/$NAME"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
@@ -18,15 +18,15 @@ cp "$SRC/README.md" "$DST/README.md" 2>/dev/null || true
 cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
-# @ptdl/shared is a workspace pkg npm prunes — restore from packages so the build bundles it
+# @tuanla90/shared is a workspace pkg npm prunes — restore from packages so the build bundles it
 # (ConfigContainer + formatNumber; settingsKit pulls lucide-react, which must stay a real package).
-SHARED_SRC="$ROOT/../packages/@ptdl/shared"
-if [ ! -f "$NM/@ptdl/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@ptdl/shared/dist/index.js" ]; then
-  mkdir -p "$NM/@ptdl"; rm -rf "$NM/@ptdl/shared"; cp -r "$SHARED_SRC" "$NM/@ptdl/shared"; echo "restored  : @ptdl/shared"
+SHARED_SRC="$ROOT/../packages/@tuanla90/shared"
+if [ ! -f "$NM/@tuanla90/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@tuanla90/shared/dist/index.js" ]; then
+  mkdir -p "$NM/@tuanla90"; rm -rf "$NM/@tuanla90/shared"; cp -r "$SHARED_SRC" "$NM/@tuanla90/shared"; echo "restored  : @tuanla90/shared"
 fi
 
 # Stub EXTERNAL framework deps at nb-local (2.1.19) versions so writeExternalPackageVersion resolves
-# and the tgz step is not aborted. (@ptdl/shared + lucide-react are BUNDLED, not stubbed.)
+# and the tgz step is not aborted. (@tuanla90/shared + lucide-react are BUNDLED, not stubbed.)
 mkstub() {
   local name="$1"; local ver="$2"
   if [ -f "$NM/$name/package.json" ]; then echo "keep real : $name"; return; fi

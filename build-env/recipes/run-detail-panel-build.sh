@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-detail-panel"
+PKG="@tuanla90/plugin-detail-panel"
 
 echo "node: $(node -v)"
 
-SRC="$ROOT/../packages/@ptdl/plugin-detail-panel"
-DST="$ROOT/packages/plugins/@ptdl/plugin-detail-panel"
+SRC="$ROOT/../packages/@tuanla90/plugin-detail-panel"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-detail-panel"
 
 rm -rf "$DST"
 mkdir -p "$DST"

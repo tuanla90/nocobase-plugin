@@ -1,6 +1,6 @@
-# Hàm & Helper dùng chung (@ptdl) — Tham khảo
+# Hàm & Helper dùng chung (@tuanla90) — Tham khảo
 
-> Trang **tham khảo** liệt kê đầy đủ các hàm/helper **dùng chung** của bộ plugin @ptdl, chia 3 họ: **Công thức Excel-like** (dùng ở plugin *Formula* + *Spreadsheet View*), **Handlebars helper** (dùng ở plugin *Print Template*) và **helper khối HTML** (dùng ở plugin *Block: Custom HTML*). Danh sách sinh trực tiếp từ code — không có hàm nào nằm ngoài mã nguồn.
+> Trang **tham khảo** liệt kê đầy đủ các hàm/helper **dùng chung** của bộ plugin @tuanla90, chia 3 họ: **Công thức Excel-like** (dùng ở plugin *Formula* + *Spreadsheet View*), **Handlebars helper** (dùng ở plugin *Print Template*) và **helper khối HTML** (dùng ở plugin *Block: Custom HTML*). Danh sách sinh trực tiếp từ code — không có hàm nào nằm ngoài mã nguồn.
 
 ## 1. 🧮 Công thức Excel-like (Formula DSL) · dùng ở: Formula, Spreadsheet View
 

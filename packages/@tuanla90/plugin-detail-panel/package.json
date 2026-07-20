@@ -1,0 +1,28 @@
+{
+  "name": "@tuanla90/plugin-detail-panel",
+  "displayName": "Detail Panel",
+  "displayName.vi-VN": "Panel bên",
+  "displayName.zh-CN": "详情侧栏",
+  "description": "AppSheet-style master–detail split view for /v/. Adds a ‘Side panel’ open mode (a 4th choice beside Drawer / Dialog / Page) that docks the configured record popup to the right, shrinking the content beside it. A row-click option opens records in the panel, with a drag splitter to resize.",
+  "version": "0.1.1",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@tuanla90/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x"
+  },
+  "keywords": [
+    "Blocks"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#detail-panel"
+}

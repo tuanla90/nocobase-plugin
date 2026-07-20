@@ -1,0 +1,32 @@
+{
+  "name": "@tuanla90/plugin-status-flow",
+  "displayName": "Status Flow",
+  "displayName.vi-VN": "Luồng trạng thái",
+  "displayName.zh-CN": "状态流",
+  "description": "A state-machine field type: define statuses (kind + colour), allowed transitions and which roles may perform them. The edit dropdown offers only valid next statuses; the server enforces every transition, including bulk edit. Cells add a flow-graph popover and quick-transition buttons.",
+  "version": "0.1.0",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@tuanla90/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x",
+    "antd": "5.x",
+    "@formily/react": "2.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/database": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x",
+    "antd": "5.x"
+  },
+  "keywords": [
+    "Fields"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#status-flow"
+}

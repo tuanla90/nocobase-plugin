@@ -3,7 +3,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-custom-icons"
+PKG="@tuanla90/plugin-custom-icons"
 
 # Stub version for EXTERNAL framework deps (only if not really installed).
 # Used only to write dist/externalVersion.js. lucide-react is NOT stubbed — it is

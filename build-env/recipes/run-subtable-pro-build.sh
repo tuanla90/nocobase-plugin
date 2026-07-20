@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-subtable-pro"
+PKG="@tuanla90/plugin-subtable-pro"
 
 echo "node: $(node -v)"
 
-SRC="$ROOT/../packages/@ptdl/plugin-subtable-pro"
-DST="$ROOT/packages/plugins/@ptdl/plugin-subtable-pro"
+SRC="$ROOT/../packages/@tuanla90/plugin-subtable-pro"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-subtable-pro"
 
 rm -rf "$DST"
 mkdir -p "$DST"

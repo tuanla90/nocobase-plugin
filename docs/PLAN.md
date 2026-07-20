@@ -1,4 +1,4 @@
-# PLAN — Roadmap plugin @ptdl (NocoBase 2.1.19)
+# PLAN — Roadmap plugin @tuanla90 (NocoBase 2.1.19)
 
 / Cập nhật: 2026-07-10. Localhost dev: http://localhost:13000 (sqlite, pm2).
 / Chi tiết kỹ thuật từng plugin: xem docs riêng (STATUS-FLOW-RESEARCH.md, ICON-ARCHITECTURE.md,
@@ -24,7 +24,7 @@
 > - **block-level rules** kiểu linkage-rules NocoBase (⚙ Table block `/v/`, **tiếng Việt**). Mỗi rule 3 **mode**:
 >   **Điều kiện** (đk xuyên quan hệ, operator theo type, AND/OR → chọn cột đích → chữ/nền/đậm/nghiêng/**viền ô**/**viền
 >   chữ**/icon), **Thang màu** (heatmap 2–3 màu theo min–max cột), **Thanh dữ liệu** (data bar). Cơ chế: patch
->   `TableBlockModel.getColumns` bọc `onCell`+`render`, crash-safe. UI dùng antd `Cascader` thật + `@ptdl/shared/condition`
+>   `TableBlockModel.getColumns` bọc `onCell`+`render`, crash-safe. UI dùng antd `Cascader` thật + `@tuanla90/shared/condition`
 >   + `RegistryIconPicker`. Chi tiết + gotcha: memory `project-table-oncell-cond-fmt` + HANDOFF §6. Classic /admin = no-op.
 >   Giới hạn v1: scale theo **dữ liệu trang hiện tại**; date presets client-resolvable (chưa có server var `{{$user}}`).
 > - **MERGE:** widget per-column "value → tag" (Format Rule) **chuyển sang field-enhancements = "Value tag"** (giữ tên
@@ -36,7 +36,7 @@
 
 ### 2.1. Xuất PDF báo cáo — plugin-print-template
 
-> **V1 + M2 + M3 ĐÃ SHIP 2026-07-10** (@ptdl/plugin-print-template 0.1.0, chạy nb-local):
+> **V1 + M2 + M3 ĐÃ SHIP 2026-07-10** (@tuanla90/plugin-print-template 0.1.0, chạy nb-local):
 > collection + settings editor fullscreen (tab Chung/Nội dung/Header/Footer/Watermark/Trang in/CSS,
 > live preview, panel Hàm + sql/alasql lazy) + record action Print + header/footer lặp trang
 > (chặn cả header/footer trình duyệt bằng @page margin 0) + footer ghim đáy trang + watermark
@@ -111,7 +111,7 @@ di động — không cần app native (đã có plugin-pwa làm nền).
 
 **Ý tưởng (2026-07-13, sau khi print-template hoàn thiện)**: soạn email HTML kéo-thả +
 merge dữ liệu record, tái dùng ~60-70% code print-template. **Việc nền phải làm trước:**
-tách một **`GrapesEditorCore`** vào `@ptdl/shared` (khung nạp UMD GrapesJS + trait màu
+tách một **`GrapesEditorCore`** vào `@tuanla90/shared` (khung nạp UMD GrapesJS + trait màu
 `ColorField`/ReactDOM + custom StyleManager + toolbar/theme lucide + `FieldPickerCascader`
 chèn `{{field}}`) — hiện đang nằm trong `GrapesBodyEditor.tsx` của print-template.
 
@@ -133,7 +133,7 @@ in/PDF) và `plugin-email-template` (preset newsletter + inliner + gửi mail).
 
 ## 3. Backlog nhỏ còn treo
 
-- ~~status-flow: log lịch sử chuyển trạng thái~~ → **ĐÃ XONG** ở plugin riêng @ptdl/plugin-change-log
+- ~~status-flow: log lịch sử chuyển trạng thái~~ → **ĐÃ XONG** ở plugin riêng @tuanla90/plugin-change-log
   (xem bảng §1 + docs/CHANGE-LOG-NOTES.md).
 - **change-log — backlog:**
   - ~~**Phân quyền đọc log**~~ → ✅ **ĐÃ LÀM (v0.1.2, 2026-07-17).** Thêm resourcer middleware gate

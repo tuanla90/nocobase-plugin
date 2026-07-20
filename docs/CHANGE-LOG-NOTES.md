@@ -1,10 +1,10 @@
-# @ptdl/plugin-change-log — status-aware change history
+# @tuanla90/plugin-change-log — status-aware change history
 
 > Ngày: 2026-07-13. Plugin RIÊNG (tách khỏi status-flow) nhưng làm status trigger trước.
 > Thiết kế schema tổng quát để mở rộng sang field thường sau. Build: recipe
 > `build-env/recipes/run-change-log-build.sh` (pass cả 3 lane).
 >
-> **TRẠNG THÁI: ✅ HOÀN THIỆN + đã build vào `latest/@ptdl/plugin-change-log-0.1.0.tgz`** (2026-07-13),
+> **TRẠNG THÁI: ✅ HOÀN THIỆN + đã build vào `latest/@tuanla90/plugin-change-log-0.1.0.tgz`** (2026-07-13),
 > chạy trên nb-local, user test UI OK (config, timeline, action popover/drawer + badge, block).
 > **Backlog (chưa có yêu cầu):** (1) phân quyền đọc log theo ACL collection nguồn — hiện mọi user
 > đọc được mọi log; (2) retention/dọn log cũ; (3) source 'form' vs 'api'. Xem PLAN.md §3.
@@ -44,7 +44,7 @@ trigger — theo phản hồi user.) Đổi config chỉ ảnh hưởng log TỪ
   xếp trước) + snapshot fields + captureNote + enabled.
 - Timeline UI (ChangeLogTimeline): header (current + lead time + count + thanh time-in-value) +
   timeline dọc (chấm màu/icon, from→to, actor, role, source chip, badge duration, note). Tái dùng
-  IconByKey + TAG_HEX của @ptdl/shared.
+  IconByKey + TAG_HEX của @tuanla90/shared.
 - Bề mặt: action record "Change history" (defineChangeHistoryAction) mở **popover** hoặc **drawer**
   (setting sfMode) — dùng ctx.record/api, không cần wiring per-collection.
 
@@ -104,11 +104,11 @@ chi tiết record** (popup/route mở 1 record) chứ không phải trang list.
   từng block như lo ngại cũ.) Chưa click tận mắt (login chặn).
 - **Test runtime** localhost:13000 (môi trường build chỉ có stub, chưa chạy app). Cần verify:
   APIClient forward custom `headers`, ctx.get đọc được header, và `__dirname`/`Buffer` chạy ổn.
-- Deploy: extract tgz `storage/tar/@ptdl/plugin-change-log-0.1.0.tgz` + rebuild status-flow.
+- Deploy: extract tgz `storage/tar/@tuanla90/plugin-change-log-0.1.0.tgz` + rebuild status-flow.
 
 ## Deploy status (2026-07-13)
-✅ ĐÃ DEPLOY lên nb-local: extract tgz vào node_modules/@ptdl + storage/plugins/@ptdl (cả 2 plugin),
-`nocobase-v1 pm add` + `pm enable @ptdl/plugin-change-log`, `pm2 restart index`. Verify:
+✅ ĐÃ DEPLOY lên nb-local: extract tgz vào node_modules/@tuanla90 + storage/plugins/@tuanla90 (cả 2 plugin),
+`nocobase-v1 pm add` + `pm enable @tuanla90/plugin-change-log`, `pm2 restart index`. Verify:
 enabled=1/installed=1, 2 bảng `ptdlChangeLogs`+`ptdlChangeLogConfigs` tạo xong, app http 200,
 không lỗi boot. Backup DB: `storage/db/nocobase.sqlite.bak-predeploy-*`.
 ⚠️ CHƯA test runtime hook + UI: cần đăng nhập (không tự nhập mật khẩu được) — in-app browser đang

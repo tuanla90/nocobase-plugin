@@ -1,7 +1,7 @@
-# @ptdl/plugin-action-enhancements — Design
+# @tuanla90/plugin-action-enhancements — Design
 
 > Custom cách hiển thị **action button** trong NocoBase v2: layout thanh action (dọc / chia đều / căn trái-phải) + màu button sâu hơn (nền/chữ/viền/variant/hover).
-> Tested target: NocoBase **2.1.19**, antd **5.24.2**. Song ngữ vi+en (R1), reuse `@ptdl/shared` (R2).
+> Tested target: NocoBase **2.1.19**, antd **5.24.2**. Song ngữ vi+en (R1), reuse `@tuanla90/shared` (R2).
 > Trạng thái: **v0.1.0 SHIPPED + verified live 2026-07-15** (deployed nb-local). Direction chốt với user 2026-07-15.
 
 ---
@@ -131,7 +131,7 @@ status/phone/stage/color/icon.
 
 **✅ Multi-level field picker + search preview (DONE 2026-07-15):**
 - **Transfer→Cascader multi-level (fix "vẫn trống"):** `buildFieldCascaderOptions(api, collName, dsKey,
-  {maxDepth:1})` của `@ptdl/shared` fetch field tree QUA API (chỉ cần collection NAME + api — robust hơn đọc
+  {maxDepth:1})` của `@tuanla90/shared` fetch field tree QUA API (chỉ cần collection NAME + api — robust hơn đọc
   collection object) → `<Cascader multiple>`; association field drill-in (Khách hàng/client → name...). Value =
   dot-path (`['status','client.name']`) → filter `{'client.name':{$includes}}` (search label bảng liên kết).
   Fallback local `getFields()` nếu thiếu api. Verify dialog thật: 14 option, 3 relation có children.
@@ -247,7 +247,7 @@ iconContainerEnum[none,border,fill], boxColour rx=function.
 
 ## 3. Kiến trúc plugin
 
-Plugin mới `@ptdl/plugin-action-enhancements` (song song `field-enhancements`). 2 lane: `client` (/admin v1) + `client-v2` (/v/). Đăng ký patch qua **wrap `registerModels`** để bắt cả class late-registered ([[reference_nocobase_v2_field_render_patching]]).
+Plugin mới `@tuanla90/plugin-action-enhancements` (song song `field-enhancements`). 2 lane: `client` (/admin v1) + `client-v2` (/v/). Đăng ký patch qua **wrap `registerModels`** để bắt cả class late-registered ([[reference_nocobase_v2_field_render_patching]]).
 
 Hai tính năng **độc lập**, chung 1 plugin:
 
@@ -268,7 +268,7 @@ plugin-action-enhancements/
 ## 4. Tính năng A — Deep color (per-button)
 
 ### 4.1 Config (thêm vào ⚙ của button)
-Thêm **1 flow riêng** `ptdlButtonStyle` (hoặc extend `buttonSettings.general`) trên `ActionModel`, dùng `@ptdl/shared`: `ColorField`, `COLOR_PRESETS`, `colorToString` (R2 — cấm tự viết color picker):
+Thêm **1 flow riêng** `ptdlButtonStyle` (hoặc extend `buttonSettings.general`) trên `ActionModel`, dùng `@tuanla90/shared`: `ColorField`, `COLOR_PRESETS`, `colorToString` (R2 — cấm tự viết color picker):
 
 | Field | Component | Ghi chú |
 |---|---|---|
@@ -321,12 +321,12 @@ Theo pattern `enhanced-table-block`: override `renderComponent` → gọi bản 
 ---
 
 ## 6. i18n (R1 — bắt buộc)
-- NS = `@ptdl/plugin-action-enhancements/client`. File `locale/vi-VN.json` + `en-US.json`, `addResources` **mỗi lane** trong `load()`.
+- NS = `@tuanla90/plugin-action-enhancements/client`. File `locale/vi-VN.json` + `en-US.json`, `addResources` **mỗi lane** trong `load()`.
 - uiSchema labels: `tExpr(s,{ns})`. Menu/flow title: chuỗi dịch sẵn `app.i18n.t`.
-- Wire `@ptdl/shared` color strings: `setSharedT` + `addResources(SHARED_NS, sharedEnUS)` cả 2 lane (vì render `ColorField`).
+- Wire `@tuanla90/shared` color strings: `setSharedT` + `addResources(SHARED_NS, sharedEnUS)` cả 2 lane (vì render `ColorField`).
 - Ngôn ngữ thứ 3: nếu VN-string-as-key thì bật fallback en-US + vi identity map (theo guide §R1).
 
-## 7. Reuse `@ptdl/shared` (R2 — bắt buộc)
+## 7. Reuse `@tuanla90/shared` (R2 — bắt buộc)
 - Màu: `ColorField`, `COLOR_PRESETS`, `colorToString`, `TAG_HEX`.
 - Settings UI: `SettingsGrid`/`fi`/`SEG_PROPS`/`CollapsibleSection` (dùng `rx()` không `{{$deps}}`).
 - **Cấm** copy-paste color picker / settings-kit.
@@ -340,7 +340,7 @@ Theo pattern `enhanced-table-block`: override `renderComponent` → gọi bản 
 - **P1-B** — Layout: `registerFlow` 5 block + patch `renderComponent` + `ActionBarLayout` wrapper. (Spike B1 trước.)
 - **P2** — Per-button pin (form/details/filter qua `:has`, table qua `position`).
 - **P3** — Polish: verify i18n live (vi/en/zh), edge (iconOnly, danger, hidden-in-config, drag handler table).
-- **P4** — Build (CÁCH A) → deploy nb-local (`node_modules/@ptdl` + `pm2 restart index`, add-markers) → e2e trên `/v/`.
+- **P4** — Build (CÁCH A) → deploy nb-local (`node_modules/@tuanla90` + `pm2 restart index`, add-markers) → e2e trên `/v/`.
 
 ## 9. Verify
 - Live `/v/`: mỗi block × mỗi option (dọc/chia đều/căn/pin) + màu (bg/text/border/variant/hover) đúng, reload giữ config (props persist).

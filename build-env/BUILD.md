@@ -5,14 +5,14 @@ Toolchain (`@nocobase/build` + node_modules) KHÔNG kèm ở đây cho gọn. D�
 ```bash
 cd build-env
 npm install @nocobase/build@2.1.19 --no-audit --no-fund
-# đặt source cần build vào: packages/plugins/@ptdl/plugin-<name>/   (copy từ ../packages/@ptdl/)
+# đặt source cần build vào: packages/plugins/@tuanla90/plugin-<name>/   (copy từ ../packages/@tuanla90/)
 # dep phải BUNDLE (không stub): npm i echarts zrender tslib lucide-react markdown-it
 ```
 
 Build 1 plugin:
 ```bash
-node node_modules/@nocobase/build/bin/nocobase-build.js @ptdl/plugin-<name> --tar --no-dts
-# ra: storage/tar/@ptdl/plugin-<name>-<ver>.tgz
+node node_modules/@nocobase/build/bin/nocobase-build.js @tuanla90/plugin-<name> --tar --no-dts
+# ra: storage/tar/@tuanla90/plugin-<name>-<ver>.tgz
 ```
 
 `recipes/` chứa script build từng plugin (đã set sẵn stub external + dep thật):
@@ -28,5 +28,5 @@ Lưu ý: đổi scope plugin BẮT BUỘC build lại (tên package nướng c�
 chỉ nạp lane `client-v2` của plugin có file **`client-v2.js` ở gốc package** (server: `@nocobase/server/.../
 plugin-manager/options/resource.js` → `hasClientEntry` dùng marker, KHÔNG dùng `dist/client-v2`). Thiếu marker
 → `/v/` bỏ qua client-v2 → code v2 (vd đăng ký icon Lucide vào picker, field model FlowEngine) **không chạy**.
-→ Sau mỗi build: `bash recipes/add-markers.sh storage/tar/@ptdl/plugin-<name>-<ver>.tgz`
+→ Sau mỗi build: `bash recipes/add-markers.sh storage/tar/@tuanla90/plugin-<name>-<ver>.tgz`
 (Guide cũ ghi "marker không vào tar" — đúng về mặc định builder, nhưng SAI về việc `/v/` cần nó.)

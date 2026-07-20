@@ -1,10 +1,10 @@
-# AI Codegen Plan — "AI viết hộ" cho mọi surface nhập code trong @ptdl
+# AI Codegen Plan — "AI viết hộ" cho mọi surface nhập code trong @tuanla90
 
-> Mục tiêu: mọi chỗ trong bộ `@ptdl` mà người dùng **phải tự viết code/template** (HTML/CSS/JS,
+> Mục tiêu: mọi chỗ trong bộ `@tuanla90` mà người dùng **phải tự viết code/template** (HTML/CSS/JS,
 > Handlebars, ECharts option, formula, token template) đều có nút **"✨ AI viết hộ"** — mô tả bằng
 > tiếng Việt → AI sinh code → **tự kiểm bằng chính đường render/compile của surface đó** → chèn.
 >
-> Trạng thái: **PLAN** (chưa code). Nguồn: quét toàn `packages/@ptdl/*/src` 2026-07-15.
+> Trạng thái: **PLAN** (chưa code). Nguồn: quét toàn `packages/@tuanla90/*/src` 2026-07-15.
 
 ---
 
@@ -59,9 +59,9 @@ Các plugin này **không cho gõ code thô** — user thao tác qua picker/rule
 
 ---
 
-## 3. Thiết kế: **một** helper chung `@ptdl/shared/ai/aiCodegen`
+## 3. Thiết kế: **một** helper chung `@tuanla90/shared/ai/aiCodegen`
 
-Theo rule R1/R2 (reuse `@ptdl/shared`, không copy-paste): **1 plumbing, N system-prompt + N validator.**
+Theo rule R1/R2 (reuse `@tuanla90/shared`, không copy-paste): **1 plumbing, N system-prompt + N validator.**
 
 ```ts
 type CodegenLang = 'html' | 'js' | 'handlebars' | 'echarts-option' | 'formula' | 'token-template';
@@ -114,13 +114,13 @@ interface AiCodegenResult { code: string; explain: string; triesUsed: number; la
 - **SES strict trên server**: `new Function` trùng tên tham số **throw** (xem `plugin-formula` note VALUE→value); **verify trên server thật**, smoke-test Node/browser không bắt được.
 - **Cost/latency**: mỗi retry = 1 call LLM → **cap 3**.
 - **HTML validate mờ** (chạy được nhưng "nhìn sai") → **preview + lặp**, không tin one-shot.
-- **i18n + shared bắt buộc** (R1/R2): UI song ngữ, dùng chung `@ptdl/shared`.
+- **i18n + shared bắt buộc** (R1/R2): UI song ngữ, dùng chung `@tuanla90/shared`.
 
 ---
 
 ## 6. Checklist surface (để không sót)
 
-- [x] **Nền tảng** — `@ptdl/shared` `AiCodegenButton` (client) + `generateCode`/`ai-server` (server, subpath) + `run-shared-build.sh` + nb-local runtime install. **DONE 2026-07-15.**
+- [x] **Nền tảng** — `@tuanla90/shared` `AiCodegenButton` (client) + `generateCode`/`ai-server` (server, subpath) + `run-shared-build.sh` + nb-local runtime install. **DONE 2026-07-15.**
 - [x] **block-custom-html** — HTML/JS (`HtmlCodeEditor`, validate=`new Function` compile, context=cột+dòng thật). **Wired+deploy+verify (action 401, load sạch).**
 - [x] **print-template** — Handlebars (`HtmlEditorArea`→ phủ body/header/footer; validate=`hb.compile+render` với helper set; server enrich field+helper từ collection). **Wired+deploy+verify (action 401).**
 - [x] **formula** — field/column (`FormulaCodeInput`, reuse `ptdlComputed:aiWrite`, gated collection+api; default-value không có context → ẩn nút). **Client deploy+verify.**

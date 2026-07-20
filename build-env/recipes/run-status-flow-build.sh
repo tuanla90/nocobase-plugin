@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-status-flow"
+PKG="@tuanla90/plugin-status-flow"
 echo "node: $(node -v)"
 
 # Stage source + markers (markers at the STAGED package root are the lane build triggers!)
-SRC="$ROOT/../packages/@ptdl/plugin-status-flow"
-DST="$ROOT/packages/plugins/@ptdl/plugin-status-flow"
+SRC="$ROOT/../packages/@tuanla90/plugin-status-flow"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-status-flow"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"

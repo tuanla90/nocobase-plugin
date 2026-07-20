@@ -32,7 +32,7 @@ function InputWithIcon() {
 
   // Icon lucide qua CDN — RunJS không đọc được registry icon nội bộ của @nocobase/client-v2,
   // đây là cách đúng cho RunJS (xem docs/ICON-ARCHITECTURE.md). Version khớp lucide-react mà
-  // @ptdl/plugin-custom-icons pin (0.469.0).
+  // @tuanla90/plugin-custom-icons pin (0.469.0).
   useEffect(() => {
     let cancelled = false;
     (async () => {

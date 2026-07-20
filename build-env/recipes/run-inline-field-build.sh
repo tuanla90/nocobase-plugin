@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Build @ptdl/plugin-inline-field into a tgz (server + client-v2 lanes), markers injected.
+# Build @tuanla90/plugin-inline-field into a tgz (server + client-v2 lanes), markers injected.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-inline-field"
+PKG="@tuanla90/plugin-inline-field"
 NAME="plugin-inline-field"
 
 # Fresh build-env copy from the workspace (source of truth).
-SRC="$ROOT/../packages/@ptdl/$NAME"
-DST="$ROOT/packages/plugins/@ptdl/$NAME"
+SRC="$ROOT/../packages/@tuanla90/$NAME"
+DST="$ROOT/packages/plugins/@tuanla90/$NAME"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
@@ -18,7 +18,7 @@ cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 echo "synced <- $SRC"
 
 # Stub EXTERNAL framework deps (harvested from the running nb-local host 2.1.19) so externalVersion.js
-# matches the runtime. @ptdl/shared is REAL in build-env node_modules -> bundled into the plugin.
+# matches the runtime. @tuanla90/shared is REAL in build-env node_modules -> bundled into the plugin.
 mkstub() {
   local name="$1"; local ver="$2"
   if [ -f "$NM/$name/package.json" ]; then echo "keep real : $name"; return; fi

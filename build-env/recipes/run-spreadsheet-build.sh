@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-spreadsheet-view"
+PKG="@tuanla90/plugin-spreadsheet-view"
 
 echo "node: $(node -v)"
 
-SRC="$ROOT/../packages/@ptdl/plugin-spreadsheet-view"
-DST="$ROOT/packages/plugins/@ptdl/plugin-spreadsheet-view"
+SRC="$ROOT/../packages/@tuanla90/plugin-spreadsheet-view"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-spreadsheet-view"
 
 rm -rf "$DST"
 mkdir -p "$DST"
@@ -29,7 +29,7 @@ mkstub react 18.3.1
 mkstub react-dom 18.3.1
 mkstub antd 5.24.2
 mkstub "@ant-design/icons" 5.6.1
-# @formily/react bị import từ BÊN TRONG @ptdl/shared (đã bundle) nên không được externalize
+# @formily/react bị import từ BÊN TRONG @tuanla90/shared (đã bundle) nên không được externalize
 # (externalize chỉ áp cho import trực tiếp từ source plugin) → stub phải RESOLVE được:
 # index.js rỗng, phần dùng formily (SettingsGrid) không được plugin này import nên tree-shake bỏ.
 mkdir -p "$NM/@formily/react"
@@ -52,11 +52,11 @@ restore_real() {
   mkdir -p "$(dirname "$NM/$name")"; mv "$TMP/package" "$NM/$name"; rm -rf "$TMP"
   echo "restored  : $name"
 }
-# @ptdl/shared: lib source dùng chung (bundle vào plugin) — sync thẳng từ workspace mỗi lần build.
-rm -rf "$NM/@ptdl/shared"
-mkdir -p "$NM/@ptdl"
-cp -r "$ROOT/../packages/@ptdl/shared" "$NM/@ptdl/shared"
-echo "synced    : @ptdl/shared"
+# @tuanla90/shared: lib source dùng chung (bundle vào plugin) — sync thẳng từ workspace mỗi lần build.
+rm -rf "$NM/@tuanla90/shared"
+mkdir -p "$NM/@tuanla90"
+cp -r "$ROOT/../packages/@tuanla90/shared" "$NM/@tuanla90/shared"
+echo "synced    : @tuanla90/shared"
 
 restore_real ag-grid-community ag-grid-community-36.0.0.tgz
 restore_real ag-grid-react ag-grid-react-36.0.0.tgz

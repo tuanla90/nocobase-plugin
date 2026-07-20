@@ -1,9 +1,9 @@
-# Thiết kế đồng bộ 2 chiều NocoBase ⇄ Google Sheets (V2 của @ptdl/plugin-gsheet-sync)
+# Thiết kế đồng bộ 2 chiều NocoBase ⇄ Google Sheets (V2 của @tuanla90/plugin-gsheet-sync)
 
 > **Trạng thái (2026-07-13): ĐÃ TRIỂN KHAI + E2E PASS.** Tài liệu này là thiết kế gốc, giữ
 > làm tham chiếu. Hiện thực nằm ở `src/server/writeback.ts`; tính năng người dùng + cách cài +
-> giới hạn đã biết xem `packages/@ptdl/plugin-gsheet-sync/README.md`. Plugin v0.1.0 đã đóng gói
-> vào `latest/@ptdl/`.
+> giới hạn đã biết xem `packages/@tuanla90/plugin-gsheet-sync/README.md`. Plugin v0.1.0 đã đóng gói
+> vào `latest/@tuanla90/`.
 
 Nghiên cứu 2026-07-12, dựa trên source thật của nb-local 2.1.19 (không đoán API).
 V1 (pull 1 chiều) đã chạy; tài liệu này là thiết kế cho chiều PUSH (NocoBase → Sheet).

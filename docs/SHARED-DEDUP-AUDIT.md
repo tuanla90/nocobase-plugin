@@ -1,6 +1,6 @@
-# Audit trùng lặp code @ptdl ↔ `@ptdl/shared` (2026-07-15)
+# Audit trùng lặp code @tuanla90 ↔ `@tuanla90/shared` (2026-07-15)
 
-Rà soát read-only toàn bộ `packages/@ptdl/plugin-*` so với `@ptdl/shared`. Loại trừ `shared/**`, `dist/**`, `node_modules/**`, và lib vendor (`formulajs.browser.js`).
+Rà soát read-only toàn bộ `packages/@tuanla90/plugin-*` so với `@tuanla90/shared`. Loại trừ `shared/**`, `dist/**`, `node_modules/**`, và lib vendor (`formulajs.browser.js`).
 
 > **Kết luận đầu dòng:** roadmap trong `SHARED-LIBS-PROPOSAL.md` đã **~90% xong** — color, icon, field-picker, token-insert, escapeHtml/get, settings-kit, condition-UI, loginKit, realtime đều đã gom & import rộng rãi. Phần **column picker** và **HTML template chèn biến** mà bạn hỏi **đã nằm trong shared** (`FieldPickerCascader`, `FieldTokenTextArea`, `getCaretElement`/`insertAtCaret`, `interpolate`) và được dùng đúng ở đa số plugin.
 >
@@ -27,7 +27,7 @@ Rà soát read-only toàn bộ `packages/@ptdl/plugin-*` so với `@ptdl/shared`
 ### 2. Format ngày — canonical `formatDate`
 | Plugin | file:line | Trạng thái | Ghi chú |
 |---|---|---|---|
-| print-template | `shared/helpers.ts:7` | USES-SHARED | `import { formatDate } from '@ptdl/shared/format'` (đã migrate). |
+| print-template | `shared/helpers.ts:7` | USES-SHARED | `import { formatDate } from '@tuanla90/shared/format'` (đã migrate). |
 | **formula** | `shared/formulaFormat.ts:17-28` `formatDateValue` | **DUPLICATE** | Token `.replace(/YYYY/…)` = subset shared. Trả `null` khi invalid → cần wrapper. |
 | **block-custom-html** | `client/render.ts:206-226` `helpers.date` | **DUPLICATE** | Subset — **nhưng hỗ trợ token `H` (24h 1 chữ số) mà shared thiếu** → swap cần shared thêm `H`. |
 | **change-log** | `shared/changeLogClient.ts:62-68` `formatDateFriendly` | **DUPLICATE** | Đúng `formatDate(v,'DD/MM/YYYY HH:mm')` — swap tầm thường. |
@@ -51,7 +51,7 @@ Dup audit gốc BỎ SÓT: cascader "chọn quan hệ nhiều cấp → tag" bui
 | print-template | `TemplateManager.tsx` `AppendsPicker`+`buildRelOptions`+`relationFields`+`relCache` | **USES-SHARED** `RelationAppendsPicker` (hint Handlebars → prop `hint`) |
 | line-generator | `RulesManager.tsx` `RelationAppendsPicker`+`buildRelOptions`+`fetchFields`+`fieldsCache` | **USES-SHARED** `RelationAppendsPicker`; `useCollectionFields` chuyển sang shared `getFields` (cùng cache với field-picker) |
 
-→ Canonical: `@ptdl/shared/relationPicker.tsx` (`RelationAppendsPicker` + `buildRelationOptions`, props `collectionName/depth=3/dataSourceKey/hint`), i18n `st()` key `＋ Thêm quan hệ ▾` (thêm vào `sharedEnUS`; xoá key chết ở locale 2 plugin). line-generator trước đó CHƯA wire shared i18n → đã thêm `addResources(SHARED_NS)`+`setSharedT` cả 2 lane. Build shared + 2 consumer, deploy nb-local, served bundle verify (marker `Add relation`, đúng 1 `expandTrigger`/bundle).
+→ Canonical: `@tuanla90/shared/relationPicker.tsx` (`RelationAppendsPicker` + `buildRelationOptions`, props `collectionName/depth=3/dataSourceKey/hint`), i18n `st()` key `＋ Thêm quan hệ ▾` (thêm vào `sharedEnUS`; xoá key chết ở locale 2 plugin). line-generator trước đó CHƯA wire shared i18n → đã thêm `addResources(SHARED_NS)`+`setSharedT` cả 2 lane. Build shared + 2 consumer, deploy nb-local, served bundle verify (marker `Add relation`, đúng 1 `expandTrigger`/bundle).
 
 ### 4–9. Đã gom sạch (chỉ liệt kê ngoại lệ)
 - **Field picker (4)**, **Token insert (5)**, **escape/get (7)**, **color/icon (9)**: **CONSOLIDATED**. Bản local còn lại đều justified (filter-tree GROUP-BY builder; formula `AutoComplete` editor; formula inline `escapeHtml` cố ý zero-import; branding `adjustColor`/`isLightColor` single-consumer).
@@ -61,7 +61,7 @@ Dup audit gốc BỎ SÓT: cascader "chọn quan hệ nhiều cấp → tag" bui
 ---
 
 ## B) Kế hoạch gom (xếp theo ROI)
-1. ~~**`formula/formulaFormat.ts` → shared**~~ ✅ **XONG (source, 2026-07-15)** — `formatDateValue`→`formatDate` (giữ null-guard), `formatNumberValue` set-decimals branch→`makeNumberFormatter`, unset branch giữ local (preserve `String(n)` precision dạng mũ mà `toFixed` sẽ phá — đúng caveat). Import `@ptdl/shared/format` (subpath pure, client-only chain, server-safe — đã verify). **Validated 176/176 case OLD≡NEW** (6 date-preset × dates + numbers incl. 1e-7/1e21/0.1/neg). Build hoãn tới khi `task_d1aef206` (field-picker) xong để tránh đụng build-env staging (formula là consumer của field-picker → sẽ được task đó rebuild luôn).
+1. ~~**`formula/formulaFormat.ts` → shared**~~ ✅ **XONG (source, 2026-07-15)** — `formatDateValue`→`formatDate` (giữ null-guard), `formatNumberValue` set-decimals branch→`makeNumberFormatter`, unset branch giữ local (preserve `String(n)` precision dạng mũ mà `toFixed` sẽ phá — đúng caveat). Import `@tuanla90/shared/format` (subpath pure, client-only chain, server-safe — đã verify). **Validated 176/176 case OLD≡NEW** (6 date-preset × dates + numbers incl. 1e-7/1e21/0.1/neg). Build hoãn tới khi `task_d1aef206` (field-picker) xong để tránh đụng build-env staging (formula là consumer của field-picker → sẽ được task đó rebuild luôn).
 2. **spreadsheet `formatNum` + field-enh `formatDisplay` → `makeNumberFormatter`** (đều hardcode `,` = mặc định shared). Giữ `clampDecimals`.
 3. **change-log `formatDateFriendly` → `formatDate(v,'DD/MM/YYYY HH:mm')`** — output byte-identical.
 4. **enhanced-table `formatStat` → `formatNumber`**; khối ráp cuối `formatNumberLikeSample` → `makeNumberFormatter` (giữ sniffing).

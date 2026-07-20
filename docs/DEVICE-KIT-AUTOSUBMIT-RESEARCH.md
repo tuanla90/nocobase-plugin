@@ -1,7 +1,7 @@
 # Device Kit — "Auto ghi nhận khi Submit" (nghiên cứu)
 
 > Câu hỏi: khi bấm **Lưu/Submit** form thì **tự động lấy GPS** (và giờ/người) ghi vào bản ghi — không cần bấm 📍 tay.
-> Trạng thái: 📝 **NGHIÊN CỨU (2026-07-16)** — khả thi cao, chưa code. Bổ sung cho `@ptdl/plugin-device-kit`.
+> Trạng thái: 📝 **NGHIÊN CỨU (2026-07-16)** — khả thi cao, chưa code. Bổ sung cho `@tuanla90/plugin-device-kit`.
 
 ---
 

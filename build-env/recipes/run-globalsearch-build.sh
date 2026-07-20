@@ -3,15 +3,16 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-global-search"
+PKG="@tuanla90/plugin-global-search"
 PKGDIR="$ROOT/packages/plugins/$PKG"
 
 # Sync src + version from the workspace (nguồn chân lý). This recipe builds the build-env COPY, so
 # without this it silently ships stale source / the old version number (a known trap). Only the
 # version field of package.json is synced (build-env copy may differ in devDeps).
-SRC="$ROOT/../packages/@ptdl/plugin-global-search"
+SRC="$ROOT/../packages/@tuanla90/plugin-global-search"
+mkdir -p "$PKGDIR"
 if [ -d "$SRC/src" ]; then
-  rm -rf "$PKGDIR/src"; cp -r "$SRC/src" "$PKGDIR/src"; echo "synced src <- $SRC"
+  rm -rf "$PKGDIR/src"; cp -r "$SRC/src" "$PKGDIR/src"; cp "$SRC/package.json" "$PKGDIR/package.json"; cp "$SRC"/*.js "$SRC"/*.d.ts "$PKGDIR/" 2>/dev/null || true; echo "synced src <- $SRC"
 fi
 VERSRC=$(grep '"version"' "$SRC/package.json" | head -1 | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
 if [ -n "$VERSRC" ]; then
@@ -35,11 +36,11 @@ mkstub react 18.3.1
 mkstub react-dom 18.3.1
 mkstub antd 5.24.2
 mkstub "@ant-design/icons" 5.6.1
-# @ptdl/shared's settingsKit imports @formily/react (observer/useForm) — stub it so nocobase-build
+# @tuanla90/shared's settingsKit imports @formily/react (observer/useForm) — stub it so nocobase-build
 # externalizes it (the app provides it) instead of trying to bundle it.
 mkstub "@formily/react" 2.3.7
 mkstub "@formily/shared" 2.3.7
-# @ptdl/shared inlines `{ observer, useForm } from '@formily/react'` into this plugin's bundle
+# @tuanla90/shared inlines `{ observer, useForm } from '@formily/react'` into this plugin's bundle
 # (global-search uses lane-B primitives only, never these). The version-only stub has no entry, so
 # rspack can't bundle it → give it a no-op resolvable entry (harmless dead code). Plugins that
 # EXTERNALIZE @formily never touch this file.

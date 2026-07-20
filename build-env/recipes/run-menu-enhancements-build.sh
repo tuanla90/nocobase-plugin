@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Build @ptdl/plugin-menu-enhancements (merged menu-sections + menu-badge).
+# Build @tuanla90/plugin-menu-enhancements (merged menu-sections + menu-badge).
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-menu-enhancements"
+PKG="@tuanla90/plugin-menu-enhancements"
 NAME="plugin-menu-enhancements"
 
-SRC="$ROOT/../packages/@ptdl/$NAME"
-DST="$ROOT/packages/plugins/@ptdl/$NAME"
+SRC="$ROOT/../packages/@tuanla90/$NAME"
+DST="$ROOT/packages/plugins/@tuanla90/$NAME"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"

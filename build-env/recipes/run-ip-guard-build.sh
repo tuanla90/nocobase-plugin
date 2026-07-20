@@ -3,13 +3,13 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-ip-guard"
+PKG="@tuanla90/plugin-ip-guard"
 echo "node: $(node -v)"
 
 # Stage source + lane markers from the workspace (source of truth). Markers at the STAGED package
 # root are what trigger the client / client-v2 lane builds.
-SRC="$ROOT/../packages/@ptdl/plugin-ip-guard"
-DST="$ROOT/packages/plugins/@ptdl/plugin-ip-guard"
+SRC="$ROOT/../packages/@tuanla90/plugin-ip-guard"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-ip-guard"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
@@ -18,7 +18,7 @@ cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
 # Stub EXTERNAL framework deps at nb-local (2.1.19) versions so writeExternalPackageVersion resolves
-# and the tgz step is not aborted. (@ptdl/shared + lucide-react are BUNDLED, not stubbed — they must
+# and the tgz step is not aborted. (@tuanla90/shared + lucide-react are BUNDLED, not stubbed — they must
 # be resolvable real packages in node_modules, same as the change-log build.)
 mkstub() {
   local name="$1"; local ver="$2"

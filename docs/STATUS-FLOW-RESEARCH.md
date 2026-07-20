@@ -1,4 +1,4 @@
-# Nghiên cứu: @ptdl/plugin-status-flow — column type "Status Flow" (state machine field)
+# Nghiên cứu: @tuanla90/plugin-status-flow — column type "Status Flow" (state machine field)
 
 > Ngày nghiên cứu: 2026-07-10, trên NocoBase 2.1.19 (nb-local). Mục tiêu: thay thế việc user
 > phải config tay 1 collection riêng (tên trạng thái / loại / trạng thái chuyển đến / role được
@@ -9,7 +9,7 @@
 **Làm được trọn vẹn, KHÔNG cần custom DB field type.** Cột lưu dạng `string` (type có sẵn),
 toàn bộ metadata state machine nằm trong cột JSON `options` của bảng `fields` (magic attribute —
 mọi key lạ ghi vào field config đều tự đọng vào `options`, không cần migration). Server chỉ cần
-1 hook enforcement. Đây sẽ là plugin @ptdl **đầu tiên có server lane thật** (các plugin trước
+1 hook enforcement. Đây sẽ là plugin @tuanla90 **đầu tiên có server lane thật** (các plugin trước
 đều client-only).
 
 ## 1. Data model
@@ -162,7 +162,7 @@ Facts đã verify trên source:
 ## 5. Cấu trúc plugin đề xuất
 
 ```
-packages/@ptdl/plugin-status-flow/
+packages/@tuanla90/plugin-status-flow/
   client.js  client-v2.js  server.js          # marker (BẪY staging build!)
   src/
     shared/
@@ -184,7 +184,7 @@ node_modules + storage/plugins, row applicationPlugins enabled=1, restart pm2.
 
 ## 6. Lộ trình
 
-> Cập nhật 2026-07-13: **✅ HOÀN THIỆN**, đã build vào `latest/@ptdl/plugin-status-flow-0.1.0.tgz`,
+> Cập nhật 2026-07-13: **✅ HOÀN THIỆN**, đã build vào `latest/@tuanla90/plugin-status-flow-0.1.0.tgz`,
 > chạy nb-local, user test UI OK. Editable + View là 2 model độc lập (mỗi bên đủ kiểu hiển thị +
 > size + colorful/mono-chọn-màu + icon + preview trạng-thái-giữa), dialog i18n VI + icon toggle
 > lucide + helper schema dùng chung. Tích hợp change-log qua bridge (history popover + source header).
@@ -199,10 +199,10 @@ node_modules + storage/plugins, row applicationPlugins enabled=1, restart pm2.
     initial duy nhất (auto-promote), wildcard `toAll` (✳ Any status) + `fromAll` (↩ from any).
   - ✅ 5 widget hiển thị editable: dropdown / pills / button group / steps / status bar kiểu
     Odoo + option Size (S/M/L) + Full width + Show graph — preview tương tác ngay trong dialog.
-  - ✅ Icon cho từng trạng thái (RegistryIconPicker @ptdl/shared, key lucide-*/antd) — hiện ở
+  - ✅ Icon cho từng trạng thái (RegistryIconPicker @tuanla90/shared, key lucide-*/antd) — hiện ở
     config editor, mọi widget editable, tag hiển thị (table/details), dropdown core, action
     "Status transition". Lưu vào `uiSchema.enum[].icon`. Cần `setIconRegistry(Icon, icons)` của
-    @ptdl/shared ở cả 2 lane (đã wire trong load()).
+    @tuanla90/shared ở cả 2 lane (đã wire trong load()).
   - ✅ View/display cũng chọn được **kiểu widget** (Tag/Pills/Nhóm nút/Các bước/Thanh trạng thái —
     read-only, disabled) + Size, độc lập với editable (2 model riêng, không kế thừa nhau). Cả 2
     dialog settings (editable + display) đã dùng **icon toggle lucide** (component `IconToggle` trong

@@ -3,7 +3,7 @@
 Sinh **1 trang web tĩnh** từ file `README.vi-VN.md` của mỗi plugin và xuất bản lên GitHub Pages:
 👉 **https://tuanla90.github.io/nocobase-plugin/**
 
-- Nguồn nội dung = `packages/@ptdl/plugin-*/README.vi-VN.md` (nguồn duy nhất — sửa guide ở đó).
+- Nguồn nội dung = `packages/@tuanla90/plugin-*/README.vi-VN.md` (nguồn duy nhất — sửa guide ở đó).
 - Trang **Tham khảo** ghim đầu site (hàm/helper dùng chung) = `docs-site/reference.vi-VN.md` + `docs-site/reference.md`. Sinh từ `plugin-formula/src/shared/formulaKnowledge.ts` + `formulaEngine.ts`, `plugin-print-template/src/shared/HelperDocs.tsx` + `helpers.ts`, `plugin-block-custom-html/src/client/render.ts` — cập nhật reference khi các file đó đổi.
 - `generate.cjs` gom hết, render markdown (markdown-it), gắn sidebar theo nhóm + ô tìm kiếm, ra `index.html` tự chứa (light/dark, responsive).
 - Xuất bản từ nhánh **`gh-pages`** (chỉ chứa `index.html` + `.nojekyll` — không lộ source/dev-doc). Pages: *Settings → Pages → Deploy from a branch → `gh-pages` / root*.

@@ -1,0 +1,96 @@
+import { registerCameraFieldModel } from './cameraFieldModel';
+import { registerSignatureFieldModel } from './signatureFieldModel';
+import { registerAudioFieldModel } from './audioFieldModel';
+import { registerLocationField } from './locationField';
+import { registerAutoSubmit } from './autoSubmit';
+import { registerScanInputModel } from './scanInputModel';
+import { registerQrDisplayModel } from './qrDisplayModel';
+import { registerCheckinAction } from './checkinAction';
+import { registerScanLookupAction } from './scanLookupAction';
+import { setTExpr, setRuntimeT, NS } from './i18n';
+import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
+import enUS from '../locale/en-US.json';
+
+/**
+ * Single lane-agnostic registration path shared by BOTH clients (classic `/` and modern `/v/`).
+ * The two lanes differ ONLY in the base classes / interface base they inject; everything else is here
+ * so a widget is wired ONCE (the two index files can't drift).
+ */
+export interface RegisterAllDeps {
+  flowEngine: any;
+  flowSettings?: any;
+  FieldModel: any;
+  DisplayTextFieldModel: any;
+  CollectionFieldInterface?: any;
+  tExpr?: (s: string, o?: any) => any;
+  app?: any;
+  i18n?: any;
+  lane: string;
+}
+
+export function registerDeviceKit(deps: RegisterAllDeps) {
+  const { flowEngine, flowSettings, FieldModel, DisplayTextFieldModel, CollectionFieldInterface, tExpr, app, i18n, lane } = deps;
+
+  // i18n wiring (VN-source: en-US map for English users; VN keys fall through as Vietnamese).
+  try { if (tExpr) setTExpr(tExpr); } catch (_) { /* optional */ }
+  try {
+    if (i18n?.t) {
+      i18n.addResources?.('en-US', NS, enUS);
+      setRuntimeT((s: string, o?: any) => i18n.t(s, o));
+    }
+  } catch (_) { /* i18n optional */ }
+  // @tuanla90/shared's OWN strings (settings-kit / field picker) → bilingual per lane.
+  try {
+    if (i18n?.t) {
+      i18n.addResources?.('en-US', SHARED_NS, sharedEnUS);
+      setSharedT((s: string, o?: any) => i18n.t(s, { ns: SHARED_NS, ...(o || {}) }));
+    }
+  } catch (_) { /* optional */ }
+
+  // Camera widget (subclass of file-manager UploadFieldModel resolved from the engine).
+  try {
+    registerCameraFieldModel({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) camera register failed`, e); }
+
+  // Signature widget (also subclasses UploadFieldModel).
+  try {
+    registerSignatureFieldModel({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) signature register failed`, e); }
+
+  // Audio recorder widget (also subclasses UploadFieldModel).
+  try {
+    registerAudioFieldModel({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) audio register failed`, e); }
+
+  // GPS Location field type.
+  try {
+    registerLocationField({ flowEngine, flowSettings, FieldModel, DisplayTextFieldModel, CollectionFieldInterface, app, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) location register failed`, e); }
+
+  // Auto-capture on form submit (form-level enable + per-field options).
+  try {
+    registerAutoSubmit({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) autoSubmit register failed`, e); }
+
+  // A1 — scan-input field widget (QR/barcode → field value).
+  try {
+    registerScanInputModel({ flowEngine, flowSettings, Base: FieldModel });
+  } catch (e) { console.warn(`[device-kit] (${lane}) scan-input register failed`, e); }
+
+  // A3 — QR display widget (field value → antd QRCode).
+  try {
+    registerQrDisplayModel({ flowEngine, flowSettings, Base: DisplayTextFieldModel || FieldModel });
+  } catch (e) { console.warn(`[device-kit] (${lane}) qr-display register failed`, e); }
+
+  // C2 — Check-in record action (GPS → update current record).
+  try {
+    registerCheckinAction({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) check-in register failed`, e); }
+
+  // A2 — Scan → lookup collection action (POS cart / filter / toast).
+  try {
+    registerScanLookupAction({ flowEngine, flowSettings, lane });
+  } catch (e) { console.warn(`[device-kit] (${lane}) scan-lookup register failed`, e); }
+
+  console.log(`[device-kit] ${lane} loaded`);
+}

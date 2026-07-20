@@ -1,0 +1,21 @@
+{
+  "name": "@tuanla90/plugin-number-format",
+  "displayName": "Number format (WIP / research)",
+  "displayName.zh-CN": "数字格式 (研究中)",
+  "description": "WIP: live thousands-separator formatting for number fields on FORMS. Value binding solved; settings-menu placement is the open problem — see src/shared/numberFormat.tsx and NOTES.md.",
+  "version": "0.0.1",
+  "main": "dist/server/index.js",
+  "devDependencies": {
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x"
+  },
+  "keywords": ["Fields"]
+}

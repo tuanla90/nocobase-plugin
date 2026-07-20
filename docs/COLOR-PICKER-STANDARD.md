@@ -1,6 +1,6 @@
 # Color picker — house standard
 
-Every place in an `@ptdl` plugin where a user picks a **colour** must use the same component and
+Every place in an `@tuanla90` plugin where a user picks a **colour** must use the same component and
 palette, so the UI feels consistent across plugins (like the header search, PWA, custom-header,
 conditional-format, field styles, etc.).
 
@@ -75,14 +75,14 @@ React.createElement(AntdColorPicker, { showText: true, presets: COLOR_PRESETS, .
 
 Plugins with colour pickers (all standardized to the above):
 
-- `@ptdl/plugin-pwa` — theme / background colour.
-- `@ptdl/plugin-custom-header` — title colour, header/tab/block background (Formily `ChColorPicker`).
-- `@ptdl/plugin-conditional-format` — cell / text / background colours.
-- `@ptdl/plugin-field-enhancements` — colours for star / progress / boolean / link / select-buttons /
+- `@tuanla90/plugin-pwa` — theme / background colour.
+- `@tuanla90/plugin-custom-header` — title colour, header/tab/block background (Formily `ChColorPicker`).
+- `@tuanla90/plugin-conditional-format` — cell / text / background colours.
+- `@tuanla90/plugin-field-enhancements` — colours for star / progress / boolean / link / select-buttons /
   number / input-icon field models.
-- `@ptdl/plugin-menu-badge` — badge colour.
-- `@ptdl/plugin-filter-tree` — node / accent colour.
-- `@ptdl/plugin-login-lite` — theme / font / button colours.
+- `@tuanla90/plugin-menu-badge` — badge colour.
+- `@tuanla90/plugin-filter-tree` — node / accent colour.
+- `@tuanla90/plugin-login-lite` — theme / font / button colours.
 
 ## Adding a new colour field
 

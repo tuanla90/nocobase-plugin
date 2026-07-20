@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-field-enhancements"
+PKG="@tuanla90/plugin-field-enhancements"
 
 echo "node: $(node -v)"
 
-SRC="$ROOT/../packages/@ptdl/plugin-field-enhancements"
-DST="$ROOT/packages/plugins/@ptdl/plugin-field-enhancements"
+SRC="$ROOT/../packages/@tuanla90/plugin-field-enhancements"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-field-enhancements"
 
 # Regen snippet library từ nguồn nocobase-plugins/snippets/*.js trước khi build (idempotent).
 echo "=== regen snippets ==="

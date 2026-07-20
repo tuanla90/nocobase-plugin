@@ -1,4 +1,4 @@
-# Instant Create Page — Design & Build Notes (`@ptdl/plugin-instant-create-page`)
+# Instant Create Page — Design & Build Notes (`@tuanla90/plugin-instant-create-page`)
 
 **Goal:** one action → a ready-to-use `/v/` menu page. Pick a collection + a list of columns; get a
 Table of those columns with working **View / Edit / Add** buttons. v0.1.0 LIVE (verified end-to-end on
@@ -42,7 +42,7 @@ TableBlockModel  stepParams.resourceSettings.init={dataSourceKey,collectionName}
 - View/Edit/Add popups reuse the **same picked columns** (user decision): Details/Form items per field.
 - Edit/View forms bind with `filterByTk:'{{ctx.view.inputArgs.filterByTk}}'` (auto-derived at runtime).
 - Renderer per field: `<ItemModelClass>.getDefaultBindingByField(engine.context, field, {fallbackToTargetTitleField:true})?.modelName`
-  (framework's own interface→model resolver, honors @ptdl field-enhancements overrides), with an
+  (framework's own interface→model resolver, honors @tuanla90 field-enhancements overrides), with an
   interface→model map fallback. Table/Details use `Display*FieldModel`; Form uses editable (`Input/Number/Select/...`).
 
 ### Column → field-component mapping (verified live)
@@ -60,7 +60,7 @@ Auto-resolved from the field's interface; fallback maps in `quickView.tsx` mirro
 | **relation** (belongsTo/m2o, hasOne, hasMany, m2m…) | `DisplayTextFieldModel` (related record's **title**) | `RecordSelectFieldModel` (record picker) |
 
 ### Relation columns — the "column turns into an id" fix
-`@ptdl/shared`'s `buildColumnOptions` maps a belongsTo → its **foreign-key** column (right for filtering,
+`@tuanla90/shared`'s `buildColumnOptions` maps a belongsTo → its **foreign-key** column (right for filtering,
 wrong for a table column) → `fieldPath = client_id` → renders the FK **id**. Fix in
 `QuickCreateForm.buildQuickColumnOptions`: offer the **relation by name** (`fieldPath = client`) and **hide
 the raw FK columns** (client_id, createdById, …) they back. Then `getDefaultBindingByField` resolves the
@@ -73,7 +73,7 @@ loading spinner while fetching so an in-flight list never looks like an empty dr
   `@nocobase/utils/client`. We use a **local generator** (lowercase alphanumeric, 11 chars) — verified to
   persist + back a working page. Importing the wrong path → runtime `(0,v.uid) is not a function` (only
   caught by driving the real form, not the console replica).
-- **Build dep — RESOLVED by dropping `@ptdl/shared` entirely.** Importing ANYTHING from `@ptdl/shared`
+- **Build dep — RESOLVED by dropping `@tuanla90/shared` entirely.** Importing ANYTHING from `@tuanla90/shared`
   pulls its whole `index.mjs`, whose `settingsKit` section imports `@formily/react` (+ its inter-dependent
   scope: `@formily/core→@formily/shared→camel-case…`) at module top level. rspack then tries to BUNDLE all
   of it (formily isn't reliably externalized for a bundled dep), a deep fragile chain that caused endless
@@ -89,7 +89,7 @@ loading spinner while fetching so an in-flight list never looks like an empty dr
 - Floating launcher "➕ Quick page" via `app.addProvider` → drawer with the same form.
 
 ## Files
-`packages/@ptdl/plugin-instant-create-page/` — `src/shared/{quickView.tsx (builder+create), QuickCreateForm.tsx (UI),
+`packages/@tuanla90/plugin-instant-create-page/` — `src/shared/{quickView.tsx (builder+create), QuickCreateForm.tsx (UI),
 Launcher.tsx}`, `src/client-v2/index.tsx` (primary lane: settings page + launcher + i18n), `src/client/index.tsx`
 (classic no-op), `src/server/index.ts` (enable-only), `src/locale/{en,vi}`. Build: `build-env/recipes/run-instant-create-page-build.sh`.
 

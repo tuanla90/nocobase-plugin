@@ -1,0 +1,28 @@
+{
+  "name": "@tuanla90/plugin-formula",
+  "displayName": "Formula & Computed Fields",
+  "displayName.vi-VN": "Công thức & Trường tự tính",
+  "displayName.zh-CN": "公式",
+  "description": "Excel-style formulas (400+ functions) throughout NocoBase: display columns (HTML, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and FIFO/average inventory costing.",
+  "version": "0.1.74",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@tuanla90/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x"
+  },
+  "keywords": [
+    "Blocks"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#formula"
+}

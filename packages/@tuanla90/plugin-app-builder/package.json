@@ -1,0 +1,26 @@
+{
+  "name": "@tuanla90/plugin-app-builder",
+  "version": "0.6.24",
+  "displayName": "App Builder",
+  "displayName.vi-VN": "Dựng app từ mô tả",
+  "description": "Compile a high-level App-Spec into a whole NocoBase app — collections, relations, seed data, pages and menu — and extract an existing app back into a spec. The foundation for generating apps from a natural-language description.",
+  "description.vi-VN": "Biên dịch App-Spec cấp cao thành cả một app NocoBase — collection, quan hệ, dữ liệu mẫu, trang và menu — và trích ngược app có sẵn về spec. Nền để sinh app từ mô tả bằng tiếng Việt.",
+  "keywords": [
+    "nocobase"
+  ],
+  "license": "Apache-2.0",
+  "main": "./dist/server/index.js",
+  "devDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  },
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#app-builder"
+}

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /*
  * appsheet-to-appspec.cjs — Convert an AppSheet app-definition (network readapp/AppDef blob)
- * into a NocoBase App-Spec (@ptdl/plugin-app-builder IR) + gsheet-sync sourceplan + report.
+ * into a NocoBase App-Spec (@tuanla90/plugin-app-builder IR) + gsheet-sync sourceplan + report.
  *
  * Usage: node build-env/appsheet-to-appspec.cjs <appdef.json> [outPrefix]
  *
  * v2: reverse-ref (Related X / REF_ROWS) → real o2m (reverseName on the child m2o, shown on
- * the parent's page); AppSheet formulas translated to @ptdl computed fields where safe
+ * the parent's page); AppSheet formulas translated to @tuanla90 computed fields where safe
  * (same-row, lookup [A].[B], unfiltered roll-up SUM([Related X][Col])/SUM(SELECT(Child[..]))),
  * filtered SUMIF-style roll-ups + unsafe funcs FLAGGED (kept as plain fields), not guessed.
  */
@@ -51,8 +51,8 @@ function faToLucide(fa) {
 }
 const TYPE_MAP = { Text: 'input', Name: 'input', LongText: 'textarea', Number: 'number', Decimal: 'number', Percent: 'percent', Price: 'number', Date: 'date', DateTime: 'datetime', Time: 'time', 'Yes/No': 'boolean', Email: 'email', Phone: 'phone', Url: 'url', Color: 'color', Image: 'ATTACHMENT', Thumbnail: 'ATTACHMENT', File: 'ATTACHMENT', Drawing: 'ATTACHMENT', Signature: 'ATTACHMENT' };
 const SYS = new Set(['_RowNumber', '_EMAIL', '_NAME', '_LOCATION', '_THISUSER', '_THISROW']);
-// allow-list = what @ptdl/plugin-formula's engine actually runs (formula.js + AppSheet-parity CUSTOM_FNS).
-// See packages/@ptdl/plugin-formula/APPSHEET-TO-FORMULA.md §2.
+// allow-list = what @tuanla90/plugin-formula's engine actually runs (formula.js + AppSheet-parity CUSTOM_FNS).
+// See packages/@tuanla90/plugin-formula/APPSHEET-TO-FORMULA.md §2.
 const SAFE_FN = new Set([
   // math
   'SUM', 'ABS', 'ROUND', 'ROUNDUP', 'ROUNDDOWN', 'INT', 'TRUNC', 'MOD', 'POWER', 'SQRT', 'EXP', 'LOG', 'LN', 'MAX', 'MIN', 'AVERAGE', 'MEDIAN', 'COUNT', 'COUNTA', 'SUMPRODUCT', 'CEILING', 'FLOOR', 'SIGN', 'PI',

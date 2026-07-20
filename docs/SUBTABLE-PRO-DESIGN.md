@@ -1,4 +1,4 @@
-# Sub-table Pro — thiết kế (`@ptdl/plugin-subtable-pro`)
+# Sub-table Pro — thiết kế (`@tuanla90/plugin-subtable-pro`)
 
 **Trạng thái: PLAN — chưa code.** Ngày: 2026-07-15.
 
@@ -138,7 +138,7 @@ cộng dồn `qtyField`, ghi lại value qua `onChange` native (submit vẫn nat
 Config: section **"Kết nối block khác (bridge)"**: bật · Tên kênh · Cột khóa khớp (FK, vd product_id) ·
 Khóa trên bản ghi nguồn (vd id). Publish từ block nguồn = RunJS action:
 `((ctx.app&&ctx.app.ptdlBridge)||window.__ptdlBridge)?.publish('cart',{action:'add',record:ctx.record})`.
-Chi tiết + bảng action: `packages/@ptdl/plugin-subtable-pro/README.md`.
+Chi tiết + bảng action: `packages/@tuanla90/plugin-subtable-pro/README.md`.
 
 **Verified LIVE (console):** `app.ptdlBridge` installed; pub/sub roundtrip OK; reducer semantics đúng
 (add p1×2→qty2 · add p2 · inc+3→4 · dec→giảm · remove→xóa). **Chờ smoke test mắt:** click thật ở block
@@ -156,7 +156,7 @@ Cách làm CHỐT (khác design ban đầu 1 chút, tốt hơn): widget **subcla
 cơ chế: [[reference_nocobase_subtable_field_model]].
 
 **Đã verify LIVE trên nb-local (/v/, console + API):**
-- ✅ Build → tgz + markers → deploy `node_modules/@ptdl` → `pm enable` (new plugin, no collection) → served 200.
+- ✅ Build → tgz + markers → deploy `node_modules/@tuanla90` → `pm enable` (new plugin, no collection) → served 200.
 - ✅ `PtdlSubtableProFieldModel` đăng ký, `extends SubTableFieldModel`, có đủ flow thừa kế + `ptdlSubtableProTotals`.
 - ✅ **Bind ĐÚNG** vào `o2m/m2m/mbm` — hiện là option "Sub-table Pro" trong ⚙ Field component.
   **BUG đã sửa:** phải bind qua `FormItemModel.bindModelToInterface` (class giữ `_bindings` mà form field đọc),
@@ -222,18 +222,18 @@ card/list + stepper **chờ smoke test mắt** (giới hạn tooling screenshot)
 - **Bilingual en+vi** từ đầu: NS riêng, `tExpr`, `addResources` cả 2 lane
   ([[feedback_plugin_i18n_and_shared_mandatory]]); wire `setSharedT` cho field-picker/condition
   của shared ([[reference_ptdl_shared_i18n_injector]]).
-- **Reuse `@ptdl/shared`**: field-picker (chọn columns/sumFields), settings-kit (dialog),
+- **Reuse `@tuanla90/shared`**: field-picker (chọn columns/sumFields), settings-kit (dialog),
   format (số/tiền), realtime helper khi tới v3.
 - Client i18n đọc `app.i18n` (KHÔNG window global — [[reference_nocobase_v2_block_i18n]]).
 - Build: recipe `build-env/recipes/run-subtable-pro-build.sh` + add-markers TRƯỚC khi deploy
-  ([[project_nocobase_build_marker_tgz_trap]]); deploy vào `node_modules/@ptdl`
+  ([[project_nocobase_build_marker_tgz_trap]]); deploy vào `node_modules/@tuanla90`
   ([[reference_nb_local_deploy]]); plugin MỚI = tạo bảng tay nếu có collection
   ([[reference_nb_local_install_new_plugin]] — bản này KHÔNG có collection server, thuần client → chỉ cần INSERT row `applicationPlugins`).
 
 ## 8. Cấu trúc file dự kiến
 
 ```
-packages/@ptdl/plugin-subtable-pro/
+packages/@tuanla90/plugin-subtable-pro/
   src/client/index.tsx        — lane /admin: registerModels + i18n
   src/client-v2/index.tsx     — lane /v/: như trên
   src/shared/bridge.ts        — ptdlBridge singleton (pub/sub)

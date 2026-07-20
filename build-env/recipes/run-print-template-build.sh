@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-print-template"
+PKG="@tuanla90/plugin-print-template"
 echo "node: $(node -v)"
 
 # Stage source + markers (markers at the STAGED package root are the lane build triggers!)
-SRC="$ROOT/../packages/@ptdl/plugin-print-template"
-DST="$ROOT/packages/plugins/@ptdl/plugin-print-template"
+SRC="$ROOT/../packages/@tuanla90/plugin-print-template"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-print-template"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
@@ -24,14 +24,14 @@ for real in handlebars qrcode-generator jszip; do
   echo "keep real : $real"
 done
 
-# @ptdl/shared is a workspace package npm prunes on every install — restore it from
+# @tuanla90/shared is a workspace package npm prunes on every install — restore it from
 # packages/ so the build can resolve/bundle it.
-SHARED_SRC="$ROOT/../packages/@ptdl/shared"
-if [ ! -f "$NM/@ptdl/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@ptdl/shared/dist/index.js" ]; then
-  mkdir -p "$NM/@ptdl"
-  rm -rf "$NM/@ptdl/shared"
-  cp -r "$SHARED_SRC" "$NM/@ptdl/shared"
-  echo "restored  : @ptdl/shared"
+SHARED_SRC="$ROOT/../packages/@tuanla90/shared"
+if [ ! -f "$NM/@tuanla90/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@tuanla90/shared/dist/index.js" ]; then
+  mkdir -p "$NM/@tuanla90"
+  rm -rf "$NM/@tuanla90/shared"
+  cp -r "$SHARED_SRC" "$NM/@tuanla90/shared"
+  echo "restored  : @tuanla90/shared"
 fi
 
 # Stub EXTERNAL framework deps at nb-local (2.1.19) versions so

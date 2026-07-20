@@ -41,24 +41,24 @@ action**. All of these are enabled in nb-local.
 
 - **Chart block (core ECharts)** — standard line / bar / column / pie / area / scatter. First choice for a
   normal plot.
-- **ECharts Pro** (`@ptdl/plugin-data-visualization-echarts-pro`) — an all-in-one flexible chart type
+- **ECharts Pro** (`@tuanla90/plugin-data-visualization-echarts-pro`) — an all-in-one flexible chart type
   (smooth · stack · donut · legend · labels, number formatting, a JS data-transform, and a **raw ECharts
   `option` override** for full control). Reach for it when the core chart types aren't enough. README:
-  `packages/@ptdl/plugin-data-visualization-echarts-pro/README.md`.
-- **Custom HTML block** (`@ptdl/plugin-block-custom-html`) — pulls data like the Chart block, then YOU draw
+  `packages/@tuanla90/plugin-data-visualization-echarts-pro/README.md`.
+- **Custom HTML block** (`@tuanla90/plugin-block-custom-html`) — pulls data like the Chart block, then YOU draw
   the UI with JavaScript that returns HTML. **Use it for score cards / KPI tiles / top-N lists / cards, and
   for any hard case a chart can't express.** Ships ready-made templates, a helper toolkit (number
   formatting, escaping, icons), and an AI-write button. README:
-  `packages/@ptdl/plugin-block-custom-html/README.md`.
+  `packages/@tuanla90/plugin-block-custom-html/README.md`.
 
 **Rule of thumb (the user's guidance):** a single KPI / bespoke layout / anything awkward for a chart →
 **Custom HTML block (score card)**; a standard plot → **Chart block / ECharts Pro**.
 
 ## Building programmatically
 
-Build /v/ dashboard pages the way `@ptdl/plugin-app-builder` builds pages — `createQuickPage` / `flowEngine`
+Build /v/ dashboard pages the way `@tuanla90/plugin-app-builder` builds pages — `createQuickPage` / `flowEngine`
 models create the route + block models. Read `docs/APP-BUILDER-DESIGN.md` and
-`packages/@ptdl/plugin-app-builder/src/shared/{quickView,materialize}.tsx` for the route + flowModel recipe,
+`packages/@tuanla90/plugin-app-builder/src/shared/{quickView,materialize}.tsx` for the route + flowModel recipe,
 then add Chart / Custom-HTML blocks. If a clean programmatic recipe for a chart/HTML block isn't obvious,
 **reverse-engineer a hand-built one from the `flowModels` table** (its `options` JSON holds the full block
 config) — the same technique the app-builder work relied on.
@@ -77,5 +77,5 @@ config) — the same technique the app-builder work relied on.
 
 A working dashboard on /v/ (or, for a standalone request, chart code / a `visualize`-MCP artifact), plus a
 one-line note on what each chart/card answers and any data caveats (nulls, sampling, time zone). If you
-extend a plugin, keep it bilingual (en + vi) + reuse `@ptdl/shared` per the project plugin guide, and follow
+extend a plugin, keep it bilingual (en + vi) + reuse `@tuanla90/shared` per the project plugin guide, and follow
 the build → deploy → verify loop.

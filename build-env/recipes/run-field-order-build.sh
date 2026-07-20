@@ -3,15 +3,16 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-field-order"
+PKG="@tuanla90/plugin-field-order"
 PKGDIR="$ROOT/packages/plugins/$PKG"
 
 # Sync src + version from the workspace (nguồn chân lý). This recipe builds the build-env COPY, so
 # without this it silently ships stale source / the old version number. Only the version field of
 # package.json is synced (build-env copy may differ in devDeps).
-SRC="$ROOT/../packages/@ptdl/plugin-field-order"
+SRC="$ROOT/../packages/@tuanla90/plugin-field-order"
+mkdir -p "$PKGDIR"
 if [ -d "$SRC/src" ]; then
-  rm -rf "$PKGDIR/src"; cp -r "$SRC/src" "$PKGDIR/src"; echo "synced src <- $SRC"
+  rm -rf "$PKGDIR/src"; cp -r "$SRC/src" "$PKGDIR/src"; cp "$SRC/package.json" "$PKGDIR/package.json"; cp "$SRC"/*.js "$SRC"/*.d.ts "$PKGDIR/" 2>/dev/null || true; echo "synced src <- $SRC"
 fi
 VERSRC=$(grep '"version"' "$SRC/package.json" | head -1 | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
 if [ -n "$VERSRC" ]; then

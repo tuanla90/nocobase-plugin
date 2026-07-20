@@ -8,7 +8,7 @@ const MarkdownIt = require('markdown-it');
 
 const REPO = process.argv[2];
 const OUT = process.argv[3];
-const PKGS = path.join(REPO, 'packages', '@ptdl');
+const PKGS = path.join(REPO, 'packages', '@tuanla90');
 
 const md = new MarkdownIt({ html: true, linkify: true, typographer: true, breaks: false });
 
@@ -128,8 +128,8 @@ function build(plugins) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hướng dẫn Plugin @ptdl · @ptdl Plugin Guides</title>
-<meta name="description" content="Hướng dẫn sử dụng ${count} plugin @ptdl cho NocoBase — User guides for ${count} @ptdl NocoBase plugins.">
+<title>Hướng dẫn Plugin @tuanla90 · @tuanla90 Plugin Guides</title>
+<meta name="description" content="Hướng dẫn sử dụng ${count} plugin @tuanla90 cho NocoBase — User guides for ${count} @tuanla90 NocoBase plugins.">
 <style>
 :root{
   --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --border:#d1d9e0; --card:#f6f8fa;
@@ -201,7 +201,7 @@ a:hover{text-decoration:underline}
 <a id="top"></a>
 <div class="layout">
   <aside class="side">
-    <div class="brand">📚 ${L('Hướng dẫn Plugin @ptdl', '@ptdl Plugin Guides')}<small>${count} plugin · NocoBase</small></div>
+    <div class="brand">📚 ${L('Hướng dẫn Plugin @tuanla90', '@tuanla90 Plugin Guides')}<small>${count} plugin · NocoBase</small></div>
     <div class="langtoggle">
       <button data-lang="vi" class="active">Tiếng Việt</button>
       <button data-lang="en">English</button>
@@ -216,7 +216,7 @@ a:hover{text-decoration:underline}
   </aside>
   <main class="main">
     <div class="hero">
-      <h1>${L('Hướng dẫn sử dụng Plugin @ptdl', '@ptdl Plugin User Guides')}</h1>
+      <h1>${L('Hướng dẫn sử dụng Plugin @tuanla90', '@tuanla90 Plugin User Guides')}</h1>
       <p>${L('Cài plugin xong thì <b>đổi gì</b>, chỉnh <b>ở đâu</b>, dùng <b>thế nào</b> — từng bước.', 'What <b>changes</b> after installing, <b>where</b> to configure, <b>how</b> to use — step by step.')}</p>
       <div class="meta">${L('Chọn plugin ở thanh bên, hoặc dùng ô tìm kiếm. Nội dung sinh tự động từ tài liệu của từng plugin.', 'Pick a plugin in the sidebar, or use the search box. Content is generated from each plugin&#39;s docs.')}</div>
     </div>

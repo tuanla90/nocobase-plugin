@@ -1,7 +1,7 @@
 # Computed Field — cột công thức lưu thật, tự cập nhật theo dependency (DESIGN)
 
-> Tài liệu thiết kế (2026-07-14). Feature mở rộng cho `@ptdl/plugin-formula`, lấy **Rollup**
-> ([ROLLUP.md](../packages/@ptdl/plugin-formula/ROLLUP.md)) làm hạt nhân và tổng quát hoá thành một
+> Tài liệu thiết kế (2026-07-14). Feature mở rộng cho `@tuanla90/plugin-formula`, lấy **Rollup**
+> ([ROLLUP.md](../packages/@tuanla90/plugin-formula/ROLLUP.md)) làm hạt nhân và tổng quát hoá thành một
 > **engine đồ thị phụ thuộc** đa-collection. Đọc trước khi code.
 
 ---
@@ -36,9 +36,9 @@ Các kịch bản phải phủ:
 |---|---|
 | **AppSheet — app formula trên real column** | *"columns with app formulas that depend on other rows (SELECT/LOOKUP) don't automatically update if the other rows change"* → chỉ tính lại theo **dòng của chính nó**, không lan cross-row. |
 | **AppSheet — virtual column** | Tính được cross-row nhưng **không lưu**, tính lại **toàn bộ mỗi lần sync**, **cục bộ theo user** → không query/sort/filter/export trên DB, chậm khi nhiều. |
-| **NocoBase core `@nocobase/plugin-field-formula`** | Lưu thật nhưng **chỉ cùng 1 record** (`record.toJSON()` của chính nó, không load quan hệ), chỉ chạy khi record **cha** save; không aggregate to-many, không nhảy khi con/lookup đổi (xem [ROLLUP.md §1](../packages/@ptdl/plugin-formula/ROLLUP.md); issue nocobase#3514 "Formula field not update"). |
+| **NocoBase core `@nocobase/plugin-field-formula`** | Lưu thật nhưng **chỉ cùng 1 record** (`record.toJSON()` của chính nó, không load quan hệ), chỉ chạy khi record **cha** save; không aggregate to-many, không nhảy khi con/lookup đổi (xem [ROLLUP.md §1](../packages/@tuanla90/plugin-formula/ROLLUP.md); issue nocobase#3514 "Formula field not update"). |
 | **NocoBase Workflow (Collection event)** | Phải nối tay nhiều workflow; **không có đồ thị phụ thuộc / thứ tự chuỗi**; **dễ lặp vô hạn** (không cơ chế chống đệ quy); **bulk & association không trigger**; **thao tác DB trực tiếp không trigger** (chỉ qua HTTP app). |
-| **@ptdl Rollup (hiện có)** | Đúng pattern (field thật + hook con + afterCommit + `hooks:false`) nhưng **chỉ 1 mức aggregate** — không có công thức số học cùng dòng, không lookup, không chuỗi nhiều tầng. |
+| **@tuanla90 Rollup (hiện có)** | Đúng pattern (field thật + hook con + afterCommit + `hooks:false`) nhưng **chỉ 1 mức aggregate** — không có công thức số học cùng dòng, không lookup, không chuỗi nhiều tầng. |
 
 → **Computed Field** = *cột thật lưu DB* (query được như real column) **+** *khả năng lan cross-row
 nhiều tầng* (điểm mạnh của virtual column) **+** *incremental* (chỉ tính dòng bị ảnh hưởng, không
@@ -52,10 +52,10 @@ Feature này **không viết từ đầu** — hợp nhất 2 engine server đã
 
 | Tài sản có sẵn | Cho ta cái gì | File |
 |---|---|---|
-| **Rollup** (`RollupManager`) | Hook con `afterCreate/Update/Destroy` + snapshot FK cũ/mới (re-parent) + `afterCommit` + `recomputeParent` + `hooks:false` + backfill action | [rollup.ts](../packages/@ptdl/plugin-formula/src/server/rollup.ts), [plugin.ts](../packages/@ptdl/plugin-formula/src/server/plugin.ts) |
-| **AI Autorun** (`ptdlAiAutorun`) | **Gần như đúng engine cần**: config-collection + `autorunCache` Map + hook idempotent per-collection + gate `dependsOn` bằng `model.changed()` + `tx.afterCommit` + **throttle queue** coalesce theo record + `hooks:false` | [ai-column/server/index.ts:965-1032](../packages/@ptdl/plugin-ai-column/src/server/index.ts) |
-| **Formula engine** | `evaluateFormula(formula, data)` — ~400 hàm Excel, **JS thuần, không React → chạy server được**; auto-pluck proxy hiểu `data.items.line_amount` | [formulaEngine.ts:165-176](../packages/@ptdl/plugin-formula/src/shared/formulaEngine.ts) |
-| **Change-log** (`ptdlChangeLogConfigs`) | Bản tham chiếu **sạch nhất** cho config-collection + cache + invalidate hook + enforce hook | [change-log/server/plugin.ts:35-79](../packages/@ptdl/plugin-change-log/src/server/plugin.ts) |
+| **Rollup** (`RollupManager`) | Hook con `afterCreate/Update/Destroy` + snapshot FK cũ/mới (re-parent) + `afterCommit` + `recomputeParent` + `hooks:false` + backfill action | [rollup.ts](../packages/@tuanla90/plugin-formula/src/server/rollup.ts), [plugin.ts](../packages/@tuanla90/plugin-formula/src/server/plugin.ts) |
+| **AI Autorun** (`ptdlAiAutorun`) | **Gần như đúng engine cần**: config-collection + `autorunCache` Map + hook idempotent per-collection + gate `dependsOn` bằng `model.changed()` + `tx.afterCommit` + **throttle queue** coalesce theo record + `hooks:false` | [ai-column/server/index.ts:965-1032](../packages/@tuanla90/plugin-ai-column/src/server/index.ts) |
+| **Formula engine** | `evaluateFormula(formula, data)` — ~400 hàm Excel, **JS thuần, không React → chạy server được**; auto-pluck proxy hiểu `data.items.line_amount` | [formulaEngine.ts:165-176](../packages/@tuanla90/plugin-formula/src/shared/formulaEngine.ts) |
+| **Change-log** (`ptdlChangeLogConfigs`) | Bản tham chiếu **sạch nhất** cho config-collection + cache + invalidate hook + enforce hook | [change-log/server/plugin.ts:35-79](../packages/@tuanla90/plugin-change-log/src/server/plugin.ts) |
 
 **Cái mới phải viết:** (a) **đồ thị phụ thuộc đa-collection** + phát hiện chu trình; (b) **cascade
 topo trong bộ nhớ** (computed→computed) thay vì để hook DB tự nối (sẽ lặp); (c) loại dep **lookup**
@@ -77,7 +77,7 @@ Trong repo có **đúng 2 blueprint** cho "global rule" server-enforced:
 
 > **Lưu ý về "plugin sửa title":** đó là **`plugin-custom-header`**, toggle *"Áp dụng mọi view (mặc
 > định field)"* — lưu global rule trong collection riêng **`ptdlFieldStyles`**
-> ([custom-header/server/plugin.ts:10-24](../packages/@ptdl/plugin-custom-header/src/server/plugin.ts)),
+> ([custom-header/server/plugin.ts:10-24](../packages/@tuanla90/plugin-custom-header/src/server/plugin.ts)),
 > tức là **blueprint B2**. Nhưng nó **enforce phía CLIENT** (client cache rows rồi apply khi render) —
 > KHÔNG hợp cho Computed Field, vì ta cần giá trị đúng **cả khi không mở form / qua API / bulk / import**.
 
@@ -105,12 +105,12 @@ toàn hệ thống — đúng tinh thần "save as global rule" user muốn.
 Storage là `ptdlComputedRules`, nhưng **UI nhập đặt ngay trong ⚙ config của cột** (không cần màn admin
 riêng) — **đúng pattern `plugin-custom-header`**: config nằm trong flow-settings của cột, khi bấm lưu thì
 `api.request({ url: 'ptdlComputedRules:updateOrCreate', params:{ filterKeys:['dataSourceKey','collectionName','targetField'] }, values })`
-([customHeader.tsx:488-516](../packages/@ptdl/plugin-custom-header/src/shared/customHeader.tsx) ghi vào `ptdlFieldStyles`
+([customHeader.tsx:488-516](../packages/@tuanla90/plugin-custom-header/src/shared/customHeader.tsx) ghi vào `ptdlFieldStyles`
 theo cùng cách). Mở lại dialog → prefill bằng cách đọc rule hiện có (client cache + `ptdlComputedRules:list`,
-refresh khi refocus tab như [customHeader.tsx:149-165](../packages/@ptdl/plugin-custom-header/src/shared/customHeader.tsx)).
+refresh khi refocus tab như [customHeader.tsx:149-165](../packages/@tuanla90/plugin-custom-header/src/shared/customHeader.tsx)).
 
 - **Điểm nhập** = step "Công thức (tự cập nhật)" trên ⚙ của **cột gắn field số thật** (giống Rollup interface
-  [rollupInterface.tsx](../packages/@ptdl/plugin-formula/src/client-v2/rollupInterface.tsx)). Cột đích **bắt buộc là
+  [rollupInterface.tsx](../packages/@tuanla90/plugin-formula/src/client-v2/rollupInterface.tsx)). Cột đích **bắt buộc là
   field stored** (double/integer/bigInt) để ghi + query/sort/filter được.
 - **`targetField`** suy ra từ chính field của cột đang cấu hình → user chỉ nhập `formula` + (tuỳ chọn) `deps`.
 - Khác với custom-header ở chỗ **enforce phía server** (engine đọc collection), không chỉ client-render.
@@ -163,7 +163,7 @@ refresh khi refocus tab như [customHeader.tsx:149-165](../packages/@ptdl/plugin
 | `chained` | (không khai báo tay) — sinh tự động khi `field` trong `local/aggregate/lookup` **lại là** một `targetField` computed khác | engine tự nối |
 
 > **Auto-detect (khuyến nghị bật cho `local`):** bóc các tham chiếu `data.<field>` / `data.<rel>.<field>`
-> từ formula bằng chính cấu trúc auto-pluck của [formulaEngine.ts:78-99](../packages/@ptdl/plugin-formula/src/shared/formulaEngine.ts);
+> từ formula bằng chính cấu trúc auto-pluck của [formulaEngine.ts:78-99](../packages/@tuanla90/plugin-formula/src/shared/formulaEngine.ts);
 > `aggregate/lookup` nên **khai báo tay** để chắc chắn phân biệt to-many vs to-one.
 
 > **`lookup` phủ luôn "roll-down" (cha → con):** to-one có thể trỏ tới **bảng tham chiếu** (`item→product`)
@@ -196,7 +196,7 @@ Dựng xong:
 
 ### 5.2. Thu "dirty" trong transaction (hook chỉ **snapshot + enqueue**, KHÔNG tính ngay)
 
-Clone [ai-column ensureAutorunListener:986-1017](../packages/@ptdl/plugin-ai-column/src/server/index.ts) — snapshot NGAY (pk, `model.changed()`, `values`, và **FK cũ/mới** như [rollup onChildChange:108-119](../packages/@ptdl/plugin-formula/src/server/rollup.ts)), rồi `tx.afterCommit`:
+Clone [ai-column ensureAutorunListener:986-1017](../packages/@tuanla90/plugin-ai-column/src/server/index.ts) — snapshot NGAY (pk, `model.changed()`, `values`, và **FK cũ/mới** như [rollup onChildChange:108-119](../packages/@tuanla90/plugin-formula/src/server/rollup.ts)), rồi `tx.afterCommit`:
 
 ```
 seedDirty(change):
@@ -236,8 +236,8 @@ processDirty():                                # chạy trong throttle queue, sa
 ```
 
 **Vì sao cascade phải in-memory, không để hook DB tự nối:** vì writeback dùng `hooks:false` (chống
-lặp — [rollup.ts:165](../packages/@ptdl/plugin-formula/src/server/rollup.ts),
-[ai-column:1019-1020](../packages/@ptdl/plugin-ai-column/src/server/index.ts)). Nếu bật hook để nối
+lặp — [rollup.ts:165](../packages/@tuanla90/plugin-formula/src/server/rollup.ts),
+[ai-column:1019-1020](../packages/@tuanla90/plugin-ai-column/src/server/index.ts)). Nếu bật hook để nối
 thì sẽ **lặp vô hạn**. Đồ thị **không chu trình** (đã kiểm ở 5.1) đảm bảo vòng `while` hội tụ.
 
 **Tối ưu:** nhiều computed field cùng 1 dòng (vd `subtotal` và `total`) → gom vào **một** câu
@@ -252,7 +252,7 @@ cần chờ; chỉ `aggregate` cần "flush-trước-đọc-sau".)
 
 ### 5.4. Backfill (drift / import / ghi DB trực tiếp)
 
-Tổng quát hoá [ptdlRollup:recompute](../packages/@ptdl/plugin-formula/src/server/plugin.ts) thành
+Tổng quát hoá [ptdlRollup:recompute](../packages/@tuanla90/plugin-formula/src/server/plugin.ts) thành
 `POST /api/ptdlComputed:recompute?collection=&field=` → duyệt toàn bảng theo topo, tính lại tất cả.
 Gọi tự động 1 lần khi **lưu/bật** một rule mới (giống Rollup backfill lúc tạo field).
 
@@ -289,19 +289,19 @@ Fan-out = số item của order (nhỏ). Nếu chính sách nằm ở **bảng d
 → fan-out 2 tầng (policy→order→item): tách mỗi chặng thành 1 lookup computed (§4.2) + batch (§7.7).
 
 1. **FK-move phải hook `afterUpdate` RAW**, KHÔNG `afterUpdateWithAssociations` — bản WithAssociations
-   bắn trên instance đã reload → mất `previous(fk)` → cha cũ không nhảy ([ROLLUP.md §6.1-6.2](../packages/@ptdl/plugin-formula/ROLLUP.md)).
+   bắn trên instance đã reload → mất `previous(fk)` → cha cũ không nhảy ([ROLLUP.md §6.1-6.2](../packages/@tuanla90/plugin-formula/ROLLUP.md)).
 2. **Snapshot `get(fk)` + `previous(fk)` + `changed()` NGAY trong handler**, trước `afterCommit`
    (Sequelize reset sau commit).
 3. **`afterCommit`** để đọc state đã commit (nhất là afterDestroy — dòng đã xoá; aggregate mới đúng).
 4. **`hooks:false`** khi writeback + **cascade in-memory** (không hook) → chống lặp. Không có cái này là loop.
 5. **Node 24: callback `afterCommit` phải SYNC + async detach + tự catch** — unhandled rejection làm
-   crash process ([ai-column:983-1010](../packages/@ptdl/plugin-ai-column/src/server/index.ts)). Dùng **throttle queue** (coalesce theo `col:pk`) để burst không xếp chồng.
+   crash process ([ai-column:983-1010](../packages/@tuanla90/plugin-ai-column/src/server/index.ts)). Dùng **throttle queue** (coalesce theo `col:pk`) để burst không xếp chồng.
 5. **Phát hiện chu trình lúc lưu rule** — từ chối rule tạo vòng (A→B→A). Bắt buộc, nếu không cascade không hội tụ.
 7. **Fan-out lookup có thể rất lớn** (đổi 1 đơn giá đụng ngàn item) → gom lô, cân nhắc chạy nền cho cột "nặng".
-8. **`evaluateFormula` tham chiếu field qua `data.x`** (không bare `x`) vì compile `new Function('data','value','record',…)` ([formulaEngine.ts:169](../packages/@ptdl/plugin-formula/src/shared/formulaEngine.ts)).
+8. **`evaluateFormula` tham chiếu field qua `data.x`** (không bare `x`) vì compile `new Function('data','value','record',…)` ([formulaEngine.ts:169](../packages/@tuanla90/plugin-formula/src/shared/formulaEngine.ts)).
 9. **Bundle server phải kèm `shared/formulaEngine.ts`** (+ vendored formulajs UMD) — hiện server lane
    chỉ build `rollup.ts`. Engine là JS thuần nên chạy Node OK, chỉ là vấn đề đóng gói.
-10. **Cột đích để read-only trong form** (như [rollupInterface.tsx:24-27](../packages/@ptdl/plugin-formula/src/client-v2/rollupInterface.tsx)) — tránh user gõ đè.
+10. **Cột đích để read-only trong form** (như [rollupInterface.tsx:24-27](../packages/@tuanla90/plugin-formula/src/client-v2/rollupInterface.tsx)) — tránh user gõ đè.
 11. **Chỉ hasMany/hasOne cho aggregate; belongsTo/hasOne cho lookup.** m2m (belongsToMany) hoãn (through/otherKey khác).
 
 ---
@@ -323,15 +323,15 @@ Fan-out = số item của order (nhỏ). Nếu chính sách nằm ở **bảng d
 
 ## 9. Lộ trình (checklist từng phase)
 
-### Phase 1 — Local computed ✅ ĐÃ XONG (build OK, smoke-test Node 4/4) — xem [../packages/@ptdl/plugin-formula/COMPUTED-FIELD.md](../packages/@ptdl/plugin-formula/COMPUTED-FIELD.md)
-- [x] Collection `ptdlComputedRules` + `acl.allow(...,'loggedIn')` + action `ptdlComputed:recompute` → [server/plugin.ts](../packages/@ptdl/plugin-formula/src/server/plugin.ts).
-- [x] `ComputedManager`: `loadRules()` → `Map<collection, rules[]>`, invalidate `ptdlComputedRules.afterSave/afterDestroy` → [server/computed.ts](../packages/@ptdl/plugin-formula/src/server/computed.ts).
-- [x] Server lane bundle `shared/formulaEngine.ts` — **inline `escapeHtml`** (bỏ import `@ptdl/shared`; server-build chỉ bundle `main` → subpath sẽ thiếu runtime).
+### Phase 1 — Local computed ✅ ĐÃ XONG (build OK, smoke-test Node 4/4) — xem [../packages/@tuanla90/plugin-formula/COMPUTED-FIELD.md](../packages/@tuanla90/plugin-formula/COMPUTED-FIELD.md)
+- [x] Collection `ptdlComputedRules` + `acl.allow(...,'loggedIn')` + action `ptdlComputed:recompute` → [server/plugin.ts](../packages/@tuanla90/plugin-formula/src/server/plugin.ts).
+- [x] `ComputedManager`: `loadRules()` → `Map<collection, rules[]>`, invalidate `ptdlComputedRules.afterSave/afterDestroy` → [server/computed.ts](../packages/@tuanla90/plugin-formula/src/server/computed.ts).
+- [x] Server lane bundle `shared/formulaEngine.ts` — **inline `escapeHtml`** (bỏ import `@tuanla90/shared`; server-build chỉ bundle `main` → subpath sẽ thiếu runtime).
 - [x] **Đổi hướng vs plan gốc**: local same-row dùng **`beforeSave` + `instance.set`** (1 lần ghi, trả về ngay, không deadlock/loop) — như NocoBase core formula field. `afterCommit`/queue/cascade để Phase 2 (cross-row). Gate `changed()` cho local deps.
-- [x] UI: step "Giá trị tự tính" trên ⚙ cột (client-v2) → `ptdlComputedRules:updateOrCreate` → [computedRuleClient.tsx](../packages/@ptdl/plugin-formula/src/shared/computedRuleClient.tsx). ⚠️ chưa verify browser thật. **Giải quyết** `total = data.subtotal − data.discount`.
+- [x] UI: step "Giá trị tự tính" trên ⚙ cột (client-v2) → `ptdlComputedRules:updateOrCreate` → [computedRuleClient.tsx](../packages/@tuanla90/plugin-formula/src/shared/computedRuleClient.tsx). ⚠️ chưa verify browser thật. **Giải quyết** `total = data.subtotal − data.discount`.
 
-### Phase 2 — Đồ thị + aggregate + chained ✅ ĐÃ XONG (e2e 30/30) — xem [../packages/@ptdl/plugin-formula/COMPUTED-FIELD.md](../packages/@ptdl/plugin-formula/COMPUTED-FIELD.md)
-- [x] DAG + topo `rank` + **phát hiện chu trình** (rule tạo vòng bị disable, server không sập) — [computed.ts](../packages/@ptdl/plugin-formula/src/server/computed.ts) `buildGraph`/`detectCycles`.
+### Phase 2 — Đồ thị + aggregate + chained ✅ ĐÃ XONG (e2e 30/30) — xem [../packages/@tuanla90/plugin-formula/COMPUTED-FIELD.md](../packages/@tuanla90/plugin-formula/COMPUTED-FIELD.md)
+- [x] DAG + topo `rank` + **phát hiện chu trình** (rule tạo vòng bị disable, server không sập) — [computed.ts](../packages/@tuanla90/plugin-formula/src/server/computed.ts) `buildGraph`/`detectCycles`.
 - [x] `aggregate` dep qua công thức `SUM(data.items.line_amount)` — **roll-up mọi độ sâu** (SUM-of-SUMs item→order→customer verified). Rollup cũ coexist.
 - [x] **`runCascade` worklist theo topo rank** (KHÔNG đệ quy+visited — xem cạm bẫy fan-out); **nối** `line_amount → subtotal → total`.
 - [x] `ptdlComputed:recompute` (backfill topo) + client auto-backfill khi lưu rule.
@@ -343,13 +343,13 @@ Fan-out = số item của order (nhỏ). Nếu chính sách nằm ở **bảng d
 
 ---
 
-## 10. Build / deploy / test (theo [ROLLUP.md §9](../packages/@ptdl/plugin-formula/ROLLUP.md))
+## 10. Build / deploy / test (theo [ROLLUP.md §9](../packages/@tuanla90/plugin-formula/ROLLUP.md))
 
 ```bash
 cd build-env
 bash recipes/run-formula-build.sh                 # sync src → build 3 lane
-bash recipes/add-markers.sh storage/tar/@ptdl/plugin-formula-<ver>.tgz
-# deploy tgz → node_modules/@ptdl/ (nb-local); server lane đổi → PHẢI restart
+bash recipes/add-markers.sh storage/tar/@tuanla90/plugin-formula-<ver>.tgz
+# deploy tgz → node_modules/@tuanla90/ (nb-local); server lane đổi → PHẢI restart
 cd ../../nb-local && npx pm2 restart index
 ```
 > Nhớ **verify markers trên đúng version vừa build** (bẫy `find|head -1` chèn marker vào tgz cũ nhất — memory `build-marker-tgz-trap`) và **verify bundle server đã kèm formulaEngine** (grep chuỗi trên bundle đã giải nén).
@@ -361,12 +361,12 @@ cd ../../nb-local && npx pm2 restart index
 ## 11. Tham chiếu
 
 **Code trong repo:**
-- Rollup engine: [packages/@ptdl/plugin-formula/src/server/rollup.ts](../packages/@ptdl/plugin-formula/src/server/rollup.ts), [ROLLUP.md](../packages/@ptdl/plugin-formula/ROLLUP.md)
-- AI Autorun (precedent gần nhất): [packages/@ptdl/plugin-ai-column/src/server/index.ts:965-1032](../packages/@ptdl/plugin-ai-column/src/server/index.ts) (+ collection def ~1127-1140)
-- Config-collection + cache + hook (bản sạch): [packages/@ptdl/plugin-change-log/src/server/plugin.ts:35-79](../packages/@ptdl/plugin-change-log/src/server/plugin.ts)
-- "Save as global rule" (custom-header / `ptdlFieldStyles`, **client-enforced**): [packages/@ptdl/plugin-custom-header/src/server/plugin.ts:10-24](../packages/@ptdl/plugin-custom-header/src/server/plugin.ts), [customHeader.tsx:470-516](../packages/@ptdl/plugin-custom-header/src/shared/customHeader.tsx)
-- Field-options + enforce hook (status-flow): [packages/@ptdl/plugin-status-flow/src/server/plugin.ts](../packages/@ptdl/plugin-status-flow/src/server/plugin.ts)
-- Formula engine: [packages/@ptdl/plugin-formula/src/shared/formulaEngine.ts](../packages/@ptdl/plugin-formula/src/shared/formulaEngine.ts)
+- Rollup engine: [packages/@tuanla90/plugin-formula/src/server/rollup.ts](../packages/@tuanla90/plugin-formula/src/server/rollup.ts), [ROLLUP.md](../packages/@tuanla90/plugin-formula/ROLLUP.md)
+- AI Autorun (precedent gần nhất): [packages/@tuanla90/plugin-ai-column/src/server/index.ts:965-1032](../packages/@tuanla90/plugin-ai-column/src/server/index.ts) (+ collection def ~1127-1140)
+- Config-collection + cache + hook (bản sạch): [packages/@tuanla90/plugin-change-log/src/server/plugin.ts:35-79](../packages/@tuanla90/plugin-change-log/src/server/plugin.ts)
+- "Save as global rule" (custom-header / `ptdlFieldStyles`, **client-enforced**): [packages/@tuanla90/plugin-custom-header/src/server/plugin.ts:10-24](../packages/@tuanla90/plugin-custom-header/src/server/plugin.ts), [customHeader.tsx:470-516](../packages/@tuanla90/plugin-custom-header/src/shared/customHeader.tsx)
+- Field-options + enforce hook (status-flow): [packages/@tuanla90/plugin-status-flow/src/server/plugin.ts](../packages/@tuanla90/plugin-status-flow/src/server/plugin.ts)
+- Formula engine: [packages/@tuanla90/plugin-formula/src/shared/formulaEngine.ts](../packages/@tuanla90/plugin-formula/src/shared/formulaEngine.ts)
 
 **Ngoài (nghiên cứu):**
 - AppSheet — Use virtual columns: https://support.google.com/appsheet/answer/10106758

@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-action-enhancements"
+PKG="@tuanla90/plugin-action-enhancements"
 
 echo "node: $(node -v)"
 
-SRC="$ROOT/../packages/@ptdl/plugin-action-enhancements"
-DST="$ROOT/packages/plugins/@ptdl/plugin-action-enhancements"
+SRC="$ROOT/../packages/@tuanla90/plugin-action-enhancements"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-action-enhancements"
 
 rm -rf "$DST"
 mkdir -p "$DST"

@@ -84,7 +84,7 @@ async function loadIconCache() {
   if (!names.length) return;
   try {
     // Load qua CDN (RunJS không truy cập được registry icon nội bộ @nocobase/client-v2 — xem
-    // docs/ICON-ARCHITECTURE.md). Version khớp lucide-react mà @ptdl/plugin-custom-icons pin (provider đang active).
+    // docs/ICON-ARCHITECTURE.md). Version khớp lucide-react mà @tuanla90/plugin-custom-icons pin (provider đang active).
     const lucide = await ctx.requireAsync('lucide@0.469.0/dist/umd/lucide.min.js');
     for (const name of new Set(names)) {
       const pascal = name.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('');

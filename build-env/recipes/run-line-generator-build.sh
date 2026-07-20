@@ -3,11 +3,11 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-line-generator"
+PKG="@tuanla90/plugin-line-generator"
 
 # Sync src + version from the workspace (source of truth).
-SRC="$ROOT/../packages/@ptdl/plugin-line-generator"
-DST="$ROOT/packages/plugins/@ptdl/plugin-line-generator"
+SRC="$ROOT/../packages/@tuanla90/plugin-line-generator"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-line-generator"
 mkdir -p "$DST"
 if [ -d "$SRC/src" ]; then
   rm -rf "$DST/src"

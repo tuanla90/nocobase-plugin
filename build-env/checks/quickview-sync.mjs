@@ -2,7 +2,7 @@
  * Guard: the two page-builders must not silently diverge.
  *
  * app-builder and instant-create-page each keep their OWN `src/shared/quickView.tsx` (both are
- * deliberately self-contained — no @ptdl/shared bundling machinery; see the build recipes). That means a
+ * deliberately self-contained — no @tuanla90/shared bundling machinery; see the build recipes). That means a
  * fix applied to one can be forgotten in the other (this is exactly how the row-Edit / Change-status
  * buttons and the relation click-to-Details popup once diverged). This check compares the SHARED-CORE
  * functions of the two files (normalised: comments + whitespace stripped) and fails if any differ, so the
@@ -17,8 +17,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const AB = path.join(ROOT, 'packages/@ptdl/plugin-app-builder/src/shared/quickView.tsx');
-const IC = path.join(ROOT, 'packages/@ptdl/plugin-instant-create-page/src/shared/quickView.tsx');
+const AB = path.join(ROOT, 'packages/@tuanla90/plugin-app-builder/src/shared/quickView.tsx');
+const IC = path.join(ROOT, 'packages/@tuanla90/plugin-instant-create-page/src/shared/quickView.tsx');
 
 // (a) Helpers that MUST be byte-identical (modulo comments/whitespace) in both files — the small, shared
 // action/render pieces that carry no plugin-specific difference.
@@ -72,8 +72,8 @@ for (const marker of MARKERS) {
   if (inB && !inA) problems.push(`  FEATURE dropped from app-builder: "${marker}" (present in instant-create-page)`);
 }
 // (c) The shared launcher-dock module (the floating buttons portal into it) must be byte-identical too.
-const dockAB = path.join(ROOT, 'packages/@ptdl/plugin-app-builder/src/shared/launcherDock.ts');
-const dockIC = path.join(ROOT, 'packages/@ptdl/plugin-instant-create-page/src/shared/launcherDock.ts');
+const dockAB = path.join(ROOT, 'packages/@tuanla90/plugin-app-builder/src/shared/launcherDock.ts');
+const dockIC = path.join(ROOT, 'packages/@tuanla90/plugin-instant-create-page/src/shared/launcherDock.ts');
 try {
   const da = fs.readFileSync(dockAB, 'utf8'), di = fs.readFileSync(dockIC, 'utf8');
   if (norm(da) !== norm(di)) problems.push('  DIVERGED: src/shared/launcherDock.ts differs between the two plugins');

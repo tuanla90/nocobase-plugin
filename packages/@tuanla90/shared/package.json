@@ -1,0 +1,18 @@
+{
+  "name": "@tuanla90/shared",
+  "version": "0.0.2",
+  "description": "Shared source library bundled into each @tuanla90 plugin (NOT a runtime dependency).",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.mjs", "require": "./dist/index.js" },
+    "./format": { "types": "./dist/format.d.ts", "import": "./dist/format.mjs", "require": "./dist/format.js" },
+    "./ai-server": { "types": "./dist/aiServer.d.ts", "import": "./dist/aiServer.mjs", "require": "./dist/aiServer.js" }
+  },
+  "sideEffects": false,
+  "private": true,
+  "scripts": {
+    "build": "echo 'TODO: tsup build; dist is hand-authored for the bundling spike'"
+  }
+}

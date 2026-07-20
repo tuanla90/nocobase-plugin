@@ -3,12 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-hub"
+PKG="@tuanla90/plugin-hub"
 echo "node: $(node -v)"
 
 # Stage source + lane markers from the workspace (source of truth).
-SRC="$ROOT/../packages/@ptdl/plugin-hub"
-DST="$ROOT/packages/plugins/@ptdl/plugin-hub"
+SRC="$ROOT/../packages/@tuanla90/plugin-hub"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-hub"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
@@ -16,7 +16,7 @@ cp "$SRC/README.md" "$DST/README.md" 2>/dev/null || true
 cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
-# Stub EXTERNAL framework deps at nb-local (2.1.19) versions. @ptdl/shared is BUNDLED (must be a real
+# Stub EXTERNAL framework deps at nb-local (2.1.19) versions. @tuanla90/shared is BUNDLED (must be a real
 # resolvable package in node_modules — refreshed by run-shared-build.sh), same as ip-guard/change-log.
 mkstub() {
   local name="$1"; local ver="$2"

@@ -3,11 +3,12 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-enhanced-table-block"
+PKG="@tuanla90/plugin-enhanced-table-block"
 
-# Sync src từ workspace packages/@ptdl (nguồn chân lý) — trước đây build bản stale trong build-env.
-SRC="$ROOT/../packages/@ptdl/plugin-enhanced-table-block"
-DST="$ROOT/packages/plugins/@ptdl/plugin-enhanced-table-block"
+# Sync src từ workspace packages/@tuanla90 (nguồn chân lý) — trước đây build bản stale trong build-env.
+SRC="$ROOT/../packages/@tuanla90/plugin-enhanced-table-block"
+DST="$ROOT/packages/plugins/@tuanla90/plugin-enhanced-table-block"
+mkdir -p "$DST"
 if [ -d "$SRC/src" ]; then
   rm -rf "$DST/src"
   cp -r "$SRC/src" "$DST/src"

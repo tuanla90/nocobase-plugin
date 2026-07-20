@@ -37,26 +37,26 @@
 
 ---
 
-# ⚙️ QUY TẮC BẮT BUỘC KHI LÀM PLUGIN MỚI (@ptdl)
+# ⚙️ QUY TẮC BẮT BUỘC KHI LÀM PLUGIN MỚI (@tuanla90)
 
-> Áp dụng cho MỌI plugin @ptdl mới **hoặc** sửa lớn. Đây là điều kiện review — không đạt thì chưa xong.
+> Áp dụng cho MỌI plugin @tuanla90 mới **hoặc** sửa lớn. Đây là điều kiện review — không đạt thì chưa xong.
 
 ## R1. i18n song ngữ — BẮT BUỘC (không hardcode 1 thứ tiếng)
-Mọi chuỗi UI phải qua i18n ngay từ đầu (vi-VN + en-US). NS = `@ptdl/plugin-<name>/client`.
+Mọi chuỗi UI phải qua i18n ngay từ đầu (vi-VN + en-US). NS = `@tuanla90/plugin-<name>/client`.
 - **Nhãn trong uiSchema settings** (Formily/flow-engine, framework compile `{{t()}}`): `const t = (s) => tExpr(s, { ns: NS })` — `tExpr` import từ `@nocobase/flow-engine`.
 - **Chuỗi render runtime** (React/JS): `app.i18n.t(s, { ns: NS })` — route qua prop vào component; **đừng** đọc window global (`/v/` fail). Xem [[reference_nocobase_v2_block_i18n]].
 - **Nhãn menu** (block-picker label, flow/step title): dùng chuỗi **dịch sẵn runtime** (`app.i18n.t`), **KHÔNG** dùng `{{t()}}` (menu không compile expression).
 - File `src/locale/vi-VN.json` + `src/locale/en-US.json`; đăng ký **mỗi lane** (client + client-v2) trong `load()`: `this.app.i18n.addResources('<lang>', NS, json)`.
 - i18next fallback về key khi thiếu → chỉ cần 1 file bên phía "không phải mặc định".
 - **Ngôn ngữ thứ 3 (≠ en/vi) → mặc định EN (không để rơi về tiếng Việt):** NocoBase KHÔNG set `fallbackLng` → chuỗi thiếu trả về KEY. Plugin **VN-string-as-key** (chỉ có `en-US.json`) → user chọn zh/ja/fr… sẽ thấy **tiếng Việt** (key). Fix (đã áp cho 7 plugin VN-as-key: ai-column, block-custom-html, conditional-format, formula, gsheet-sync, print-template, spreadsheet-view): trong `load()` (mỗi lane) — (1) bật fallback en-US `app.i18n.options.fallbackLng='en-US'` **VÀ** `app.i18n.services.languageUtils.options.fallbackLng='en-US'` (i18next 22.x đọc từ languageUtils — set thiếu chỗ này là vô hiệu); (2) đăng ký **vi-VN identity map** sinh runtime từ chính en-US: `app.i18n.addResources('vi-VN', NS, Object.fromEntries(Object.keys(enUS).map(k=>[k,k])))` — để vi vẫn hiện VN (không rơi về en). Làm tương tự cho `SHARED_NS`+`sharedEnUS` ở các plugin render đồ shared (addResources MERGE nên chỉ cần ≥1 plugin đăng ký identity cho `SHARED_NS` là đủ cả app). Kết quả (verify live qua `window.__nocobase_v2_app__.i18n`): zh→EN, vi→VN, en→EN. Fail-safe: nếu mutation không ăn thì unsupported vẫn giữ VN (không crash, không phá vi). Plugin English-source (có `vi-VN.json`) không cần vì key đã là English.
-- **Chuỗi render của `@ptdl/shared`** (nút field-picker `＋ Chèn cột`, empty-state `(không có field)`, condition-kit: operator/date-preset/value-input `giá trị`/`Có`/`Không`/`số`…): shared **không có i18n context riêng** (được bundle vào plugin) → mỗi plugin **có render field-picker / condition-kit / UI chung phải wire trong `load()` (cả 2 lane)**: `import { setSharedT, SHARED_NS, sharedEnUS } from '@ptdl/shared'`, rồi `app.i18n.addResources('en-US', SHARED_NS, sharedEnUS)` + `setSharedT((s,o)=>app.i18n.t(s,{ns:SHARED_NS,...(o||{})}))`. VN-string-as-key (vi = fallback về key). Bỏ wire → chuỗi hiện tiếng Việt cho user en. **Đã wire (8 plugin):** field-picker → block-custom-html, formula, ai-column, global-search, print-template, field-enhancements (qua `registerAll`); condition-kit (`ConditionRow`) → conditional-format, menu-enhancements. **Lưu ý:** hằng số module-level (`OP_LABELS`, `DATE_PRESETS`) giữ nguyên chuỗi VN làm KEY, chỉ gọi `st()` lúc RENDER (trong `operatorsForMeta` / map options) — `st()` ở lúc định nghĩa module sẽ chạy trước khi `setSharedT` được inject → dính key VN.
+- **Chuỗi render của `@tuanla90/shared`** (nút field-picker `＋ Chèn cột`, empty-state `(không có field)`, condition-kit: operator/date-preset/value-input `giá trị`/`Có`/`Không`/`số`…): shared **không có i18n context riêng** (được bundle vào plugin) → mỗi plugin **có render field-picker / condition-kit / UI chung phải wire trong `load()` (cả 2 lane)**: `import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared'`, rồi `app.i18n.addResources('en-US', SHARED_NS, sharedEnUS)` + `setSharedT((s,o)=>app.i18n.t(s,{ns:SHARED_NS,...(o||{})}))`. VN-string-as-key (vi = fallback về key). Bỏ wire → chuỗi hiện tiếng Việt cho user en. **Đã wire (8 plugin):** field-picker → block-custom-html, formula, ai-column, global-search, print-template, field-enhancements (qua `registerAll`); condition-kit (`ConditionRow`) → conditional-format, menu-enhancements. **Lưu ý:** hằng số module-level (`OP_LABELS`, `DATE_PRESETS`) giữ nguyên chuỗi VN làm KEY, chỉ gọi `st()` lúc RENDER (trong `operatorsForMeta` / map options) — `st()` ở lúc định nghĩa module sẽ chạy trước khi `setSharedT` được inject → dính key VN.
 - **Mẫu chuẩn:** `plugin-custom-header` (tExpr+NS), `plugin-enhanced-table-block` (addResources), `plugin-data-visualization-echarts-pro` (runtime `t` truyền vào config), `plugin-filter-tree` (tExpr cho uiSchema + `rt()` cho render/menu).
 - **Migrate VN-hardcode:** giữ chuỗi VN **làm key**, chỉ thêm `en-US.json` map VN→EN (vi hiển thị qua fallback) — ít rủi ro nhất.
 
-## R2. Dùng lại `@ptdl/shared` — BẮT BUỘC (đừng tự viết lại / copy-paste)
-Import từ `@ptdl/shared` (được **bundle** vào plugin, KHÔNG phải runtime dep). Khai báo `@ptdl/shared` là **devDependency** (đã có lerna graph). Đã có sẵn:
+## R2. Dùng lại `@tuanla90/shared` — BẮT BUỘC (đừng tự viết lại / copy-paste)
+Import từ `@tuanla90/shared` (được **bundle** vào plugin, KHÔNG phải runtime dep). Khai báo `@tuanla90/shared` là **devDependency** (đã có lerna graph). Đã có sẵn:
 
-| Mảng | Import từ `@ptdl/shared` |
+| Mảng | Import từ `@tuanla90/shared` |
 |---|---|
 | **Màu** | `ColorField`, `COLOR_PRESETS`, `colorToString`, `TAG_HEX`, `tagColorToHex` |
 | **Icon** | `setIconRegistry`, `IconByKey`, `RegistryIconPicker` (provider Lucide = `custom-icons`) |
@@ -70,12 +70,12 @@ Import từ `@ptdl/shared` (được **bundle** vào plugin, KHÔNG phải runti
 | **Realtime / WS** | `onLiveRefresh`, `onWsMessage`, `refreshFlowBlocks`, `LIVE_REFRESH_TYPE`, `DATA_CHANGED_TYPE` (đẩy WS server→client, tự refresh block) |
 | **Login** | `loginKit` (gradient, theme palette, account/password icons) |
 
-Ngoài `@ptdl/shared`:
-- **Layout** (Tabs / Collapse / Section trong form): dùng block của **`@ptdl/plugin-layout-containers`**, đừng tự dựng container.
+Ngoài `@tuanla90/shared`:
+- **Layout** (Tabs / Collapse / Section trong form): dùng block của **`@tuanla90/plugin-layout-containers`**, đừng tự dựng container.
 - **Field component** (widget hiển thị/nhập cột): theo pattern **`field-enhancements`** (`registerAll` + `bindModelToInterface`, `isDefault` theo registry).
 - **Reuse chéo tính năng** (B dùng model/widget của A): qua **registry runtime OPTIONAL, graceful** (thiếu A thì fallback, không lỗi) — vd `filter-tree` đọc `ptdlComputedRules` của `formula`.
 
-**Cấm:** copy-paste color/icon/field-picker/settings-kit/format/condition vào plugin mới (đã từng drift — xem `SHARED-LIBS-PROPOSAL.md`). Thiếu gì trong shared thì **bổ sung vào `@ptdl/shared`** rồi mới dùng.
+**Cấm:** copy-paste color/icon/field-picker/settings-kit/format/condition vào plugin mới (đã từng drift — xem `SHARED-LIBS-PROPOSAL.md`). Thiếu gì trong shared thì **bổ sung vào `@tuanla90/shared`** rồi mới dùng.
 
 **CHƯA có trong shared (nếu cần thì đề xuất bổ sung, đừng copy bản local):**
 - **Relative-time** ("X phút trước" / "2h ago"): hiện 3 bản local (block-custom-html `timeAgo`, change-log `relativeTime`, field-enh) — chưa gom.

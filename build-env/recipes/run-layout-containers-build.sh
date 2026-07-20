@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Build @ptdl/plugin-layout-containers (Tabs + Collapse block; classic + /v/ + server) into a tgz.
+# Build @tuanla90/plugin-layout-containers (Tabs + Collapse block; classic + /v/ + server) into a tgz.
 # (Renamed from run-block-tabs-build.sh — same structure, new package name.)
 set -e
 BE="$(cd "$(dirname "$0")/.." && pwd)"
 NM="$BE/node_modules"
-PKG="@ptdl/plugin-layout-containers"
+PKG="@tuanla90/plugin-layout-containers"
 SRC="$BE/../packages/$PKG"
 DEST="$BE/packages/plugins/$PKG"
 

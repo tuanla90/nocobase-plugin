@@ -1,0 +1,29 @@
+{
+  "name": "@tuanla90/plugin-inline-field",
+  "version": "0.1.3",
+  "displayName": "Inline Field",
+  "displayName.vi-VN": "Thêm cột tại chỗ",
+  "description": "Add a new column while editing a table view — no trip to the Collection Manager. A ‘➕ New column…’ item in a Table block’s settings menu opens a dialog to define a scalar field (text, number, choice, date, checkbox, …); it is created on the collection, the physical column is migrated, and the column is dropped straight into the block being edited. Modern /v/ client.",
+  "description.vi-VN": "Thêm cột mới ngay khi đang sửa bảng — không phải vào Collection để tạo field. Mục ‘➕ Thêm cột mới…’ trong menu ⚙ của khối Bảng mở hộp thoại khai báo field (văn bản, số, lựa chọn, ngày, có/không…); field được tạo trên collection, cột vật lý được migrate, và cột hiện luôn trong bảng đang sửa. Client /v/.",
+  "keywords": [
+    "nocobase"
+  ],
+  "license": "Apache-2.0",
+  "main": "./dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@tuanla90/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "antd": "5.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  },
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#inline-field"
+}

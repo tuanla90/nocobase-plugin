@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Build @ptdl/plugin-branding (admin skin builder).
+# Build @tuanla90/plugin-branding (admin skin builder).
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-branding"
+PKG="@tuanla90/plugin-branding"
 NAME="plugin-branding"
 
-SRC="$ROOT/../packages/@ptdl/$NAME"
-DST="$ROOT/packages/plugins/@ptdl/$NAME"
+SRC="$ROOT/../packages/@tuanla90/$NAME"
+DST="$ROOT/packages/plugins/@tuanla90/$NAME"
 rm -rf "$DST"; mkdir -p "$DST"
 cp -r "$SRC/src" "$DST/src"
 cp "$SRC/package.json" "$DST/package.json"
 cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
-# @ptdl/shared is a workspace pkg npm prunes — restore from packages so the build bundles it.
-SHARED_SRC="$ROOT/../packages/@ptdl/shared"
-if [ ! -f "$NM/@ptdl/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@ptdl/shared/dist/index.js" ]; then
-  mkdir -p "$NM/@ptdl"; rm -rf "$NM/@ptdl/shared"; cp -r "$SHARED_SRC" "$NM/@ptdl/shared"; echo "restored  : @ptdl/shared"
+# @tuanla90/shared is a workspace pkg npm prunes — restore from packages so the build bundles it.
+SHARED_SRC="$ROOT/../packages/@tuanla90/shared"
+if [ ! -f "$NM/@tuanla90/shared/package.json" ] || [ "$SHARED_SRC/dist/index.js" -nt "$NM/@tuanla90/shared/dist/index.js" ]; then
+  mkdir -p "$NM/@tuanla90"; rm -rf "$NM/@tuanla90/shared"; cp -r "$SHARED_SRC" "$NM/@tuanla90/shared"; echo "restored  : @tuanla90/shared"
 fi
 
 mkstub() {

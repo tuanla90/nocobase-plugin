@@ -6,13 +6,13 @@ cd "$ROOT"
 # silently diverge on shared logic. Fails the build if they do — see checks/quickview-sync.mjs.
 node "$ROOT/checks/quickview-sync.mjs"
 NM="$ROOT/node_modules"
-PKG="@ptdl/plugin-instant-create-page"
+PKG="@tuanla90/plugin-instant-create-page"
 PKGDIR="$ROOT/packages/plugins/$PKG"
 
 # Sync src + the FULL package.json + root lane markers from the workspace (source of truth). This plugin
-# imports NOTHING from @ptdl/shared (it renders only plain antd + uses app.flowEngine at runtime), so there
+# imports NOTHING from @tuanla90/shared (it renders only plain antd + uses app.flowEngine at runtime), so there
 # is no shared/@formily/react bundling machinery to set up — that was the source of a lot of build pain.
-SRC="$ROOT/../packages/@ptdl/plugin-instant-create-page"
+SRC="$ROOT/../packages/@tuanla90/plugin-instant-create-page"
 rm -rf "$PKGDIR"; mkdir -p "$PKGDIR"
 cp -r "$SRC/src" "$PKGDIR/src"; echo "synced src <- $SRC"
 cp "$SRC/package.json" "$PKGDIR/package.json"; echo "synced package.json <- $SRC"
