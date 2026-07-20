@@ -454,12 +454,23 @@ export function FmtDateInput(props: any) {
 // x-reactions PHẢI là function (không {{$deps}} — compileUiSchema sẽ nổ $deps is not defined).
 // visibleWhen('fmtType', want) từ @tuanla90/shared: rx(v => v.fmtType === want) → field.setState({visible}).
 
+// Resolve a model's collectionField, walking up `.parent` (mirrors the same fix in computedRuleClient.tsx's
+// registerComputedRuleFlow) — a field model rendered inside a form/sub-table doesn't always carry
+// `collectionField` directly on itself; it can live on a parent (e.g. FormItemModel). Duplicated locally
+// (not imported) to avoid a circular import (computedRuleClient.tsx already imports THIS file).
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 // The shared uiSchema fragment (formula + renderHtml + align + format) used by both models' settings step.
 export function formulaStepUiSchema(t: (s: string) => any, ctx?: any) {
   // Resolve the collection so the preview can load a real sample row (data.*). Works for both the
   // display-field model (bound field → its collection) and the virtual column (table collection).
   const model = ctx?.model;
-  const cf = model?.collectionField;
+  const cf = resolveCf(model);
   const coll = model?.context?.collection || model?.collection || cf?.collection;
   const api = ctx?.app?.apiClient || model?.context?.api || model?.flowEngine?.context?.api;
   const collName = coll?.name || cf?.collectionName;
