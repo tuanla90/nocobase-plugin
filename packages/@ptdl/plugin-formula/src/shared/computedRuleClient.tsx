@@ -14,7 +14,7 @@ import React from 'react';
 import { Tooltip, Modal, message } from 'antd';
 import { CalculatorOutlined } from '@ant-design/icons';
 import { fi, onWsMessage, refreshFlowBlocks, LIVE_REFRESH_TYPE } from '@ptdl/shared';
-import { registerFormulaComponents, highlightFormula } from './formulaEditorComponents';
+import { registerFormulaComponents, highlightFormula, FormulaCode } from './formulaEditorComponents';
 import { ComputedRuleEditor } from './ComputedRuleEditor';
 import type { RuleValue } from './ComputedRuleEditor';
 import { splitTriggers } from './formulaKnowledge';
@@ -68,6 +68,98 @@ export async function loadComputedRuleCache(api: any) {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[ptdl-computed] load rule cache failed (table may be new/empty)', e);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Scan/window hint (v0.1.74): the SAME 🧮 hover-icon idea, but for columns driven by a SCAN/WINDOW
+// rule instead of a computed rule. Deliberately a SEPARATE, simpler, hover-ONLY affordance — no
+// click-to-edit (a scan rule's shape doesn't map onto ComputedRuleEditor's single-formula form, and a
+// scan value isn't a per-row pure formula so the live ComputedPreview wouldn't be meaningful for it).
+type ScanHint = {
+  accumulator: string; metricLabel?: string;
+  qtyFormula?: string; qtyColumn?: string; costFormula?: string; costColumn?: string;
+  inputFormula?: string; inputColumn?: string;
+  partitionBy?: string[]; orderBy?: Array<{ field: string; dir?: 'asc' | 'desc' }>;
+};
+const scanHintCache = new Map<string, ScanHint>(); // key: `${collection}.${field}` (scan rules are main-datasource only)
+
+// Mirrors ScanCalcManager's accGroups/OUT_GROUPS/SRC_OUT VN labels (kept local — that file doesn't export
+// them, and these are tiny display-only strings low-risk to duplicate).
+const SCAN_ACC_LABEL: Record<string, string> = {
+  running_sum: 'Số dư lũy kế (SUM)', running_count: 'Đếm lũy kế (COUNT)', running_min: 'Nhỏ nhất tới hiện tại (MIN)',
+  running_max: 'Lớn nhất tới hiện tại (MAX)', running_avg: 'Trung bình lũy kế (AVG)', row_number: 'Số thứ tự (ROW_NUMBER)',
+  fifo: 'FIFO', lifo: 'LIFO', fefo: 'FEFO (hết hạn trước)', weighted_avg: 'Bình quân gia quyền',
+};
+const SCAN_OUT_LABEL: Record<string, string> = {
+  outRunningQty: 'Số dư lượng', outRunningValue: 'Số dư giá trị', outConsumedQty: 'Lượng tiêu hao',
+  outCogs: 'Giá trị tiêu hao (COGS)', outUnitCost: 'Đơn giá đã định (dòng này)', outAvgCost: 'Đơn giá bình quân',
+  outConsumedUnitCost: 'Đơn giá tiêu hao',
+};
+const SCAN_SINGLE_OUT_KEYS = ['outRunningQty', 'outRunningValue', 'outConsumedQty', 'outCogs', 'outConsumedUnitCost', 'outUnitCost', 'outAvgCost'];
+const SCAN_SRC_OUT_KEYS = ['outRunningQty', 'outUnitCost', 'outCogs', 'outRunningValue', 'outConsumedQty'];
+
+/** Populate the scan/window hint cache. Call (awaited) alongside loadComputedRuleCache(). */
+export async function loadScanHintCache(api: any) {
+  if (!api?.request) return;
+  scanHintCache.clear();
+  try {
+    const winRes = await api.request({ url: 'ptdlWindow:list', method: 'get' });
+    const winList = winRes?.data?.data?.list || winRes?.data?.list || [];
+    for (const w of winList) {
+      if (!w?.collection || !w?.field) continue;
+      const formulaish = w.inputMode === 'formula' || w.inputMode === 'sql';
+      scanHintCache.set(`${w.collection}.${w.field}`, {
+        accumulator: w.accumulator || 'running_sum',
+        partitionBy: w.partitionBy || [], orderBy: w.orderBy || [],
+        inputFormula: formulaish && w.input ? String(w.input) : undefined,
+        inputColumn: !formulaish && w.input ? String(w.input) : undefined,
+      });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[ptdl-computed] load window hint cache failed', e);
+  }
+  try {
+    const scanRes = await api.request({ url: 'ptdlScanRules:list', method: 'get', params: { pageSize: 200 } });
+    const scanList = scanRes?.data?.data || scanRes?.data || [];
+    for (const r of Array.isArray(scanList) ? scanList : []) {
+      if (r?.enabled === false) continue;
+      const acc = r.method || 'weighted_avg';
+      if (Array.isArray(r.sources) && r.sources.length) {
+        for (const s of r.sources) {
+          if (!s?.collection) continue;
+          for (const k of SCAN_SRC_OUT_KEYS) {
+            const col = s[k];
+            if (!col) continue;
+            scanHintCache.set(`${s.collection}.${col}`, {
+              accumulator: acc, metricLabel: SCAN_OUT_LABEL[k],
+              qtyFormula: s.qtyFormula, costFormula: s.costMode === 'formula' ? s.costFormula : undefined,
+              costColumn: s.costMode === 'column' ? s.costField : undefined,
+              partitionBy: r.partitionBy || [], orderBy: r.orderBy || [],
+            });
+          }
+        }
+      } else if (r.collectionName) {
+        for (const k of SCAN_SINGLE_OUT_KEYS) {
+          const col = (r as any)[k];
+          if (!col) continue;
+          scanHintCache.set(`${r.collectionName}.${col}`, {
+            accumulator: acc, metricLabel: SCAN_OUT_LABEL[k],
+            qtyFormula: r.qtyMode === 'formula' ? r.qtyFormula : undefined,
+            qtyColumn: r.qtyMode !== 'formula' ? (r.qtyField || r.inQtyField || r.outQtyField) : undefined,
+            costFormula: r.costMode === 'formula' ? r.costFormula : undefined,
+            costColumn: r.costMode === 'column' ? r.costField : undefined,
+            partitionBy: r.partitionBy || [], orderBy: r.orderBy || [],
+          });
+        }
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log('[ptdl-computed] scan/window hint cache loaded:', scanHintCache.size);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[ptdl-computed] load scan hint cache failed (table may be new/empty)', e);
   }
 }
 
@@ -423,6 +515,48 @@ const ComputedHintIcon: React.FC<{ rule: any; cf: any; editable: boolean }> = ({
   );
 };
 
+/** The hover-only hint icon for a SCAN/WINDOW-driven column — no click-to-edit (see loadScanHintCache). */
+const ScanHintIcon: React.FC<{ info: ScanHint }> = ({ info }) => {
+  const accLabel = SCAN_ACC_LABEL[info.accumulator] || info.accumulator;
+  const orderTxt = (info.orderBy || []).map((o) => `${o.field}${o.dir === 'desc' ? ' ↓' : ' ↑'}`).join(', ');
+  const partTxt = (info.partitionBy || []).join(', ');
+  const tipContent = (
+    <div>
+      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
+        {rt('Giá trị tự tính (scan)')}: {accLabel}
+        {info.metricLabel ? ` — ${rt(info.metricLabel)}` : ''}
+      </div>
+      {info.qtyFormula ? (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 2 }}>{rt('Công thức lượng')}:</div>
+          <FormulaCode formula={info.qtyFormula} style={{ fontSize: 12 }} />
+        </div>
+      ) : null}
+      {info.costFormula ? (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 2 }}>{rt('Công thức đơn giá')}:</div>
+          <FormulaCode formula={info.costFormula} style={{ fontSize: 12 }} />
+        </div>
+      ) : null}
+      {info.inputFormula ? (
+        <div style={{ marginBottom: 4 }}>
+          <FormulaCode formula={info.inputFormula} style={{ fontSize: 12 }} />
+        </div>
+      ) : null}
+      {info.qtyColumn ? <div style={{ fontSize: 10.5, opacity: 0.65 }}>{rt('Cột lượng')}: {info.qtyColumn}</div> : null}
+      {info.costColumn ? <div style={{ fontSize: 10.5, opacity: 0.65 }}>{rt('Cột đơn giá')}: {info.costColumn}</div> : null}
+      {info.inputColumn ? <div style={{ fontSize: 10.5, opacity: 0.65 }}>{rt('Cột nguồn')}: {info.inputColumn}</div> : null}
+      {partTxt ? <div style={{ fontSize: 10.5, opacity: 0.65, marginTop: 2 }}>{rt('Theo nhóm')}: {partTxt}</div> : null}
+      {orderTxt ? <div style={{ fontSize: 10.5, opacity: 0.65 }}>{rt('Sắp theo')}: {orderTxt}</div> : null}
+    </div>
+  );
+  return (
+    <Tooltip title={tipContent} overlayStyle={{ maxWidth: 460 }} overlayInnerStyle={{ maxWidth: 460 }}>
+      <CalculatorOutlined style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 12, flex: 'none', cursor: 'help' }} />
+    </Tooltip>
+  );
+};
+
 /**
  * Patch EVERY registered field model so a computed field shows the ⓘ formula tooltip wherever it renders
  * (form input, edit input, detail display). Enumerates the flow-engine model registry rather than a fixed
@@ -483,6 +617,22 @@ function patchAllFieldHints(flowEngine: any, fallbacks: any[] = []) {
  * Wraps whichever of `renderComponent`/`render` the class OWNS; a pure passthrough for every non-computed
  * field, so it can't affect normal fields. Returns true if it patched at least one method.
  */
+// The 🧮/hint icon repeats on EVERY row when the field renders inside a (sub-)table CELL — noisy. Hide it
+// there (user request); the column-level entry point is the column ⚙. Cell detection: a row fieldIndex,
+// or the model hanging directly under a *ColumnModel. Shared by both the computed and scan/window hints.
+function isInCell(model: any): boolean {
+  try {
+    const fi = model?.context?.fieldIndex;
+    if (Array.isArray(fi) && fi.length) return true;
+    for (let cur: any = model, i = 0; cur && i < 3; cur = cur.parent, i++) {
+      if (/ColumnModel/.test(cur?.constructor?.name || '')) return true;
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  return false;
+}
+
 function patchComputedHint(proto: any): boolean {
   if (!proto || proto.__ptdlComputedHint) return false;
   // Different field models expose their output via different methods: display/detail fields override
@@ -515,27 +665,25 @@ function patchComputedHint(proto: any): boolean {
             methodName === 'render'
               ? React.createElement(ComputedPreview, { hostModel: this, cf, rule: r }, out)
               : out;
-          // The 🧮 icon repeats on EVERY row when the field renders inside a (sub-)table CELL — noisy.
-          // Hide it there (user request); the column-level entry point is the column ⚙ →
-          // "Giá trị tự cập nhật (công thức)". Cell detection: a row fieldIndex, or the model hanging
-          // directly under a *ColumnModel.
-          const inCell = (() => {
-            try {
-              const fi = (this as any).context?.fieldIndex;
-              if (Array.isArray(fi) && fi.length) return true;
-              for (let cur: any = this, i = 0; cur && i < 3; cur = cur.parent, i++) {
-                if (/ColumnModel/.test(cur?.constructor?.name || '')) return true;
-              }
-            } catch (_) {
-              /* ignore */
-            }
-            return false;
-          })();
+          const inCell = isInCell(this);
           return React.createElement(
             'span',
             { 'data-ptdl-hint': true, style: { display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' } },
             content,
             inCell ? null : React.createElement(ComputedHintIcon, { rule: r, cf, editable: methodName === 'render' && canEditRules }),
+          );
+        }
+        // Not a COMPUTED field — check whether it's a SCAN/WINDOW-driven column instead (separate cache,
+        // separate hover-only icon; see loadScanHintCache). No live preview here (scan values are a
+        // stateful sequential scan, not a per-row pure formula, so a client-side "preview" would mislead).
+        const sh = cf && scanHintCache.get(`${cf.collectionName}.${cf.name}`);
+        if (sh && React.isValidElement(out)) {
+          const inCell = isInCell(this);
+          return React.createElement(
+            'span',
+            { 'data-ptdl-hint': true, style: { display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' } },
+            out,
+            inCell ? null : React.createElement(ScanHintIcon, { info: sh }),
           );
         }
       } catch (e) {

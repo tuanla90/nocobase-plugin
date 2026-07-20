@@ -13,7 +13,7 @@ import {
 } from '@nocobase/client-v2';
 import { CollectionFieldModel, tExpr, registerRunJSLib, registerRunJSSnippet } from '@nocobase/flow-engine';
 import { registerFormulaModel } from '../shared/formulaFieldModel';
-import { registerComputedRuleFlow, loadComputedRuleCache, loadComputedCollections, installComputedAutoRefresh } from '../shared/computedRuleClient';
+import { registerComputedRuleFlow, loadComputedRuleCache, loadComputedCollections, loadScanHintCache, installComputedAutoRefresh } from '../shared/computedRuleClient';
 import { registerFormulaColumnModel } from '../shared/formulaColumnModel';
 import { registerClassicFormulaColumn } from './formulaColumnClassic';
 import {
@@ -103,6 +103,7 @@ export class PluginFormulaClient extends Plugin {
         tExpr,
       });
       await loadComputedRuleCache(app?.apiClient);
+      await loadScanHintCache(app?.apiClient);
       await loadComputedCollections(app?.apiClient);
       installComputedAutoRefresh(app);
     } catch (e) {

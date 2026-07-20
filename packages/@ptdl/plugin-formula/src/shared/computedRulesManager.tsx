@@ -3,6 +3,7 @@ import { Table, Input, Button, Switch, Select, Space, message, Popconfirm, Typog
 import { PlusOutlined, ReloadOutlined, PartitionOutlined, FunctionOutlined, LinkOutlined, FilterOutlined, CalculatorOutlined, ArrowUpOutlined, ArrowDownOutlined, PushpinOutlined, TableOutlined, BulbOutlined, PlayCircleOutlined, RobotOutlined, AimOutlined } from '@ant-design/icons';
 import { SettingCard, SettingRow, Hint, FieldPickerCascader, getCaretElement, insertAtCaret, getFields } from '@ptdl/shared';
 import { FORMULA_EXAMPLES as EXAMPLES, FORMULA_FUNCTIONS as FN_HELP, TRIGGER_OPTIONS, splitTriggers } from './formulaKnowledge';
+import { FormulaCode, HighlightedTextArea } from './formulaEditorComponents';
 import { t } from './i18n';
 
 /**
@@ -160,7 +161,7 @@ function Dag({ nodes, edges, focus }: { nodes: any[]; edges: any[]; focus?: { id
               <span style={{ color: 'var(--colorWarning,#d48806)' }}><ArrowDownOutlined /> {down.size} {t('bị ảnh hưởng')}</span>
               <span style={{ color: 'var(--colorTextTertiary)' }}>{pinned ? <><PushpinOutlined /> {t('đã ghim — bấm lại để bỏ')}</> : t('(bấm để ghim)')}</span>
             </div>
-            <code style={{ fontSize: 11.5, color: 'var(--colorTextSecondary)', wordBreak: 'break-word' }}>{activeNode.formula}</code>
+            <FormulaCode formula={activeNode.formula} style={{ fontSize: 11.5 }} />
           </>
         ) : (
           <span style={{ color: 'var(--colorTextTertiary)' }}>{t('Rê chuột (hoặc bấm để ghim) lên một ô → nổi bật')} <b style={{ color: 'var(--colorInfo,#1677ff)' }}>{t('toàn bộ nguồn (upstream)')}</b> & <b style={{ color: 'var(--colorWarning,#d48806)' }}>{t('toàn bộ chỗ bị ảnh hưởng (downstream)')}</b> — {t('đệ quy.')}</span>
@@ -369,7 +370,7 @@ export function ComputedRulesManager({ api }: { api: any }) {
   const columns = [
     { title: t('Bảng'), dataIndex: 'collectionName', width: 140, ellipsis: true },
     { title: t('Cột đích'), dataIndex: 'targetField', width: 130, ellipsis: true, render: (v: string) => <b>{v}</b> },
-    { title: t('Công thức'), dataIndex: 'formula', render: (v: string) => <code style={{ fontSize: 12 }}>{v}</code> },
+    { title: t('Công thức'), dataIndex: 'formula', render: (v: string) => <FormulaCode formula={v} /> },
     { title: t('Phụ thuộc'), width: 220, render: (_: any, r: Rule) => depTags(r) },
     { title: t('Bật'), dataIndex: 'enabled', width: 56, render: (_: any, r: Rule) => <Switch size="small" checked={r.enabled !== false} onChange={(c) => toggle(r, c)} /> },
     {
@@ -515,10 +516,9 @@ export function ComputedRulesManager({ api }: { api: any }) {
                   <a style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--colorPrimary, #722ed1)' }}><RobotOutlined /> {t('AI viết hộ')}</a>
                 </Popover>
               </div>
-              <Input.TextArea ref={taRef} autoSize={{ minRows: 3, maxRows: 8 }} value={modal.formula}
-                onChange={(e) => setModal({ ...modal, formula: e.target.value })}
-                placeholder={t('vd: data.subtotal - data.discount\nhoặc: SUM(data.items.line_amount)\nbảng tra cứu (gõ thẳng tên bảng): data.metric * SUMIFS(bang_hs.he_so, bang_hs.a, data.parent.region, bang_hs.b, data.grade)')}
-                style={{ fontFamily: 'monospace', fontSize: 13 }} />
+              <HighlightedTextArea ref={taRef} minRows={3} value={modal.formula}
+                onChange={(v) => setModal({ ...modal, formula: v })}
+                placeholder={t('vd: data.subtotal - data.discount\nhoặc: SUM(data.items.line_amount)\nbảng tra cứu (gõ thẳng tên bảng): data.metric * SUMIFS(bang_hs.he_so, bang_hs.a, data.parent.region, bang_hs.b, data.grade)')} />
             </SettingRow>
             {/* Auto-width nowrap labels so bilingual labels (e.g. "Enabled") never break; wrap only BETWEEN groups. */}
             <Space size={20} wrap align="center" style={{ marginBottom: 8, rowGap: 8 }}>

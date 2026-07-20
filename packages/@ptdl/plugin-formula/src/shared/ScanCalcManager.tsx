@@ -3,6 +3,7 @@ import { Table, Button, Modal, Select, Input, InputNumber, Space, message, Popco
 import { PlusOutlined, ReloadOutlined, QuestionCircleOutlined, CloseOutlined } from '@ant-design/icons';
 import { getFields, buildColumnOptions, getCollectionTitles, cleanLabel, FieldPickerCascader, getCaretElement, insertAtCaret, columnDropdownProps, SegmentedGroup } from '@ptdl/shared';
 import { excelToSql, isTranspileError } from './excelToSql';
+import { HighlightedTextArea } from './formulaEditorComponents';
 import { t } from './i18n';
 
 /**
@@ -520,8 +521,7 @@ const FormulaInput: React.FC<{ value?: string; options?: any[]; onChange: (v: st
   const insert = (path: string[]) => { if (!path.length) return; const token = 'data.' + (lazy ? path.join('.') : path[path.length - 1]); insertAtCaret(getCaretElement(taRef.current), token, value || '', onChange); };
   return (
     <div>
-      <Input.TextArea ref={taRef} value={value} onChange={(e) => onChange(e.target.value)} autoSize={{ minRows: 2, maxRows: 5 }}
-        style={{ fontFamily: 'monospace', fontSize: 12.5 }} placeholder={placeholder} />
+      <HighlightedTextArea ref={taRef} value={value} onChange={onChange} minRows={2} style={{ fontSize: 12.5 }} placeholder={placeholder} />
       <div style={{ marginTop: 4, display: 'flex', gap: 10, alignItems: 'center' }}>
         {lazy
           ? <FieldPickerCascader api={api} collectionName={collectionName} includeToMany maxDepth={4} onPick={insert} label={t('＋ Chèn cột / quan hệ')} />

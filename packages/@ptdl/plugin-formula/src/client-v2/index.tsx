@@ -12,7 +12,7 @@ import {
   overrideDefaultValueComponent,
   registerFormulaSnippet,
 } from '../shared/formulaDefaultValue';
-import { registerComputedRuleFlow, loadComputedRuleCache, loadComputedCollections, installComputedAutoRefresh } from '../shared/computedRuleClient';
+import { registerComputedRuleFlow, loadComputedRuleCache, loadComputedCollections, loadScanHintCache, installComputedAutoRefresh } from '../shared/computedRuleClient';
 import { NS, setRuntimeT, t } from '../shared/i18n';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@ptdl/shared';
 import enUS from '../locale/en-US.json';
@@ -90,6 +90,7 @@ export class PluginFormulaClientV2 extends Plugin {
     try {
       registerComputedRuleFlow({ flowEngine: fe, flowSettings: fe?.flowSettings, TableColumnModel, EditableFieldModel, DisplayTextFieldModel, tExpr });
       await loadComputedRuleCache(app?.apiClient);
+      await loadScanHintCache(app?.apiClient);
       // Auto-refresh page blocks after a mutation on a computed-relevant collection (no manual F5).
       await loadComputedCollections(app?.apiClient);
       installComputedAutoRefresh(app);

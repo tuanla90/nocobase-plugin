@@ -68,6 +68,77 @@ export function highlightFormula(formula: string): React.ReactNode {
   return out;
 }
 
+// Fixed "code editor" chrome (dark, regardless of the app's own light/dark theme) — same reasoning as the
+// syntax-highlight palette above: keeping the code surface always-dark means one palette works everywhere,
+// with guaranteed contrast, instead of needing a light AND a dark token variant.
+const HL_BG = '#1e1e1e';
+const HL_FG = '#d4d4d4';
+const HL_BORDER = '#3c3c3c';
+const HL_PLACEHOLDER = '#6a6a6a';
+
+/** Read-only formula snippet in a small dark "code chip" (table cells, the DAG's active-node line, etc.) —
+ *  same syntax colors as the field-hint tooltip, just packaged for inline/compact use. */
+export function FormulaCode({ formula, style }: { formula: string; style?: React.CSSProperties }) {
+  return (
+    <code
+      style={{
+        display: 'inline-block', maxWidth: '100%', background: HL_BG, color: HL_FG, padding: '3px 7px',
+        borderRadius: 4, border: `1px solid ${HL_BORDER}`, fontFamily: 'monospace', fontSize: 12,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...style,
+      }}
+    >
+      {highlightFormula(formula)}
+    </code>
+  );
+}
+
+/**
+ * A formula-editing textarea with LIVE syntax highlighting — the classic "poor man's code editor" overlay:
+ * a `<pre>` renders the highlighted text in normal flow (so it sets the box's height), and a transparent-text
+ * `<textarea>` sits absolutely on top (same font metrics) to receive input — the highlighted `<pre>` shows
+ * through, and only the caret is visible over it. No editor dependency (CodeMirror/Monaco) needed.
+ * `ref` is forwarded straight to the native `<textarea>` DOM node, so it plugs into the existing
+ * `getCaretElement`/`insertAtCaret` "+ Chèn field" helpers unchanged (they accept a raw textarea element).
+ */
+export const HighlightedTextArea = React.forwardRef<
+  HTMLTextAreaElement,
+  {
+    value?: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    minRows?: number;
+    style?: React.CSSProperties;
+    onFocus?: () => void;
+    onBlur?: () => void;
+  }
+>(({ value, onChange, placeholder, minRows = 3, style, onFocus, onBlur }, ref) => {
+  const fontSize = (style?.fontSize as number) || 13;
+  const lineHeight = 1.55;
+  const pad = 8;
+  const font: React.CSSProperties = { fontFamily: 'monospace', fontSize, lineHeight, boxSizing: 'border-box' };
+  return (
+    <div style={{ position: 'relative', minHeight: minRows * fontSize * lineHeight + pad * 2, background: HL_BG, border: `1px solid ${HL_BORDER}`, borderRadius: 6, ...style }}>
+      <pre aria-hidden style={{ margin: 0, padding: pad, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: minRows * fontSize * lineHeight, color: HL_FG, pointerEvents: 'none', ...font }}>
+        {value ? highlightFormula(value) : <span style={{ color: HL_PLACEHOLDER }}>{placeholder}</span>}
+        {'\n'}
+      </pre>
+      <textarea
+        ref={ref}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        spellCheck={false}
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%', resize: 'none', border: 'none',
+          outline: 'none', background: 'transparent', color: 'transparent', caretColor: HL_FG, padding: pad, margin: 0, ...font,
+        }}
+      />
+    </div>
+  );
+});
+HighlightedTextArea.displayName = 'HighlightedTextArea';
+
 // Formula textarea + a "ƒ" help popover + an INLINE "✨ AI viết hộ" panel (no modal). When the uiSchema
 // passes `collection`+`getApi` (display-field / column models), the AI writes/fixes straight into the
 // field via the proven server writer `ptdlComputed:aiWrite` (NL → formula, self-validated via
