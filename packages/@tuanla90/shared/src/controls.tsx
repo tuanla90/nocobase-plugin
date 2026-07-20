@@ -1,5 +1,5 @@
 import React from 'react';
-import { Segmented } from 'antd';
+import { Segmented, theme } from 'antd';
 
 /**
  * SegmentedGroup — THE standard "button group" for @tuanla90 plugins: an antd Segmented at the house
@@ -9,6 +9,9 @@ import { Segmented } from 'antd';
  */
 export type SegmentedGroupProps = React.ComponentProps<typeof Segmented>;
 
-export const SegmentedGroup: React.FC<SegmentedGroupProps> = ({ size, ...rest }) => (
-  <Segmented size={size || 'middle'} {...rest} />
-);
+export const SegmentedGroup: React.FC<SegmentedGroupProps> = ({ size, style, ...rest }) => {
+  // Resolve the frame border from the live theme token — the SEG_PROPS fallback (`var(--colorBorder,#d9d9d9)`)
+  // doesn't resolve inside dialog/dropdown portals, so it used to paint a bright light line in dark mode.
+  const { token } = theme.useToken();
+  return <Segmented size={size || 'middle'} {...rest} style={{ ...style, border: `1px solid ${token.colorBorder}` }} />;
+};

@@ -1,6 +1,6 @@
 import React from 'react';
 import { registerFlowComponentsOnce } from '@tuanla90/shared';
-import { Switch } from 'antd';
+import { Switch, theme } from 'antd';
 import { upsertFieldWidget } from './fieldWidgetStore';
 
 /**
@@ -15,16 +15,18 @@ import { upsertFieldWidget } from './fieldWidgetStore';
 
 export const GlobalWidgetToggle: React.FC<{ value?: boolean; onChange?: (v: boolean) => void; title?: string; hint?: string }> = (props) => {
   const on = !!props.value;
+  const { token } = theme.useToken();
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10,
-      background: on ? 'var(--colorPrimaryBg, rgba(22,119,255,0.08))' : 'var(--colorFillQuaternary, #fafafa)',
-      border: `1px solid ${on ? 'var(--colorPrimaryBorder, #91caff)' : 'var(--colorBorderSecondary, #f0f0f0)'}`,
+      background: on ? token.colorPrimaryBg : token.colorFillQuaternary,
+      border: `1px solid ${on ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
+      transition: 'background 0.2s, border-color 0.2s',
     }}>
       <Switch checked={on} onChange={(c: any) => props.onChange?.(c)} />
       <div style={{ lineHeight: 1.35, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 13 }}>{props.title || 'Áp dụng cho mọi view'}</div>
-        {props.hint ? <div style={{ fontSize: 12, color: 'var(--colorTextTertiary, #8c8c8c)' }}>{props.hint}</div> : null}
+        <div style={{ fontWeight: 500, fontSize: 13, color: token.colorText }}>{props.title || 'Áp dụng cho mọi view'}</div>
+        {props.hint ? <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 2 }}>{props.hint}</div> : null}
       </div>
     </div>
   );

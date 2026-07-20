@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Cây lọc / Thanh lọc",
   "displayName.zh-CN": "筛选树",
   "description": "AppSheet-style group-by filter blocks with per-value counts that filter connected table/list blocks. Two skins on one engine — Filter tree (vertical, nested, multi-select) and Filter bar (horizontal; pill/segmented/tab) — plus optional debounced free-text search.",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Bộ sinh dòng theo quy tắc",
   "displayName.zh-CN": "行生成器",
   "description": "Turn one parent record into N child rows in one transaction. One config covers BOM explosion, commission splits, and cost allocation — with cross-relation matching, dynamic recipients, group-and-sum, and rounding. Run on demand or auto-run on save, with a dry-run preview + debugger.",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

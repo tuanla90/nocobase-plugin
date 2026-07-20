@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
-import { Select, Input, Button, Avatar, Switch, Space, Divider } from 'antd';
+import { Select, Input, Button, Avatar, Switch, Space, Divider, Slider, theme } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { bindDisplayField } from './displayBinding';
-import { SegmentedGroup, ColumnSelect, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx, registerFlowComponentsOnce } from '@tuanla90/shared';
+import { SegmentedGroup, ColumnSelect, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx, registerFlowComponentsOnce, IconByKey, ColorField, colorToString } from '@tuanla90/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 /**
  * No-code widget: field QUAN HỆ (m2o/o2o/oho/obo/o2m/m2m) → dropdown "rich".
@@ -38,16 +39,24 @@ function resolveOptions(options: any[] | undefined, value: any, isMultiple: bool
 }
 
 // ---- rich render config -------------------------------------------------------------------------
+type IconStyle = 'plain' | 'filled' | 'soft' | 'outlined' | 'square';
 type RSCfg = {
   mode: string; titleField: string; subField: string; avatarField: string;
   rightField: string; avatarDefault: boolean; html: string;
+  avatarMode: 'image' | 'icon'; avatarSize: number;
+  iconStyle: IconStyle; iconColor: string; iconColorField: string;
 };
+const ICON_STYLES: IconStyle[] = ['plain', 'filled', 'soft', 'outlined', 'square'];
 function rscfgFromProps(p: any): RSCfg {
   return {
     mode: p.ptdlrsMode || 'preset',
     titleField: p.ptdlrsTitle || '', subField: p.ptdlrsSub || '', avatarField: p.ptdlrsAvatar || '',
     rightField: p.ptdlrsRight || '', avatarDefault: p.ptdlrsAvatarDefault !== false,
     html: p.ptdlrsHtml || '',
+    avatarMode: p.ptdlrsAvatarMode === 'icon' ? 'icon' : 'image',
+    avatarSize: typeof p.ptdlrsAvatarSize === 'number' && p.ptdlrsAvatarSize > 0 ? p.ptdlrsAvatarSize : 0,
+    iconStyle: ICON_STYLES.includes(p.ptdlrsIconStyle) ? p.ptdlrsIconStyle : 'plain',
+    iconColor: colorToString(p.ptdlrsIconColor) || '', iconColorField: p.ptdlrsIconColorField || '',
   };
 }
 function rscfgFromForm(v: any): RSCfg {
@@ -56,7 +65,49 @@ function rscfgFromForm(v: any): RSCfg {
     titleField: v?.titleField || '', subField: v?.subField || '', avatarField: v?.avatarField || '',
     rightField: v?.rightField || '', avatarDefault: v?.avatarDefault !== false,
     html: v?.html || '',
+    avatarMode: v?.avatarMode === 'icon' ? 'icon' : 'image',
+    avatarSize: typeof v?.avatarSize === 'number' && v.avatarSize > 0 ? v.avatarSize : 0,
+    iconStyle: ICON_STYLES.includes(v?.iconStyle) ? v.iconStyle : 'plain',
+    iconColor: colorToString(v?.iconColor) || '', iconColorField: v?.iconColorField || '',
   };
+}
+
+// hex/#rgb → rgba(...,alpha); non-hex colours fall back to the colour itself (no tint).
+function withAlpha(color: string, alpha: number): string {
+  const s = String(color || '').trim();
+  let m = s.match(/^#([0-9a-f]{6})$/i);
+  if (m) { const n = parseInt(m[1], 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`; }
+  m = s.match(/^#([0-9a-f]{3})$/i);
+  if (m) { const h = m[1]; return `rgba(${parseInt(h[0] + h[0], 16)}, ${parseInt(h[1] + h[1], 16)}, ${parseInt(h[2] + h[2], 16)}, ${alpha})`; }
+  return s || 'transparent';
+}
+// Resolved icon colour for a record: dynamic column value wins, else the fixed colour, else fallback.
+function iconColorFor(record: any, cfg: RSCfg): string {
+  if (cfg.iconColorField) {
+    const c = getFieldStr(record, cfg.iconColorField);
+    if (c) return c;
+  }
+  return cfg.iconColor || '';
+}
+// Render the icon glyph in the chosen style (plain / filled circle / soft / outlined / square).
+function renderIconAvatar(iconKey: string, color: string, style: IconStyle, sz: number): React.ReactNode {
+  const c = color || 'var(--colorPrimary, #1677ff)';
+  if (style === 'plain') {
+    return <span style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 0, fontSize: sz, color: color || 'currentColor', flex: '0 0 auto' }}><IconByKey type={iconKey} /></span>;
+  }
+  const round = style !== 'square';
+  let bg = 'transparent', iconCol = c, border: string | undefined;
+  if (style === 'filled') { bg = c; iconCol = '#fff'; }
+  else if (style === 'square') { bg = c; iconCol = '#fff'; }
+  else if (style === 'soft') { bg = withAlpha(c, 0.16); iconCol = c; }
+  else if (style === 'outlined') { bg = 'transparent'; iconCol = c; border = `1.5px solid ${c}`; }
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
+      width: sz, height: sz, borderRadius: round ? '50%' : Math.max(4, Math.round(sz * 0.28)),
+      background: bg, color: iconCol, border, fontSize: Math.round(sz * 0.6), lineHeight: 0,
+    }}><IconByKey type={iconKey} /></span>
+  );
 }
 
 function getFieldStr(record: any, name?: string): string {
@@ -93,6 +144,7 @@ const PlusGlyph = () => (
 
 // Row hiển thị 1 record — dùng chung option dropdown + tag đã chọn.
 function RichRow({ record, cfg, fieldNames }: { record: any; cfg: RSCfg; fieldNames: FN }) {
+  const { token } = theme.useToken();
   if (!record || typeof record !== 'object') return <span>{record == null ? '' : String(record)}</span>;
   if (cfg.mode === 'html' && cfg.html) {
     const clean = DOMPurify.sanitize(interpolateHtml(cfg.html, record));
@@ -102,30 +154,39 @@ function RichRow({ record, cfg, fieldNames }: { record: any; cfg: RSCfg; fieldNa
   const title = getFieldStr(record, cfg.titleField) || getFieldStr(record, fieldNames.label) || getFieldStr(record, fieldNames.value) || 'N/A';
   const sub = getFieldStr(record, cfg.subField);
   const right = getFieldStr(record, cfg.rightField);
-  const avatarUrl = getAvatarUrl(record, cfg.avatarField);
+  const isIcon = cfg.avatarMode === 'icon';
+  const iconKey = isIcon ? getFieldStr(record, cfg.avatarField) : '';
+  const avatarUrl = isIcon ? '' : getAvatarUrl(record, cfg.avatarField);
   const hasImg = !!avatarUrl;
-  // Hiện avatar khi: có ảnh, HOẶC bật "avatar mặc định" (fallback chữ cái đầu). Tắt default + không ảnh → ẩn hẳn.
-  const showAvatar = hasImg || cfg.avatarDefault;
+  const hasIcon = !!iconKey;
+  // Kích thước avatar: cấu hình (avatarSize) hoặc mặc định nhỏ gọn (24 khi có subtitle, 20 khi không).
+  const sz = cfg.avatarSize || (sub ? 24 : 20);
+  // Hiện avatar khi: có ảnh/icon, HOẶC bật "avatar mặc định" (fallback chữ cái đầu). Tắt default + rỗng → ẩn hẳn.
+  const showAvatar = hasImg || hasIcon || cfg.avatarDefault;
   // Có field phải → row chiếm full bề rộng để đẩy nó ra sát mép.
   const fullRow = !!cfg.rightField;
   return (
     <span style={{ display: fullRow ? 'flex' : 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, width: fullRow ? '100%' : undefined }}>
       {showAvatar ? (
-        <Avatar size={sub ? 28 : 22} src={hasImg ? avatarUrl : undefined} style={{ flex: '0 0 auto' }}>
-          {!hasImg ? (title.charAt(0) || '?').toUpperCase() : null}
-        </Avatar>
+        hasIcon ? (
+          renderIconAvatar(iconKey, iconColorFor(record, cfg), cfg.iconStyle, sz)
+        ) : (
+          <Avatar size={sz} src={hasImg ? avatarUrl : undefined} style={{ flex: '0 0 auto', fontSize: Math.round(sz * 0.5), lineHeight: `${sz}px` }}>
+            {!hasImg ? (title.charAt(0) || '?').toUpperCase() : null}
+          </Avatar>
+        )
       ) : null}
       <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.2, flex: fullRow ? 1 : undefined }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
-        {sub ? <span style={{ fontSize: 12, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span> : null}
+        {sub ? <span style={{ fontSize: 12, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span> : null}
       </span>
       {right ? (
         <span style={{
           marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap',
           fontSize: 11, lineHeight: '16px', padding: '0 7px', borderRadius: 10,
-          color: 'var(--colorTextSecondary, #8c8c8c)',
-          background: 'var(--colorFillSecondary, rgba(0,0,0,.04))',
-          border: '1px solid var(--colorBorderSecondary, #f0f0f0)',
+          color: token.colorTextSecondary,
+          background: token.colorFillSecondary,
+          border: `1px solid ${token.colorBorderSecondary}`,
         }}>{right}</span>
       ) : null}
     </span>
@@ -171,8 +232,19 @@ const RS_Html = (props: any) => {
   );
 };
 const RS_Switch = (props: any) => <Switch checked={props.value !== false} onChange={(c: any) => props.onChange?.(c)} />;
+const RS_Slider = (props: any) => {
+  const { token } = theme.useToken();
+  const v = typeof props.value === 'number' && props.value > 0 ? props.value : 24;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
+      <Slider min={14} max={40} value={v} onChange={(n: any) => props.onChange?.(n)} style={{ flex: 1 }} />
+      <span style={{ width: 32, textAlign: 'right', color: token.colorTextSecondary, fontSize: 12 }}>{v}px</span>
+    </div>
+  );
+};
+const RS_Color = (props: any) => <ColorField value={props.value} onChange={(v: any) => props.onChange?.(v)} size="small" />;
 
-const RS_DEFAULTS = { mode: 'preset', titleField: '', subField: '', avatarField: '', rightField: '', avatarDefault: true, html: '' };
+const RS_DEFAULTS = { mode: 'preset', titleField: '', subField: '', avatarField: '', rightField: '', avatarDefault: true, html: '', avatarMode: 'image', avatarSize: 0, iconStyle: 'plain', iconColor: '', iconColorField: '' };
 
 export function registerRichSelectModel(deps: {
   flowEngine: any; flowSettings?: any; Base: any; tExpr?: (s: string, o?: any) => any;
@@ -187,7 +259,7 @@ export function registerRichSelectModel(deps: {
 
   if (flowSettings?.registerComponents) {
     try {
-      registerFlowComponentsOnce(flowSettings, { RS_Grid: SettingsGrid, CollapsibleSection, RS_Seg, RS_FieldSelect, RS_Html, RS_Switch, RS_Reset: ResetButton, RS_Preview: RichSelectPreview });
+      registerFlowComponentsOnce(flowSettings, { RS_Grid: SettingsGrid, CollapsibleSection, RS_Seg, RS_FieldSelect, RS_Html, RS_Switch, RS_Slider, RS_Color, RS_Reset: ResetButton, RS_Preview: RichSelectPreview });
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[field-enh] rich-select registerComponents failed', e);
@@ -295,7 +367,7 @@ export function registerRichSelectModel(deps: {
       steps: {
         settings: {
           title: t('Rich display settings'),
-          uiMode: { type: 'dialog', props: { width: 600 } },
+          uiMode: { type: 'dialog', props: { width: 780 } },
           uiSchema: (ctx: any) => {
             const cf = ctx?.model?.collectionField;
             const target = cf?.targetCollection;
@@ -318,6 +390,7 @@ export function registerRichSelectModel(deps: {
               return res?.data?.data?.[0] || null;
             };
             return {
+              ...globalToggleField(t),
               preview: {
                 type: 'void', title: t('Preview'),
                 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
@@ -356,11 +429,51 @@ export function registerRichSelectModel(deps: {
                   },
                   presetRow2: {
                     type: 'void', 'x-component': 'RS_Grid',
-                    'x-component-props': { minColWidth: 180 },
+                    'x-component-props': { minColWidth: 160 },
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
                     properties: {
-                      avatarField: fi(t('Avatar field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
+                      avatarField: fi(t('Avatar / icon field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
+                      avatarMode: fi(t('Avatar type'), 'RS_Seg', {
+                        componentProps: { options: [{ label: t('Image'), value: 'image' }, { label: t('Icon'), value: 'icon' }] },
+                      }),
                       avatarDefault: fi(t('Default avatar (initials)'), 'RS_Switch', { type: 'boolean' }),
+                    },
+                  },
+                  presetRow3: {
+                    type: 'void', 'x-component': 'RS_Grid',
+                    'x-component-props': { minColWidth: 200 },
+                    'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
+                    properties: {
+                      avatarSize: fi(t('Avatar size'), 'RS_Slider', { type: 'number' }),
+                    },
+                  },
+                  // Icon-only options (visible when Avatar type = Icon). Icon style gets its OWN full-width
+                  // row so the 5-option segmented never truncates; colour (fixed / from a column) sits below.
+                  presetRow4: {
+                    type: 'void', 'x-component': 'RS_Grid',
+                    'x-component-props': { style: { gridTemplateColumns: '1fr' } },
+                    'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset' && v.avatarMode === 'icon'),
+                    properties: {
+                      iconStyle: fi(t('Icon style'), 'RS_Seg', {
+                        componentProps: {
+                          options: [
+                            { label: t('Icon only'), value: 'plain' },
+                            { label: t('Filled'), value: 'filled' },
+                            { label: t('Soft'), value: 'soft' },
+                            { label: t('Outline'), value: 'outlined' },
+                            { label: t('Square'), value: 'square' },
+                          ],
+                        },
+                      }),
+                    },
+                  },
+                  presetRow5: {
+                    type: 'void', 'x-component': 'RS_Grid',
+                    'x-component-props': { minColWidth: 200 },
+                    'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset' && v.avatarMode === 'icon'),
+                    properties: {
+                      iconColor: fi(t('Icon colour'), 'RS_Color'),
+                      iconColorField: fi(t('Colour from column'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
                     },
                   },
                 },
@@ -380,7 +493,7 @@ export function registerRichSelectModel(deps: {
           defaultParams: { ...RS_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({
+            const props = {
               ptdlrsMode: p.mode || 'preset',
               ptdlrsTitle: p.titleField || '',
               ptdlrsSub: p.subField || '',
@@ -388,7 +501,15 @@ export function registerRichSelectModel(deps: {
               ptdlrsRight: p.rightField || '',
               ptdlrsAvatarDefault: p.avatarDefault !== false,
               ptdlrsHtml: p.html || '',
-            });
+              ptdlrsAvatarMode: p.avatarMode === 'icon' ? 'icon' : 'image',
+              ptdlrsAvatarSize: typeof p.avatarSize === 'number' && p.avatarSize > 0 ? p.avatarSize : 0,
+              ptdlrsIconStyle: ICON_STYLES.includes(p.iconStyle) ? p.iconStyle : 'plain',
+              ptdlrsIconColor: colorToString(p.iconColor) || '',
+              ptdlrsIconColorField: p.iconColorField || '',
+            };
+            ctx.model.setProps(props);
+            // Global: display variant renders the same RichRow (readPretty) → save under the display model.
+            saveWidgetGlobal(ctx, params, 'PtdlRichSelectDisplayFieldModel', props);
           },
         },
       },
@@ -435,6 +556,7 @@ export function registerRichSelectModel(deps: {
 // Preview — mặc định dùng TÊN TỔNG QUÁT theo field đã map (không bịa). Nút "Load sample" lấy 1 record thật bảng đích.
 const RichSelectPreview: any = observer((props: any) => {
   const form: any = useForm();
+  const { token } = theme.useToken();
   const cfg = rscfgFromForm(form?.values || {});
   const titles: Record<string, string> = props?.fieldTitles || {};
   const [real, setReal] = React.useState<any>(null);
@@ -452,7 +574,9 @@ const RichSelectPreview: any = observer((props: any) => {
     sample[titleKey] = cfg.titleField ? (titles[cfg.titleField] || cfg.titleField) : 'Title';
     if (cfg.subField) sample[cfg.subField] = titles[cfg.subField] || cfg.subField;
     if (cfg.rightField) sample[cfg.rightField] = titles[cfg.rightField] || cfg.rightField;
-    if (cfg.avatarField) sample[cfg.avatarField] = '';
+    // Icon mode → seed a sample icon key so the preview shows the chosen style; image mode → empty (initials).
+    if (cfg.avatarField) sample[cfg.avatarField] = cfg.avatarMode === 'icon' ? 'lucide-star' : '';
+    if (cfg.avatarMode === 'icon' && cfg.iconColorField) sample[cfg.iconColorField] = colorToString(cfg.iconColor) || '#1677ff';
     record = cfg.mode === 'html'
       ? { ...sample, title: 'Title', subtitle: 'Subtitle', name: 'Title', position: 'Subtitle', status: 'Status' }
       : sample;
@@ -475,20 +599,20 @@ const RichSelectPreview: any = observer((props: any) => {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>{real ? 'Sample record' : 'Generic preview'}</span>
+        <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{real ? 'Sample record' : 'Generic preview'}</span>
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-          {err ? <span style={{ fontSize: 12, color: '#ff4d4f' }}>{err}</span> : null}
+          {err ? <span style={{ fontSize: 12, color: token.colorError }}>{err}</span> : null}
           {real ? <Button size="small" type="link" onClick={() => setReal(null)}>Clear</Button> : null}
           <Button size="small" loading={loading} onClick={onLoad}>Load sample</Button>
         </span>
       </div>
-      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Selected</div>
-      <div style={{ display: 'flex', alignItems: 'center', minHeight: 32, padding: '2px 10px', border: '1px solid var(--colorBorder, #d9d9d9)', borderRadius: 6, marginBottom: 10 }}>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>Selected</div>
+      <div style={{ display: 'flex', alignItems: 'center', minHeight: 32, padding: '2px 10px', border: `1px solid ${token.colorBorder}`, borderRadius: 6, marginBottom: 10, background: token.colorBgContainer }}>
         {row}
       </div>
-      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Dropdown option</div>
-      <div style={{ border: '1px solid var(--colorBorder, #d9d9d9)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}>
-        <div style={{ padding: '8px 12px', background: 'var(--colorFillTertiary, #f5f5f5)' }}>{row}</div>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 4 }}>Dropdown option</div>
+      <div style={{ border: `1px solid ${token.colorBorder}`, borderRadius: 6, overflow: 'hidden', boxShadow: token.boxShadowTertiary }}>
+        <div style={{ padding: '8px 12px', background: token.colorFillTertiary }}>{row}</div>
       </div>
     </div>
   );

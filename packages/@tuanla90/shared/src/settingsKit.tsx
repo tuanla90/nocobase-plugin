@@ -182,7 +182,9 @@ export function CollapsibleSection(props: any) {
 
 /** antd `Segmented` style preset — bordered + `block`, so segmented pickers look consistent. Spread
  *  into a Segmented's props: `<Segmented {...SEG_PROPS} …/>` or `x-component-props: { ...SEG_PROPS }`. */
-export const SEG_PROPS = { block: true, style: { border: '1px solid var(--colorBorder, #d9d9d9)' } } as const;
+// Theme-neutral border (works on both light + dark) for the bare-`<Segmented>` consumers; `SegmentedGroup`
+// overrides this with the crisp `token.colorBorder`. Avoids the old `#d9d9d9` fallback painting a white line in dark mode.
+export const SEG_PROPS = { block: true, style: { border: '1px solid rgba(128,128,128,0.3)' } } as const;
 
 /** Register flow-settings components ONLY if the name isn't already registered. The flow-settings
  *  component registry is GLOBAL across every field/action model AND every plugin, so registering a

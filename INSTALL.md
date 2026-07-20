@@ -22,38 +22,38 @@ Plugin cài lúc runtime nằm ở `storage/plugins` trên **service NocoBase** 
 ## Danh sách (33 plugin — sync theo `latest/@tuanla90/`)
 | Plugin | Version | Install URL |
 |---|---|---|
-| action-enhancements | 0.1.1 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-action-enhancements-0.1.1.tgz` |
-| ai-column | 0.7.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.3.tgz` |
+| action-enhancements | 0.1.2 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-action-enhancements-0.1.2.tgz` |
+| ai-column | 0.7.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.4.tgz` |
 | app-builder | 0.6.25 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.25.tgz` |
 | block-custom-html | 0.12.9 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-block-custom-html-0.12.9.tgz` |
-| branding | 0.4.12 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.12.tgz` |
+| branding | 0.4.13 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.13.tgz` |
 | change-log | 0.1.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-change-log-0.1.4.tgz` |
-| conditional-format | 0.2.15 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.15.tgz` |
-| custom-header | 0.2.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-custom-header-0.2.3.tgz` |
+| conditional-format | 0.2.16 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.16.tgz` |
+| custom-header | 0.2.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-custom-header-0.2.4.tgz` |
 | custom-icons | 0.2.5 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-custom-icons-0.2.5.tgz` |
 | data-visualization-echarts-pro | 0.2.5 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-data-visualization-echarts-pro-0.2.5.tgz` |
 | detail-panel | 0.1.1 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-detail-panel-0.1.1.tgz` |
-| device-kit | 0.8.1 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-device-kit-0.8.1.tgz` |
+| device-kit | 0.8.2 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-device-kit-0.8.2.tgz` |
 | enhanced-table-block | 2.1.0-beta.17 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-enhanced-table-block-2.1.0-beta.17.tgz` |
-| field-enhancements | 0.2.21 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.21.tgz` |
+| field-enhancements | 0.2.23 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.23.tgz` |
 | field-order | 0.1.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-order-0.1.4.tgz` |
-| filter-tree | 0.3.6 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-filter-tree-0.3.6.tgz` |
-| formula | 0.1.74 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.74.tgz` |
-| global-search | 0.9.7 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.7.tgz` |
+| filter-tree | 0.3.7 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-filter-tree-0.3.7.tgz` |
+| formula | 0.1.75 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.75.tgz` |
+| global-search | 0.9.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.8.tgz` |
 | gsheet-sync | 0.1.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-gsheet-sync-0.1.3.tgz` |
 | hub | 0.1.12 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.12.tgz` |
 | inline-field | 0.1.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.3.tgz` |
 | instant-create-page | 0.1.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-instant-create-page-0.1.8.tgz` |
-| ip-guard | 0.2.0 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ip-guard-0.2.0.tgz` |
-| layout-containers | 0.4.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-layout-containers-0.4.3.tgz` |
-| line-generator | 0.6.11 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.6.11.tgz` |
+| ip-guard | 0.2.1 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ip-guard-0.2.1.tgz` |
+| layout-containers | 0.4.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-layout-containers-0.4.4.tgz` |
+| line-generator | 0.6.12 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.6.12.tgz` |
 | login-lite | 2.3.2 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-login-lite-2.3.2.tgz` |
-| menu-enhancements | 0.4.17 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-menu-enhancements-0.4.17.tgz` |
+| menu-enhancements | 0.4.18 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-menu-enhancements-0.4.18.tgz` |
 | nb-cloner | 1.9.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.9.3.tgz` |
-| print-template | 0.1.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-print-template-0.1.4.tgz` |
+| print-template | 0.1.5 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-print-template-0.1.5.tgz` |
 | pwa | 0.4.2 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.4.2.tgz` |
-| spreadsheet-view | 0.2.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.3.tgz` |
+| spreadsheet-view | 0.2.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.4.tgz` |
 | status-flow | 0.1.0 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-status-flow-0.1.0.tgz` |
-| subtable-pro | 0.2.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-subtable-pro-0.2.8.tgz` |
+| subtable-pro | 0.2.9 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-subtable-pro-0.2.9.tgz` |
 
 _Tự sinh từ `latest/@tuanla90/` bởi `build-env/gen-manifest.cjs`. Chạy lại sau mỗi lần rebuild._

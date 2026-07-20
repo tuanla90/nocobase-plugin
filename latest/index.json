@@ -6,16 +6,16 @@
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
       "slug": "action-enhancements",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "displayName": "Action Button Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-action-enhancements-0.1.1.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-action-enhancements-0.1.2.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-ai-column",
       "slug": "ai-column",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "displayName": "AI Column",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.3.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.4.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-app-builder",
@@ -34,9 +34,9 @@
     {
       "packageName": "@tuanla90/plugin-branding",
       "slug": "branding",
-      "version": "0.4.12",
+      "version": "0.4.13",
       "displayName": "Branding & Theme",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.12.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.13.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-change-log",
@@ -48,16 +48,16 @@
     {
       "packageName": "@tuanla90/plugin-conditional-format",
       "slug": "conditional-format",
-      "version": "0.2.15",
+      "version": "0.2.16",
       "displayName": "Conditional Formatting",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.15.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.16.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-custom-header",
       "slug": "custom-header",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "displayName": "Custom Header",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-custom-header-0.2.3.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-custom-header-0.2.4.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-custom-icons",
@@ -83,9 +83,9 @@
     {
       "packageName": "@tuanla90/plugin-device-kit",
       "slug": "device-kit",
-      "version": "0.8.1",
+      "version": "0.8.2",
       "displayName": "Device Kit",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-device-kit-0.8.1.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-device-kit-0.8.2.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-enhanced-table-block",
@@ -97,9 +97,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.21",
+      "version": "0.2.23",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.21.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.23.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",
@@ -111,23 +111,23 @@
     {
       "packageName": "@tuanla90/plugin-filter-tree",
       "slug": "filter-tree",
-      "version": "0.3.6",
+      "version": "0.3.7",
       "displayName": "Filter Tree / Bar",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-filter-tree-0.3.6.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-filter-tree-0.3.7.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-formula",
       "slug": "formula",
-      "version": "0.1.74",
+      "version": "0.1.75",
       "displayName": "Formula & Computed Fields",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.74.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.75.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-global-search",
       "slug": "global-search",
-      "version": "0.9.7",
+      "version": "0.9.8",
       "displayName": "Global Search",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.7.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.8.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-gsheet-sync",
@@ -160,23 +160,23 @@
     {
       "packageName": "@tuanla90/plugin-ip-guard",
       "slug": "ip-guard",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "displayName": "IP Guard (Whitelist / Blacklist)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ip-guard-0.2.0.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ip-guard-0.2.1.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-layout-containers",
       "slug": "layout-containers",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "displayName": "Layout Containers (Tabs / Collapse)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-layout-containers-0.4.3.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-layout-containers-0.4.4.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-line-generator",
       "slug": "line-generator",
-      "version": "0.6.11",
+      "version": "0.6.12",
       "displayName": "Line Generator",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.6.11.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.6.12.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-login-lite",
@@ -188,9 +188,9 @@
     {
       "packageName": "@tuanla90/plugin-menu-enhancements",
       "slug": "menu-enhancements",
-      "version": "0.4.17",
+      "version": "0.4.18",
       "displayName": "Menu Enhancements (Sections + Badge)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-menu-enhancements-0.4.17.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-menu-enhancements-0.4.18.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-nb-cloner",
@@ -202,9 +202,9 @@
     {
       "packageName": "@tuanla90/plugin-print-template",
       "slug": "print-template",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "displayName": "Print Template",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-print-template-0.1.4.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-print-template-0.1.5.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-pwa",
@@ -216,9 +216,9 @@
     {
       "packageName": "@tuanla90/plugin-spreadsheet-view",
       "slug": "spreadsheet-view",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "displayName": "Spreadsheet View",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.3.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.4.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-status-flow",
@@ -230,9 +230,9 @@
     {
       "packageName": "@tuanla90/plugin-subtable-pro",
       "slug": "subtable-pro",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "displayName": "Sub-table Pro",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-subtable-pro-0.2.8.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-subtable-pro-0.2.9.tgz"
     }
   ]
 }
