@@ -1,7 +1,7 @@
 {
   "source": "@tuanla90/nocobase-plugin",
   "updatedAt": null,
-  "count": 32,
+  "count": 33,
   "plugins": [
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
@@ -93,6 +93,13 @@
       "version": "2.1.0-beta.17",
       "displayName": "Block: Enhanced Table",
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-enhanced-table-block-2.1.0-beta.17.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-field-enhancements",
+      "slug": "field-enhancements",
+      "version": "0.2.23",
+      "displayName": "Field Enhancements",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.23.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",
