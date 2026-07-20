@@ -223,9 +223,9 @@
     {
       "packageName": "@tuanla90/plugin-status-flow",
       "slug": "status-flow",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "displayName": "Status Flow",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-status-flow-0.1.0.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-status-flow-0.1.1.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-subtable-pro",
