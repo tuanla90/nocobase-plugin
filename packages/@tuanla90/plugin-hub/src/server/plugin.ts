@@ -257,11 +257,21 @@ export class PluginPluginHubServer extends Plugin {
     await next();
   };
 
+  // Enable = direct, FIRE-AND-FORGET `pm.enable` — the SAME in-process path the native Plugin Manager toggle
+  // / Bulk enable use (proven to work on non-pm2 deploys), NOT `runAsCLI`. pm.enable writes the
+  // applicationPlugins row (enabled: true) then reloads via tryReloadOrRestart. Detached so the HTTP response
+  // flushes BEFORE that reload tears the app down (awaiting in-request would abort the row commit). Client
+  // polls `check` for the result. NB: this cannot save a plugin whose CLIENT bundle crashes on load (e.g. an
+  // unguarded optional-peer import) — that surfaces as a white-screen after the reload; fix the plugin, not this.
   private enableAction = async (ctx: any, next: any) => {
     this.requireRoot(ctx);
     const pkg = String(ctx.action?.params?.values?.packageName || '').trim();
     if (!pkg) { ctx.body = { ok: false, error: 'Thiếu packageName' }; await next(); return; }
-    try { this.runPm(['enable', pkg]); } catch (e: any) { ctx.body = { ok: false, error: 'pm enable lỗi: ' + (e?.message || e) }; await next(); return; }
+    const pm: any = this.app.pm;
+    void (async () => {
+      try { await pm.enable(pkg); }
+      catch (e: any) { this.app.log?.error?.('[plugin-hub] enable failed for ' + pkg + ': ' + (e?.message || e)); }
+    })();
     ctx.body = { ok: true, pending: true, op: 'enable' };
     await next();
   };
