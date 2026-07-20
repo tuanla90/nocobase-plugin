@@ -22,6 +22,8 @@ export const PTDL_SETTINGS_ORDER: Record<string, number> = {
   'plugin-login': 110, // login-lite
   pwa: 120, // pwa
   'icon-remap': 130, // custom-icons
+  'ptdl-conditional-format': 135, // conditional-format — global field display/formatting
+  'ptdl-field-widgets': 137, // field-enhancements — global field-widget assignments
   // 🔍 Tìm kiếm & tiện ích
   'global-search': 140, // global-search
   'instant-create-page': 150, // instant-create-page
@@ -30,10 +32,11 @@ export const PTDL_SETTINGS_ORDER: Record<string, number> = {
   'ptdl-computed': 170, // formula — computed fields
   'ptdl-scancalc': 180, // formula — sequential/window
   'line-generator': 190, // line-generator
-  'gsheet-sync': 200, // gsheet-sync
+  'gsheet-sync': 200, // gsheet-sync — data import/export/sync
+  'ptdl-nb-cloner': 205, // nb-cloner — whole-app export/import/clone (sits with the data-migration tools)
   'ptdl-change-log': 210, // change-log
   // 🖨️ In ấn
-  'print-template': 220, // print-template
+  'print-template': 220, // print-template (its "Dịch vụ PDF" is a TAB inside this page, not a separate menu — do not list it)
   // 🔒 Bảo mật (để cuối)
   'ptdl-ip-guard': 230, // ip-guard
 };

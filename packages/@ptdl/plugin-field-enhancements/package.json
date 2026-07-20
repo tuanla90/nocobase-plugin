@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Field nâng cao",
   "displayName.zh-CN": "字段增强",
   "description": "About 16 no-code field widgets that swap a field’s renderer or input for a richer one — across numbers, text, choice, boolean, relation, date/time, colour, icon and JSON (star rating, progress bar, value tag, relative date, rich select…). Also seeds a RunJS snippet library. Classic + /v/.",
-  "version": "0.2.12",
+  "version": "0.2.19",
   "homepage": "https://tuanla90.github.io/nocobase-plugin/#field-enhancements",
   "main": "dist/server/index.js",
   "dependencies": {},

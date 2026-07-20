@@ -2,6 +2,7 @@ import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Progress, InputNumber, Switch } from 'antd';
 import { SegmentedGroup, ColorField, SettingsGrid, ResetButton, fieldItem as fi, rx, visibleWhen, SEG_PROPS, colorStrip, registerSettingsKit } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -345,6 +346,7 @@ export function registerProgressFieldModel(deps: {
           uiSchema: (ctx: any) => {
             const isPercent = (ctx?.model?.collectionField || ctx?.model?.context?.collectionField)?.interface === 'percent';
             return {
+              ...globalToggleField(t),
               preview: {
                 type: 'void', title: t('Preview'),
                 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
@@ -450,7 +452,7 @@ export function registerProgressFieldModel(deps: {
           defaultParams: { ...P_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({
+            const props = {
               ptdlpType: p.ptype || 'line',
               ptdlpMax: typeof p.max === 'number' && p.max > 0 ? p.max : 0,
               ptdlpShowInfo: p.showInfo !== false,
@@ -466,7 +468,9 @@ export function registerProgressFieldModel(deps: {
               ptdlpT2: typeof p.t2 === 'number' ? p.t2 : 66,
               ptdlpC2: p.c2 || '#faad14',
               ptdlpC3: p.c3 || '#52c41a',
-            });
+            };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlProgressFieldModel', props);
           },
         },
       },

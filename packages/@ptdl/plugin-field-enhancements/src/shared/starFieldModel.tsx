@@ -2,6 +2,7 @@ import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Rate, Switch, Slider } from 'antd';
 import { ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, fieldItem as fi } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -114,6 +115,7 @@ export function registerStarFieldModel(deps: {
           title: t('Star rating settings'),
           uiMode: { type: 'dialog', props: { width: 600 } },
           uiSchema: () => ({
+            ...globalToggleField(t),
             preview: {
               type: 'void', title: t('Preview'),
               'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
@@ -144,13 +146,15 @@ export function registerStarFieldModel(deps: {
           defaultParams: { ...S_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({
+            const props = {
               ptdlsIcon: p.icon || undefined,
               ptdlsCount: typeof p.count === 'number' ? p.count : 5,
               ptdlsAllowHalf: p.allowHalf !== false,
               ptdlsColor: p.color || '#fadb14',
               ptdlsShowValue: !!p.showValue,
-            });
+            };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlStarFieldModel', props);
           },
         },
       },

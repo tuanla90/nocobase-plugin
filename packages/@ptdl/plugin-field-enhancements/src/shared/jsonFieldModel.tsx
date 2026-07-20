@@ -2,6 +2,7 @@ import React from 'react';
 import { Slider } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { SegmentedGroup, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 /**
  * "JSON view" display widget (field-enhancements) — for `json` fields.
@@ -150,6 +151,7 @@ export function registerJsonFieldModel(deps: {
           title: t('JSON view settings'),
           uiMode: { type: 'dialog', props: { width: 520 } },
           uiSchema: () => ({
+            ...globalToggleField(t),
             preview: { type: 'void', title: t('Preview'), 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } }, 'x-component': 'JSN_Preview' },
             row1: {
               type: 'void', 'x-component': 'JSN_Grid',
@@ -164,7 +166,9 @@ export function registerJsonFieldModel(deps: {
           defaultParams: { ...JSN_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({ ptdljMode: p.mode || 'pills', ptdljLines: typeof p.lines === 'number' ? p.lines : 6 });
+            const props = { ptdljMode: p.mode || 'pills', ptdljLines: typeof p.lines === 'number' ? p.lines : 6 };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlJsonFieldModel', props);
           },
         },
       },

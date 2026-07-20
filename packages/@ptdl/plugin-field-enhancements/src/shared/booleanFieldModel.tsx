@@ -2,6 +2,7 @@ import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Switch, Slider, Input } from 'antd';
 import { SegmentedGroup, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS, colorStrip } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -166,6 +167,7 @@ export function registerBooleanFieldModel(deps: {
           title: t('Boolean style settings'),
           uiMode: { type: 'dialog', props: { width: 600 } },
           uiSchema: () => ({
+            ...globalToggleField(t),
             preview: {
               type: 'void', title: t('Preview'),
               'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
@@ -219,7 +221,7 @@ export function registerBooleanFieldModel(deps: {
           defaultParams: { ...B_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({
+            const props = {
               ptdlbStyle: p.style || 'toggle',
               ptdlbOnColor: p.onColor || '#52c41a',
               ptdlbOffColor: p.offColor || '#d9d9d9',
@@ -231,7 +233,9 @@ export function registerBooleanFieldModel(deps: {
               ptdlbLabelOn: p.labelOn ?? 'On',
               ptdlbLabelOff: p.labelOff ?? 'Off',
               ptdlbNullAsOff: p.nullAsOff !== false,
-            });
+            };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlBooleanFieldModel', props);
           },
         },
       },

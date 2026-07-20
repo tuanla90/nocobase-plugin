@@ -2,6 +2,7 @@ import React from 'react';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { InputNumber, Switch, Slider, Input } from 'antd';
 import { SegmentedGroup, ColumnSelect, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS, makeNumberFormatter } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
 
@@ -201,6 +202,7 @@ export function registerNumberFieldModel(deps: {
                 .map((f: any) => ({ label: f.title || f.name, value: f.name, type: f.type, iface: f.interface }));
             } catch (_) { /* ignore */ }
             return {
+              ...globalToggleField(t),
               preview: {
                 type: 'void', title: t('Preview'),
                 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
@@ -250,7 +252,7 @@ export function registerNumberFieldModel(deps: {
           defaultParams: { ...N_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({
+            const props = {
               ptdlnIcon: p.icon || undefined,
               ptdlnIconColor: p.iconColor || '',
               ptdlnThousands: p.thousands !== false,
@@ -258,7 +260,9 @@ export function registerNumberFieldModel(deps: {
               ptdlnUnitMode: p.unitMode || 'none',
               ptdlnUnitText: p.unitText || '',
               ptdlnUnitField: p.unitField || '',
-            });
+            };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlNumberFieldModel', props);
           },
         },
       },

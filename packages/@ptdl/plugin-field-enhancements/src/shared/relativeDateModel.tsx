@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import { Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { SegmentedGroup, ColumnSelect, ColorField, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 /**
  * "Relative date" display widget (field-enhancements).
@@ -244,6 +245,7 @@ export function registerRelativeDateModel(deps: {
                 .map((f: any) => ({ label: f.title || f.name, value: f.name, type: f.type, iface: f.interface }));
             } catch (_) { /* ignore */ }
             return {
+              ...globalToggleField(t),
               preview: {
                 type: 'void', title: t('Preview'),
                 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
@@ -338,7 +340,7 @@ export function registerRelativeDateModel(deps: {
           defaultParams: { ...RD_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({
+            const props = {
               ptdlrdFormat: p.format || 'auto',
               ptdlrdRefMode: p.refMode || 'today',
               ptdlrdRefField: p.refField || '',
@@ -349,7 +351,9 @@ export function registerRelativeDateModel(deps: {
               ptdlrdFutureColor: p.futureColor || '',
               ptdlrdShowAbs: p.showAbs || 'tooltip',
               ptdlrdAbsFormat: p.absFormat || 'DD/MM/YYYY',
-            });
+            };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlRelativeDateFieldModel', props);
           },
         },
       },

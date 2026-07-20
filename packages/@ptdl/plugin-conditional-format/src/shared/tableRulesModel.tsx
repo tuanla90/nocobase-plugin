@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Select, Switch, Space, Tooltip, theme } from 'antd';
+import { Button, Select, Switch, Space, Tooltip, theme, InputNumber } from 'antd';
 import {
   ColorField, colorToString, RegistryIconPicker, IconByKey, setIconRegistry,
   evalConditionOp, get, SettingCard, SettingRow, ConditionRow, SegmentedGroup,
 } from '@ptdl/shared';
+import {
+  globalRulesFor, globalRulesVersion, upsertGlobalRules,
+  loadGlobalRulesCache, bindGlobalRulesAutoRefresh,
+} from './globalRulesStore';
 
 /**
  * BLOCK-LEVEL conditional formatting (bản A — kiểu "linkage rules" của NocoBase).
@@ -29,7 +33,7 @@ export const NS = '@ptdl/plugin-conditional-format/client';
 // falls back to the KEY — which IS the Vietnamese source string — so an unset/absent locale renders
 // Vietnamese exactly as before. (uiSchema flow/step titles go through the compilable `t()`/tExpr path.)
 let runtimeT: ((s: string) => string) | null = null;
-function rt(s: string): string {
+export function rt(s: string): string {
   if (!runtimeT) return s;
   try {
     const out = runtimeT(s);
@@ -42,7 +46,7 @@ function rt(s: string): string {
 // ---- Rule model + evaluator ---------------------------------------------------------------------
 type Cond = { field?: string; fieldLabel?: string; op?: string; value?: any };
 type RuleMode = 'condition' | 'colorScale' | 'dataBar';
-type Rule = {
+export type Rule = {
   key?: string;
   mode?: RuleMode;
   // condition mode
@@ -54,6 +58,8 @@ type Rule = {
   bold?: boolean;
   italic?: boolean;
   border?: boolean;
+  radius?: number; // condition-mode pill corner radius (px). undefined → default rounded.
+  fillMode?: 'pill' | 'cell'; // condition mode: inner pill (default) vs fill the whole cell.
   icon?: string;
   // scale modes (colorScale / dataBar) — a single source column, auto-scaled to its min/max
   column?: string;
@@ -139,7 +145,24 @@ export function rangesFor(model: any, rules: Rule[]): Ranges {
   return ranges;
 }
 
-/** Style gộp của mọi rule khớp cho ô (record × fieldName). Rule sau đè rule trước. */
+// GLOBAL (collection-level) rules ⊕ this block's local rules. Global first so a block-local rule can
+// override it (later rule wins in styleForCell/iconForCell). Memoised on the model by (localRef,
+// globalRef, globalVersion) so the returned array is STABLE across renders — keeps rangesFor's cache
+// valid and avoids reallocating every render.
+export function mergedRulesFor(model: any): Rule[] {
+  const local: Rule[] = model?.props?.ptdlCondRules || [];
+  const coll = model?.collection;
+  const global: Rule[] = globalRulesFor(coll?.dataSourceKey, coll?.name);
+  const gv = globalRulesVersion();
+  const c = model?.__ptdlMergedCache;
+  if (c && c.local === local && c.global === global && c.gv === gv) return c.merged;
+  const merged = global.length ? (local.length ? [...global, ...local] : global) : local;
+  if (model) model.__ptdlMergedCache = { local, global, gv, merged };
+  return merged;
+}
+
+/** onCell (whole-cell) style — SCALE modes only (heatmap / data-bar). Condition mode is drawn as an
+ *  inner pill in render() (see conditionPresentation), so it's not hidden by branding's `!important` td bg. */
 export function styleForCell(record: any, fieldName: string, rules: Rule[], ranges?: Ranges): React.CSSProperties | null {
   let st: React.CSSProperties | null = null;
   for (const rule of rules || []) {
@@ -170,22 +193,13 @@ export function styleForCell(record: any, fieldName: string, rules: Rule[], rang
       continue;
     }
 
-    // condition mode
-    if (!(rule?.targets || []).includes(fieldName)) continue;
-    if (!evalRule(rule, record)) continue;
-    st = st || {};
-    const color = colorToString(rule.color);
-    const bg = colorToString(rule.background);
-    if (color) st.color = color;
-    if (bg) st.background = bg;
-    if (rule.bold) st.fontWeight = 700;
-    if (rule.italic) st.fontStyle = 'italic';
-    if (rule.border) st.boxShadow = `inset 0 0 0 1px ${color || bg || '#d9d9d9'}`;
-    if (rule.textOutline) st.textShadow = haloShadow(colorToString(rule.outlineColor) || '#ffffff');
+    // condition mode → drawn as an inner PILL by conditionPresentation/renderConditionPill (NOT a <td>
+    // background), so a theme/branding forcing `.ant-table td{background:…!important}` can't hide it,
+    // and it supports a corner radius. Nothing to add to the cell-level style here.
   }
   return st;
 }
-/** Icon (+ màu) của rule khớp CUỐI CÙNG có icon cho ô. */
+/** Icon (+ màu) của rule khớp CUỐI CÙNG có icon cho ô. (giữ cho tương thích; render giờ dùng conditionPresentation) */
 export function iconForCell(record: any, fieldName: string, rules: Rule[]): { icon: string; color?: string } | null {
   let out: { icon: string; color?: string } | null = null;
   for (const rule of rules || []) {
@@ -196,6 +210,87 @@ export function iconForCell(record: any, fieldName: string, rules: Rule[]): { ic
     out = { icon: rule.icon, color: colorToString(rule.color) };
   }
   return out;
+}
+
+// Condition-mode presentation for a cell → an inner PILL (background/text/bold/italic/border/radius/icon),
+// merged across all matching condition rules (later rule wins per property). We render this INSIDE the cell
+// content (not as a <td> background) so it (a) survives themes/branding that force `.ant-table td` background
+// with `!important`, and (b) supports a corner radius. Scale modes (heatmap/data-bar) still fill the whole
+// cell via styleForCell/onCell — those genuinely need the full cell.
+export type CondPresent = {
+  color?: string; background?: string; bold?: boolean; italic?: boolean;
+  border?: boolean; radius?: number; icon?: string; iconColor?: string; textShadow?: string;
+  fillMode?: 'pill' | 'cell';
+};
+export function conditionPresentation(record: any, fieldName: string, rules: Rule[]): CondPresent | null {
+  let p: CondPresent | null = null;
+  for (const rule of rules || []) {
+    if ((rule.mode || 'condition') !== 'condition') continue;
+    if (!(rule?.targets || []).includes(fieldName)) continue;
+    if (!evalRule(rule, record)) continue;
+    p = p || {};
+    const color = colorToString(rule.color);
+    const bg = colorToString(rule.background);
+    if (color) { p.color = color; }
+    if (bg) { p.background = bg; }
+    if (rule.bold) p.bold = true;
+    if (rule.italic) p.italic = true;
+    if (rule.border) p.border = true;
+    if (typeof rule.radius === 'number') p.radius = rule.radius;
+    p.fillMode = rule.fillMode === 'cell' ? 'cell' : 'pill';
+    if (rule.icon) { p.icon = rule.icon; p.iconColor = color || undefined; }
+    if (rule.textOutline) p.textShadow = haloShadow(colorToString(rule.outlineColor) || '#ffffff');
+  }
+  return p;
+}
+/** Icon prefix (for CELL fill mode — bg/text is on the <td>, only the icon lives in the content). */
+export function renderIconPrefix(node: React.ReactNode, p: CondPresent | null): React.ReactNode {
+  if (!p?.icon) return node;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+      <span style={{ display: 'inline-flex', lineHeight: 0, flex: '0 0 auto', color: p.iconColor || undefined }}><IconByKey type={p.icon} /></span>
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node}</span>
+    </span>
+  );
+}
+/** Whole-cell <td> props for CELL fill mode (className+CSS var beats branding's `!important` td bg). */
+export function cellFillProps(p: CondPresent | null, base: any): { className?: string; style?: any } {
+  const out: { className?: string; style?: any } = {};
+  const st: any = { ...(base?.style || {}) };
+  if (p?.color) st.color = p.color;
+  if (p?.bold) st.fontWeight = 700;
+  if (p?.italic) st.fontStyle = 'italic';
+  if (p?.border) st.boxShadow = `inset 0 0 0 1px ${p.color || p.background || '#d9d9d9'}`;
+  if (p?.textShadow) st.textShadow = p.textShadow;
+  if (p?.background) {
+    st['--ptdlcf-bg'] = p.background; // consumed by the injected `.ptdlcf-fill` rule (see injectCellFillCss)
+    out.className = [base?.className, 'ptdlcf-fill'].filter(Boolean).join(' ');
+  }
+  out.style = st;
+  return out;
+}
+/** Wrap a cell/value node with the condition-mode pill. `node` is whatever the field normally renders. */
+export function renderConditionPill(node: React.ReactNode, p: CondPresent | null): React.ReactNode {
+  if (!p) return node;
+  const filled = !!(p.background || p.border); // pad + round only when there's a visible chip
+  const style: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', verticalAlign: 'middle',
+    color: p.color || undefined,
+    background: p.background || undefined,
+    fontWeight: p.bold ? 700 : undefined,
+    fontStyle: p.italic ? 'italic' : undefined,
+    border: p.border ? `1px solid ${p.color || p.background || '#d9d9d9'}` : undefined,
+    borderRadius: filled ? (typeof p.radius === 'number' ? p.radius : 4) : undefined,
+    padding: filled ? '1px 8px' : undefined,
+    lineHeight: filled ? 1.6 : undefined,
+    textShadow: p.textShadow || undefined,
+  };
+  return (
+    <span style={style}>
+      {p.icon ? <span style={{ display: 'inline-flex', lineHeight: 0, flex: '0 0 auto', color: p.iconColor || undefined }}><IconByKey type={p.icon} /></span> : null}
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node}</span>
+    </span>
+  );
 }
 
 // ---- Condition row (field picker + smart operator + smart value) --------------------------------
@@ -281,9 +376,11 @@ const RuleCard: React.FC<{
   const sampleStyle: React.CSSProperties = {
     color: color || undefined, background: bg || undefined,
     fontWeight: rule.bold ? 700 : undefined, fontStyle: rule.italic ? 'italic' : undefined,
-    boxShadow: rule.border ? `inset 0 0 0 1px ${color || bg || '#d9d9d9'}` : undefined,
+    border: rule.border ? `1px solid ${color || bg || '#d9d9d9'}` : undefined,
     textShadow: rule.textOutline ? haloShadow(colorToString(rule.outlineColor) || '#ffffff') : undefined,
-    padding: '2px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 5,
+    padding: '2px 10px',
+    borderRadius: rule.fillMode === 'cell' ? 0 : (typeof rule.radius === 'number' ? rule.radius : 4),
+    display: 'inline-flex', alignItems: 'center', gap: 5,
   };
 
   const cMin = colorToString(rule.colorMin) || '#ffffff';
@@ -343,6 +440,13 @@ const RuleCard: React.FC<{
               showSearch optionFilterProp="label" />
           </SettingRow>
 
+          {/* Display style: pill (inner chip, robust) vs cell (whole-cell fill). */}
+          <SettingRow label={rt('Kiểu')} labelWidth={84} style={{ gap: 10, marginBottom: 12 }}>
+            <SegmentedGroup value={rule.fillMode || 'pill'} onChange={(v: any) => patch({ fillMode: v })}
+              options={[{ label: rt('Nhãn'), value: 'pill' }, { label: rt('Cả ô'), value: 'cell' }]} />
+            <span style={{ fontSize: 11.5, color: '#bbb' }}>{rt('Nhãn = chip bo góc trong ô; Cả ô = tô kín ô')}</span>
+          </SettingRow>
+
           {/* Format */}
           <SettingRow label={rt('Định dạng')} labelWidth={84} style={{ gap: 10, marginBottom: 0 }}>
             <div style={{ flex: 1, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -359,9 +463,17 @@ const RuleCard: React.FC<{
                 <Button size="small" type={rule.italic ? 'primary' : 'default'} onClick={() => patch({ italic: !rule.italic })} style={{ fontStyle: 'italic', width: 30 }}>I</Button>
               </Space.Compact>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Viền ô')}</span>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Viền')}</span>
                 <Switch size="small" checked={!!rule.border} onChange={(v) => patch({ border: v })} />
               </span>
+              <Tooltip title={rt('Bo góc pill (px) — chỉ hiện khi có Nền/Viền')}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Bo góc')}</span>
+                  <InputNumber size="small" min={0} max={20} style={{ width: 60 }}
+                    value={typeof rule.radius === 'number' ? rule.radius : 4}
+                    onChange={(v: any) => patch({ radius: typeof v === 'number' ? v : undefined })} />
+                </span>
+              </Tooltip>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{rt('Viền chữ')}</span>
                 <Switch size="small" checked={!!rule.textOutline} onChange={(v) => patch({ textOutline: v })} />
@@ -455,7 +567,28 @@ const RuleCard: React.FC<{
   );
 };
 
-const CondRulesEditor: React.FC<{
+// "Apply to all views" toggle for the block dialog: ON → the rule set is saved as the GLOBAL default
+// for the whole collection (collection ptdlFieldFormatRules) so every table/detail/list using it applies
+// them; OFF → the rules stay local to this block. Prominent card so the scope choice is obvious.
+const GlobalToggle: React.FC<{ value?: boolean; onChange?: (v: boolean) => void; title?: string; hint?: string }> = (props) => {
+  const on = !!props.value;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10,
+      background: on ? 'var(--colorPrimaryBg, rgba(22,119,255,0.08))' : 'var(--colorFillQuaternary, #fafafa)',
+      border: `1px solid ${on ? 'var(--colorPrimaryBorder, #91caff)' : 'var(--colorBorderSecondary, #f0f0f0)'}`,
+      transition: 'background .15s, border-color .15s',
+    }}>
+      <Switch checked={on} onChange={(c: any) => props.onChange?.(c)} />
+      <div style={{ lineHeight: 1.35, minWidth: 0 }}>
+        <div style={{ fontWeight: 500, fontSize: 13 }}>{props.title || rt('Áp dụng cho mọi view')}</div>
+        {props.hint ? <div style={{ fontSize: 12, color: 'var(--colorTextTertiary, #8c8c8c)' }}>{props.hint}</div> : null}
+      </div>
+    </div>
+  );
+};
+
+export const CondRulesEditor: React.FC<{
   value?: Rule[]; onChange?: (v: Rule[]) => void;
   api?: any; collectionName?: string; dataSourceKey?: string; columns?: { value: string; label: string }[];
 }> = (props) => {
@@ -506,16 +639,33 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
   const i18n = app?.i18n || flowEngine?.context?.app?.i18n;
   if (i18n?.t && !runtimeT) runtimeT = (s: string) => i18n.t(s, { ns: NS });
   if (!flowEngine || typeof flowEngine.getModelClass !== 'function') return;
+
+  // Global (field-level) rules — load the cache once + refresh on tab re-focus. Done before the
+  // TableBlockModel guard so it also primes the cache for the detail/list value-render patches.
+  const api = app?.apiClient || flowEngine?.context?.api;
+  if (api) { loadGlobalRulesCache(api); bindGlobalRulesAutoRefresh(api); }
+
   const TableBlockModel: any = flowEngine.getModelClass('TableBlockModel');
   if (!TableBlockModel) return; // classic lane — no table block model
   // Wire the shared icon registry for this lane (RegistryIconPicker in the dialog + IconByKey in cells).
   // conditional-format's bundled @ptdl/shared is a separate per-plugin registry → must set it here (the old
   // registerConditionalModel that used to do this moved to field-enhancements).
   setIconRegistry(Icon, icons);
+  // "Cả ô" fill: the td carries `--ptdlcf-bg` (set in onCell). This rule is deliberately MORE specific
+  // than branding's zebra/hover td-background rules (`.ant-table-wrapper` + repeated class → 4 classes)
+  // so its `!important` wins regardless of injection order.
+  try {
+    if (typeof document !== 'undefined' && !document.getElementById('ptdlcf-fill-css')) {
+      const s = document.createElement('style');
+      s.id = 'ptdlcf-fill-css';
+      s.textContent = '.ant-table-wrapper .ant-table-tbody>tr>td.ptdlcf-fill.ptdlcf-fill{background:var(--ptdlcf-bg)!important}';
+      document.head.appendChild(s);
+    }
+  } catch (_) { /* ignore */ }
   const t = (s: string) => (tExpr ? tExpr(s, { ns: NS }) : s);
 
   if (flowSettings?.registerComponents) {
-    try { flowSettings.registerComponents({ PtdlCondRulesEditor: CondRulesEditor }); }
+    try { flowSettings.registerComponents({ PtdlCondRulesEditor: CondRulesEditor, PtdlGlobalToggle: GlobalToggle }); }
     catch (e) { /* eslint-disable-next-line no-console */ console.warn('[cond-fmt] table register components failed', e); }
   }
 
@@ -539,10 +689,15 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
           col.onCell = (record: any, recordIndex: any) => {
             const base = prevOnCell ? prevOnCell(record, recordIndex) : {};
             try {
-              const rules: Rule[] = self.props?.ptdlCondRules || [];
+              const rules: Rule[] = mergedRulesFor(self); // global (collection) ⊕ block-local
               if (!rules.length) return base;
+              // Scale-mode whole-cell fill (heatmap / data-bar).
               const st = styleForCell(record, fieldName, rules, rangesFor(self, rules));
-              return st ? { ...base, style: { ...(base.style || {}), ...st } } : base;
+              let out: any = st ? { ...base, style: { ...(base.style || {}), ...st } } : base;
+              // Condition-mode "Cả ô" (fillMode==='cell') → className + CSS var beats branding's !important td bg.
+              const p = conditionPresentation(record, fieldName, rules);
+              if (p && p.fillMode === 'cell') out = { ...out, ...cellFillProps(p, out) };
+              return out;
             } catch (_) { return base; }
           };
 
@@ -551,17 +706,12 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
             col.render = (value: any, record: any, index: any) => {
               const node = prevRender(value, record, index);
               try {
-                const rules: Rule[] = self.props?.ptdlCondRules || [];
+                const rules: Rule[] = mergedRulesFor(self); // global (collection) ⊕ block-local
                 if (rules.length) {
-                  const ic = iconForCell(record, fieldName, rules);
-                  if (ic?.icon) {
-                    return (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
-                        <span style={{ display: 'inline-flex', lineHeight: 0, flex: '0 0 auto', color: ic.color || undefined }}><IconByKey type={ic.icon} /></span>
-                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{node}</span>
-                      </span>
-                    );
-                  }
+                  const p = conditionPresentation(record, fieldName, rules);
+                  // "Cả ô": bg/text applied to the <td> via onCell → here only prepend the icon.
+                  // "Nhãn" (default): inner pill (bg/text/bold/italic/border/radius/icon).
+                  if (p) return p.fillMode === 'cell' ? renderIconPrefix(node, p) : renderConditionPill(node, p);
                 }
               } catch (_) { /* fall through to plain node */ }
               return node;
@@ -575,6 +725,45 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
       return cols;
     };
     proto.__ptdlCondPatched = true;
+  }
+
+  // 1b) Detail / List (read) — apply GLOBAL condition rules to the field VALUE via the shared display base
+  // render() (base of the scalar display models: text/number/enum/date/percent/url…). We DON'T gate on
+  // `instanceof DetailsBlockModel` (it fails on the field forks a Details block creates); instead we skip
+  // when the `_inTableCellRender` flag says we're inside a table cell (handled by getColumns above), so no
+  // double styling. Forms use editable models (not this display base) → untouched. Scale modes need a
+  // column range → skipped here; only condition-mode colour/bg/border/icon/pill apply. CRASH-SAFE.
+  try {
+    const DTF: any = flowEngine.getModelClass('DisplayTextFieldModel');
+    const ClickProto: any = DTF && Object.getPrototypeOf(DTF.prototype);
+    if (ClickProto && typeof ClickProto.render === 'function' && !ClickProto.__ptdlDetailPatched) {
+      const origRender = ClickProto.render;
+      ClickProto.render = function (...rargs: any[]) {
+        const node = origRender.apply(this, rargs);
+        try {
+          const bmName: string | undefined = (this as any).context?.blockModel?.constructor?.name;
+          const cf: any = (this as any).collectionField || (this as any).context?.collectionField;
+          const fieldName: string | undefined = cf?.name;
+          const bmColl = (this as any).context?.blockModel?.collection;
+          const coll = cf?.collectionName || cf?.collection?.name || bmColl?.name;
+          const ds = cf?.dataSourceKey || bmColl?.dataSourceKey;
+          // Table is handled by getColumns (which merges block-local rules too) → skip here to avoid a
+          // DOUBLE pill/icon. Class names aren't minified, so the block-type check is reliable.
+          if (bmName === 'TableBlockModel') return node;
+          const rules: Rule[] = (fieldName && coll) ? globalRulesFor(ds, coll) : [];
+          if (!rules.length) return node;
+          const record = (this as any).context?.record;
+          if (!record) return node;
+          const p = conditionPresentation(record, fieldName, rules);
+          if (!p) return node;
+          return p.fillMode === 'cell' ? renderIconPrefix(node, p) : renderConditionPill(node, p);
+        } catch (_) { return node; }
+      };
+      ClickProto.__ptdlDetailPatched = true;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[cond-fmt] detail patch failed (ignored)', e);
   }
 
   // 2) Block-level settings flow (menu ⚙ của Table block).
@@ -607,7 +796,19 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
                 })
                 .filter(Boolean);
             } catch (_) { columns = []; }
+            const collTitle = collection?.title || collection?.name || '';
             return {
+              // Scope toggle first — the whole dialog's save destination depends on it.
+              applyGlobal: {
+                type: 'boolean',
+                'x-decorator': 'FormItem',
+                'x-decorator-props': { style: { marginBottom: 14 } },
+                'x-component': 'PtdlGlobalToggle',
+                'x-component-props': {
+                  title: rt('Áp dụng cho mọi view (global cho collection)'),
+                  hint: rt('Bật: lưu các quy tắc thành mặc định của collection') + (collTitle ? ` “${collTitle}” ` : ' ') + rt('— mọi bảng/chi tiết/danh sách dùng nó đều áp. Tắt: chỉ áp riêng block này.'),
+                },
+              },
               rules: {
                 type: 'array',
                 'x-decorator': 'FormItem',
@@ -621,11 +822,32 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
               },
             };
           },
-          defaultParams: { rules: [] },
-          handler(ctx: any, params: any) {
-            // setProps là reactive (MobX) → bảng tự re-render. KHÔNG gọi rerender() (chạy trong lúc apply flow → dễ
-            // "update during render" → trắng trang).
-            ctx.model.setProps('ptdlCondRules', Array.isArray(params?.rules) ? params.rules : []);
+          // Preload: a fresh block on a collection that already has global rules opens showing them
+          // (toggle ON); a block with its own local rules shows those (toggle OFF). Once saved, the
+          // step's own persisted params take over on reopen.
+          defaultParams: (ctx: any) => {
+            const coll = ctx?.model?.collection;
+            const local = ctx?.model?.props?.ptdlCondRules;
+            const hasLocal = Array.isArray(local) && local.length > 0;
+            const global = globalRulesFor(coll?.dataSourceKey, coll?.name);
+            if (!hasLocal && global.length) return { rules: global, applyGlobal: true };
+            return { rules: hasLocal ? local : [], applyGlobal: false };
+          },
+          async handler(ctx: any, params: any) {
+            const rules = Array.isArray(params?.rules) ? params.rules : [];
+            const coll = ctx?.model?.collection;
+            if (params?.applyGlobal) {
+              // Promote to the collection-wide global store; clear this block's local copy so the two
+              // don't stack (getColumns already merges the global rules for every block on this collection).
+              const gApi = ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api || injectedApi;
+              try { await upsertGlobalRules(gApi, coll?.dataSourceKey, coll?.name, rules); }
+              catch (e) { /* eslint-disable-next-line no-console */ console.warn('[cond-fmt] save global rules failed', e); }
+              ctx.model.setProps('ptdlCondRules', []);
+            } else {
+              // Local to this block. setProps is reactive (MobX) → the table re-renders; do NOT call
+              // rerender() (runs during flow-apply → "update during render" → blank screen).
+              ctx.model.setProps('ptdlCondRules', rules);
+            }
           },
         },
       },

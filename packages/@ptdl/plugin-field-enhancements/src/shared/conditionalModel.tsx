@@ -3,6 +3,7 @@ import { Button, Switch, Slider, Space } from 'antd';
 import { ArrayTable } from '@formily/antd-v5';
 import { observer as fObserver, useForm, useField } from '@formily/react';
 import { SegmentedGroup, colorToString, ColorField, setIconRegistry, IconByKey, RegistryIconPicker } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 /**
  * "Value tag" field component (moved here from @ptdl/plugin-conditional-format 2026-07-13).
@@ -319,6 +320,7 @@ export function registerConditionalModel({
           title: t('Format Rule'),
           uiMode: { type: 'dialog', props: { width: 900 } },
           uiSchema: {
+            ...globalToggleField(t),
             appearance: {
               type: 'void',
               'x-component': 'Space',
@@ -454,6 +456,16 @@ export function registerConditionalModel({
             ctx.model.setProps('iconPosition', params?.iconPosition || 'left');
             ctx.model.setProps('textStyle', params?.textStyle || {});
             ctx.model.setProps('textSize', typeof params?.textSize === 'number' ? params.textSize : 0);
+            // Global: if "Apply to all views" is on, mirror this widget + config to the field-widget store
+            // so it renders on every table/detail using this field (no per-block config). Fire-and-forget.
+            saveWidgetGlobal(ctx, params, 'ConditionalStatusFieldModel', {
+              rules: params?.rules || [],
+              radius: typeof params?.radius === 'number' ? params.radius : 24,
+              border: !!params?.border,
+              iconPosition: params?.iconPosition || 'left',
+              textStyle: params?.textStyle || {},
+              textSize: typeof params?.textSize === 'number' ? params.textSize : 0,
+            });
           },
         },
       },

@@ -3,6 +3,7 @@ import { Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { SegmentedGroup, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS } from '@ptdl/shared';
+import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 /**
  * "Clamp text" display widget (field-enhancements) — for long-text fields (`textarea` / `markdown` / `richText`).
@@ -122,6 +123,7 @@ export function registerLongTextModel(deps: {
           title: t('Clamp text settings'),
           uiMode: { type: 'dialog', props: { width: 500 } },
           uiSchema: () => ({
+            ...globalToggleField(t),
             preview: { type: 'void', title: t('Preview'), 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } }, 'x-component': 'LT_Preview' },
             row1: {
               type: 'void', 'x-component': 'LT_Grid',
@@ -136,7 +138,9 @@ export function registerLongTextModel(deps: {
           defaultParams: { ...LT_DEFAULTS },
           handler(ctx: any, params: any) {
             const p = params || {};
-            ctx.model.setProps({ ptdlltLines: typeof p.lines === 'number' ? p.lines : 2, ptdlltExpand: p.expand || 'inline' });
+            const props = { ptdlltLines: typeof p.lines === 'number' ? p.lines : 2, ptdlltExpand: p.expand || 'inline' };
+            ctx.model.setProps(props);
+            saveWidgetGlobal(ctx, params, 'PtdlLongTextFieldModel', props);
           },
         },
       },
