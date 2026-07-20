@@ -49,5 +49,12 @@
   "Blocks & charts": "Blocks & charts",
   "Interface": "Interface",
   "Data": "Data",
-  "Security & sign-in": "Security & sign-in"
+  "Security & sign-in": "Security & sign-in",
+  "Disable": "Disable",
+  "Delete": "Delete",
+  "Remove this plugin? Its data/config stays.": "Remove this plugin? Its data/config stays.",
+  "Remove": "Remove",
+  "Cancel": "Cancel",
+  "Disabled": "Disabled",
+  "Removed": "Removed"
 }

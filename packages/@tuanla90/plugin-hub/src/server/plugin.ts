@@ -84,12 +84,14 @@ export class PluginPluginHubServer extends Plugin {
         install: this.installAction,
         enable: this.enableAction,
         updatePlugin: this.updateAction,
+        disable: this.disableAction,
+        uninstall: this.uninstallAction, // NOT 'remove' — that's a reserved association action
       },
-      only: ['getConfig', 'saveConfig', 'check', 'install', 'enable', 'updatePlugin'],
+      only: ['getConfig', 'saveConfig', 'check', 'install', 'enable', 'updatePlugin', 'disable', 'uninstall'],
     });
     // System collection isn't covered by the admin role strategy → grant explicitly. Reads are for any
     // logged-in user; mutating actions additionally require the `root` role (checked in-handler).
-    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'enable', 'updatePlugin'], 'loggedIn');
+    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'enable', 'updatePlugin', 'disable', 'uninstall'], 'loggedIn');
 
     // Weekly NOTIFY check (never auto-applies). Start after the app is up.
     this.app.on('afterStart', () => {
@@ -236,6 +238,24 @@ export class PluginPluginHubServer extends Plugin {
     if (!url) { ctx.body = { ok: false, error: 'Thiếu url' }; await next(); return; }
     try { this.runPm(['update', url]); } catch (e: any) { ctx.body = { ok: false, error: 'pm update lỗi: ' + (e?.message || e) }; await next(); return; }
     ctx.body = { ok: true, pending: true, op: 'update' };
+    await next();
+  };
+
+  private disableAction = async (ctx: any, next: any) => {
+    this.requireRoot(ctx);
+    const pkg = String(ctx.action?.params?.values?.packageName || '').trim();
+    if (!pkg) { ctx.body = { ok: false, error: 'Thiếu packageName' }; await next(); return; }
+    try { this.runPm(['disable', pkg]); } catch (e: any) { ctx.body = { ok: false, error: 'pm disable lỗi: ' + (e?.message || e) }; await next(); return; }
+    ctx.body = { ok: true, pending: true, op: 'disable' };
+    await next();
+  };
+
+  private uninstallAction = async (ctx: any, next: any) => {
+    this.requireRoot(ctx);
+    const pkg = String(ctx.action?.params?.values?.packageName || '').trim();
+    if (!pkg) { ctx.body = { ok: false, error: 'Thiếu packageName' }; await next(); return; }
+    try { this.runPm(['remove', pkg]); } catch (e: any) { ctx.body = { ok: false, error: 'pm remove lỗi: ' + (e?.message || e) }; await next(); return; }
+    ctx.body = { ok: true, pending: true, op: 'uninstall' };
     await next();
   };
 

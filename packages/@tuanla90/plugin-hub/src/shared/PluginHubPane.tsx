@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Input, Space, Switch, Table, Tag, Typography, message } from 'antd';
+import { Alert, Badge, Button, Input, Popconfirm, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import { ConfigContainer, SettingCard, Hint } from '@tuanla90/shared';
 import { t } from './pluginHubClient';
 
@@ -120,6 +120,8 @@ export function PluginHubPane({ api }: { api: any }) {
   const onInstall = (it: Item) => runOp(t('Installed — now Enable it'), it.packageName, 'ptdlPluginHub:install', { url: it.url });
   const onEnable = (it: Item) => runOp(t('Enabled'), it.packageName, 'ptdlPluginHub:enable', { packageName: it.packageName });
   const onUpdate = (it: Item) => runOp(t('Updated'), it.packageName, 'ptdlPluginHub:updatePlugin', { url: it.url });
+  const onDisable = (it: Item) => runOp(t('Disabled'), it.packageName, 'ptdlPluginHub:disable', { packageName: it.packageName });
+  const onUninstall = (it: Item) => runOp(t('Removed'), it.packageName, 'ptdlPluginHub:uninstall', { packageName: it.packageName });
 
   const onUpdateAll = async () => {
     const todo = (items || []).filter((i) => i.status === 'update');
@@ -219,14 +221,29 @@ export function PluginHubPane({ api }: { api: any }) {
       render: (s: Item['status']) => <Tag color={STATUS_META[s].color}>{t(STATUS_META[s].label)}</Tag>,
     },
     {
-      title: t('Action'), key: 'action', width: 130,
+      title: t('Action'), key: 'action', width: 218,
       render: (_: any, it: Item) => {
         const loadingThis = busy === it.packageName;
         const dis = anyBusy && !loadingThis;
-        if (it.status === 'not-installed') return <Button size="small" type="primary" loading={loadingThis} disabled={dis} onClick={() => onInstall(it)}>{t('Install')}</Button>;
-        if (it.status === 'disabled') return <Button size="small" loading={loadingThis} disabled={dis} onClick={() => onEnable(it)}>{t('Enable')}</Button>;
-        if (it.status === 'update') return <Button size="small" type="primary" loading={loadingThis} disabled={dis} onClick={() => onUpdate(it)}>{t('Update')}</Button>;
-        return <Text type="success">✓</Text>;
+        const isSelf = it.slug === 'hub'; // never let the tool disable/remove ITSELF — use the native Plugin Manager for that
+        const installed = it.status !== 'not-installed';
+        const enabled = it.status === 'up-to-date' || it.status === 'update';
+        const primary =
+          it.status === 'not-installed' ? <Button size="small" type="primary" loading={loadingThis} disabled={dis} onClick={() => onInstall(it)}>{t('Install')}</Button>
+            : it.status === 'disabled' ? <Button size="small" loading={loadingThis} disabled={dis} onClick={() => onEnable(it)}>{t('Enable')}</Button>
+              : it.status === 'update' ? <Button size="small" type="primary" loading={loadingThis} disabled={dis} onClick={() => onUpdate(it)}>{t('Update')}</Button>
+                : <Text type="success" style={{ padding: '0 2px' }}>✓</Text>;
+        return (
+          <Space size={4} wrap>
+            {primary}
+            {installed && enabled && !isSelf && <Button size="small" loading={loadingThis} disabled={dis} onClick={() => onDisable(it)}>{t('Disable')}</Button>}
+            {installed && !isSelf && (
+              <Popconfirm title={t('Remove this plugin? Its data/config stays.')} okText={t('Remove')} okButtonProps={{ danger: true }} cancelText={t('Cancel')} onConfirm={() => onUninstall(it)}>
+                <Button size="small" danger disabled={dis}>{t('Delete')}</Button>
+              </Popconfirm>
+            )}
+          </Space>
+        );
       },
     },
   ];

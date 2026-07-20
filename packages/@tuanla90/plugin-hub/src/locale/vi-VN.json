@@ -49,5 +49,12 @@
   "Blocks & charts": "Khối & biểu đồ",
   "Interface": "Giao diện",
   "Data": "Dữ liệu",
-  "Security & sign-in": "Bảo mật & Đăng nhập"
+  "Security & sign-in": "Bảo mật & Đăng nhập",
+  "Disable": "Tắt",
+  "Delete": "Xoá",
+  "Remove this plugin? Its data/config stays.": "Gỡ plugin này? Dữ liệu/cấu hình vẫn được giữ.",
+  "Remove": "Gỡ",
+  "Cancel": "Huỷ",
+  "Disabled": "Đã tắt",
+  "Removed": "Đã gỡ"
 }
