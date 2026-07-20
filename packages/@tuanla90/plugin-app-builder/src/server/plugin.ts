@@ -10,7 +10,7 @@
  *   POST /api/appBuilder:apply   { spec }  → { ok, created[] }             (create collections + fields)
  */
 import { Plugin } from '@nocobase/server';
-import { AppSpec, CollectionSpec, FieldSpec, normalizeOptions, RelationSpec, StatusFlowState, validateAppSpec, ValidationIssue } from '../shared/appSpec';
+import { AppSpec, CollectionSpec, FieldSpec, normalizeOptions, RelationSpec, repairHints, StatusFlowState, validateAppSpec, ValidationIssue } from '../shared/appSpec';
 
 /** Read the App-Spec from a custom-action call. The SDK wraps `resource().apply({values:{spec}})` as
  *  `ctx.action.params.values`; raw HTTP may put it top-level. Accept both. */
@@ -294,6 +294,7 @@ function appSpecSystemPrompt(): string {
     '    · "kind": "init" (bắt đầu — ĐÚNG 1 trạng thái), "doing" (đang xử lý), "done" (thành công — cuối), "fail" (thất bại/huỷ — cuối). "color": default/processing/warning/success/error (hoặc tên tag blue/gold/green/red/purple/cyan/geekblue/orange/magenta/volcano/yellow/lime).',
     '    · THIẾT KẾ THẬT: đúng 1 "init"; ít nhất 1 trạng thái cuối (done và/hoặc fail — KHÔNG xuất hiện làm from-key trong transitions); rẽ nhánh khi hợp lý (vd "Chờ duyệt": ["Đang làm","Từ chối"] — vừa lùi vừa tiến); thêm đường huỷ/fail khi hợp lý (vd "Đang làm": ["Xong","Đã huỷ"]).',
     '    · Vẫn chấp nhận dạng đơn giản "states": ["Mới","Xong"] (mảng string, không "transitions") — compiler tự suy luận tuyến tính; nhưng khi luồng có ý nghĩa nghiệp vụ rõ (đơn hàng, duyệt, ticket…) PHẢI thiết kế đầy đủ như trên.',
+    '    · BẮT BUỘC: statusFlow phải có "states" ≥ 2. Nếu chỉ nghĩ ra 1 trạng thái (hoặc chỉ là cờ bật/tắt) thì ĐỪNG dùng statusFlow — dùng "interface":"select" + "options", hoặc "checkbox" cho true/false.',
     '  widget (tùy chọn, cho đẹp): "Progress bar","Star rating","Value tag","Rich select","Input icon","Sub-table Pro".',
     'relation = { "name" (snake, không dấu), "title" (NHÃN tiếng Việt có dấu, vd "Khách hàng"), "type": "m2o"|"o2m"|"o2o"|"m2m", "target" (tên collection khác), "reverseName"?, "quickCreate"? (bool), "subColumns"? ([tên field bảng con hiện trong sub-table, o2m — theo thứ tự bạn thiết kế]) }.',
     '  quickCreate (chỉ m2o/o2o): thêm nút "＋ Thêm mới <target>" ngay trên form. BẬT (true) cho quan hệ tới thực thể người dùng hay tạo tại-chỗ (khách hàng, liên hệ, nhà cung cấp, đối tác). TẮT (bỏ trống) cho danh mục/master quản lý riêng (sản phẩm, phòng, dịch vụ, danh mục, trạng thái).',
@@ -897,7 +898,7 @@ export class PluginAppBuilderServer extends Plugin {
           const schema = { type: 'object', properties: { spec: { type: 'string', description: 'App-Spec dạng chuỗi JSON hợp lệ' }, explain: { type: 'string', description: 'Giải thích ngắn tiếng Việt (1 câu)' } }, required: ['spec'] };
           let human = `Mô tả app: ${description}\n\nSinh App-Spec JSON.`;
           let spec: any = null; let explain = ''; let lastError = '';
-          for (let attempt = 0; attempt < 3 && !spec; attempt++) {
+          for (let attempt = 0; attempt < 4 && !spec; attempt++) {
             let raw = '';
             try {
               const result: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'appspec', description: 'App-Spec + giải thích' } });
@@ -911,7 +912,8 @@ export class PluginAppBuilderServer extends Plugin {
             const v = validateAppSpec(parsedSpec);
             if (v.ok) { spec = parsedSpec; break; }
             lastError = v.errors.slice(0, 6).map((x) => `${x.path}: ${x.message}`).join('; ');
-            human = `Mô tả app: ${description}\n\nApp-Spec bạn vừa sinh SAI:\n${JSON.stringify(parsedSpec)}\n\nLỖI cần sửa: ${lastError}\n\nSửa lại cho HỢP LỆ, trả JSON App-Spec.`;
+            const hints = repairHints(v.errors);
+            human = `Mô tả app: ${description}\n\nApp-Spec bạn vừa sinh SAI:\n${JSON.stringify(parsedSpec)}\n\nLỖI cần sửa: ${lastError}${hints ? `\n\nCÁCH SỬA:\n${hints}` : ''}\n\nSửa lại cho HỢP LỆ, trả JSON App-Spec.`;
           }
           if (!spec) { ctx.body = { ok: false, error: lastError || 'AI không trả về App-Spec hợp lệ' }; await next(); return; }
           ctx.body = { ok: true, spec, explain, warnings: validateAppSpec(spec).warnings };
@@ -936,7 +938,7 @@ export class PluginAppBuilderServer extends Plugin {
           const base = (extra = '') => `App-Spec HIỆN TẠI:\n${JSON.stringify(current)}\n\nYÊU CẦU SỬA: ${instruction}\n\nTrả về TOÀN BỘ App-Spec ĐÃ SỬA — GIỮ NGUYÊN mọi thứ không liên quan, CHỈ đổi theo yêu cầu. JSON App-Spec thuần.${extra}`;
           let human = base();
           let spec: any = null; let explain = ''; let lastError = '';
-          for (let attempt = 0; attempt < 3 && !spec; attempt++) {
+          for (let attempt = 0; attempt < 4 && !spec; attempt++) {
             let raw = '';
             try {
               const result: any = await provider.invoke({ messages: [['system', system], ['human', human]], structuredOutput: { schema, name: 'appspec', description: 'App-Spec đã sửa + giải thích' } });
@@ -950,7 +952,8 @@ export class PluginAppBuilderServer extends Plugin {
             const vr = validateAppSpec(parsedSpec);
             if (vr.ok) { spec = parsedSpec; break; }
             lastError = vr.errors.slice(0, 6).map((x) => `${x.path}: ${x.message}`).join('; ');
-            human = base(`\n\nBản bạn vừa sửa SAI: ${JSON.stringify(parsedSpec)}\nLỖI: ${lastError}\nSửa cho HỢP LỆ.`);
+            const hints = repairHints(vr.errors);
+            human = base(`\n\nBản bạn vừa sửa SAI: ${JSON.stringify(parsedSpec)}\nLỖI: ${lastError}${hints ? `\nCÁCH SỬA:\n${hints}` : ''}\nSửa cho HỢP LỆ.`);
           }
           if (!spec) { ctx.body = { ok: false, error: lastError || 'AI không sửa được thành App-Spec hợp lệ' }; await next(); return; }
           ctx.body = { ok: true, spec, explain, warnings: validateAppSpec(spec).warnings };

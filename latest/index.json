@@ -20,9 +20,9 @@
     {
       "packageName": "@tuanla90/plugin-app-builder",
       "slug": "app-builder",
-      "version": "0.6.25",
+      "version": "0.6.26",
       "displayName": "App Builder",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.25.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.26.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-block-custom-html",
@@ -118,9 +118,9 @@
     {
       "packageName": "@tuanla90/plugin-formula",
       "slug": "formula",
-      "version": "0.1.75",
+      "version": "0.1.76",
       "displayName": "Formula & Computed Fields",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.75.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.76.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-global-search",

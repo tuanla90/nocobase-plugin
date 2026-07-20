@@ -348,6 +348,43 @@ export function validateAppSpec(spec: AppSpec): ValidationResult {
   return { ok: errors.length === 0, errors, warnings };
 }
 
+/**
+ * Turn raw validation errors into ACTIONABLE, per-error fix instructions the LLM can act on in a
+ * repair loop. The plain `path: message` list tells the model WHAT is wrong; these hints tell it HOW
+ * to fix each class of error (e.g. a statusFlow field with < 2 states → add ≥2 states OR switch to
+ * select). Dedupes identical hints so the prompt stays short. Returns '' when nothing maps.
+ */
+export function repairHints(errors: ValidationIssue[]): string {
+  const hints = new Set<string>();
+  for (const e of errors || []) {
+    const m = e.message || '';
+    const p = e.path || '';
+    if (/statusFlow.*≥\s*2 states|\.states\b/i.test(m + p)) {
+      hints.add(
+        'Field statusFlow phải có "states" = mảng ≥ 2 object {"label","color"?,"kind"?} (vd [{"label":"Mới"},{"label":"Đang xử lý"},{"label":"Xong","kind":"done"}]). ' +
+          'Nếu field đó KHÔNG thật sự là luồng trạng thái nhiều bước → đổi "interface" sang "select" và cấp "options" thay vì "states".',
+      );
+    } else if (/State thiếu "label"/i.test(m)) {
+      hints.add('Mỗi phần tử trong "states" phải có "label" không rỗng.');
+    } else if (/cần options/i.test(m)) {
+      hints.add('Field select/radioGroup/checkboxGroup/multipleSelect cần "options" = mảng {"value","label"} (ít nhất 1 mục).');
+    } else if (/interface không hỗ trợ/i.test(m)) {
+      hints.add(`"interface" phải nằm trong danh sách hỗ trợ: ${FIELD_INTERFACES.join(', ')}.`);
+    } else if (/Tên (field|collection) không hợp lệ/i.test(m)) {
+      hints.add('"name" phải là snake_case KHÔNG DẤU, bắt đầu bằng chữ (vd "ma_don_hang"). Đưa nhãn tiếng Việt vào "title", KHÔNG vào "name".');
+    } else if (/Trùng (field|tên collection)/i.test(m)) {
+      hints.add('Bỏ trùng lặp: mỗi "name" field/collection phải là duy nhất.');
+    } else if (/cần expression/i.test(m)) {
+      hints.add('Field computed cần "computed.expression" là chuỗi công thức không rỗng.');
+    } else if (/ít nhất 1 collection/i.test(m)) {
+      hints.add('Spec cần "collections" không rỗng — ít nhất 1 collection có fields.');
+    } else if (/tên app|meta\.name/i.test(m + p)) {
+      hints.add('Cần "meta.name" (snake_case) đặt tên app.');
+    }
+  }
+  return Array.from(hints).map((h) => `• ${h}`).join('\n');
+}
+
 /** Normalize a field's options to the {value,label,color} shape (accepts string shorthand). */
 export function normalizeOptions(options?: Array<string | FieldOption>): FieldOption[] {
   return (options || []).map((o) => (typeof o === 'string' ? { value: o, label: o } : { label: o.value, ...o }));
