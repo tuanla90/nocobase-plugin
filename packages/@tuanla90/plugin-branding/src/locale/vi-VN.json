@@ -56,6 +56,8 @@
   "Tweak the top header: hide the horizontal menu and make the logo clickable. Saved for everyone.": "Tinh chỉnh header trên cùng: ẩn menu ngang và cho logo bấm được. Lưu dùng chung cho mọi người.",
   "Hide top menu": "Ẩn menu top",
   "Hide the horizontal menu on the header and navigate via the left sidebar. The freed space can hold the Global Search block.": "Ẩn thanh menu ngang trên header, điều hướng qua menu sidebar bên trái. Khoảng trống có thể để cho khối Global Search.",
+  "Hide help icon": "Ẩn icon trợ giúp",
+  "Hide the “?” help dropdown (version, Home page, Handbook, License) in the top-right header.": "Ẩn menu trợ giúp “?” (phiên bản, Home page, Handbook, License) ở góc trên bên phải header.",
   "Selector (advanced)": "Selector (nâng cao)",
   "Logo link": "Link cho logo",
   "Open this link when the header logo is clicked. Leave empty to keep the default behaviour.": "Mở link này khi bấm vào logo trên header. Để trống để giữ hành vi mặc định.",

@@ -18,6 +18,8 @@ import { currentThemeUid, scopedType } from './themeScope';
 export type NavCfg = {
   hideTopMenu?: boolean;
   topMenuSelector?: string;
+  hideHelp?: boolean; // hide the header Help/"?" dropdown (Home page / Handbook / License)
+  helpSelector?: string;
   logoLink?: string;
   logoTarget?: '_self' | '_blank';
   logoSelector?: string;
@@ -32,6 +34,11 @@ const STYLE_ID = 'ptdl-branding-nav';
 // inline/vertical (not -horizontal) and lives in a sider, so it stays untouched.
 export const DEFAULT_MENU_SELECTOR =
   '.ant-layout-header .ant-menu-horizontal, .ant-pro-global-header .ant-menu-horizontal, .ant-pro-global-header-menu';
+
+// NocoBase's header Help/"?" dropdown trigger (version · Home page · Handbook · License). It carries a
+// stable `data-testid="help-button"` in BOTH lanes (/admin + /v/) — test-ids survive version bumps far
+// better than the emotion-hashed className, so we key off that. Overridable in settings just in case.
+export const DEFAULT_HELP_SELECTOR = '[data-testid="help-button"]';
 
 // The brand logo/title block on the left of the header. Broad on purpose (covers pro-layout + the
 // modern /v/ topbar); overridable in settings if a theme renders it elsewhere.
@@ -239,6 +246,7 @@ export function applyNav(cfg: NavCfg): void {
   const c = cfg || {};
   const rules: string[] = [];
   if (c.hideTopMenu) rules.push(`${c.topMenuSelector || DEFAULT_MENU_SELECTOR}{display:none!important}`);
+  if (c.hideHelp) rules.push(`${c.helpSelector || DEFAULT_HELP_SELECTOR}{display:none!important}`);
   if (c.logoLink) rules.push(`${c.logoSelector || DEFAULT_LOGO_SELECTOR}{cursor:pointer!important}`);
 
   let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
@@ -505,6 +513,38 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
             <Input.TextArea
               value={cfg.topMenuSelector ?? DEFAULT_MENU_SELECTOR}
               onChange={(e) => set({ topMenuSelector: e.target.value })}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              spellCheck={false}
+              style={{ fontFamily: 'monospace', fontSize: 12 }}
+            />
+          </Space>
+        ) : (
+          <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{_t('Off')}</span>
+        )}
+      </Card>
+
+      {/* Hide help icon */}
+      <Card
+        size="small"
+        title={
+          <Space>
+            <Switch checked={!!cfg.hideHelp} size="small" onChange={(v) => set({ hideHelp: v })} />
+            {_t('Hide help icon')}
+          </Space>
+        }
+        style={{ marginBottom: 12, breakInside: 'avoid' }}
+      >
+        {cfg.hideHelp ? (
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {_t('Hide the “?” help dropdown (version, Home page, Handbook, License) in the top-right header.')}
+            </Typography.Text>
+            <Typography.Text strong style={{ fontSize: 12, marginTop: 6 }}>
+              {_t('Selector (advanced)')}
+            </Typography.Text>
+            <Input.TextArea
+              value={cfg.helpSelector ?? DEFAULT_HELP_SELECTOR}
+              onChange={(e) => set({ helpSelector: e.target.value })}
               autoSize={{ minRows: 2, maxRows: 4 }}
               spellCheck={false}
               style={{ fontFamily: 'monospace', fontSize: 12 }}

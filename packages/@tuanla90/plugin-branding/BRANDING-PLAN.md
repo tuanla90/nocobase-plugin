@@ -38,3 +38,9 @@ Thêm lớp **chuyển động UI toàn app** vào cùng stylesheet skin (không
 - **An toàn**: chỉ transform/opacity + curve ease-out ngắn; **KHÔNG** `transition:transform` trên `.ant-card` (block /v/ drag bằng inline transform → transition sẽ lag kéo-thả); tự tắt qua `@media (prefers-reduced-motion:reduce)`.
 - **UI**: SegmentedGroup "Motion" (Off/Subtle/Lively) trong card *Accent & shape* của skin page, cạnh Density; `applyPreset` giữ `motion` khi đổi preset (như radius/density). Live-preview áp ngay khi đổi.
 - i18n: Motion/Subtle/Lively + tooltip (vi-VN). Verified: bundle cả 2 lane có motion CSS, served==deployed byte match (98271). **Chờ user test browser (pane chưa login nên chưa thấy inject — đúng như skin gốc, chỉ áp khi đã đăng nhập).**
+
+## Hide help icon — 🚀 XONG (0.4.10, 2026-07-20)
+Thêm toggle **ẩn icon trợ giúp "?"** trên header (dropdown phiên bản · Home page · Handbook · License) vào tab **Header & Logo** (config `type:'nav'`, dùng chung mọi user).
+- `NavCfg.hideHelp?: boolean` + `helpSelector?: string`; `DEFAULT_HELP_SELECTOR = '[data-testid="help-button"]'` trong `shared/headerNav.tsx`. `applyNav` push rule `{display:none!important}` — cùng cơ chế hide-top-menu.
+- **Selector**: NocoBase render nút help là `<span data-testid="help-button">` ở CẢ 2 lane (/admin + /v/) — verified từ bundle `@nocobase/app`. Chọn `data-testid` (không phải className emotion-hash) vì test-id bền qua nâng cấp. Có ô "Selector (advanced)" để đổi nếu version sau khác.
+- UI: card "Hide help icon" (Switch + advanced selector) ngay dưới "Hide top menu"; i18n vi-VN. Verified: selector bundled cả 2 lane, served==deployed (100078). **Chờ user bật toggle + Save.**
