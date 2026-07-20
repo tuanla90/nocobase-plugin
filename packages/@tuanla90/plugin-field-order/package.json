@@ -1,6 +1,6 @@
 {
   "name": "@tuanla90/plugin-field-order",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "displayName": "Field Order",
   "displayName.vi-VN": "Thứ tự trường",
   "description": "Reorder a collection’s fields from the Collection Manager. Adds a ‘Reorder fields’ button to the Configure-fields drawer: a drag-and-drop list that saves the new order to fields.sort, driving this screen and the default field order of new blocks. Works on classic and /v/ clients.",
