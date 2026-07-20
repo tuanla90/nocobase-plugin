@@ -48,9 +48,9 @@
     {
       "packageName": "@ptdl/plugin-conditional-format",
       "slug": "conditional-format",
-      "version": "0.2.11",
+      "version": "0.2.15",
       "displayName": "Conditional Formatting",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-conditional-format-0.2.11.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-conditional-format-0.2.15.tgz"
     },
     {
       "packageName": "@ptdl/plugin-custom-header",
@@ -97,9 +97,9 @@
     {
       "packageName": "@ptdl/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.13",
+      "version": "0.2.19",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-field-enhancements-0.2.13.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-field-enhancements-0.2.19.tgz"
     },
     {
       "packageName": "@ptdl/plugin-field-order",
