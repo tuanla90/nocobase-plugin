@@ -227,22 +227,33 @@ export class PluginPluginHubServer extends Plugin {
     await next();
   };
 
-  // Install + enable a plugin fully IN-PROCESS, AWAITED. `addByCompressedFileUrl` downloads+links the files;
-  // `pm.enable` auto-registers it (addOrThrow), runs migrations, creates the applicationPlugins row, and
-  // reloads via `tryReloadOrRestart` — the SAME in-process reload `pm update` uses. This does NOT depend on the
-  // external `yarn nocobase pm2-restart` that `pm add` needs (and that silently no-ops on non-pm2 deploys like
-  // Docker/Railway → "Install downloads but never registers"). So: if UPDATE works on a host, this install does too.
+  // Install + enable a plugin IN-PROCESS, but FIRE-AND-FORGET (do NOT await the chain in-request).
+  //  • `addByCompressedFileUrl` downloads+links the files — the SAME step `pm add` uses, minus the external
+  //    `yarn nocobase pm2-restart` that silently no-ops on non-pm2 deploys (Docker/Railway) → "downloads but
+  //    never registers". Plain HTTP download + copy, no restart.
+  //  • `pm.enable` then auto-registers it (addOrThrow), runs migrations, writes the applicationPlugins row
+  //    (enabled+installed), and reloads via `tryReloadOrRestart` — the in-process reload the native Plugin
+  //    Manager's own enable uses (proven to work here: Bulk enable reaches "syncing database…").
+  // WHY fire-and-forget: `pm.enable` ends by tearing the app down to reload; AWAITING it inside the HTTP
+  // request aborts the enable before its row commits (the 0.1.10 "downloaded but stays disabled" bug). Detached,
+  // the response has already flushed → row write → reload runs cleanly in the background. It also means a big
+  // plugin's slow download can't trip a proxy timeout. The client polls `check` (waitForStatus) for the result.
   private installEnableAction = async (ctx: any, next: any) => {
     this.requireRoot(ctx);
     const v = ctx.action?.params?.values || {};
     const url = String(v.url || '').trim();
     const pkg = String(v.packageName || '').trim();
     if (!url || !pkg) { ctx.body = { ok: false, error: 'Thiếu url hoặc packageName' }; await next(); return; }
-    try {
-      await (this.app.pm as any).addByCompressedFileUrl({ compressedFileUrl: url });
-      await this.app.pm.enable(pkg);
-      ctx.body = { ok: true, op: 'installEnable' };
-    } catch (e: any) { ctx.body = { ok: false, error: 'Cài lỗi: ' + (e?.message || e) }; }
+    const pm: any = this.app.pm;
+    void (async () => {
+      try {
+        await pm.addByCompressedFileUrl({ compressedFileUrl: url });
+        await pm.enable(pkg);
+      } catch (e: any) {
+        this.app.log?.error?.('[plugin-hub] installEnable failed for ' + pkg + ': ' + (e?.message || e));
+      }
+    })();
+    ctx.body = { ok: true, pending: true, op: 'installEnable' };
     await next();
   };
 

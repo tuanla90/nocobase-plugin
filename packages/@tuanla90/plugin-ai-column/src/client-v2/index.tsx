@@ -1,7 +1,15 @@
 import { Plugin, InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, useApp, RecordSelectFieldModel, RecordActionModel, FormActionModel } from '@nocobase/client-v2';
 import { EditableItemModel, tExpr } from '@nocobase/flow-engine';
-import { UploadFieldModel } from '@nocobase/plugin-file-manager/client-v2';
-import { AttachmentURLFieldModel } from '@nocobase/plugin-field-attachment-url/client-v2';
+// Optional peer plugins: file-manager (UploadFieldModel) + field-attachment-url (AttachmentURLFieldModel).
+// EITHER may be DISABLED on a given instance. Importing their models by name and using them as a model
+// `Base` unconditionally crashes the ENTIRE /v/ bundle ("Cannot read properties of undefined … FieldModel")
+// the instant the module namespace is absent. Import defensively via `* as`: a missing peer → the const is
+// `undefined` → the attachment variants below carry `Base: undefined`, which the register* fns already skip
+// (they guard `!Base` / empty variants) → the plugin loads everything else instead of white-screening the app.
+import * as fileManagerV2 from '@nocobase/plugin-file-manager/client-v2';
+import * as attachmentUrlV2 from '@nocobase/plugin-field-attachment-url/client-v2';
+const UploadFieldModel: any = (fileManagerV2 as any)?.UploadFieldModel;
+const AttachmentURLFieldModel: any = (attachmentUrlV2 as any)?.AttachmentURLFieldModel;
 import { registerAiColumn } from '../shared/aiColumn';
 import { registerAiExtract } from '../shared/aiExtract';
 import { registerAiExtractRows } from '../shared/aiExtractRows';
@@ -27,8 +35,9 @@ import { registerAiFunction } from '../shared/aiFunction';
  * Registers the editable AI field models (single-line input + multi-line textarea, each
  * with the ✨ generate button) and binds them as a non-default component for their interfaces.
  * Also registers "AI Extract" on attachment fields (peer plugins @nocobase/plugin-file-manager
- * + @nocobase/plugin-field-attachment-url — both confirmed enabled; if either is disabled later,
- * drop its variant entry below, since a missing external here 404s the whole bundle on /v/).
+ * + @nocobase/plugin-field-attachment-url). Those peers are OPTIONAL — the defensive `* as` imports
+ * above make a disabled peer degrade to "its attachment variant just isn't offered" instead of
+ * crashing the whole /v/ bundle.
  */
 export class PluginAiColumnClientV2 extends Plugin {
   async load() {

@@ -4,8 +4,14 @@ import { Plugin, useAPIClient } from '@nocobase/client';
 // AI field models into the classic app's flowEngine (works in /admin flow-engine blocks).
 import { InputFieldModel, TextareaFieldModel, ActionModel, ActionSceneEnum, RecordSelectFieldModel, RecordActionModel, FormActionModel } from '@nocobase/client-v2';
 import { EditableItemModel, tExpr } from '@nocobase/flow-engine';
-import { UploadFieldModel } from '@nocobase/plugin-file-manager/client-v2';
-import { AttachmentURLFieldModel } from '@nocobase/plugin-field-attachment-url/client-v2';
+// Optional peer plugins (file-manager + field-attachment-url) — EITHER may be disabled on a given
+// instance. Import defensively via `* as`: a missing peer → const is `undefined` → the attachment
+// variants get `Base: undefined`, which the register* fns skip, instead of crashing the whole bundle
+// ("Cannot read properties of undefined … FieldModel"). See the client-v2 lane for the full note.
+import * as fileManagerV2 from '@nocobase/plugin-file-manager/client-v2';
+import * as attachmentUrlV2 from '@nocobase/plugin-field-attachment-url/client-v2';
+const UploadFieldModel: any = (fileManagerV2 as any)?.UploadFieldModel;
+const AttachmentURLFieldModel: any = (attachmentUrlV2 as any)?.AttachmentURLFieldModel;
 import { registerAiColumn } from '../shared/aiColumn';
 import { registerAiExtract } from '../shared/aiExtract';
 import { registerAiExtractRows } from '../shared/aiExtractRows';

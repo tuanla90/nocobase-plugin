@@ -13,9 +13,9 @@
     {
       "packageName": "@tuanla90/plugin-ai-column",
       "slug": "ai-column",
-      "version": "0.7.2",
+      "version": "0.7.3",
       "displayName": "AI Column",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.2.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.3.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-app-builder",
@@ -69,9 +69,9 @@
     {
       "packageName": "@tuanla90/plugin-data-visualization-echarts-pro",
       "slug": "data-visualization-echarts-pro",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "displayName": "Data Visualization: ECharts Pro",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-data-visualization-echarts-pro-0.2.4.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-data-visualization-echarts-pro-0.2.5.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-detail-panel",
@@ -139,9 +139,9 @@
     {
       "packageName": "@tuanla90/plugin-hub",
       "slug": "hub",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "displayName": "Plugin Hub",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.10.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.11.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-inline-field",
