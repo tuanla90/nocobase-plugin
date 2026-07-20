@@ -4,7 +4,7 @@
 > **xem nhanh thống kê khi kéo chọn nhiều ô**, và **chế độ thẻ** tự xếp lại từng dòng cho gọn trên màn hình hẹp —
 > cấu hình ngay trên khối, **không cần code, không cần restart máy chủ**.
 
-**Nhóm:** Khối (Blocks) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 2.1.0-beta.16
+**Nhóm:** Khối (Blocks) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 2.1.0-beta.17
 
 ## Sau khi cài, có gì mới?
 

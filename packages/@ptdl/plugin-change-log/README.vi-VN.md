@@ -4,7 +4,7 @@
 > ai đổi · lúc nào · vai trò gì · từ giá trị nào sang giá trị nào · qua đường nào · nằm ở giá trị cũ bao lâu · kèm lý do (tuỳ chọn).
 > Xem lại dưới dạng **dòng thời gian** ngay trên bản ghi — không cần code, không cần restart.
 
-**Nhóm:** Kiểm toán / Nhật ký (Auditing) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.3
+**Nhóm:** Kiểm toán / Nhật ký (Auditing) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.4
 
 ## Sau khi cài, có gì mới?
 

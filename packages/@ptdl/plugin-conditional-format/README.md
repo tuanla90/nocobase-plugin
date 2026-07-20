@@ -3,7 +3,7 @@
 > Color the text, background, bold/italic, border, icon, or draw a **heatmap / data bar** on cells in
 > **Table blocks** based on each row's value — configured right on the table, **no code, no data changes**.
 
-**Group:** Blocks · **Runs on:** /v/ (modern) — on Table blocks · **Version:** 0.2.5
+**Group:** Blocks · **Runs on:** /v/ (modern) — on Table blocks · **Version:** 0.2.15
 
 ## What's new after installing?
 

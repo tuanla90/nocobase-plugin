@@ -4,7 +4,7 @@
 > Cùng một cơ chế lo được: **nổ định mức BOM**, **chia hoa hồng**, **phân bổ chi phí/lương khoán** — có khớp qua quan hệ,
 > người nhận động, gộp-và-tổng, làm tròn; chạy **thủ công bằng nút** hoặc **tự động khi lưu**, kèm **xem thử (dry-run)** + **trình gỡ lỗi**.
 
-**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.6.9
+**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.6.11
 
 ## Sau khi cài, có gì mới?
 

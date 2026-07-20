@@ -4,7 +4,7 @@
 > ngay từ nút trên bảng/trang chi tiết — kèm **in hàng loạt**, **lưu PDF vào field**, QR, watermark,
 > header/footer, tổng hợp bằng công thức & SQL… mà **không cần code**.
 
-**Nhóm:** Actions (Hành động) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.3
+**Nhóm:** Actions (Hành động) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.4
 
 ## Sau khi cài, có gì mới?
 

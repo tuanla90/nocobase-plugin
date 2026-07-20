@@ -3,7 +3,7 @@
 > Mở bản ghi **ghim sang bên phải** thay vì bật popup che kín màn hình — kiểu **master–detail của AppSheet**:
 > danh sách ở bên trái, chi tiết bản ghi ở bên phải, kéo thanh giữa để chỉnh rộng hẹp. Chỉ cần bật, **không cần code**.
 
-**Nhóm:** Khối (Blocks) · **Chạy trên:** **chỉ /v/ (modern)** — không áp dụng /admin (classic) · **Phiên bản:** 0.1.0
+**Nhóm:** Khối (Blocks) · **Chạy trên:** **chỉ /v/ (modern)** — không áp dụng /admin (classic) · **Phiên bản:** 0.1.1
 
 ## Sau khi cài, có gì mới?
 

@@ -3,7 +3,7 @@
 > Tô màu chữ, màu nền, in đậm/nghiêng, viền, icon hoặc vẽ **heatmap / thanh dữ liệu** cho các ô trong
 > **khối Bảng (Table)** theo giá trị từng dòng — cấu hình ngay trên bảng, **không cần code, không đổi dữ liệu**.
 
-**Nhóm:** Khối (Blocks) · **Chạy trên:** /v/ (modern) — trên khối **Bảng (Table)** · **Phiên bản:** 0.2.5
+**Nhóm:** Khối (Blocks) · **Chạy trên:** /v/ (modern) — trên khối **Bảng (Table)** · **Phiên bản:** 0.2.15
 
 ## Sau khi cài, có gì mới?
 

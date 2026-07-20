@@ -3,7 +3,7 @@
 > Open a record **docked to the right** instead of a full-screen popup — **AppSheet-style master–detail**:
 > the list on the left, the record's details on the right, drag the divider to resize. Just switch it on, **no code**.
 
-**Group:** Blocks · **Runs on:** **/v/ (modern) only** — not /admin (classic) · **Version:** 0.1.0
+**Group:** Blocks · **Runs on:** **/v/ (modern) only** — not /admin (classic) · **Version:** 0.1.1
 
 ## What's new after installing?
 

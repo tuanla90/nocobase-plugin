@@ -25,7 +25,7 @@ const CAT_LABEL_EN = {
 const SLUG_CAT = {
   'ai-column': 'Fields', 'device-kit': 'Fields', 'field-enhancements': 'Fields', 'field-order': 'Fields', 'formula': 'Fields', 'status-flow': 'Fields',
   'block-custom-html': 'Blocks', 'conditional-format': 'Blocks', 'detail-panel': 'Blocks', 'enhanced-table-block': 'Blocks', 'filter-tree': 'Blocks', 'layout-containers': 'Blocks', 'spreadsheet-view': 'Blocks', 'subtable-pro': 'Blocks',
-  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI',
+  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'hub': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI',
   'menu-enhancements': 'Menu',
   'action-enhancements': 'Actions', 'print-template': 'Actions',
   'change-log': 'Data', 'gsheet-sync': 'Data', 'line-generator': 'Data',

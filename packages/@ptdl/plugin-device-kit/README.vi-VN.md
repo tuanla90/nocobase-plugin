@@ -4,7 +4,7 @@
 > chụp ảnh có **đóng dấu GPS/giờ**, ghi **vị trí trên bản đồ** (không cần API key), **chữ ký** & **ghi âm**,
 > **quét QR/barcode** để điền hoặc tra cứu, và **check-in** một chạm.
 
-**Nhóm:** Fields (Trường) + Actions (Hành động) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.8.0
+**Nhóm:** Fields (Trường) + Actions (Hành động) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.8.1
 
 > ⚠️ **Điều kiện bắt buộc: trang chạy HTTPS** (hoặc `localhost`). Camera, GPS và micro của trình duyệt **chỉ hoạt động trên HTTPS**. Host trên Railway đã có sẵn HTTPS → mở URL production trên điện thoại là dùng được.
 

@@ -4,7 +4,7 @@
 > cấu hình trường — không cần code, không cần restart server.
 > **Từ 0.1.1**, plugin còn **tự sắp lại menu trong trang Settings** cho gọn gàng theo nhóm.
 
-**Nhóm:** Trường (Fields) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.1
+**Nhóm:** Trường (Fields) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.4
 
 ## Sau khi cài, có gì mới?
 

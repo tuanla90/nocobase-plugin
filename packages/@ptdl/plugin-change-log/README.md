@@ -4,7 +4,7 @@
 > who changed it · when · which role · from which value to which value · through which path · how long it sat in the old value · with an optional reason.
 > Review it as a **timeline** right on the record — **no code, no restart**.
 
-**Group:** Auditing · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.3
+**Group:** Auditing · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.4
 
 ## What's new after installing?
 

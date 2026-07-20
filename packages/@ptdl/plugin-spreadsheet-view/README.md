@@ -4,7 +4,7 @@
 > save per row. Add **virtual formula columns**, **multi-level grouping with subtotals**, a **summary row**,
 > **conditional formatting**, **TSV paste** from Excel/Sheets, **fill-down** and **copy** — all configured right on the block, no code.
 
-**Group:** Blocks · **Runs on:** /v/ (modern) + /admin (classic, FlowEngine pages) · **Version:** 0.2.2
+**Group:** Blocks · **Runs on:** /v/ (modern) + /admin (classic, FlowEngine pages) · **Version:** 0.2.3
 
 ## What's new after installing?
 

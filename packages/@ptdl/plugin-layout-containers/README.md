@@ -5,7 +5,7 @@
 > ability to **restyle the tab bar** of an existing page/popup to Line, Pill, Segment, Card, Step or
 > Text, with an **app-wide default per theme**.
 
-**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.1
+**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.3
 
 ## What's new after installing?
 

@@ -4,7 +4,7 @@
 > khối **Bảng** đúng các cột đó, kèm nút **Xem / Sửa / Thêm mới** mà popup cũng hiển thị đúng các cột đó.
 > Không phải bấm cấu hình khối/cột/popup thủ công. Kết quả là trang NocoBase gốc, **chỉnh sửa tiếp thoải mái**.
 
-**Nhóm:** Khối & Trang (Blocks) · **Chạy trên:** chỉ **/v/** (modern) — giao diện **/admin** (classic) không có công cụ này · **Phiên bản:** 0.1.0
+**Nhóm:** Khối & Trang (Blocks) · **Chạy trên:** chỉ **/v/** (modern) — giao diện **/admin** (classic) không có công cụ này · **Phiên bản:** 0.1.7
 
 ## Sau khi cài, có gì mới?
 

@@ -4,7 +4,7 @@
 > photos with a **GPS/time watermark**, a **location on a map** (no API key), **signature** & **audio**,
 > **scan QR/barcode** to fill or look up, and one-tap **check-in**.
 
-**Group:** Fields + Actions · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.8.0
+**Group:** Fields + Actions · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.8.1
 
 > ⚠️ **Requirement: the page must run over HTTPS** (or `localhost`). The browser's camera, GPS and microphone **only work over HTTPS**. Hosting on Railway already provides HTTPS → just open the production URL on your phone and it works.
 

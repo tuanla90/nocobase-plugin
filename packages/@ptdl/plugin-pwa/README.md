@@ -4,7 +4,7 @@
 > it gets its own icon on the home screen and opens full-screen like a real app. You set the
 > **name, colors and icon** in one config page — **no code, no server restart**.
 
-**Group:** Interface & Experience (UI/UX) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.1
+**Group:** Interface & Experience (UI/UX) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.2
 
 ## What's new after installing?
 

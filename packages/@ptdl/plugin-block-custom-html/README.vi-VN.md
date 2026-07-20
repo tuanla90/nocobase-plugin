@@ -4,7 +4,7 @@
 > xem trước, lọc, làm mới — rồi để **bạn tự vẽ giao diện bằng JavaScript trả về HTML**: thẻ điểm (scorecard),
 > chỉ số KPI, bảng xếp hạng, thẻ card… Có sẵn **mẫu bấm-là-chạy** và **bộ hàm trợ giúp** (định dạng số, escape, icon).
 
-**Nhóm:** Khối (Blocks) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.12.3
+**Nhóm:** Khối (Blocks) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.12.9
 
 ## Sau khi cài, có gì mới?
 

@@ -4,7 +4,7 @@
 > classify a value against a catalog collection, turn **one document into many rows** in a sub-table,
 > create images and read text aloud as **speech** (TTS) — per cell, in **bulk**, or **auto-run on save**.
 
-**Group:** Fields · AI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.7.0
+**Group:** Fields · AI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.7.2
 
 > ⚙ **Prerequisites (without these, nothing will generate):**
 > - Enable **`@nocobase/plugin-ai`** and add at least **one LLM service** under **Settings → AI**.

@@ -4,7 +4,7 @@
 > default Ant Design icons with Lucide** everywhere — menus, buttons, fields, the header bar. Ships a **default
 > mapping** loaded on install and a **per-icon editor** with CSV import/export — **no code, no server restart**.
 
-**Group:** Interface (UI) · Icons · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.3
+**Group:** Interface (UI) · Icons · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.5
 
 ## What's new after installing?
 

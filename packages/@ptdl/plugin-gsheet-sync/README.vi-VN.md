@@ -4,7 +4,7 @@
 > tự động theo lịch. Tự tạo collection và **đoán kiểu dữ liệu**, hoặc map cột vào collection có sẵn;
 > chế độ **thay toàn bộ** hoặc **upsert theo cột khóa**; tuỳ chọn **ghi ngược 2 chiều** lên sheet.
 
-**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.1
+**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.3
 
 ## Sau khi cài, có gì mới?
 

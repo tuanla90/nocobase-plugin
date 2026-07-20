@@ -5,7 +5,7 @@
 > **save PDF to a field**, QR codes, watermarks, headers/footers, and formula & SQL summaries…
 > all **without code**.
 
-**Group:** Actions · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.3
+**Group:** Actions · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.4
 
 ## What's new after installing?
 

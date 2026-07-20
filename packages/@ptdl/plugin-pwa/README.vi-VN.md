@@ -4,7 +4,7 @@
 > có icon riêng trên màn hình chính, mở ra chạy toàn màn hình như một app thật. Bạn tự đặt **tên, màu và biểu tượng**
 > trong một trang cấu hình — **không cần code, không cần restart server**.
 
-**Nhóm:** Giao diện & Trải nghiệm (UI/UX) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.1
+**Nhóm:** Giao diện & Trải nghiệm (UI/UX) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.2
 
 ## Sau khi cài, có gì mới?
 

@@ -3,7 +3,7 @@
 > Restyle your whole app: colors for the sidebar / header / cards, accent color, density (weight), font,
 > app name, favicon and logo (light/dark)… Ships with presets, **remembers per theme**, and imports/exports the config.
 
-**Group:** UI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.7
+**Group:** UI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.9
 
 ## What's new after installing?
 

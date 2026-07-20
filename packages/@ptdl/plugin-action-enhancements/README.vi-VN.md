@@ -4,7 +4,7 @@
 > của khối, và thêm 2 công cụ mới cho bảng — **Thanh tìm kiếm** và **Bộ lọc** — tất cả chỉnh ngay trên
 > giao diện, **không cần code, không cần restart server**.
 
-**Nhóm:** Giao diện · Nút thao tác (Actions/UI)  ·  **Chạy trên:** /admin (classic) + /v/ (modern)  ·  **Phiên bản:** 0.1.0
+**Nhóm:** Giao diện · Nút thao tác (Actions/UI)  ·  **Chạy trên:** /admin (classic) + /v/ (modern)  ·  **Phiên bản:** 0.1.1
 
 ## Sau khi cài, có gì mới?
 

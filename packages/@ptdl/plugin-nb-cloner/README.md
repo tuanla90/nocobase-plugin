@@ -4,7 +4,7 @@
 > from one install to another as a single **`.nbc.gz`** file. Import is an **UPSERT** (it never deletes
 > what's already there).
 
-**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.9.2
+**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.9.3
 
 ## What's new after installing?
 

@@ -3,7 +3,7 @@
 > A data table that does more than the standard one: add a **summary row** (sum / average / count… per column), **get instant stats when you drag-select cells**, and a **card mode** that restacks each row to fit narrow screens —
 > configured right on the block, **no code, no server restart**.
 
-**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 2.1.0-beta.16
+**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 2.1.0-beta.17
 
 ## What's new after installing?
 

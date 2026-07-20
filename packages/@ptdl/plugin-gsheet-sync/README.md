@@ -5,7 +5,7 @@
 > or map columns onto an existing collection; **replace-all** or **upsert-by-key** modes;
 > optional **two-way write-back** to the sheet.
 
-**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.1
+**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.3
 
 ## What's new after installing?
 

@@ -4,7 +4,7 @@
 > a block's **action bar**, and add two brand-new tools to tables — a **Search bar** and a **Filter bar** —
 > all right in the UI, **no code, no server restart**.
 
-**Group:** UI · Action buttons (Actions/UI) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.0
+**Group:** UI · Action buttons (Actions/UI) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.1
 
 ## What's new after installing?
 

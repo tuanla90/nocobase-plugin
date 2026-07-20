@@ -5,7 +5,7 @@
 > tùy chỉnh phông chữ & định dạng số, biến đổi dữ liệu bằng JavaScript, và một ô **ghi đè option ECharts thô**
 > để kiểm soát toàn bộ — tất cả chỉnh **ngay trên biểu đồ**, không cần code phía máy chủ.
 
-**Nhóm:** Blocks (Khối hiển thị) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.0
+**Nhóm:** Blocks (Khối hiển thị) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.4
 
 ## Sau khi cài, có gì mới?
 

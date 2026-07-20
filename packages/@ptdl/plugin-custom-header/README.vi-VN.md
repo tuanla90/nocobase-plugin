@@ -4,7 +4,7 @@
 > nhãn field ở form/detail và tiêu đề khối: đặt **icon**, **màu chữ**, **cỡ chữ**, **in đậm**,
 > **nền** (đơn sắc/gradient) và **căn lề**. Không cần code — chỉnh ngay trên phần tử.
 
-**Nhóm:** Giao diện (Blocks/UI) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.1
+**Nhóm:** Giao diện (Blocks/UI) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.3
 
 ## Sau khi cài, có gì mới?
 

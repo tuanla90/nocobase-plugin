@@ -4,7 +4,7 @@
 > icon ô nhập, chân trang và trang đích sau khi đăng nhập — ngay trong trang quản trị, **có xem trước
 > trực tiếp**, **không cần code**.
 
-**Nhóm:** Xác thực & Giao diện (Auth/UI) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 2.3.1
+**Nhóm:** Xác thực & Giao diện (Auth/UI) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 2.3.2
 
 ## Sau khi cài, có gì mới?
 

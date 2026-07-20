@@ -4,7 +4,7 @@
 > preview, filter, refresh — then **you draw the UI yourself with JavaScript that returns HTML**: scorecards,
 > KPIs, top lists, cards. Ships **click-to-run templates** and a **helper toolkit** (number formatting, escaping, icons).
 
-**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.12.3
+**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.12.9
 
 ## What's new after installing?
 

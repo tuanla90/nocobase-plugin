@@ -4,7 +4,7 @@
 > phân loại theo một bảng danh mục, biến **một tài liệu thành nhiều dòng** trong bảng con,
 > tạo ảnh và đọc thành **giọng nói** (TTS) — làm lẻ từng ô, làm **hàng loạt**, hoặc **tự chạy khi lưu**.
 
-**Nhóm:** Trường (Fields) · AI · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.7.0
+**Nhóm:** Trường (Fields) · AI · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.7.2
 
 > ⚙ **Cần chuẩn bị trước (nếu không có, sẽ không sinh được gì):**
 > - Bật **`@nocobase/plugin-ai`** và thêm ít nhất **1 LLM service** ở **Settings → AI**.
