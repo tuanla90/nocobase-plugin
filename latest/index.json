@@ -1,0 +1,238 @@
+{
+  "source": "@ptdl/nocobase-plugin",
+  "updatedAt": null,
+  "count": 33,
+  "plugins": [
+    {
+      "packageName": "@ptdl/plugin-action-enhancements",
+      "slug": "action-enhancements",
+      "version": "0.1.1",
+      "displayName": "Action Button Enhancements",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-action-enhancements-0.1.1.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-ai-column",
+      "slug": "ai-column",
+      "version": "0.7.2",
+      "displayName": "AI Column",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-ai-column-0.7.2.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-app-builder",
+      "slug": "app-builder",
+      "version": "0.6.10",
+      "displayName": "App Builder",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-app-builder-0.6.10.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-block-custom-html",
+      "slug": "block-custom-html",
+      "version": "0.12.9",
+      "displayName": "Block: Custom HTML",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-block-custom-html-0.12.9.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-branding",
+      "slug": "branding",
+      "version": "0.4.7",
+      "displayName": "Branding & Theme",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-branding-0.4.7.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-change-log",
+      "slug": "change-log",
+      "version": "0.1.4",
+      "displayName": "Change Log",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-change-log-0.1.4.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-conditional-format",
+      "slug": "conditional-format",
+      "version": "0.2.11",
+      "displayName": "Conditional Formatting",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-conditional-format-0.2.11.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-custom-header",
+      "slug": "custom-header",
+      "version": "0.2.3",
+      "displayName": "Custom Header",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-custom-header-0.2.3.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-custom-icons",
+      "slug": "custom-icons",
+      "version": "0.2.5",
+      "displayName": "Custom Icons (Lucide + Remap)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-custom-icons-0.2.5.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-data-visualization-echarts-pro",
+      "slug": "data-visualization-echarts-pro",
+      "version": "0.2.4",
+      "displayName": "Data Visualization: ECharts Pro",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-data-visualization-echarts-pro-0.2.4.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-detail-panel",
+      "slug": "detail-panel",
+      "version": "0.1.1",
+      "displayName": "Detail Panel",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-detail-panel-0.1.1.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-device-kit",
+      "slug": "device-kit",
+      "version": "0.8.1",
+      "displayName": "Device Kit",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-device-kit-0.8.1.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-enhanced-table-block",
+      "slug": "enhanced-table-block",
+      "version": "2.1.0-beta.17",
+      "displayName": "Block: Enhanced Table",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-enhanced-table-block-2.1.0-beta.17.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-field-enhancements",
+      "slug": "field-enhancements",
+      "version": "0.2.13",
+      "displayName": "Field Enhancements",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-field-enhancements-0.2.13.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-field-order",
+      "slug": "field-order",
+      "version": "0.1.4",
+      "displayName": "Field Order",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-field-order-0.1.4.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-filter-tree",
+      "slug": "filter-tree",
+      "version": "0.3.6",
+      "displayName": "Filter Tree / Bar",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-filter-tree-0.3.6.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-formula",
+      "slug": "formula",
+      "version": "0.1.74",
+      "displayName": "Formula & Computed Fields",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-formula-0.1.74.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-global-search",
+      "slug": "global-search",
+      "version": "0.9.7",
+      "displayName": "Global Search",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-global-search-0.9.7.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-gsheet-sync",
+      "slug": "gsheet-sync",
+      "version": "0.1.1",
+      "displayName": "Google Sheets Sync",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-gsheet-sync-0.1.1.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-hub",
+      "slug": "hub",
+      "version": "0.1.0",
+      "displayName": "Plugin Hub",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-hub-0.1.0.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-inline-field",
+      "slug": "inline-field",
+      "version": "0.1.3",
+      "displayName": "Inline Field",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-inline-field-0.1.3.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-instant-create-page",
+      "slug": "instant-create-page",
+      "version": "0.1.7",
+      "displayName": "Instant Create Page",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-instant-create-page-0.1.7.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-ip-guard",
+      "slug": "ip-guard",
+      "version": "0.2.0",
+      "displayName": "IP Guard (Whitelist / Blacklist)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-ip-guard-0.2.0.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-layout-containers",
+      "slug": "layout-containers",
+      "version": "0.4.3",
+      "displayName": "Layout Containers (Tabs / Collapse)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-layout-containers-0.4.3.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-line-generator",
+      "slug": "line-generator",
+      "version": "0.6.11",
+      "displayName": "Line Generator",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-line-generator-0.6.11.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-login-lite",
+      "slug": "login-lite",
+      "version": "2.3.2",
+      "displayName": "Custom Login",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-login-lite-2.3.2.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-menu-enhancements",
+      "slug": "menu-enhancements",
+      "version": "0.4.17",
+      "displayName": "Menu Enhancements (Sections + Badge)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-menu-enhancements-0.4.17.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-nb-cloner",
+      "slug": "nb-cloner",
+      "version": "1.9.3",
+      "displayName": "App Cloner (export / import)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-nb-cloner-1.9.3.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-print-template",
+      "slug": "print-template",
+      "version": "0.1.4",
+      "displayName": "Print Template",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-print-template-0.1.4.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-pwa",
+      "slug": "pwa",
+      "version": "0.4.2",
+      "displayName": "PWA (Installable App)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-pwa-0.4.2.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-spreadsheet-view",
+      "slug": "spreadsheet-view",
+      "version": "0.2.3",
+      "displayName": "Spreadsheet View",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-spreadsheet-view-0.2.3.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-status-flow",
+      "slug": "status-flow",
+      "version": "0.1.0",
+      "displayName": "Status Flow",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-status-flow-0.1.0.tgz"
+    },
+    {
+      "packageName": "@ptdl/plugin-subtable-pro",
+      "slug": "subtable-pro",
+      "version": "0.2.8",
+      "displayName": "Sub-table Pro",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@ptdl/plugin-subtable-pro-0.2.8.tgz"
+    }
+  ]
+}
