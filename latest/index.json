@@ -90,9 +90,9 @@
     {
       "packageName": "@tuanla90/plugin-enhanced-table-block",
       "slug": "enhanced-table-block",
-      "version": "2.1.0-beta.17",
+      "version": "2.1.0-beta.18",
       "displayName": "Block: Enhanced Table",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-enhanced-table-block-2.1.0-beta.17.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-enhanced-table-block-2.1.0-beta.18.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-enhancements",

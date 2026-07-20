@@ -13,7 +13,14 @@ if [ -d "$SRC/src" ]; then
   rm -rf "$DST/src"
   cp -r "$SRC/src" "$DST/src"
   cp "$SRC/package.json" "$DST/package.json"
-  echo "synced src + package.json <- $SRC"
+  # Root lane markers — REQUIRED. nocobase-build checks for the root client.js / client-v2.js
+  # ("rootEntryFile") BEFORE building each client lane; if the build cwd (DST) lacks them it logs
+  # "root entry not found" and SKIPS the lane → tgz ships server-only → RequireJS "Script error" on /v/
+  # when the plugin is enabled. Copy every marker the source has (some plugins omit client-v2.d.ts).
+  for m in client.js client-v2.js server.js client.d.ts client-v2.d.ts server.d.ts; do
+    [ -f "$SRC/$m" ] && cp "$SRC/$m" "$DST/$m"
+  done
+  echo "synced src + package.json + root markers <- $SRC"
 fi
 
 echo "node: $(node -v)"
