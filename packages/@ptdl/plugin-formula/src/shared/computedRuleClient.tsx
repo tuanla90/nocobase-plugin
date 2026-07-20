@@ -365,7 +365,11 @@ const ComputedHintIcon: React.FC<{ rule: any; cf: any; editable: boolean }> = ({
 
   return (
     <>
-      <Tooltip title={<span style={{ whiteSpace: 'pre-line' }}>{tip}</span>}>
+      <Tooltip
+        title={<span style={{ whiteSpace: 'pre-line' }}>{tip}</span>}
+        overlayStyle={{ maxWidth: 460 }}
+        overlayInnerStyle={{ maxWidth: 460 }}
+      >
         <CalculatorOutlined
           onClick={editable ? openEditor : undefined}
           style={{ color: 'var(--colorTextTertiary, #999)', fontSize: 12, flex: 'none', cursor: editable ? 'pointer' : 'help' }}

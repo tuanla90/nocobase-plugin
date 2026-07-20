@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Công thức & Trường tự tính",
   "displayName.zh-CN": "公式",
   "description": "Excel-style formulas (400+ functions) throughout NocoBase: display columns (HTML, relation roll-up), form default values, server-computed stored fields that auto-recompute across relations, and sequential/window calculations — running balances and FIFO/average inventory costing.",
-  "version": "0.1.71",
+  "version": "0.1.72",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {
