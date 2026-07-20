@@ -65,6 +65,14 @@ const HintLine: React.FC<{ icon: string; color?: string; iconSize?: number; styl
 // renders — the exact pattern @tuanla90/plugin-conditional-format uses for its field pickers.
 let injectedApi: any = null;
 
+// Re-entrancy guard for the one-shot "create column" flow. `TableBlockModel.registerFlow` steps are
+// AUTO-APPLY: the flow-engine re-runs the step handler on every block render / reactive change. Creating
+// a field + column mutates the block, which schedules another apply — so without a guard the SAME field
+// is created again and again ("thêm cột liên tục, không dừng"). Keyed by the block-model instance and set
+// synchronously BEFORE any await, so a re-entrant run bails immediately. Sibling plugins avoid this by
+// keeping their handlers idempotent (setProps only); here the create is not idempotent, so we gate it.
+const creatingInBlock = new WeakSet<any>();
+
 // ── the "define a field" dialog body (a controlled Formily x-component) ───────────────────────────
 // interface → friendly label (VN source) + which group it sits under, for the type <Select>.
 const TYPE_GROUPS: { key: string; label: string; items: InlineInterface[] }[] = [
@@ -604,7 +612,30 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
           },
           defaultParams: { spec: { interface: 'input', title: '' } },
           async handler(ctx: any, params: any) {
-            await createFieldAndColumn(ctx.model, params?.spec || {}, app);
+            const model = ctx?.model;
+            // Shallow-clone so resetting the step params below can't blank the data we're about to create.
+            const spec = { ...((params && params.spec) || {}) } as InlineFieldSpec;
+            const title = String(spec.title || '').trim();
+            // This step AUTO-APPLIES on every render with defaultParams (title:''). Until the user actually
+            // submits a named field there is nothing to create — bail silently (a toast here would fire on
+            // every page load). The dialog's OK is the only path that supplies a real title.
+            if (!title || !model) return;
+            // Creating the column mutates the block → schedules another auto-apply → this handler re-fires.
+            // Guard synchronously (before any await) so the re-entrant run bails instead of recreating the
+            // field forever — the reported "thêm liên tục không dừng lại được" bug.
+            if (creatingInBlock.has(model)) return;
+            creatingInBlock.add(model);
+            // Consume the one-shot spec immediately: reset the persisted step params to the empty default so
+            // neither this render cascade nor a later page reload can recreate the field. `save()` in the
+            // finally persists both the reset params and the freshly-added column.
+            try { model.setStepParams?.('ptdlInlineAddField', 'create', { spec: { interface: 'input', title: '' } }); }
+            catch (_) { /* best-effort */ }
+            try {
+              await createFieldAndColumn(model, spec, app);
+            } finally {
+              try { await model.save?.(); } catch (_) { /* best-effort persist of reset params + column */ }
+              creatingInBlock.delete(model);
+            }
           },
         },
       },
