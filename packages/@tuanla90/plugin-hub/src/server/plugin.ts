@@ -218,8 +218,12 @@ export class PluginPluginHubServer extends Plugin {
     this.requireRoot(ctx);
     const url = String(ctx.action?.params?.values?.url || '').trim();
     if (!url) { ctx.body = { ok: false, error: 'Thiếu url' }; await next(); return; }
-    try { this.runPm(['add', url]); } catch (e: any) { ctx.body = { ok: false, error: 'pm add lỗi: ' + (e?.message || e) }; await next(); return; }
-    ctx.body = { ok: true, pending: true, op: 'install' };
+    // AWAIT pm add (unlike enable/update it registers a DISABLED plugin WITHOUT reloading the app) so we
+    // (a) surface real download/install errors instead of a false success, and (b) SERIALIZE a batch install
+    // — the old fire-and-forget fired several `pm add` ~3s apart, overlapping downloads that clobbered each other.
+    try { await this.app.runAsCLI(['pm', 'add', url], { from: 'user' }); }
+    catch (e: any) { ctx.body = { ok: false, error: 'pm add lỗi: ' + (e?.message || e) }; await next(); return; }
+    ctx.body = { ok: true, op: 'install' };
     await next();
   };
 

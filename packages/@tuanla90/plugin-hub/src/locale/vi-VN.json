@@ -56,5 +56,9 @@
   "Remove": "Gỡ",
   "Cancel": "Huỷ",
   "Disabled": "Đã tắt",
-  "Removed": "Đã gỡ"
+  "Removed": "Đã gỡ",
+  "Some items failed": "Một số mục thất bại",
+  "Installed and enabled": "Đã cài và bật",
+  "Install did not finish in time": "Cài chưa xong sau thời gian chờ",
+  "Enable did not finish in time": "Bật chưa xong sau thời gian chờ"
 }

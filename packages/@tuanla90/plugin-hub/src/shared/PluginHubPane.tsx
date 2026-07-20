@@ -102,6 +102,54 @@ export function PluginHubPane({ api }: { api: any }) {
     return false;
   };
 
+  // Poll `check` until a plugin reaches one of `want` statuses (or timeout). A pm add/enable triggers a FULL
+  // app restart whose timing varies, so we watch the ACTUAL status instead of a fixed sleep. Refreshes the
+  // list as it goes; returns the matched item (or null on timeout).
+  const waitForStatus = async (packageName: string, want: Item['status'][], maxMs = 180000): Promise<Item | null> => {
+    const start = Date.now();
+    await sleep(4000); // give the restart a moment to begin
+    while (Date.now() - start < maxMs) {
+      try {
+        const res = await req('ptdlPluginHub:check', { manifestUrl: cfg.manifestUrl });
+        if (res?.ok) {
+          setItems(res.items || []);
+          const it = (res.items || []).find((i: Item) => i.packageName === packageName);
+          if (it && want.includes(it.status)) return it;
+        }
+      } catch { /* app mid-restart → keep polling */ }
+      await sleep(3000);
+    }
+    return null;
+  };
+
+  // Take ONE plugin all the way to installed+ENABLED (or updated), waiting for each restart to finish before
+  // the next step — this is what makes auto-install reliable and a batch safe (no overlapping restarts).
+  // Returns null on success, or an error string.
+  const advancePlugin = async (it: Item, step: (s: string) => void): Promise<string | null> => {
+    let status: Item['status'] = it.status;
+    if (status === 'not-installed') {
+      step(t('Installing'));
+      const r = await req('ptdlPluginHub:install', { url: it.url });
+      if (!r?.ok) return r?.error || t('Operation failed');
+      const reg = await waitForStatus(it.packageName, ['disabled', 'up-to-date', 'update']);
+      if (!reg) return t('Install did not finish in time');
+      status = reg.status;
+    }
+    if (status === 'disabled') {
+      step(t('Enabling'));
+      const r = await req('ptdlPluginHub:enable', { packageName: it.packageName });
+      if (!r?.ok) return r?.error || t('Operation failed');
+      const en = await waitForStatus(it.packageName, ['up-to-date', 'update']);
+      if (!en) return t('Enable did not finish in time');
+    } else if (status === 'update') {
+      step(t('Updating'));
+      const r = await req('ptdlPluginHub:updatePlugin', { url: it.url });
+      if (!r?.ok) return r?.error || t('Operation failed');
+      await waitForStatus(it.packageName, ['up-to-date']);
+    }
+    return null;
+  };
+
   const runOp = async (successMsg: string, key: string, url: string, data: any) => {
     setBusy(key); setProgress(t('Sending command…'));
     try {
@@ -117,7 +165,17 @@ export function PluginHubPane({ api }: { api: any }) {
     finally { setBusy(null); setProgress(''); }
   };
 
-  const onInstall = (it: Item) => runOp(t('Installed — now Enable it'), it.packageName, 'ptdlPluginHub:install', { url: it.url });
+  // Install now goes all the way to ENABLED automatically (install → wait → enable → wait).
+  const onInstall = async (it: Item) => {
+    setBusy(it.packageName);
+    try {
+      const err = await advancePlugin(it, (s) => setProgress(`${s}: ${it.displayName}`));
+      await onCheck();
+      if (err) message.error(`${it.displayName}: ${err}`, 10);
+      else message.success(t('Installed and enabled'));
+    } catch (e) { message.error(errMsg(e)); }
+    finally { setBusy(null); setProgress(''); }
+  };
   const onEnable = (it: Item) => runOp(t('Enabled'), it.packageName, 'ptdlPluginHub:enable', { packageName: it.packageName });
   const onUpdate = (it: Item) => runOp(t('Updated'), it.packageName, 'ptdlPluginHub:updatePlugin', { url: it.url });
   const onDisable = (it: Item) => runOp(t('Disabled'), it.packageName, 'ptdlPluginHub:disable', { packageName: it.packageName });
@@ -147,22 +205,22 @@ export function PluginHubPane({ api }: { api: any }) {
     const todo = (items || []).filter((i) => selectedKeys.includes(i.packageName) && i.status !== 'up-to-date');
     if (!todo.length) return;
     setBusy('*selected*');
+    const fails: string[] = [];
     try {
       for (let i = 0; i < todo.length; i++) {
         const it = todo[i];
-        const verb = it.status === 'not-installed' ? t('Installing') : it.status === 'disabled' ? t('Enabling') : t('Updating');
-        setProgress(`${verb} ${i + 1}/${todo.length}: ${it.displayName}`);
+        // advancePlugin runs install→enable (or enable/update) for ONE plugin and WAITS for each restart to
+        // finish before returning — so the next item never starts mid-restart (the old batch's fatal flaw).
         try {
-          const url = it.status === 'disabled' ? 'ptdlPluginHub:enable' : it.status === 'update' ? 'ptdlPluginHub:updatePlugin' : 'ptdlPluginHub:install';
-          const data = it.status === 'disabled' ? { packageName: it.packageName } : { url: it.url };
-          const res = await req(url, data);
-          if (res?.ok) await waitAppReady();
-        } catch { /* keep going — one failure shouldn't abort the batch */ }
+          const err = await advancePlugin(it, (s) => setProgress(`${s} ${i + 1}/${todo.length}: ${it.displayName}`));
+          if (err) fails.push(`${it.displayName}: ${err}`);
+        } catch (e: any) { fails.push(`${it.displayName}: ${e?.message || e}`); }
       }
       setProgress(t('Refreshing the list…'));
       await onCheck();
       setSelectedKeys([]);
-      message.success(t('Batch done'));
+      if (fails.length) message.error(`${t('Some items failed')} — ${fails.join(' · ')}`, 12);
+      else message.success(t('Batch done'));
     } finally { setBusy(null); setProgress(''); }
   };
 
