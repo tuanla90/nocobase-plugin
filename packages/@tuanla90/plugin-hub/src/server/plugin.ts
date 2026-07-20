@@ -82,16 +82,17 @@ export class PluginPluginHubServer extends Plugin {
         // name 'update' is a RESERVED resourcer action → NocoBase auto-enforces `filterByTk` on it ("to do
         // update action, filter or filterByTk is required"), rejecting our handler. So expose it as 'updatePlugin'.
         install: this.installAction,
+        installEnable: this.installEnableAction,
         enable: this.enableAction,
         updatePlugin: this.updateAction,
         disable: this.disableAction,
         uninstall: this.uninstallAction, // NOT 'remove' — that's a reserved association action
       },
-      only: ['getConfig', 'saveConfig', 'check', 'install', 'enable', 'updatePlugin', 'disable', 'uninstall'],
+      only: ['getConfig', 'saveConfig', 'check', 'install', 'installEnable', 'enable', 'updatePlugin', 'disable', 'uninstall'],
     });
     // System collection isn't covered by the admin role strategy → grant explicitly. Reads are for any
     // logged-in user; mutating actions additionally require the `root` role (checked in-handler).
-    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'enable', 'updatePlugin', 'disable', 'uninstall'], 'loggedIn');
+    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'installEnable', 'enable', 'updatePlugin', 'disable', 'uninstall'], 'loggedIn');
 
     // Weekly NOTIFY check (never auto-applies). Start after the app is up.
     this.app.on('afterStart', () => {
@@ -223,6 +224,25 @@ export class PluginPluginHubServer extends Plugin {
     // regression → "Install spins forever"). The client polls `check` (waitForStatus) for the real result.
     try { this.runPm(['add', url]); } catch (e: any) { ctx.body = { ok: false, error: 'pm add lỗi: ' + (e?.message || e) }; await next(); return; }
     ctx.body = { ok: true, pending: true, op: 'install' };
+    await next();
+  };
+
+  // Install + enable a plugin fully IN-PROCESS, AWAITED. `addByCompressedFileUrl` downloads+links the files;
+  // `pm.enable` auto-registers it (addOrThrow), runs migrations, creates the applicationPlugins row, and
+  // reloads via `tryReloadOrRestart` — the SAME in-process reload `pm update` uses. This does NOT depend on the
+  // external `yarn nocobase pm2-restart` that `pm add` needs (and that silently no-ops on non-pm2 deploys like
+  // Docker/Railway → "Install downloads but never registers"). So: if UPDATE works on a host, this install does too.
+  private installEnableAction = async (ctx: any, next: any) => {
+    this.requireRoot(ctx);
+    const v = ctx.action?.params?.values || {};
+    const url = String(v.url || '').trim();
+    const pkg = String(v.packageName || '').trim();
+    if (!url || !pkg) { ctx.body = { ok: false, error: 'Thiếu url hoặc packageName' }; await next(); return; }
+    try {
+      await (this.app.pm as any).addByCompressedFileUrl({ compressedFileUrl: url });
+      await this.app.pm.enable(pkg);
+      ctx.body = { ok: true, op: 'installEnable' };
+    } catch (e: any) { ctx.body = { ok: false, error: 'Cài lỗi: ' + (e?.message || e) }; }
     await next();
   };
 

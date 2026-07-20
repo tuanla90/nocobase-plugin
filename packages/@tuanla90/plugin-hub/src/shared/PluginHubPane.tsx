@@ -138,9 +138,11 @@ export function PluginHubPane({ api }: { api: any }) {
   const advancePlugin = async (it: Item, progress: (s: string) => void): Promise<string | null> => {
     if (it.status === 'not-installed') {
       progress(t('Installing'));
-      const r = await req('ptdlPluginHub:install', { url: it.url });
-      if (!r?.ok) return r?.error || t('Operation failed');
-      return (await waitForStatus(it.packageName, ['disabled', 'up-to-date', 'update'], t('Installing'), progress)) ? null : t('Install did not finish in time');
+      // installEnable = download + register + enable IN-PROCESS (works where `pm add`'s pm2-restart doesn't).
+      // Awaited server-side, but the in-process reload can drop the connection → tolerate a throw, verify by poll.
+      const r = await silentReq('ptdlPluginHub:installEnable', { url: it.url, packageName: it.packageName }).catch(() => null);
+      if (r && r.ok === false) return r.error || t('Operation failed');
+      return (await waitForStatus(it.packageName, ['up-to-date', 'update'], t('Installing'), progress)) ? null : t('Install did not finish in time');
     }
     if (it.status === 'disabled') {
       progress(t('Enabling'));
@@ -172,15 +174,14 @@ export function PluginHubPane({ api }: { api: any }) {
     finally { setBusy(null); setProgress(''); }
   };
 
-  // Install downloads + registers the plugin (DISABLED) and waits for the app restart → the row's button then
-  // flips to "Enable". (One restart per click; the user enables when ready.)
+  // Install = download + register + ENABLE in one in-process step (installEnable) → the plugin ends up active.
   const onInstall = async (it: Item) => {
     setBusy(it.packageName);
     try {
       const err = await advancePlugin(it, (s) => setProgress(`${s}: ${it.displayName}`));
       await onCheck(undefined, true);
       if (err) message.error(`${it.displayName}: ${err}`, 10);
-      else message.success(t('Installed — now Enable it'));
+      else message.success(t('Installed and enabled'));
     } catch (e) { message.error(errMsg(e)); }
     finally { setBusy(null); setProgress(''); }
   };
