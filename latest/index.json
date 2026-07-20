@@ -139,9 +139,9 @@
     {
       "packageName": "@tuanla90/plugin-hub",
       "slug": "hub",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "displayName": "Plugin Hub",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.7.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.8.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-inline-field",

@@ -60,5 +60,6 @@
   "Some items failed": "Some items failed",
   "Installed and enabled": "Installed and enabled",
   "Install did not finish in time": "Install did not finish in time",
-  "Enable did not finish in time": "Enable did not finish in time"
+  "Enable did not finish in time": "Enable did not finish in time",
+  "app is restarting": "app is restarting"
 }

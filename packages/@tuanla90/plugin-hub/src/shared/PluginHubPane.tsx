@@ -112,12 +112,13 @@ export function PluginHubPane({ api }: { api: any }) {
   };
 
   // Poll `check` until a plugin reaches one of `want` statuses (or timeout). A pm add/enable triggers a FULL
-  // app restart whose timing varies, so we watch the ACTUAL status instead of a fixed sleep. Refreshes the
-  // list as it goes; returns the matched item (or null on timeout).
-  const waitForStatus = async (packageName: string, want: Item['status'][], maxMs = 180000): Promise<Item | null> => {
+  // app restart whose timing varies, so we watch the ACTUAL status instead of a fixed sleep AND report elapsed
+  // seconds so the button never looks frozen. Refreshes the list as it goes; returns the matched item or null.
+  const waitForStatus = async (packageName: string, want: Item['status'][], label: string, progress: (s: string) => void, maxMs = 150000): Promise<Item | null> => {
     const start = Date.now();
     await sleep(4000); // give the restart a moment to begin
     while (Date.now() - start < maxMs) {
+      progress(`${label} — ${t('app is restarting')} ${Math.round((Date.now() - start) / 1000)}s`);
       try {
         const res = await silentReq('ptdlPluginHub:check', { manifestUrl: cfg.manifestUrl });
         if (res?.ok) {
@@ -131,30 +132,27 @@ export function PluginHubPane({ api }: { api: any }) {
     return null;
   };
 
-  // Take ONE plugin all the way to installed+ENABLED (or updated), waiting for each restart to finish before
-  // the next step — this is what makes auto-install reliable and a batch safe (no overlapping restarts).
-  // Returns null on success, or an error string.
-  const advancePlugin = async (it: Item, step: (s: string) => void): Promise<string | null> => {
-    let status: Item['status'] = it.status;
-    if (status === 'not-installed') {
-      step(t('Installing'));
+  // Run the NEXT action for ONE plugin (install / enable / update) and WAIT for its restart to finish. Does NOT
+  // chain install→enable: install leaves the plugin registered but DISABLED so the row's button becomes "Enable"
+  // (predictable + one restart per click). Returns null on success, or an error string.
+  const advancePlugin = async (it: Item, progress: (s: string) => void): Promise<string | null> => {
+    if (it.status === 'not-installed') {
+      progress(t('Installing'));
       const r = await req('ptdlPluginHub:install', { url: it.url });
       if (!r?.ok) return r?.error || t('Operation failed');
-      const reg = await waitForStatus(it.packageName, ['disabled', 'up-to-date', 'update']);
-      if (!reg) return t('Install did not finish in time');
-      status = reg.status;
+      return (await waitForStatus(it.packageName, ['disabled', 'up-to-date', 'update'], t('Installing'), progress)) ? null : t('Install did not finish in time');
     }
-    if (status === 'disabled') {
-      step(t('Enabling'));
+    if (it.status === 'disabled') {
+      progress(t('Enabling'));
       const r = await req('ptdlPluginHub:enable', { packageName: it.packageName });
       if (!r?.ok) return r?.error || t('Operation failed');
-      const en = await waitForStatus(it.packageName, ['up-to-date', 'update']);
-      if (!en) return t('Enable did not finish in time');
-    } else if (status === 'update') {
-      step(t('Updating'));
+      return (await waitForStatus(it.packageName, ['up-to-date', 'update'], t('Enabling'), progress)) ? null : t('Enable did not finish in time');
+    }
+    if (it.status === 'update') {
+      progress(t('Updating'));
       const r = await req('ptdlPluginHub:updatePlugin', { url: it.url });
       if (!r?.ok) return r?.error || t('Operation failed');
-      await waitForStatus(it.packageName, ['up-to-date']);
+      await waitForStatus(it.packageName, ['up-to-date'], t('Updating'), progress);
     }
     return null;
   };
@@ -174,14 +172,15 @@ export function PluginHubPane({ api }: { api: any }) {
     finally { setBusy(null); setProgress(''); }
   };
 
-  // Install now goes all the way to ENABLED automatically (install → wait → enable → wait).
+  // Install downloads + registers the plugin (DISABLED) and waits for the app restart → the row's button then
+  // flips to "Enable". (One restart per click; the user enables when ready.)
   const onInstall = async (it: Item) => {
     setBusy(it.packageName);
     try {
       const err = await advancePlugin(it, (s) => setProgress(`${s}: ${it.displayName}`));
       await onCheck(undefined, true);
       if (err) message.error(`${it.displayName}: ${err}`, 10);
-      else message.success(t('Installed and enabled'));
+      else message.success(t('Installed — now Enable it'));
     } catch (e) { message.error(errMsg(e)); }
     finally { setBusy(null); setProgress(''); }
   };

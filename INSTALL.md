@@ -5,7 +5,7 @@ Các plugin trong repo này được đóng gói sẵn (`.tgz` ở `latest/@tuan
 ## ⭐ Cách nhanh nhất — Plugin Hub (cài 1 lần, lo hết)
 Cài **Plugin Hub** rồi nó tự cài/cập nhật mọi plugin còn lại từ manifest (`latest/index.json`) — khỏi dán URL 30+ lần.
 1. Admin NocoBase → **Plugin manager → Add → URL** → dán:
-   `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.7.tgz`
+   `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.8.tgz`
    → Install → **Enable**.
 2. Vào **Settings → Plugin Hub → Kiểm tra ngay** → cài/cập nhật từng cái hoặc **Cập nhật tất cả**.
 
@@ -41,7 +41,7 @@ Plugin cài lúc runtime nằm ở `storage/plugins` trên **service NocoBase** 
 | formula | 0.1.74 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.74.tgz` |
 | global-search | 0.9.7 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.7.tgz` |
 | gsheet-sync | 0.1.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-gsheet-sync-0.1.3.tgz` |
-| hub | 0.1.7 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.7.tgz` |
+| hub | 0.1.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.8.tgz` |
 | inline-field | 0.1.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.3.tgz` |
 | instant-create-page | 0.1.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-instant-create-page-0.1.8.tgz` |
 | ip-guard | 0.2.0 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ip-guard-0.2.0.tgz` |
