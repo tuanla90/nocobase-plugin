@@ -42,6 +42,17 @@ export function rt(s: string): string {
   }
 }
 
+// Walk up the flow-model parent chain to find `collectionField`. NocoBase v2's field models expose it via a
+// getter that reads `this.context.collectionField` — reliable on a plain top-level TableColumnModel, but NOT
+// guaranteed on a SubTableColumnModel or an inner field-model rendered inside a form/detail, where it actually
+// lives on a PARENT model. Bounded walk (max 4 hops) avoids infinite loops on malformed parent chains.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 // ---- Rule model + evaluator ---------------------------------------------------------------------
 type Cond = { field?: string; fieldLabel?: string; op?: string; value?: any };
 type RuleMode = 'condition' | 'colorScale' | 'dataBar';
@@ -741,7 +752,7 @@ export function registerTableConditionalFormat({ flowEngine, flowSettings, tExpr
         const node = origRender.apply(this, rargs);
         try {
           const bmName: string | undefined = (this as any).context?.blockModel?.constructor?.name;
-          const cf: any = (this as any).collectionField || (this as any).context?.collectionField;
+          const cf: any = resolveCf(this);
           const fieldName: string | undefined = cf?.name;
           const bmColl = (this as any).context?.blockModel?.collection;
           const coll = cf?.collectionName || cf?.collection?.name || bmColl?.name;

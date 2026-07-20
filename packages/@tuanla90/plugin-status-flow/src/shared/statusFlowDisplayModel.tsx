@@ -33,6 +33,17 @@ const DISPLAY_WIDGETS: Record<string, React.FC<any>> = {
 //    to; clicking updates the record via the API (the server hook still validates) and
 //    refreshes the block
 
+// `collectionField` is a getter on flow-engine models that reads `this.context.collectionField`.
+// That's reliable on a plain top-level TableColumnModel, but NOT guaranteed on a SubTableColumnModel
+// or an inner field-model rendered inside a form/detail, where it actually lives on a parent model.
+// Walk up a few `.parent` levels so nested status-flow fields still resolve their collectionField.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 function rolesOfModel(model: any): string[] {
   const ctx: any = model?.context;
   const names: string[] = (ctx?.user?.roles || []).map((r: any) => r?.name).filter(Boolean);
@@ -50,7 +61,7 @@ export const StatusFlowCellExtras: React.FC<{
   tags: React.ReactNode;
 }> = ({ model, value, flow, tags }) => {
   const [busy, setBusy] = useState(false);
-  const cf: any = model.context?.collectionField;
+  const cf: any = resolveCf(model);
   const fieldName: string = cf?.name;
   const enumOptions = cf?.uiSchema?.enum || cf?.options?.uiSchema?.enum || [];
   const showGraph = !!model.props?.sfShowGraph;
@@ -168,7 +179,7 @@ export const StatusFlowCellExtras: React.FC<{
 export function defineStatusFlowDisplayModel(Base: any) {
   class StatusFlowDisplayFieldModel extends Base {
     public renderComponent(value: any) {
-      const cf: any = (this as any).context?.collectionField;
+      const cf: any = resolveCf(this);
       const flow = cf?.options?.statusFlow;
       const { sfShowGraph, sfShowButtons, sfShowLog, sfColorMode, sfDisplayStyle, sfSize, sfMonoColor } =
         (this as any).props || {};
@@ -217,7 +228,7 @@ export function defineStatusFlowDisplayModel(Base: any) {
       settings: {
         title: te('Display style'),
         uiSchema: (ctx: any) => {
-          const cf: any = ctx?.model?.context?.collectionField;
+          const cf: any = resolveCf(ctx?.model);
           const flow = cf?.options?.statusFlow || {};
           const enumOptions = cf?.uiSchema?.enum || cf?.options?.uiSchema?.enum || [];
           return {

@@ -17,6 +17,17 @@ import {
 } from './statusFlowWidgets';
 import { tt, te } from './i18n';
 
+// `collectionField` is a getter on flow-engine models that reads `this.context.collectionField`.
+// That's reliable on a plain top-level TableColumnModel, but NOT guaranteed on a SubTableColumnModel
+// or an inner field-model rendered inside a form/detail, where it actually lives on a parent model.
+// Walk up a few `.parent` levels so nested status-flow fields still resolve their collectionField.
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
+
 function rolesOfModel(model: any): string[] {
   const ctx: any = model?.context;
   const names: string[] = (ctx?.user?.roles || []).map((r: any) => r?.name).filter(Boolean);
@@ -41,7 +52,7 @@ const WIDGETS: Record<string, React.FC<StatusWidgetProps>> = {
 export function defineStatusFlowFieldModel(Base: any) {
   class StatusFlowFieldModel extends Base {
     getFlowConfig(): { flow?: StatusFlowConfig; name?: string; enumOptions: any[] } {
-      const cf: any = (this as any).context?.collectionField;
+      const cf: any = resolveCf(this);
       return {
         flow: cf?.options?.statusFlow,
         name: cf?.name,
@@ -172,7 +183,7 @@ export function defineStatusFlowFieldModel(Base: any) {
       settings: {
         title: te('Display style'),
         uiSchema: (ctx: any) => {
-          const cf: any = ctx?.model?.context?.collectionField;
+          const cf: any = resolveCf(ctx?.model);
           const flow = cf?.options?.statusFlow || {};
           const enumOptions = cf?.uiSchema?.enum || cf?.options?.uiSchema?.enum || [];
           return {

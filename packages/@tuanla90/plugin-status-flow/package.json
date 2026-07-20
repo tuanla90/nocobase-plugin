@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Luồng trạng thái",
   "displayName.zh-CN": "状态流",
   "description": "A state-machine field type: define statuses (kind + colour), allowed transitions and which roles may perform them. The edit dropdown offers only valid next statuses; the server enforces every transition, including bulk edit. Cells add a flow-graph popover and quick-transition buttons.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

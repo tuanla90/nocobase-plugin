@@ -20,8 +20,15 @@ function aucfgFromProps(p: any): AUCfg {
 function apiOf(model: any): any {
   return model?.context?.api || model?.flowEngine?.context?.api || model?.context?.app?.apiClient || model?.app?.apiClient;
 }
+/** `collectionField` may live on a PARENT model (sub-table column, nested form field) — walk up. */
+function resolveCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
+    if (cur?.collectionField) return cur.collectionField;
+  }
+  return null;
+}
 function isMultiple(model: any): boolean {
-  const cf = model?.collectionField;
+  const cf = resolveCf(model);
   const m = cf?.multiple ?? cf?.options?.multiple;
   return m === undefined ? true : !!m;
 }
