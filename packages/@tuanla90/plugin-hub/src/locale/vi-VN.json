@@ -41,5 +41,13 @@
   "Run selected": "Chạy mục đã chọn",
   "Installing": "Đang cài",
   "Enabling": "Đang bật",
-  "Batch done": "Đã xử lý xong các mục đã chọn"
+  "Batch done": "Đã xử lý xong các mục đã chọn",
+  "Group": "Nhóm",
+  "to update": "cần cập nhật",
+  "Admin & tools": "Quản trị / Công cụ",
+  "Fields": "Trường / Field",
+  "Blocks & charts": "Khối & biểu đồ",
+  "Interface": "Giao diện",
+  "Data": "Dữ liệu",
+  "Security & sign-in": "Bảo mật & Đăng nhập"
 }

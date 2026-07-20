@@ -32,6 +32,20 @@ const CardHeader: React.FC<{ title: React.ReactNode; extra?: React.ReactNode }> 
   </div>
 );
 
+// Category grouping for the plugin list — MIRRORS docs-site/generate.cjs SLUG_CAT (keep in sync when adding a plugin).
+const CAT_ORDER = ['Admin', 'Fields', 'Blocks', 'UI', 'Data', 'Security'];
+const CAT_LABEL_KEY: Record<string, string> = { Admin: 'Admin & tools', Fields: 'Fields', Blocks: 'Blocks & charts', UI: 'Interface', Data: 'Data', Security: 'Security & sign-in' };
+const SLUG_CAT: Record<string, string> = {
+  'hub': 'Admin', 'nb-cloner': 'Admin',
+  'ai-column': 'Fields', 'device-kit': 'Fields', 'field-enhancements': 'Fields', 'field-order': 'Fields', 'formula': 'Fields', 'status-flow': 'Fields', 'inline-field': 'Fields',
+  'block-custom-html': 'Blocks', 'conditional-format': 'Blocks', 'detail-panel': 'Blocks', 'enhanced-table-block': 'Blocks', 'filter-tree': 'Blocks', 'layout-containers': 'Blocks', 'spreadsheet-view': 'Blocks', 'subtable-pro': 'Blocks', 'data-visualization-echarts-pro': 'Blocks',
+  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI', 'menu-enhancements': 'UI', 'custom-icons': 'UI', 'action-enhancements': 'UI', 'print-template': 'UI',
+  'change-log': 'Data', 'gsheet-sync': 'Data', 'line-generator': 'Data',
+  'ip-guard': 'Security', 'login-lite': 'Security',
+};
+const catOf = (slug: string) => SLUG_CAT[slug] || 'UI';
+const catRank = (c: string) => { const i = CAT_ORDER.indexOf(c); return i < 0 ? CAT_ORDER.length : i; };
+
 export function PluginHubPane({ api }: { api: any }) {
   const [loading, setLoading] = useState(true);
   const [cfg, setCfg] = useState<HubConfig>(DEFAULTS);
@@ -167,7 +181,28 @@ export function PluginHubPane({ api }: { api: any }) {
     getCheckboxProps: (it: Item) => ({ disabled: anyBusy || it.status === 'up-to-date' }),
   };
 
+  // Group the list by category (CAT_ORDER) then name so rows are contiguous; the category cell rowSpans its group.
+  const sortedItems = React.useMemo(
+    () => [...(items || [])].sort((a, b) => (catRank(catOf(a.slug)) - catRank(catOf(b.slug))) || a.displayName.localeCompare(b.displayName)),
+    [items],
+  );
+  const catRowSpan = React.useMemo(() => {
+    const spans = new Array(sortedItems.length).fill(0);
+    for (let i = 0; i < sortedItems.length;) {
+      const c = catOf(sortedItems[i].slug);
+      let j = i; while (j < sortedItems.length && catOf(sortedItems[j].slug) === c) j++;
+      spans[i] = j - i; // first row of the group spans it; the others stay 0 (merged away)
+      i = j;
+    }
+    return spans;
+  }, [sortedItems]);
+
   const columns = [
+    {
+      title: t('Group'), key: 'category', width: 132,
+      onCell: (_it: Item, idx?: number) => ({ rowSpan: catRowSpan[idx ?? 0] ?? 1 }),
+      render: (_: any, it: Item) => <Text strong style={{ fontSize: 12.5 }}>{t(CAT_LABEL_KEY[catOf(it.slug)] || catOf(it.slug))}</Text>,
+    },
     {
       title: t('Plugin'), dataIndex: 'displayName', key: 'displayName',
       render: (_: any, it: Item) => (
@@ -227,7 +262,7 @@ export function PluginHubPane({ api }: { api: any }) {
 
       <SettingCard style={{ marginBottom: 14 }}>
         <CardHeader
-          title={<Space>{t('Plugins')}{items && <Badge count={updateCount} style={{ backgroundColor: updateCount ? '#1677ff' : '#52c41a' }} showZero />}</Space>}
+          title={<Space>{t('Plugins')}{items && <Badge count={items.length} overflowCount={999} showZero style={{ backgroundColor: '#8c8c8c' }} />}{items && updateCount > 0 && <Tag color="blue" style={{ marginInlineStart: 2 }}>{updateCount} {t('to update')}</Tag>}</Space>}
           extra={items ? (
             <Space>
               <Button type="primary" disabled={!selCount || anyBusy} loading={busy === '*selected*'} onClick={onRunSelected}>{batchLabel}{selCount ? ` (${selCount})` : ''}</Button>
@@ -239,7 +274,7 @@ export function PluginHubPane({ api }: { api: any }) {
         {!items ? (
           <Paragraph type="secondary" style={{ margin: 0 }}>{t('Press “Check now” to load the plugin list from the manifest.')}</Paragraph>
         ) : (
-          <Table rowSelection={rowSelection} rowKey="packageName" size="small" dataSource={items} columns={columns as any} pagination={false} loading={checking} />
+          <Table rowSelection={rowSelection} rowKey="packageName" size="small" dataSource={sortedItems} columns={columns as any} pagination={false} loading={checking} />
         )}
         <div style={{ marginTop: 10 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>{t('Install adds a plugin (then Enable it). Update replaces an installed plugin. Each triggers an app reload, handled automatically.')}</Text>

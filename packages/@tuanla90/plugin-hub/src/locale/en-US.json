@@ -41,5 +41,13 @@
   "Run selected": "Run selected",
   "Installing": "Installing",
   "Enabling": "Enabling",
-  "Batch done": "Batch done"
+  "Batch done": "Batch done",
+  "Group": "Group",
+  "to update": "to update",
+  "Admin & tools": "Admin & tools",
+  "Fields": "Fields",
+  "Blocks & charts": "Blocks & charts",
+  "Interface": "Interface",
+  "Data": "Data",
+  "Security & sign-in": "Security & sign-in"
 }
