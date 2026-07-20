@@ -35,10 +35,13 @@ const STYLE_ID = 'ptdl-branding-nav';
 export const DEFAULT_MENU_SELECTOR =
   '.ant-layout-header .ant-menu-horizontal, .ant-pro-global-header .ant-menu-horizontal, .ant-pro-global-header-menu';
 
-// NocoBase's header Help/"?" dropdown trigger (version · Home page · Handbook · License). It carries a
-// stable `data-testid="help-button"` in BOTH lanes (/admin + /v/) — test-ids survive version bumps far
-// better than the emotion-hashed className, so we key off that. Overridable in settings just in case.
-export const DEFAULT_HELP_SELECTOR = '[data-testid="help-button"]';
+// NocoBase's header Help/"?" dropdown (version · Home page · Handbook · License). The clickable trigger is
+// `<span data-testid="help-button">` (stable test-id in BOTH lanes — survives version bumps far better than
+// the emotion-hashed className), but it sits inside a wrapper `<div>` that is the actual flex item in the
+// header. Hiding only the span leaves that wrapper + its flex gap → a hole. So we ALSO hide the wrapper via
+// `:has(> …)`. The whole thing is wrapped in a forgiving `:is(…)` so a browser without `:has()` still drops
+// the icon through the span arm instead of discarding the entire rule. Overridable in settings just in case.
+export const DEFAULT_HELP_SELECTOR = ':is([data-testid="help-button"], :has(> [data-testid="help-button"]))';
 
 // The brand logo/title block on the left of the header. Broad on purpose (covers pro-layout + the
 // modern /v/ topbar); overridable in settings if a theme renders it elsewhere.
@@ -458,6 +461,10 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
   if (loading) return <div style={{ padding: 24 }}>{_t('Loading…')}</div>;
 
   const hint: React.CSSProperties = { fontSize: 12, color: token.colorTextTertiary, margin: '2px 0 6px' };
+  // These toggles live-preview instantly, which can make a change look already-applied — but it only
+  // persists on Save. Flag unsaved edits so the sticky bar can nudge the user to Save (a toggle left
+  // unsaved then reappears on reload).
+  const dirty = JSON.stringify(cfg) !== JSON.stringify(savedRef.current) || appTitle !== savedTitleRef.current;
 
   return (
     <div style={{ padding: 24, maxWidth: 1440, margin: '0 auto' }}>
@@ -628,12 +635,34 @@ export function BrandingHeaderPage({ scopeUid }: { scopeUid?: string } = {}): Re
       </Card>
       </div>
 
-      <Space>
+      {/* Sticky action bar — always visible so a toggled setting is never left unsaved (the live preview
+          can make a change look already-applied; it only persists on Save). */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          marginTop: 16,
+          padding: '12px 4px',
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          background: token.colorBgLayout,
+          borderTop: `1px solid ${token.colorBorderSecondary}`,
+          zIndex: 3,
+        }}
+      >
         <Button type="primary" loading={saving} onClick={save}>
           {_t('Save')}
         </Button>
-        <Button onClick={reset}>{_t('Reset')}</Button>
-      </Space>
+        <Button onClick={reset} disabled={!dirty}>
+          {_t('Reset')}
+        </Button>
+        {dirty ? (
+          <Typography.Text type="warning" style={{ fontSize: 12 }}>
+            ● {_t('Unsaved changes — press Save to apply')}
+          </Typography.Text>
+        ) : null}
+      </div>
     </div>
   );
 }

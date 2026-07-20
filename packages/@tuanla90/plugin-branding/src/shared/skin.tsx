@@ -252,14 +252,33 @@ export function detectSystemDark(): boolean {
 
 // Motion level → global CSS. Tasteful, GPU-friendly animation (transform/opacity only, short ease-out
 // curves) applied app-wide: sidebar-menu micro-interactions, smoother record-drawer / modal / dropdown
-// entrances, a tactile button press. Two levels — 'subtle' (default) and 'lively' (adds a page-mount
-// fade + card hover-glow). Always wrapped by the OS `prefers-reduced-motion` guard so it self-disables
-// for users who ask for less motion. We deliberately avoid `transition:transform` on `.ant-card` (blocks
-// are drag-reordered in the /v/ UI editor via inline transforms — a transition there would lag drags).
+// entrances, a tactile button press. Two levels — 'subtle' (default, crisp) and 'lively' (adds a
+// page-mount fade + card hover-glow, and swaps the popup/drawer easing for a CSS-`linear()` SPRING so
+// modals/dropdowns pop with a real overshoot). Repeated interactions (hover, press, sider collapse) stay
+// crisp at BOTH levels — a bounce there would judder. Always wrapped by the OS `prefers-reduced-motion`
+// guard so it self-disables for users who ask for less motion. We deliberately avoid `transition:transform`
+// on `.ant-card` (blocks are drag-reordered in the /v/ UI editor via inline transforms — a transition
+// there would lag drags).
 export function buildMotionCss(level: 'off' | 'subtle' | 'lively'): string {
   if (level === 'off') return '';
   const lively = level === 'lively';
   const EASE = 'cubic-bezier(.22,1,.36,1)'; // ease-out-quint: quick start, soft settle = "premium" feel
+  // Spring easings as CSS linear() (pure CSS, no JS lib). Used ONLY at the 'lively' level, ONLY on the
+  // discrete "appear" moments (modal/dropdown pop, record-drawer slide) — never on hover/press/collapse,
+  // where a bounce would judder. Browsers without linear() (Safari <17.2) ignore it and fall back to the
+  // default ease = graceful degradation. POP overshoots ~11% (small scale past 1 = a lively pop); SOFT
+  // overshoots ~5% (a full-width drawer shouldn't bump hard).
+  const SPRING_POP =
+    'linear(0,0.055,0.189,0.361,0.54,0.706,0.846,0.955,1.031,1.078,1.102,1.107,1.099,1.084,1.065,1.046,1.029,1.014,1.003,0.996,0.991,0.989,0.989,0.99,0.991,0.993,0.995,0.997,0.999,1,1)';
+  const SPRING_SOFT =
+    'linear(0,0.038,0.131,0.254,0.389,0.521,0.642,0.748,0.836,0.905,0.958,0.996,1.021,1.037,1.044,1.046,1.044,1.039,1.034,1.027,1.021,1.016,1.011,1.007,1.004,1.002,1,0.999,0.998,0.998,1)';
+  // Appear-moment easing/duration: springy + a touch longer at 'lively' so the overshoot reads; crisp at 'subtle'.
+  const popEase = lively ? SPRING_POP : 'cubic-bezier(.34,1.4,.64,1)';
+  const popDur = lively ? '.44s' : '.26s';
+  const menuPopEase = lively ? SPRING_POP : EASE; // dropdown / select / popover / tooltip
+  const menuPopDur = lively ? '.34s' : '.2s';
+  const slideEase = lively ? SPRING_SOFT : EASE; // record drawer
+  const slideDur = lively ? '.5s' : '.32s';
   const m: string[] = [];
   m.push('@keyframes ptdlFadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}');
   m.push('@keyframes ptdlFadeIn{from{opacity:0}to{opacity:1}}');
@@ -279,15 +298,16 @@ export function buildMotionCss(level: 'off' | 'subtle' | 'lively'): string {
   // ── Table rows — soft hover fade.
   m.push('.ant-table-tbody>tr>td{transition:background-color .18s ease}');
 
-  // ── Record drawer (NocoBase opens records here by default) — refine the slide + mask fade.
-  m.push(`.ant-drawer-content-wrapper{transition:transform .32s ${EASE}!important}`);
+  // ── Record drawer (NocoBase opens records here by default) — slide (springy at 'lively') + mask fade.
+  m.push(`.ant-drawer-content-wrapper{transition:transform ${slideDur} ${slideEase}!important}`);
   m.push('.ant-drawer-mask{transition:opacity .32s ease!important}');
 
-  // ── Modal / dropdown / select / popover / tooltip — retime the enter animation antd already plays
-  // with a gentler curve (a touch of overshoot on the modal pop). Retiming the *-active class keeps
+  // ── Modal / dropdown / select / popover / tooltip — retime the enter animation antd already plays.
+  // At 'lively' the timing function is a CSS linear() spring, so the value overshoots past antd's 100%
+  // keyframe (scale >1) for a real pop; at 'subtle' it's a crisp curve. Retiming the *-active class keeps
   // antd's own keyframes, just nicer timing.
-  m.push('.ant-zoom-enter.ant-zoom-enter-active,.ant-zoom-appear.ant-zoom-appear-active{animation-duration:.26s!important;animation-timing-function:cubic-bezier(.34,1.4,.64,1)!important}');
-  m.push(`.ant-zoom-big-enter.ant-zoom-big-enter-active,.ant-zoom-big-appear.ant-zoom-big-appear-active,.ant-slide-up-enter.ant-slide-up-enter-active,.ant-slide-up-appear.ant-slide-up-appear-active,.ant-slide-down-enter.ant-slide-down-enter-active,.ant-slide-down-appear.ant-slide-down-appear-active{animation-duration:.2s!important;animation-timing-function:${EASE}!important}`);
+  m.push(`.ant-zoom-enter.ant-zoom-enter-active,.ant-zoom-appear.ant-zoom-appear-active{animation-duration:${popDur}!important;animation-timing-function:${popEase}!important}`);
+  m.push(`.ant-zoom-big-enter.ant-zoom-big-enter-active,.ant-zoom-big-appear.ant-zoom-big-appear-active,.ant-slide-up-enter.ant-slide-up-enter-active,.ant-slide-up-appear.ant-slide-up-appear-active,.ant-slide-down-enter.ant-slide-down-enter-active,.ant-slide-down-appear.ant-slide-down-appear-active{animation-duration:${menuPopDur}!important;animation-timing-function:${menuPopEase}!important}`);
 
   // ── Cards — box-shadow only (NEVER transform: would fight block drag). Primes the lively hover-glow.
   m.push('.ant-card{transition:box-shadow .25s ease!important}');
