@@ -20,6 +20,7 @@ export type SkinCfg = {
   accent?: string; // antd primary/accent colour — buttons, links, active tabs, switches, focus rings
   radius?: number; // corner radius (px) for controls + cards (antd default 6). 0 = sharp, 16 = rounded
   density?: 'compact' | 'default' | 'comfortable'; // global spacing (form items / list / card body)
+  motion?: 'off' | 'subtle' | 'lively'; // app-wide UI animation level (menus, popups, buttons). default subtle
 };
 
 const STYLE_ID = 'ptdl-branding-skin';
@@ -249,6 +250,75 @@ export function detectSystemDark(): boolean {
   return false;
 }
 
+// Motion level → global CSS. Tasteful, GPU-friendly animation (transform/opacity only, short ease-out
+// curves) applied app-wide: sidebar-menu micro-interactions, smoother record-drawer / modal / dropdown
+// entrances, a tactile button press. Two levels — 'subtle' (default) and 'lively' (adds a page-mount
+// fade + card hover-glow). Always wrapped by the OS `prefers-reduced-motion` guard so it self-disables
+// for users who ask for less motion. We deliberately avoid `transition:transform` on `.ant-card` (blocks
+// are drag-reordered in the /v/ UI editor via inline transforms — a transition there would lag drags).
+export function buildMotionCss(level: 'off' | 'subtle' | 'lively'): string {
+  if (level === 'off') return '';
+  const lively = level === 'lively';
+  const EASE = 'cubic-bezier(.22,1,.36,1)'; // ease-out-quint: quick start, soft settle = "premium" feel
+  const m: string[] = [];
+  m.push('@keyframes ptdlFadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}');
+  m.push('@keyframes ptdlFadeIn{from{opacity:0}to{opacity:1}}');
+
+  // ── Sidebar / menu micro-interactions: smooth hover tint + a small slide so items feel responsive.
+  m.push(`.ant-menu-item,.ant-menu-submenu-title{transition:background-color .2s ease,color .2s ease,transform .18s ${EASE}!important}`);
+  m.push(`.ant-layout-sider .ant-menu-item:hover,.ant-layout-sider .ant-menu-submenu-title:hover{transform:translateX(${lively ? 4 : 3}px)}`);
+  m.push(`.ant-menu-item .anticon,.ant-menu-submenu-title .anticon,.ant-menu-item svg,.ant-menu-submenu-title svg{transition:transform .18s ${EASE}}`);
+  m.push(`.ant-layout-sider .ant-menu-item:hover .anticon,.ant-layout-sider .ant-menu-submenu-title:hover .anticon,.ant-layout-sider .ant-menu-item:hover svg,.ant-layout-sider .ant-menu-submenu-title:hover svg{transform:scale(${lively ? 1.16 : 1.1})}`);
+  // Sider collapse/expand — refine the width slide antd already runs.
+  m.push(`.ant-layout-sider,.ant-layout-sider-children{transition:all .25s ${EASE}!important}`);
+
+  // ── Buttons — a small tactile press-in.
+  m.push(`.ant-btn{transition:transform .12s ${EASE},background-color .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease!important}`);
+  m.push('.ant-btn:active{transform:scale(.96)}');
+
+  // ── Table rows — soft hover fade.
+  m.push('.ant-table-tbody>tr>td{transition:background-color .18s ease}');
+
+  // ── Record drawer (NocoBase opens records here by default) — refine the slide + mask fade.
+  m.push(`.ant-drawer-content-wrapper{transition:transform .32s ${EASE}!important}`);
+  m.push('.ant-drawer-mask{transition:opacity .32s ease!important}');
+
+  // ── Modal / dropdown / select / popover / tooltip — retime the enter animation antd already plays
+  // with a gentler curve (a touch of overshoot on the modal pop). Retiming the *-active class keeps
+  // antd's own keyframes, just nicer timing.
+  m.push('.ant-zoom-enter.ant-zoom-enter-active,.ant-zoom-appear.ant-zoom-appear-active{animation-duration:.26s!important;animation-timing-function:cubic-bezier(.34,1.4,.64,1)!important}');
+  m.push(`.ant-zoom-big-enter.ant-zoom-big-enter-active,.ant-zoom-big-appear.ant-zoom-big-appear-active,.ant-slide-up-enter.ant-slide-up-enter-active,.ant-slide-up-appear.ant-slide-up-appear-active,.ant-slide-down-enter.ant-slide-down-enter-active,.ant-slide-down-appear.ant-slide-down-appear-active{animation-duration:.2s!important;animation-timing-function:${EASE}!important}`);
+
+  // ── Cards — box-shadow only (NEVER transform: would fight block drag). Primes the lively hover-glow.
+  m.push('.ant-card{transition:box-shadow .25s ease!important}');
+
+  if (lively) {
+    // Whole-surface mount fade: the record drawer body + the page content. Kept off individual blocks
+    // (many blocks → busy); easing the container reads as the page settling in.
+    m.push(`.ant-drawer-open .ant-drawer-body{animation:ptdlFadeInUp .34s ${EASE} both}`);
+    m.push('.ant-pro-page-container .ant-pro-page-container-children-content,.ant-layout-content>.ant-page-header{animation:ptdlFadeIn .3s ease both}');
+    // Cards glow on hover (shadow only — no lift transform, see note above).
+    m.push('.ant-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.12)!important}');
+  }
+
+  // ── Respect the OS "reduce motion" preference — self-disable everything WE added (surgically, so
+  // unrelated app animations like spinners keep working for those users).
+  m.push('@media (prefers-reduced-motion:reduce){');
+  m.push(
+    '.ant-drawer-content-wrapper,.ant-drawer-mask,.ant-btn,.ant-menu-item,.ant-menu-submenu-title,.ant-card,.ant-layout-sider,.ant-layout-sider-children,' +
+      '.ant-drawer-open .ant-drawer-body,.ant-pro-page-container .ant-pro-page-container-children-content,' +
+      '.ant-zoom-enter.ant-zoom-enter-active,.ant-zoom-appear.ant-zoom-appear-active,' +
+      '.ant-zoom-big-enter.ant-zoom-big-enter-active,.ant-zoom-big-appear.ant-zoom-big-appear-active,' +
+      '.ant-slide-up-enter.ant-slide-up-enter-active,.ant-slide-up-appear.ant-slide-up-appear-active,' +
+      '.ant-slide-down-enter.ant-slide-down-enter-active,.ant-slide-down-appear.ant-slide-down-appear-active' +
+      '{transition-duration:.001ms!important;animation-duration:.001ms!important}',
+  );
+  m.push('.ant-layout-sider .ant-menu-item:hover,.ant-layout-sider .ant-menu-submenu-title:hover,.ant-btn:active,.ant-menu-item:hover .anticon,.ant-menu-item:hover svg{transform:none!important}');
+  m.push('}');
+
+  return m.join('\n');
+}
+
 // SkinCfg → global CSS. Selectors target antd's semantic classes (survive the CSS-in-JS hashing);
 // `!important` beats antd's own tokens.
 export function buildSkinCss(cfg: SkinCfg): string {
@@ -414,6 +484,10 @@ export function buildSkinCss(cfg: SkinCfg): string {
     p.push(`@keyframes ptdlSkinShift{0%{background-position:0% 0%}100%{background-position:0% 100%}}`);
     p.push(`.ant-layout-sider{background-size:100% 220%!important;animation:ptdlSkinShift 14s ease-in-out infinite alternate!important}`);
   }
+
+  // Motion (UI animations) — on by default at the 'subtle' level; explicit 'off' disables. Appended
+  // last so it applies regardless of whether any colour/skin is configured.
+  p.push(buildMotionCss(cfg.motion || 'subtle'));
   return p.join('\n');
 }
 
@@ -678,7 +752,7 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
   // density aren't colour and shouldn't be wiped when swatching through presets). `accent` overrides the
   // preset's accent — used by the logo-generated triplets (accent = the extracted brand colour).
   const applyPreset = (pr: { key: string; cfg: SkinCfg }, accent?: string) =>
-    setCfg((c) => ({ ...pr.cfg, accent: accent ?? PRESET_ACCENTS[pr.key] ?? pr.cfg.accent, radius: c.radius, density: c.density }));
+    setCfg((c) => ({ ...pr.cfg, accent: accent ?? PRESET_ACCENTS[pr.key] ?? pr.cfg.accent, radius: c.radius, density: c.density, motion: c.motion }));
 
   // Read an uploaded logo client-side and pull its brand colours (no upload; return false to block antd).
   const onLogoFile = (file: File) => {
@@ -839,6 +913,23 @@ export function BrandingSkinPage({ scopeUid }: { scopeUid?: string } = {}): Reac
                     { label: _t('Comfortable'), value: 'comfortable' },
                   ]}
                 />
+              </Space>
+              {/* Motion — app-wide UI animations (menu hover, record drawers, dropdowns, buttons). On by
+                  default at 'subtle'; auto-disables when the OS asks for reduced motion. */}
+              <Space size={8} align="center" wrap>
+                <span style={{ fontSize: 12, color: token.colorTextTertiary, flex: 'none' }}>{_t('Motion')}</span>
+                <SegmentedGroup
+                  value={cfg.motion || 'subtle'}
+                  onChange={(v) => setCfg((c) => ({ ...c, motion: v as SkinCfg['motion'] }))}
+                  options={[
+                    { label: _t('Off'), value: 'off' },
+                    { label: _t('Subtle'), value: 'subtle' },
+                    { label: _t('Lively'), value: 'lively' },
+                  ]}
+                />
+                <Tooltip title={_t('Smooth animations for menus, popups and buttons. Respects your device’s “reduce motion” setting.')}>
+                  <span style={{ fontSize: 12, color: token.colorTextQuaternary, cursor: 'help' }}>ⓘ</span>
+                </Tooltip>
               </Space>
             </Space>
           </Card>

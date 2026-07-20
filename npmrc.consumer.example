@@ -1,0 +1,11 @@
+# Consumer .npmrc — copy to each NocoBase SERVER as ~/.npmrc (or the app root .npmrc).
+# Lets that server install/upgrade the plugins from GitHub Packages.
+#
+#   1) export GITHUB_READ_TOKEN=ghp_xxx    # a PAT with ONLY `read:packages`
+#   2) cp npmrc.consumer.example ~/.npmrc   # (rename to the dotfile .npmrc)
+#
+# npm expands ${GITHUB_READ_TOKEN} from the environment at install time, so the
+# real token is NOT written into the file. NEVER commit a filled-in .npmrc.
+
+@tuanla90:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_READ_TOKEN}

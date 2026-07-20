@@ -6,6 +6,7 @@
  */
 import { AppSpec, ColumnSpec } from './appSpec';
 import { clientPrefix, createAddFormTemplate, createQuickPage, QuickColumn, TemplateRef } from './quickView';
+import { createDashboard } from './dashboard';
 
 // The widget can be declared on the FieldSpec (field-level) OR overridden per page column. A page column
 // that's a bare string inherits the field's widget; a ColumnSpec's own widget wins. `widgetOf` maps a
@@ -136,8 +137,9 @@ export interface MaterializeResult {
   groups: Array<{ label: string; id: number | null }>;
 }
 
-/** Client page tier: menu groups + one page per PageSpec. Assumes collections already exist server-side. */
-export async function materializeApp(app: any, spec: AppSpec): Promise<MaterializeResult> {
+/** Client page tier: menu groups + one page per PageSpec. Assumes collections already exist server-side.
+ *  `onProgress(label, phase)` fires per page/dashboard so the caller can show live progress. */
+export async function materializeApp(app: any, spec: AppSpec, onProgress?: (label: string, phase?: 'page' | 'dashboard') => void): Promise<MaterializeResult> {
   await reloadDataSource(app);
 
   // Reusable Add-form templates for quick-create targets — built BEFORE pages so each page's quick-create
@@ -176,6 +178,7 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
   const pages: MaterializeResult['pages'] = [];
   const mkPage = async (p: any, parentId: number | null) => {
     if (pageExists(p.title)) return; // patch/merge: this page already exists — don't duplicate it
+    onProgress?.(`Trang ${p.title}`, 'page');
     pages.push(await createPage(app, { ...p, parentId }, cspecOf(p.collection), quickCreateTemplates));
   };
 
@@ -201,18 +204,152 @@ export async function materializeApp(app: any, spec: AppSpec): Promise<Materiali
     const pageParent = hasMenuEnh ? topId : groupId;
     for (const p of (spec.pages || []).filter((p) => menuOf(p) === label)) await mkPage(p, pageParent);
   }
+
+  // Dashboards (from AppSheet chart views / AI) → one analytics page each, placed in its menu group.
+  // createDashboard builds its own route + BlockGrid of ECharts/KPI widgets; a bad one is skipped, not fatal.
+  for (const d of (spec.dashboards || []) as any[]) {
+    if (pageExists(d.title)) continue;
+    const label = d.menuGroup && labels.includes(d.menuGroup) ? d.menuGroup : null;
+    const parentId = label ? (hasMenuEnh ? topId : (groups.find((g) => g.label === label)?.id ?? topId)) : topId;
+    onProgress?.(`Dashboard ${d.title}`, 'dashboard');
+    try {
+      const built = await createDashboard(app, { ...d, parentId });
+      pages.push({ title: d.title, collection: d.collection, schemaUid: built.pageSchemaUid, url: built.url });
+    } catch (e) { /* skip a bad dashboard, keep building the rest */ }
+  }
   return { pages, groups };
 }
 
-/** Full build: server DATA tier (collections + relations + seed) then client PAGE tier. */
-export async function buildApp(app: any, spec: AppSpec): Promise<{ data: any } & MaterializeResult> {
-  const res = await app.apiClient.request({ url: 'appBuilder:apply', method: 'post', data: { spec } });
-  const data = res?.data?.data ?? res?.data;
-  if (data && data.ok === false) {
-    throw new Error('appBuilder:apply thất bại: ' + JSON.stringify(data.errors || data.error || data));
+export type BuildProgress = { phase: 'collection' | 'relation' | 'computed' | 'page' | 'dashboard' | 'done'; label: string; done: number; total: number };
+
+/** Full build, STEPPED with live progress. Drives the granular server ops (createCollection → addRelation →
+ *  addComputedBatch) ONE ITEM AT A TIME instead of a single monolithic `appBuilder:apply` — a big spec (16
+ *  collections + 104 computed) blows the request timeout, and apply's catch rolls back EVERYTHING. Here each
+ *  item is its own small request; a per-item failure is collected, not fatal. Then the client page tier. */
+export async function buildApp(app: any, spec: AppSpec, onProgress?: (p: BuildProgress) => void): Promise<{ data: any } & MaterializeResult> {
+  const api = (action: string, values: any) => app.apiClient.request({ url: `appBuilder:${action}`, method: 'post', data: values }).then((r: any) => r?.data?.data ?? r?.data);
+  const RELATION_ORDER: Record<string, number> = { m2o: 0, o2o: 0, m2m: 1, o2m: 2 };
+  const colls = spec.collections || [];
+  const rels: Array<{ coll: string; r: any }> = [];
+  colls.forEach((c) => (c.relations || []).forEach((r) => rels.push({ coll: c.name, r })));
+  rels.sort((a, b) => (RELATION_ORDER[a.r.type] ?? 9) - (RELATION_ORDER[b.r.type] ?? 9));
+  const computedColls = colls.filter((c) => (c.fields || []).some((f) => (f as any).computed?.expression));
+  const total = colls.length + rels.length + computedColls.length + (spec.pages || []).length + (spec.dashboards || []).length;
+  let done = 0;
+  const errors: string[] = [];
+
+  // menuGroup category per collection (first page's group) — mirrors the server apply's bucketing.
+  const menuGroupByColl = new Map<string, string>();
+  for (const p of spec.pages || []) if (p.collection && p.menuGroup && !menuGroupByColl.has(p.collection)) menuGroupByColl.set(p.collection, p.menuGroup);
+
+  for (const c of colls) {
+    onProgress?.({ phase: 'collection', label: c.title || c.name, done: done++, total });
+    try { await api('createCollection', { ...c, category: menuGroupByColl.get(c.name) || spec.meta?.title || spec.meta?.name }); }
+    catch (e: any) { errors.push(`Bảng ${c.name}: ${e?.message || e}`); }
   }
-  const mat = await materializeApp(app, spec);
-  return { data, ...mat };
+  for (const { coll, r } of rels) {
+    onProgress?.({ phase: 'relation', label: `${coll} → ${r.target}`, done: done++, total });
+    try { await api('addRelation', { collection: coll, relation: r }); }
+    catch (e: any) { errors.push(`Quan hệ ${coll}.${r.name}: ${e?.message || e}`); }
+  }
+  for (const c of computedColls) {
+    const cf = (c.fields || []).filter((f) => (f as any).computed?.expression);
+    onProgress?.({ phase: 'computed', label: `${c.title || c.name} · ${cf.length} công thức`, done: done++, total });
+    try { await api('addComputedBatch', { collection: c.name, fields: cf }); }
+    catch (e: any) { errors.push(`Công thức ${c.name}: ${e?.message || e}`); }
+  }
+  // client page tier (pages + dashboards) — continues the same progress counter
+  const mat = await materializeApp(app, spec, (label, phase) => onProgress?.({ phase: (phase as any) || 'page', label, done: done++, total }));
+  onProgress?.({ phase: 'done', label: 'Hoàn tất', done: total, total });
+  return { data: { ok: errors.length === 0, errors, collections: colls.map((c) => c.name) }, ...mat };
+}
+
+/** Topological collection order (parents before children by m2o) so relation keymaps resolve on import. */
+function topoOrder(spec: AppSpec): string[] {
+  const names = (spec.collections || []).map((c) => c.name);
+  const has = new Set(names);
+  const deps = new Map<string, Set<string>>(names.map((n) => [n, new Set<string>()]));
+  for (const c of spec.collections || []) for (const r of c.relations || []) if (r.type === 'm2o' && r.target !== c.name && has.has(r.target)) deps.get(c.name)!.add(r.target);
+  const out: string[] = [], seen = new Set<string>();
+  const visit = (n: string, stack = new Set<string>()) => { if (seen.has(n) || stack.has(n)) return; stack.add(n); for (const d of deps.get(n) || []) visit(d, stack); seen.add(n); out.push(n); };
+  names.forEach((n) => visit(n));
+  return out;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Import each collection's rows from its AppSheet Google Sheet (server `importSheet` action, chunked +
+ *  dedup-by-key so it's safe to resume). Topological order so m2o keymaps resolve. `onProgress` fires per
+ *  chunk. Resilient to a TRANSIENT server hiccup (a sibling session restarting nb-local mid-import, a dropped
+ *  connection, …): each chunk retries a few times with backoff, and any collection still incomplete after
+ *  the first full sweep gets up to 2 more sweeps — so a blip that resolves itself doesn't need a manual
+ *  re-click. Only a collection that's STILL failing after all of that is reported as an error.
+ *
+ *  PERFORMANCE: computed rules are disabled for the DURATION of the import, then re-enabled + backfilled
+ *  ONCE at the end (`ptdlComputed` recomputeAll, topo order). Without this, every row insert into a table
+ *  that feeds a roll-up on another collection (common — e.g. line items summed onto their parent) triggers
+ *  a recompute cascade whose cost grows with table size; on a real app this measured ~25ms/row with rules
+ *  off vs 7-9 SECONDS/row once a table had a couple hundred rows with rules on (a ~300x difference) — import
+ *  would appear to hang. Computing once at the end is also strictly more correct (no wasted recomputes on
+ *  partially-imported data mid-way through). */
+export async function importData(app: any, spec: AppSpec, sourcePlan: Array<{ collection: string; docId: string | null; tab: string }>, onProgress?: (p: { done: number; total: number; label: string }) => void): Promise<{ rows: number; linked: number; results: any[]; retried: string[] }> {
+  const api = (action: string, values: any) => app.apiClient.request({ url: `appBuilder:${action}`, method: 'post', data: values }).then((r: any) => r?.data?.data ?? r?.data);
+  const collByName = new Map((spec.collections || []).map((c) => [c.name, c]));
+  const planByColl = new Map(sourcePlan.map((s) => [s.collection, s]));
+  const keyFieldOf = (c: any) => (c?.fields?.find((f: any) => f.unique) || {}).name || c?.titleField || null;
+  const order = topoOrder(spec).filter((n) => planByColl.get(n)?.docId);
+  const total = order.length;
+  const results: any[] = []; let rows = 0, linked = 0;
+  const CHUNK = 50;         // rows per request — bounded so a big table can't blow the request timeout
+  const CHUNK_RETRIES = 3;  // per-chunk retry on a transient failure (network blip, server mid-restart)
+
+  // Import one collection fully (paginating offset→total). Returns whether it actually finished.
+  const importOne = async (cn: string, doneIdx: number): Promise<boolean> => {
+    const plan = planByColl.get(cn)!; const c: any = collByName.get(cn);
+    const fields = (c.fields || []).filter((f: any) => !f.computed).map((f: any) => ({ name: f.name, title: f.title, interface: f.interface }));
+    const relations = (c.relations || []).filter((r: any) => r.type === 'm2o').map((r: any) => ({ name: r.name, title: r.title, target: r.target, targetKeyField: keyFieldOf(collByName.get(r.target)) }));
+    const keyField = keyFieldOf(c);
+    let offset = 0, ctotal = 0;
+    for (let guard = 0; guard < 1000; guard++) {
+      let res: any = null, lastErr: any = null;
+      for (let attempt = 0; attempt < CHUNK_RETRIES; attempt++) {
+        try { res = await api('importSheet', { collection: cn, docId: plan.docId, tab: plan.tab, fields, relations, keyField, offset, limit: CHUNK }); lastErr = null; break; }
+        catch (e: any) { lastErr = e; await sleep(1500 * (attempt + 1)); }
+      }
+      if (lastErr) { results.push({ collection: cn, error: String(lastErr?.message || lastErr) }); return false; }
+      if (res?.error) { results.push(res); return false; }
+      results.push(res);
+      ctotal = res?.total ?? 0; rows += res?.posted ?? 0; linked += res?.linked ?? 0;
+      offset += res?.nrows ?? 0;
+      onProgress?.({ done: doneIdx, total, label: `${c?.title || cn}: ${Math.min(offset, ctotal)}/${ctotal}` });
+      if (res?.done || !res?.nrows) return true;
+    }
+    return false;
+  };
+
+  onProgress?.({ done: 0, total, label: 'Tạm tắt công thức (để import nhanh)…' });
+  try { await api('setComputedEnabled', { enabled: false }); } catch { /* plugin-formula not installed — fine, imports just run at normal (formula-triggered) speed */ }
+
+  let pending = order;
+  const retried: string[] = [];
+  try {
+    for (let sweep = 0; sweep < 3 && pending.length; sweep++) {
+      if (sweep > 0) { retried.push(...pending); await sleep(2000); }   // give a flaky server a moment before the retry sweep
+      const stillFailing: string[] = [];
+      for (let i = 0; i < pending.length; i++) {
+        const ok = await importOne(pending[i], order.indexOf(pending[i]));
+        if (!ok) stillFailing.push(pending[i]);
+      }
+      pending = stillFailing;
+    }
+  } finally {
+    // ALWAYS re-enable + backfill, even if the import loop above threw — otherwise every computed field in
+    // the app stays permanently off, which is a much worse state than a slow/partial import.
+    onProgress?.({ done: total, total, label: 'Bật lại công thức + tính lại toàn bộ…' });
+    try { await api('setComputedEnabled', { enabled: true }); await api('recomputeAll', {}); } catch { /* best-effort */ }
+  }
+  onProgress?.({ done: total, total, label: 'Xong' });
+  return { rows, linked, results, retried };
 }
 
 /** Delete an app's artifacts: page routes + their flowModels, menu groups, and (via the server

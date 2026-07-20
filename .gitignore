@@ -23,6 +23,16 @@ archive/
 .claude/worktrees/
 **/settings.local.json
 
+# --- npm auth: registry tokens live in .npmrc — NEVER commit (templates use *.example) ---
+.npmrc
+**/.npmrc
+# GitHub Packages publish token (build-env/.ghp-token) — local secret, never commit
+.ghp-token
+**/.ghp-token
+# nb-local API token (build-env/.nb-token) — local secret, never commit
+.nb-token
+**/.nb-token
+
 # --- misc ---
 *.log
 .DS_Store

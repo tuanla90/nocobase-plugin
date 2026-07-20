@@ -151,6 +151,27 @@ export interface MenuGroup {
   order?: number;
 }
 
+/** One analytics widget on a dashboard page. Structurally matches dashboard.tsx's DashboardWidget (kept
+ *  here so this file stays React/@nocobase-free); the compiler passes these straight to createDashboard(). */
+export interface DashboardWidgetSpec {
+  kind: 'score' | 'chart' | 'filter';
+  label?: string;
+  measure?: { field: string; aggregation: 'sum' | 'count' | 'avg' | 'max' | 'min' };
+  chartType?: 'line' | 'pie' | 'bar';
+  dimension?: { field: string; format?: string };
+  title?: string;
+  fields?: string[];
+}
+
+/** An analytics page = a collection + KPI/chart/filter widgets. `collection` must be one of `collections`. */
+export interface DashboardSpec {
+  title: string;
+  collection: string;
+  menuGroup?: string;
+  icon?: string;
+  widgets: DashboardWidgetSpec[];
+}
+
 export interface AppSpec {
   /** `title` = the app's DISPLAY name (Vietnamese, WITH diacritics) shown as the top menu label; `name` =
    *  an optional machine id. Mirrors CollectionSpec's name/title split (which the AI fills reliably — the
@@ -158,6 +179,9 @@ export interface AppSpec {
   meta: { name: string; title?: string; description?: string; locale?: 'vi' | 'en' };
   collections: CollectionSpec[];
   pages: PageSpec[];
+  /** Analytics pages (KPI cards + ECharts). Extracted from AppSheet chart views or authored by AI; each is
+   *  materialized via createDashboard(). Its `collection` must be one of `collections`. */
+  dashboards?: DashboardSpec[];
   /** `groups` = sidebar sub-groups; `icon` = the single top-level app entry's icon. */
   menu?: { groups: MenuGroup[]; icon?: string };
 }
@@ -256,6 +280,15 @@ export function validateAppSpec(spec: AppSpec): ValidationResult {
     fieldsByColl.set(c.name, fnames);
   });
 
+  // A m2o/o2o with `reverseName` makes the framework auto-create the inverse (o2m/o2o) on the TARGET
+  // collection. Register those inverse names too, so a parent page/popup that shows its child sub-table
+  // (by reverseName) validates — mirrors what the server materializer actually creates.
+  collections.forEach((c) => {
+    (c.relations || []).forEach((r) => {
+      if (r.reverseName && r.target && fieldsByColl.has(r.target)) fieldsByColl.get(r.target)!.add(r.reverseName);
+    });
+  });
+
   // pass 2 — relation targets, titleField, relation graph (for cycle warning)
   const edges = new Map<string, Set<string>>();
   collections.forEach((c, ci) => {
@@ -297,6 +330,19 @@ export function validateAppSpec(spec: AppSpec): ValidationResult {
     if (p.menuGroup && spec.menu?.groups && !menuGroupLabels.has(p.menuGroup)) {
       warn(`${pp}.menuGroup`, `menuGroup "${p.menuGroup}" không khai trong menu.groups (sẽ tự tạo)`);
     }
+  });
+
+  // pass 4 — dashboards reference a real collection; widget measure/dimension fields exist (warn: bad ones are
+  // dropped at materialize, never fatal)
+  (spec.dashboards || []).forEach((d, di) => {
+    const dp = `dashboards[${di}]`;
+    if (!d.collection || !collNames.has(d.collection)) { err(`${dp}.collection`, `Dashboard "${d.title}" trỏ collection không tồn tại: "${d.collection}"`); return; }
+    const known = fieldsByColl.get(d.collection)!;
+    (d.widgets || []).forEach((w, wi) => {
+      const f = w.measure?.field, dm = w.dimension?.field;
+      if (f && f !== 'id' && !known.has(f) && !SYSTEM_FIELDS.includes(f)) warn(`${dp}.widgets[${wi}].measure`, `measure "${f}" không có trong "${d.collection}" (bỏ qua widget)`);
+      if (dm && !known.has(dm) && !SYSTEM_FIELDS.includes(dm)) warn(`${dp}.widgets[${wi}].dimension`, `dimension "${dm}" không có trong "${d.collection}" (bỏ qua widget)`);
+    });
   });
 
   return { ok: errors.length === 0, errors, warnings };

@@ -429,6 +429,35 @@ function readVals(ctx: any): any {
   return p.values ?? p ?? {};
 }
 
+// ── AppSheet data import (Google Sheet → collection) helpers ──
+const asSlug = (s: any) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^([0-9])/, 'c$1').toLowerCase();
+/** Fetch a published/public Google Sheet tab as CSV (gviz). Follows one redirect. */
+function fetchSheetCsv(docId: string, tab: string): Promise<string> {
+  const https = require('https');
+  const url = `https://docs.google.com/spreadsheets/d/${docId}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`;
+  const get = (u: string, redirs: number): Promise<string> => new Promise((res, rej) => {
+    https.get(u, (r: any) => {
+      if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location && redirs > 0) { get(r.headers.location, redirs - 1).then(res, rej); return; }
+      let d = ''; r.on('data', (c: any) => (d += c)); r.on('end', () => res(d));
+    }).on('error', rej);
+  });
+  return get(url, 3);
+}
+/** Minimal RFC-4180 CSV parser → array of rows (each an array of cells). */
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = []; let row: string[] = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (ch !== '\r') cur += ch;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
 export class PluginAppBuilderServer extends Plugin {
   // ── PRIMITIVES ──────────────────────────────────────────────────────────────────────────────────
   // Each op is a self-contained, idempotent building block. `apply` orchestrates them for a whole spec,
@@ -508,9 +537,17 @@ export class PluginAppBuilderServer extends Plugin {
     const isRollup = (e: string) => /\b(SUM|COUNT|AVG|MIN|MAX)\s*\(\s*data\./i.test(e);
     const sorted = [...fields].sort((a, b) => Number(isRollup(a.computed!.expression)) - Number(isRollup(b.computed!.expression)));
     const out: any[] = [];
+    // Which rules are NEW (not already attached)? Only those need a schema sync.
+    const toAdd: FieldSpec[] = [];
     for (const f of sorted) {
-      try { await (this.db.getCollection(coll) as any)?.sync?.({ alter: true }); } catch {}
-      if (await ruleRepo.findOne({ filter: { collectionName: coll, targetField: f.name } })) { out.push({ field: f.name, skipped: 'exists' }); continue; }
+      if (await ruleRepo.findOne({ filter: { collectionName: coll, targetField: f.name } })) out.push({ field: f.name, skipped: 'exists' });
+      else toAdd.push(f);
+    }
+    // NO schema sync: the computed COLUMN already exists (createCollection created every field, computed
+    // included, as a real number column), and a computed RULE is just a `ptdlComputedRules` metadata row —
+    // it changes no table schema. An alter-sync on a wide sqlite table is ~10s; doing it per computed field
+    // made a 34-formula collection hang for minutes. Just insert the rule rows.
+    for (const f of toAdd) {
       await ruleRepo.create({
         values: { dataSourceKey: 'main', collectionName: coll, targetField: f.name, formula: f.computed!.expression, runOn: 'create,update,source', enabled: true, onError: 'null' },
         context: {},
@@ -574,6 +611,70 @@ export class PluginAppBuilderServer extends Plugin {
     // A parent-declared o2m: also give the child a belongsTo back to the parent (bidirectional).
     const paired = r.type === 'o2m' ? await this.ensureReverseBelongsTo(coll, r, def.foreignKey) : undefined;
     return { coll, name: r.name, type: r.type, foreignKey: def.foreignKey, ...(paired ? { paired } : {}) };
+  }
+
+  /** Import ONE collection's rows from its AppSheet Google Sheet (public gviz CSV, fetched server-side → no
+   *  CORS). Columns map by field name (slug) OR original title (AppSheet "ID" → NocoBase "id_x" collision);
+   *  m2o relations link by querying the target's key field → id. Returns a per-collection summary. */
+  private async opImportSheet(v: any): Promise<any> {
+    const { collection, docId, tab, keyField } = v;
+    const fields: any[] = v.fields || [];
+    const relations: any[] = v.relations || [];
+    const offset = Number(v.offset) || 0;
+    const limit = Number(v.limit) || 0;   // 0 = all rows in one call (small collections)
+    if (!collection || !docId || !tab) return { collection, error: 'thiếu collection/docId/tab' };
+    const repo: any = this.db.getRepository(collection);
+    if (!repo) return { collection, error: 'collection không tồn tại' };
+    let csv: string;
+    try { csv = await fetchSheetCsv(docId, tab); } catch (e: any) { return { collection, error: 'fetch lỗi: ' + (e?.message || e) }; }
+    if (/^\s*<!DOCTYPE|^\s*<html/i.test(csv)) return { collection, tab, error: 'sheet CHƯA PUBLIC (nhận HTML)' };
+    const rows = parseCsvRows(csv);
+    if (rows.length < 1) return { collection, tab, nrows: 0, total: 0, done: true };
+    const header = rows[0].map((h) => h.trim());
+    const allData = rows.slice(1).filter((r) => r.some((c) => c !== ''));
+    const total = allData.length;
+    const dataRows = limit ? allData.slice(offset, offset + limit) : allData;   // this chunk
+    const hIndex = new Map(header.map((h, i) => [asSlug(h), i]));
+    const hRaw = new Map(header.map((h, i) => [h.trim(), i]));
+    const colOf = (fr: any): number | undefined => { const a = hIndex.get(fr.name); if (a != null) return a; return hRaw.get(String(fr.title || '').trim()); };
+    const fmap = fields.map((f) => ({ f, i: colOf(f) })).filter((x) => x.i != null);
+    const rmap = relations.map((r) => ({ r, i: colOf(r) })).filter((x) => x.i != null);
+    // DEDUP: skip rows whose business key already exists (so re-clicking Import never duplicates). Read the
+    // existing key set once; the key column is found by name-slug or original title (ID→id_x collision).
+    const kfCol = keyField ? colOf({ name: keyField, title: (fields.find((f) => f.name === keyField) || {}).title || keyField }) : undefined;
+    const existing = new Set<string>();
+    if (keyField && kfCol != null) { try { const recs = await repo.find({ fields: ['id', keyField] }); for (const rec of recs) { const k = rec?.[keyField]; if (k != null && k !== '') existing.add(String(k)); } } catch { /* */ } }
+    // relation keymaps: query each target's keyField → id (business key → NocoBase id)
+    const keymaps = new Map<string, Map<string, any>>();
+    for (const { r } of rmap) {
+      if (keymaps.has(r.target)) continue;
+      const tkf = r.targetKeyField; const trepo: any = tkf ? this.db.getRepository(r.target) : null;
+      const km = new Map<string, any>();
+      if (trepo) { try { const recs = await trepo.find({ fields: ['id', tkf] }); for (const rec of recs) { const k = rec?.[tkf]; if (k != null && k !== '') km.set(String(k), rec.id); } } catch { /* */ } }
+      keymaps.set(r.target, km);
+    }
+    let posted = 0, failed = 0, linked = 0, missed = 0, skipped = 0, firstErr = '';
+    for (const row of dataRows) {
+      if (kfCol != null && existing.has(String(row[kfCol as number]))) { skipped++; continue; }   // already imported
+      const values: any = {};
+      for (const { f, i } of fmap) {
+        let val: any = row[i as number];
+        if (val === '' || val == null) continue;
+        if (f.interface === 'number' || f.interface === 'integer' || f.interface === 'percent') { const n = Number(String(val).replace(/,/g, '')); if (!Number.isNaN(n)) val = n; }
+        else if (f.interface === 'boolean') val = /^(true|1|yes|có|x)$/i.test(val);
+        else if (f.interface === 'multipleSelect' || f.interface === 'checkboxGroup') { val = String(val).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean); }   // AppSheet EnumList = comma-separated → array
+        values[f.name] = val;
+      }
+      for (const { r, i } of rmap) {
+        const kv = row[i as number]; if (!kv) continue;
+        const id = keymaps.get(r.target)?.get(String(kv));
+        if (id != null) { values[r.name] = { id }; linked++; } else missed++;
+      }
+      try { await repo.create({ values }); posted++; } catch (e: any) { failed++; if (!firstErr) firstErr = String(e?.message || e).slice(0, 160); }
+    }
+    // NB: key must NOT be `rows` — a top-level `rows` in a custom action's ctx.body triggers list-unwrap
+    // (data := rows), dropping the rest of the summary. See reference_nocobase_list_response_rows_key.
+    return { collection, tab, nrows: dataRows.length, total, done: offset + dataRows.length >= total, posted, skipped, failed, linked, missed, firstErr: firstErr || undefined };
   }
 
   /** Seed rows into a collection. Self-contained: resolves m2o values (a string) against the target's
@@ -740,6 +841,39 @@ export class PluginAppBuilderServer extends Plugin {
           const v = readVals(ctx); const f = v.field || {};
           ctx.body = await this.opAddField(v.collection, { interface: 'number', ...f, computed: f.computed || { expression: v.expression } });
           await next();
+        },
+        // {collection, fields:[FieldSpec]} — attach many computed rules in ONE call (stepped buildApp: 16 calls not 104)
+        addComputedBatch: async (ctx: any, next: any) => {
+          const v = readVals(ctx); ctx.body = await this.opAddComputedRules(v.collection, v.fields || []); await next();
+        },
+        // {enabled: boolean} — bulk toggle ALL @ptdl/plugin-formula computed rules in ONE query (repository
+        // update, not the generic :update HTTP action — that one 500s on a bulk filter for this resource).
+        // Used to bracket a bulk data import: disable → import raw rows fast (no per-row recompute cascade
+        // across dependent collections) → re-enable → ptdlComputed:recompute once to backfill correctly.
+        setComputedEnabled: async (ctx: any, next: any) => {
+          const v = readVals(ctx);
+          const repo: any = this.db.getRepository('ptdlComputedRules');
+          if (!repo) { ctx.body = { skipped: 'plugin-formula chưa cài' }; await next(); return; }
+          const n = await repo.update({ filter: {}, values: { enabled: !!v.enabled }, forceUpdate: true });
+          ctx.body = { enabled: !!v.enabled, count: Array.isArray(n) ? n.length : n };
+          await next();
+        },
+        // Backfill EVERY computed rule (topo order) — called once after a bulk import re-enables rules, so
+        // rows created while rules were OFF get their computed values without per-row cascade cost during
+        // import. In-process call (not the public ptdlComputed:recompute HTTP action, which is ACL-gated to
+        // a snippet most app-builder callers aren't in) via the formula plugin's own ComputedManager.
+        recomputeAll: async (ctx: any, next: any) => {
+          try {
+            const formulaPlugin: any = this.app.pm.get('@ptdl/plugin-formula');
+            const n = await formulaPlugin?.computed?.recomputeAll?.();
+            ctx.body = { recomputed: n ?? 0 };
+          } catch (e: any) { ctx.body = { error: e?.message || String(e) }; }
+          await next();
+        },
+        // Import ONE collection's rows from its AppSheet Google Sheet (server-side fetch → no CORS).
+        // {collection, docId, tab, fields:[{name,title,interface,unique}], relations:[{name,title,target,targetKeyField}]}
+        importSheet: async (ctx: any, next: any) => {
+          const v = readVals(ctx); ctx.body = await this.opImportSheet(v); await next();
         },
         // {collection, field:{name,title,states:[...],transitions?:{...}}}  → a real @ptdl status-flow field
         addStatusFlow: async (ctx: any, next: any) => {
@@ -1234,7 +1368,7 @@ export class PluginAppBuilderServer extends Plugin {
         renameField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opRenameField(v.collection, v.field, v.title); await next(); },
       },
     });
-    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'setChartRaw', 'listCharts', 'aiAddWidget', 'dashboardFields', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
+    this.app.acl.allow('appBuilder', ['dryRun', 'apply', 'createCollection', 'addField', 'addRelation', 'addComputed', 'addComputedBatch', 'importSheet', 'setComputedEnabled', 'recomputeAll', 'addStatusFlow', 'seed', 'describeApp', 'aiGenerate', 'aiRefine', 'aiDashboard', 'aiRefineChart', 'setChartRaw', 'listCharts', 'aiAddWidget', 'dashboardFields', 'patchGrid', 'aiPlan', 'dropField', 'dropCollection', 'renameField'], 'loggedIn');
   }
 }
 

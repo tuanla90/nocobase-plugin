@@ -28,6 +28,27 @@ export class PluginGsheetSyncServer extends Plugin {
   private inFlight = new Set<number>();
   private writeback = new WritebackManager(this);
 
+  // ---------- @ptdl/plugin-formula bracket (pull = bulk write; pause computed rules for its duration) ----------
+  // The pull below already runs `hooks:false` (so a live-recompute cascade never fires mid-sync — the SAME
+  // reason app-builder's bulk import got explicit disable/enable, see its plugin.ts setComputedEnabled: a
+  // table with downstream roll-ups measured ~300x slower per row with rules live vs disabled), which means
+  // computed fields are simply never touched by a normal sync. This explicitly pauses rules (defensive — a
+  // few paths here, like ensureTargetCollection's field creation, do NOT set hooks:false) and does ONE
+  // correct backfill after, in dependency order, so synced data's computed columns are never stale/null.
+  private async setComputedEnabled(enabled: boolean): Promise<void> {
+    try {
+      const repo: any = this.db.getRepository('ptdlComputedRules');
+      if (!repo) return;
+      await repo.update({ filter: {}, values: { enabled }, forceUpdate: true });
+    } catch { /* plugin-formula not installed, or no rules yet — fine, sync proceeds either way */ }
+  }
+  private async recomputeAllComputed(): Promise<void> {
+    try {
+      const formulaPlugin: any = this.app.pm.get('@ptdl/plugin-formula');
+      await formulaPlugin?.computed?.recomputeAll?.();
+    } catch { /* best-effort */ }
+  }
+
   async load() {
     // Reusable service accounts — register credentials once, pick per connection.
     this.db.collection({
@@ -477,6 +498,7 @@ export class PluginGsheetSyncServer extends Plugin {
     const id = row.id;
     if (this.inFlight.has(id)) throw new Error('Connection này đang sync dở');
     this.inFlight.add(id);
+    await this.setComputedEnabled(false);
     try {
       await row.update({ lastStatus: 'running', lastError: null });
       const sa = parseCredentials(await this.resolveConnCredentials(row));
@@ -600,6 +622,8 @@ export class PluginGsheetSyncServer extends Plugin {
       }
       throw e;
     } finally {
+      await this.setComputedEnabled(true);
+      await this.recomputeAllComputed();
       this.inFlight.delete(id);
     }
   }

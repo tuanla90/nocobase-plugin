@@ -295,6 +295,7 @@ export const SpecPreview: React.FC<{ spec: AppSpec }> = ({ spec }) => {
         {stat(<LayoutOutlined />, (spec.pages || []).length, 'trang')}
         {stat(<FolderOutlined />, groups.length, 'nhóm menu')}
         {nSF > 0 && stat(<BranchesOutlined />, nSF, 'luồng trạng thái')}
+        {(spec.dashboards?.length || 0) > 0 && stat(<AppstoreOutlined />, spec.dashboards!.length, 'dashboard')}
       </Space>
 
       <Typography.Paragraph style={{ color: token.colorTextSecondary, marginBottom: 16 }}>{buildSummary(spec)}</Typography.Paragraph>
@@ -311,6 +312,9 @@ export const SpecPreview: React.FC<{ spec: AppSpec }> = ({ spec }) => {
             <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '8px 0 2px' }}><FolderOutlined /> {g}</div>
             {(spec.pages || []).filter((p) => groupOf(p) === g).map((p) => (
               <div key={p.title} style={{ marginLeft: 16, padding: '3px 0', fontSize: 13.5 }}><LayoutOutlined style={{ opacity: 0.6, marginRight: 6 }} />{p.title}</div>
+            ))}
+            {(spec.dashboards || []).filter((d) => (d.menuGroup || '(không nhóm)') === g).map((d) => (
+              <div key={'d-' + d.title} style={{ marginLeft: 16, padding: '3px 0', fontSize: 13.5 }}><AppstoreOutlined style={{ opacity: 0.6, marginRight: 6, color: token.colorPrimary }} />{d.title} <span style={{ color: token.colorTextTertiary, fontSize: 12 }}>({(d.widgets || []).length} chart)</span></div>
             ))}
           </div>
         ))}

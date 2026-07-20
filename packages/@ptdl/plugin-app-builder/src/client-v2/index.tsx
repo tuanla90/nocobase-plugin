@@ -6,21 +6,22 @@
  * client page tier) → get clickable links to the generated pages. Also exposes
  * `window.__ptdlAppBuilder` (buildApp / validateAppSpec / samples) for scripted testing.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plugin, Icon, icons } from '@nocobase/client-v2';
-import { Button, Input, message, Modal, Popover, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
+import { Alert, Button, Input, message, Modal, Popover, Progress, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
   FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
-  PlayCircleOutlined, DeleteOutlined, RocketOutlined,
+  PlayCircleOutlined, DeleteOutlined, RocketOutlined, SwapOutlined,
 } from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
-import { buildApp, createMenuGroup, createPage, deleteApp, materializeApp } from '../shared/materialize';
+import { buildApp, createMenuGroup, createPage, deleteApp, importData, materializeApp } from '../shared/materialize';
 import { createDashboard, addWidgetToDashboard } from '../shared/dashboard';
 import { ensureLauncherDock } from '../shared/launcherDock';
 import { SAMPLE_BAN_HANG } from '../shared/samples';
 import SpecPreview from './SpecPreview';
+import { convertAppSheet, looksLikeAppSheet, type AppSheetSource } from '../shared/appsheetImport';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
@@ -291,6 +292,11 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     const [text, setText] = useState(() => JSON.stringify(SAMPLE_BAN_HANG, null, 2));
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<{ pages: Array<{ title: string; collection: string; url: string; schemaUid: string }> } | null>(null);
+    const [progress, setProgress] = useState<{ phase: string; label: string; done: number; total: number } | null>(null);
+    // AppSheet import: when the JSON box holds an AppSheet blob, offer a one-click convert → App-Spec.
+    // sourcePlan (docId+tab per collection) is kept so "Import data" can pull the Google Sheets afterwards.
+    const [sourcePlan, setSourcePlan] = useState<AppSheetSource[] | null>(null);
+    const [asReport, setAsReport] = useState<{ computedOk: number; computedFlag: number; dashboards: number; dynamicEnums: number; attachments: number; menuTables: string[] } | null>(null);
     const [desc, setDesc] = useState('');
     const [aiBusy, setAiBusy] = useState(false);
     const [plan, setPlan] = useState<Array<{ tool: string; args: any }> | null>(null);
@@ -515,20 +521,47 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       if (r.ok) message.success(t('Spec is valid') + (r.warnings.length ? ` · ${r.warnings.length} ⚠` : ''));
       else message.error(`${r.errors.length}: ` + r.errors.slice(0, 3).map((e) => e.message).join(' · '));
     };
+    // Is the JSON box currently an AppSheet blob (not already an App-Spec)? Gates the Convert banner.
+    const asBlob = useMemo(() => { try { const o = JSON.parse(text); return looksLikeAppSheet(o) && !Array.isArray(o?.collections) ? o : null; } catch { return null; } }, [text]);
+    const onConvertAppSheet = () => {
+      if (!asBlob) return;
+      try {
+        const { spec, sourcePlan: sp, report } = convertAppSheet(asBlob);
+        setText(JSON.stringify(spec, null, 2));
+        setSourcePlan(sp);
+        setAsReport({ computedOk: report.computedOk.length, computedFlag: report.computedFlag.length, dashboards: report.dashboards, dynamicEnums: report.dynamicEnums.length, attachments: report.attachments.length, menuTables: report.menuTables });
+        message.success(`${t('Converted')}: ${spec.collections.length} ${t('tables')}, ${report.computedOk.length} ${t('formulas')}, ${report.dashboards} dashboard`);
+      } catch (e: any) { message.error(t('AppSheet convert failed') + ': ' + (e?.message || e)); }
+    };
+    // Import data from the AppSheet Google Sheets (after building). Needs the sourcePlan from a convert.
+    const onImportData = async () => {
+      const spec = parse(); if (!spec || !sourcePlan) return;
+      setBusy(true); setProgress({ phase: 'page', label: t('Importing data…'), done: 0, total: 1 });
+      try {
+        const res = await importData(app, spec, sourcePlan, (p) => setProgress({ phase: 'import', label: p.label, done: p.done, total: p.total }));
+        const bad = res.results.filter((r: any) => r?.error);
+        const retriedNote = res.retried?.length ? ` · ${res.retried.length} ${t('had a hiccup, auto-retried')}` : '';
+        message[bad.length ? 'warning' : 'success'](`${t('Imported')} ${res.rows} ${t('rows')}, ${res.linked} ${t('links')}${bad.length ? ` · ${bad.length} ${t('sheets failed (see console)')}` : ''}${retriedNote}`);
+        if (bad.length) console.warn('[app-builder] import issues:', bad);
+      } catch (e: any) { message.error(e?.message || String(e)); }
+      finally { setBusy(false); setProgress(null); }
+    };
     const onBuild = async () => {
       const spec = parse(); if (!spec) return;
       const r = validateAppSpec(spec);
       if (!r.ok) { message.error(r.errors.slice(0, 3).map((e) => e.message).join(' · ')); return; }
-      setBusy(true); setResult(null);
+      setBusy(true); setResult(null); setProgress({ phase: 'collection', label: t('Starting…'), done: 0, total: 1 });
       try {
-        const res = await buildApp(app, spec);
+        const res = await buildApp(app, spec, (p) => setProgress(p));
         setResult(res);
         setLastArtifacts({ collections: (spec.collections || []).map((c: any) => c.name), pages: res.pages, groups: res.groups });
-        message.success(`${t('Created')} ${res.pages.length} ${t('pages')}`);
+        const errs = (res.data?.errors || []) as string[];
+        if (errs.length) message.warning(`${t('Created')} ${res.pages.length} ${t('pages')} — ${errs.length} ${t('items skipped (see console)')}`), console.warn('[app-builder] build issues:', errs);
+        else message.success(`${t('Created')} ${res.pages.length} ${t('pages')}`);
       } catch (e: any) {
         message.error(e?.message || String(e));
       } finally {
-        setBusy(false);
+        setBusy(false); setProgress(null);
       }
     };
     // ✨ Describe → App-Spec via NocoBase's own AI (server action appBuilder:aiGenerate). Fills the JSON
@@ -651,14 +684,28 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       </div>
     );
     // Create-app / Delete buttons + created-pages result — shown on both spec tabs (New module + JSON).
+    const phaseLabel = (ph: string) => ({ collection: t('Table'), relation: t('Relation'), computed: t('Formula'), page: t('Page'), dashboard: t('Dashboard'), import: t('Importing'), done: '' } as Record<string, string>)[ph] || '';
     const renderCreateActions = () => (
       <>
         <Space style={{ marginTop: 12 }} wrap>
           <Button type="primary" loading={busy} onClick={onBuild} icon={<LIcon type="lucide-rocket" fallback={<RocketOutlined />} />}>{t('Create app')}</Button>
+          {/* After a convert, the sourcePlan lets us pull the AppSheet Google Sheets straight in. */}
+          {sourcePlan && (
+            <Button loading={busy} onClick={onImportData} icon={<LIcon type="lucide-download" fallback={<FolderOutlined />} />}>{t('Import data from sheets')}</Button>
+          )}
           {lastArtifacts && (
             <Button danger loading={delBusy} onClick={onDeleteApp} icon={<LIcon type="lucide-trash" fallback={<DeleteOutlined />} />}>{t('Delete the app I just built')}</Button>
           )}
         </Space>
+        {/* Live progress — the build now runs one item at a time (no monolithic call that times out). */}
+        {busy && progress && (
+          <div style={{ marginTop: 12 }}>
+            <Progress percent={Math.round((progress.done / Math.max(1, progress.total)) * 100)} size="small" status="active" />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {progress.done}/{progress.total} · {phaseLabel(progress.phase)} <b>{progress.label}</b>
+            </Typography.Text>
+          </div>
+        )}
         {result && (
           <div style={{ marginTop: 16 }}>
             <Typography.Text strong>{t('Created pages')}:</Typography.Text>
@@ -765,7 +812,37 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                       <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))} icon={<LIcon type="lucide-folder-open" fallback={<FolderOutlined />} />}>{t('Load demo')}</Button>
                       <Button onClick={onValidate} icon={<LIcon type="lucide-circle-check" fallback={<CheckOutlined />} />}>{t('Validate')}</Button>
                     </Space>
-                    <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={14} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+                    {/* Paste an AppSheet app-definition blob → one-click convert to App-Spec (no CLI). */}
+                    {asBlob && (
+                      <Alert type="info" showIcon style={{ marginBottom: 8 }}
+                        message={t('AppSheet app detected')}
+                        description={t('This looks like an AppSheet app-definition. Convert it to an App-Spec you can review and build.')}
+                        action={<Button size="small" type="primary" onClick={onConvertAppSheet} icon={<LIcon type="lucide-arrow-left-right" fallback={<SwapOutlined />} />}>{t('Convert → App-Spec')}</Button>}
+                      />
+                    )}
+                    {asReport && !asBlob && (
+                      <Alert type="success" showIcon style={{ marginBottom: 8 }}
+                        message={`${t('Converted from AppSheet')} — ${asReport.computedOk} ${t('formulas')} ✓${asReport.computedFlag ? ` · ${asReport.computedFlag} ⚠` : ''} · ${asReport.dashboards} dashboard`}
+                        description={
+                          <span style={{ fontSize: 12 }}>
+                            {asReport.dynamicEnums > 0 && <div>⚠ {asReport.dynamicEnums} {t('dynamic dropdowns → free text (need config tables)')}</div>}
+                            {asReport.attachments > 0 && <div>⚠ {asReport.attachments} {t('attachments → text path')}</div>}
+                            {asReport.menuTables.length > 0 && <div>🔲 {t('virtual-menu tables skipped')}: {asReport.menuTables.join(', ')}</div>}
+                            {sourcePlan && <div>📥 {t('Ready to import data from')} {new Set(sourcePlan.map((s) => s.docId).filter(Boolean)).size} {t('sheet(s) after building')}</div>}
+                          </span>
+                        }
+                      />
+                    )}
+                    <Input.TextArea value={text} onChange={(e) => setText(e.target.value)} rows={10} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+                    {/* Preview the pasted spec right here (same visual as the New-module tab) — no need to switch tabs. */}
+                    {hasCurrentSpec && (
+                      <div style={{ marginTop: 12 }}>
+                        <Typography.Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                          <LIcon type="lucide-eye" fallback={<CheckOutlined />} size={13} /> {t('Preview')}
+                        </Typography.Text>
+                        {specPreviewNode}
+                      </div>
+                    )}
                     {renderCreateActions()}
                   </>
                 ),
