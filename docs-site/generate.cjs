@@ -12,28 +12,23 @@ const PKGS = path.join(REPO, 'packages', '@tuanla90');
 
 const md = new MarkdownIt({ html: true, linkify: true, typographer: true, breaks: false });
 
-const CAT_ORDER = ['Admin', 'Fields', 'Blocks', 'UI', 'Menu', 'Actions', 'Data', 'Charts', 'Icons', 'Security', 'Auth'];
+const CAT_ORDER = ['Admin', 'Fields', 'Blocks', 'UI', 'Data', 'Security'];
 const CAT_LABEL_VI = {
-  Admin: 'Quản trị / Công cụ', Fields: 'Trường / Field', Blocks: 'Khối (Block)', UI: 'Giao diện', Menu: 'Menu',
-  Actions: 'Hành động', Data: 'Dữ liệu', Charts: 'Biểu đồ', Icons: 'Icon', Security: 'Bảo mật', Auth: 'Đăng nhập',
+  Admin: 'Quản trị / Công cụ', Fields: 'Trường / Field', Blocks: 'Khối & biểu đồ', UI: 'Giao diện',
+  Data: 'Dữ liệu', Security: 'Bảo mật & Đăng nhập',
 };
 const CAT_LABEL_EN = {
-  Admin: 'Admin & tools', Fields: 'Fields', Blocks: 'Blocks', UI: 'Interface', Menu: 'Menu',
-  Actions: 'Actions', Data: 'Data', Charts: 'Charts', Icons: 'Icons', Security: 'Security', Auth: 'Sign-in',
+  Admin: 'Admin & tools', Fields: 'Fields', Blocks: 'Blocks & charts', UI: 'Interface',
+  Data: 'Data', Security: 'Security & sign-in',
 };
 // Authoritative category per plugin (from PLUGIN-REGISTRY) — package.json keywords[0] is inconsistent.
 const SLUG_CAT = {
   'hub': 'Admin', 'nb-cloner': 'Admin',
-  'ai-column': 'Fields', 'device-kit': 'Fields', 'field-enhancements': 'Fields', 'field-order': 'Fields', 'formula': 'Fields', 'status-flow': 'Fields',
-  'block-custom-html': 'Blocks', 'conditional-format': 'Blocks', 'detail-panel': 'Blocks', 'enhanced-table-block': 'Blocks', 'filter-tree': 'Blocks', 'layout-containers': 'Blocks', 'spreadsheet-view': 'Blocks', 'subtable-pro': 'Blocks',
-  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI',
-  'menu-enhancements': 'Menu',
-  'action-enhancements': 'Actions', 'print-template': 'Actions',
+  'ai-column': 'Fields', 'device-kit': 'Fields', 'field-enhancements': 'Fields', 'field-order': 'Fields', 'formula': 'Fields', 'status-flow': 'Fields', 'inline-field': 'Fields',
+  'block-custom-html': 'Blocks', 'conditional-format': 'Blocks', 'detail-panel': 'Blocks', 'enhanced-table-block': 'Blocks', 'filter-tree': 'Blocks', 'layout-containers': 'Blocks', 'spreadsheet-view': 'Blocks', 'subtable-pro': 'Blocks', 'data-visualization-echarts-pro': 'Blocks',
+  'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI', 'menu-enhancements': 'UI', 'custom-icons': 'UI', 'action-enhancements': 'UI', 'print-template': 'UI',
   'change-log': 'Data', 'gsheet-sync': 'Data', 'line-generator': 'Data',
-  'data-visualization-echarts-pro': 'Charts',
-  'custom-icons': 'Icons',
-  'ip-guard': 'Security',
-  'login-lite': 'Auth',
+  'ip-guard': 'Security', 'login-lite': 'Security',
 };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
