@@ -35,5 +35,11 @@
   "Enabled": "Enabled",
   "Updated": "Updated",
   "Updating": "Updating",
-  "Update all done": "Update all done"
+  "Update all done": "Update all done",
+  "Install selected": "Install selected",
+  "Enable selected": "Enable selected",
+  "Run selected": "Run selected",
+  "Installing": "Installing",
+  "Enabling": "Enabling",
+  "Batch done": "Batch done"
 }

@@ -38,8 +38,9 @@ export function PluginHubPane({ api }: { api: any }) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [checking, setChecking] = useState(false);
   const [savingCfg, setSavingCfg] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null); // packageName being operated on, or '*all*'
+  const [busy, setBusy] = useState<string | null>(null); // packageName being operated on, or '*all*' / '*selected*'
   const [progress, setProgress] = useState('');
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]); // checked rows for batch install/enable/update
 
   const req = (url: string, data?: any) =>
     api.request({ url, method: 'post', data }).then((r: any) => r?.data?.data ?? r?.data);
@@ -124,8 +125,47 @@ export function PluginHubPane({ api }: { api: any }) {
     } finally { setBusy(null); setProgress(''); }
   };
 
+  // Batch-run the NEXT action for each CHECKED plugin, one at a time — same sequential-with-reload flow as
+  // "Update all". Fresh instance: check all → installs them (→ disabled); check the now-disabled rows → enables.
+  const onRunSelected = async () => {
+    const todo = (items || []).filter((i) => selectedKeys.includes(i.packageName) && i.status !== 'up-to-date');
+    if (!todo.length) return;
+    setBusy('*selected*');
+    try {
+      for (let i = 0; i < todo.length; i++) {
+        const it = todo[i];
+        const verb = it.status === 'not-installed' ? t('Installing') : it.status === 'disabled' ? t('Enabling') : t('Updating');
+        setProgress(`${verb} ${i + 1}/${todo.length}: ${it.displayName}`);
+        try {
+          const url = it.status === 'disabled' ? 'ptdlPluginHub:enable' : it.status === 'update' ? 'ptdlPluginHub:update' : 'ptdlPluginHub:install';
+          const data = it.status === 'disabled' ? { packageName: it.packageName } : { url: it.url };
+          const res = await req(url, data);
+          if (res?.ok) await waitAppReady();
+        } catch { /* keep going — one failure shouldn't abort the batch */ }
+      }
+      setProgress(t('Refreshing the list…'));
+      await onCheck();
+      setSelectedKeys([]);
+      message.success(t('Batch done'));
+    } finally { setBusy(null); setProgress(''); }
+  };
+
   const anyBusy = busy !== null;
   const updateCount = (items || []).filter((i) => i.status === 'update').length;
+
+  // Row checkboxes for batch actions — only actionable rows are selectable (up-to-date has nothing to do).
+  // The button label follows the selection: all not-installed → Install, all disabled → Enable, else Run.
+  const selItems = (items || []).filter((i) => selectedKeys.includes(i.packageName));
+  const selCount = selItems.length;
+  const batchLabel =
+    selCount && selItems.every((i) => i.status === 'not-installed') ? t('Install selected')
+      : selCount && selItems.every((i) => i.status === 'disabled') ? t('Enable selected')
+        : t('Run selected');
+  const rowSelection = {
+    selectedRowKeys: selectedKeys,
+    onChange: (keys: React.Key[]) => setSelectedKeys(keys as string[]),
+    getCheckboxProps: (it: Item) => ({ disabled: anyBusy || it.status === 'up-to-date' }),
+  };
 
   const columns = [
     {
@@ -188,13 +228,18 @@ export function PluginHubPane({ api }: { api: any }) {
       <SettingCard style={{ marginBottom: 14 }}>
         <CardHeader
           title={<Space>{t('Plugins')}{items && <Badge count={updateCount} style={{ backgroundColor: updateCount ? '#1677ff' : '#52c41a' }} showZero />}</Space>}
-          extra={items ? <Button type="primary" disabled={!updateCount || anyBusy} loading={busy === '*all*'} onClick={onUpdateAll}>{t('Update all')}{updateCount ? ` (${updateCount})` : ''}</Button> : null}
+          extra={items ? (
+            <Space>
+              <Button type="primary" disabled={!selCount || anyBusy} loading={busy === '*selected*'} onClick={onRunSelected}>{batchLabel}{selCount ? ` (${selCount})` : ''}</Button>
+              <Button disabled={!updateCount || anyBusy} loading={busy === '*all*'} onClick={onUpdateAll}>{t('Update all')}{updateCount ? ` (${updateCount})` : ''}</Button>
+            </Space>
+          ) : null}
         />
         {progress && <Alert type="info" showIcon message={progress} style={{ marginBottom: 12 }} />}
         {!items ? (
           <Paragraph type="secondary" style={{ margin: 0 }}>{t('Press “Check now” to load the plugin list from the manifest.')}</Paragraph>
         ) : (
-          <Table rowKey="packageName" size="small" dataSource={items} columns={columns as any} pagination={false} loading={checking} />
+          <Table rowSelection={rowSelection} rowKey="packageName" size="small" dataSource={items} columns={columns as any} pagination={false} loading={checking} />
         )}
         <div style={{ marginTop: 10 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>{t('Install adds a plugin (then Enable it). Update replaces an installed plugin. Each triggers an app reload, handled automatically.')}</Text>
