@@ -218,12 +218,11 @@ export class PluginPluginHubServer extends Plugin {
     this.requireRoot(ctx);
     const url = String(ctx.action?.params?.values?.url || '').trim();
     if (!url) { ctx.body = { ok: false, error: 'Thiếu url' }; await next(); return; }
-    // AWAIT pm add (unlike enable/update it registers a DISABLED plugin WITHOUT reloading the app) so we
-    // (a) surface real download/install errors instead of a false success, and (b) SERIALIZE a batch install
-    // — the old fire-and-forget fired several `pm add` ~3s apart, overlapping downloads that clobbered each other.
-    try { await this.app.runAsCLI(['pm', 'add', url], { from: 'user' }); }
-    catch (e: any) { ctx.body = { ok: false, error: 'pm add lỗi: ' + (e?.message || e) }; await next(); return; }
-    ctx.body = { ok: true, op: 'install' };
+    // FIRE-AND-FORGET (do NOT await) — exactly like NocoBase's own pm:add HTTP action. `pm add` downloads the
+    // files then runs `yarn nocobase pm2-restart` to register the plugin; AWAITING it broke that restart (0.1.5
+    // regression → "Install spins forever"). The client polls `check` (waitForStatus) for the real result.
+    try { this.runPm(['add', url]); } catch (e: any) { ctx.body = { ok: false, error: 'pm add lỗi: ' + (e?.message || e) }; await next(); return; }
+    ctx.body = { ok: true, pending: true, op: 'install' };
     await next();
   };
 
