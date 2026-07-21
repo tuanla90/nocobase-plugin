@@ -146,9 +146,10 @@ export function registerIconFieldModel(deps: {
   } catch (e) { console.warn('[field-enh] icon registerFlow failed', e); }
 
   const binder = [PtdlIconGlyphFieldModel, Base, CollectionFieldModel].find((c: any) => c && typeof c.bindModelToInterface === 'function');
-  // isDefault:true → the Icon-glyph display is the default renderer for every `icon` cell (table/detail),
-  // so the library styles both edit AND display. Users can still switch a column back to the core display.
-  try { (binder as any)?.bindModelToInterface('PtdlIconGlyphFieldModel', ['icon'], { isDefault: true }); }
+  // isDefault:false → OPT-IN. The core NocoBase `icon` display stays the default, so a plain icon field
+  // never depends on this plugin being installed (no "Model class not found" if it's absent). Users pick the
+  // Icon-glyph display per column when they want it (or turn it on globally via the advanced-field config).
+  try { (binder as any)?.bindModelToInterface('PtdlIconGlyphFieldModel', ['icon'], { isDefault: false }); }
   catch (e) { console.warn('[field-enh] icon bind failed', e); }
 
   // EDITABLE variant — swap the core antd icon picker (Outlined/Filled/Two-tone antd set) for our
@@ -165,9 +166,10 @@ export function registerIconFieldModel(deps: {
     flowEngine.registerModels({ PtdlIconInputFieldModel });
     try { (PtdlIconInputFieldModel as any).define?.({ label: t('Icon picker') }); } catch (_) { /* optional */ }
     const eb = [EditableItemModel, PtdlIconInputFieldModel, EditBase].find((c: any) => c && typeof c.bindModelToInterface === 'function');
-    // isDefault:true → OUR RegistryIconPicker (full Lucide) becomes the default editor for every `icon`
-    // field, replacing the core antd Outlined/Filled/Two-tone picker. User asked to default to the library.
-    try { (eb as any)?.bindModelToInterface('PtdlIconInputFieldModel', ['icon'], { isDefault: true }); }
+    // isDefault:false → OPT-IN. The core antd icon picker stays the default editor, so a plain icon field
+    // stays on NocoBase's basic config and is safe when this plugin isn't installed. Users switch to our
+    // RegistryIconPicker (full Lucide) per field, or enable it globally via the advanced-field config.
+    try { (eb as any)?.bindModelToInterface('PtdlIconInputFieldModel', ['icon'], { isDefault: false }); }
     catch (e) { console.warn('[field-enh] icon-input bind failed', e); }
   }
 

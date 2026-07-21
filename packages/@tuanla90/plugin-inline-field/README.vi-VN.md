@@ -3,7 +3,7 @@
 > Thêm một **cột (field) mới ngay khi đang sửa bảng** — **không** phải rời trang để vào Collection
 > Manager tạo field. Khai báo trong một hộp thoại nhỏ, cột hiện **luôn** trong bảng đang xem.
 
-**Nhóm:** Trường (Fields) · **Chạy trên:** /v/ (modern) · **Phiên bản:** 0.1.3
+**Nhóm:** Trường (Fields) · **Chạy trên:** /v/ (modern) · **Phiên bản:** 0.1.9
 
 ## Sau khi cài, có gì mới?
 

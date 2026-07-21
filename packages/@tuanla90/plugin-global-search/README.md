@@ -3,7 +3,7 @@
 > A **header search box** plus a **`Ctrl / ⌘ + K` command palette** that searches across many
 > collections at once and **jumps straight to the record** — results grouped by collection, shown live as you type.
 
-**Group:** UI (search) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.9.7
+**Group:** UI (search) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.9.8
 
 ## What's new after installing?
 

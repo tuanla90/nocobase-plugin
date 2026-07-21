@@ -5,7 +5,7 @@
 > quantity buttons**, and a **bridge** so clicking a row in another block auto-adds/increments a line
 > here — great for **quotes, orders, picking**. Saving is still **100% native**.
 
-**Group:** Blocks / Fields · **Runs on:** /v/ (modern) · **Version:** 0.2.8
+**Group:** Blocks / Fields · **Runs on:** /v/ (modern) · **Version:** 0.2.9
 
 ## What's new after installing?
 

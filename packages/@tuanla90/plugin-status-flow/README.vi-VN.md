@@ -5,7 +5,7 @@
 > **chỉ hiện những trạng thái kế hợp lệ**; **máy chủ chặn** mọi chuyển tiếp sai luật (kể cả sửa hàng loạt).
 > Trên ô dữ liệu còn có **sơ đồ luồng** và **nút chuyển nhanh**.
 
-**Nhóm:** Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.0
+**Nhóm:** Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.2
 
 ## Sau khi cài, có gì mới?
 

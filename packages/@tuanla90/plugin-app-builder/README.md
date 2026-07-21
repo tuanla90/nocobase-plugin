@@ -5,7 +5,7 @@
 > pages and menu** — right in the **/v/** interface. Need to change an existing app? AI **adds/modifies
 > it step by step** too.
 
-**Group:** Low-code builder · **Runs on:** /v/ (modern) only · **Version:** 0.6.24
+**Group:** Low-code builder · **Runs on:** /v/ (modern) only · **Version:** 0.6.28
 
 ## What's new after installing?
 

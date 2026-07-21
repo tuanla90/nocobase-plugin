@@ -4,7 +4,7 @@
 > lưu theo dòng. Thêm được **cột công thức ảo**, **nhóm nhiều cấp có subtotal**, **hàng tổng hợp**, **định dạng có điều kiện**,
 > **dán TSV** từ Excel/Sheets, **fill-down** và **sao chép** — tất cả cấu hình ngay trên khối, không cần code.
 
-**Nhóm:** Khối (Blocks) · **Chạy trên:** /v/ (modern) + /admin (classic, trang chạy FlowEngine) · **Phiên bản:** 0.2.3
+**Nhóm:** Khối (Blocks) · **Chạy trên:** /v/ (modern) + /admin (classic, trang chạy FlowEngine) · **Phiên bản:** 0.2.4
 
 ## Sau khi cài, có gì mới?
 

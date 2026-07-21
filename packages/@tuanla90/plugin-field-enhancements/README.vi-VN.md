@@ -4,7 +4,7 @@
 > chấm sao, nhãn màu, huy hiệu On/Off, ô nhập có icon… mà **không cần code**.
 > Kèm sẵn một **thư viện snippet RunJS** cho trường hợp bạn muốn tự script.
 
-**Nhóm:** Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.19
+**Nhóm:** Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.35
 
 ## Sau khi cài, có gì mới?
 
@@ -12,8 +12,10 @@
   trên block (Bảng, Chi tiết, Biểu mẫu, List).
 - Mỗi widget đăng ký thành một **“Field component”**. Với field đúng kiểu dữ liệu, mở ⚙ → **Field component**
   sẽ thấy **thêm các lựa chọn hiển thị mới** (vd cột số → có thêm **Progress bar**, **Star rating**, **Number with unit**).
-- Field kiểu **màu (`color`)** và **icon** được đổi renderer **mặc định** ngay khi bật (không cần chỉnh);
-  các widget còn lại là **tùy chọn** — field cũ giữ nguyên tới khi bạn tự chọn.
+- **Tất cả widget đều là tùy chọn (opt-in).** Field luôn giữ **renderer cơ bản mặc định của NocoBase**;
+  bạn tự chọn widget cho từng cột/field khi cần (hoặc bật hàng loạt qua cấu hình field nâng cao).
+  Nhờ vậy field **không phụ thuộc** vào việc plugin có được cài hay không — an toàn, không lỗi
+  "Model class not found" khi gỡ/chưa cài plugin.
 
 ## Bản đồ: kiểu field → widget có thêm
 
@@ -22,15 +24,15 @@
 | Số: `number`, `integer`, `percent` | **Progress bar** (thanh tiến độ), **Number with unit** (số + đơn vị), **Percent text** |
 | Số: `number`, `integer` | **Star rating** (chấm sao) |
 | `checkbox`, `boolean` | **Boolean style** — Toggle hoặc Icon, đặt nhãn On/Off, màu On/Off |
-| `color` *(mặc định)* | **Colour chip** (dot / chip / pill / bar) · **Colour input** (ô chọn màu) |
-| `icon` *(mặc định)* | **Icon glyph** (hiện icon) · **Input with icon** (ô nhập gắn icon) |
+| `color` | **Colour chip** (dot / chip / pill / bar) · **Colour input** (ô chọn màu) |
+| `icon` | **Icon glyph** (hiện icon) · **Input with icon** (ô nhập gắn icon) |
 | `select`, `multipleSelect` | **Button group** (nhóm nút) · **Value tag** (nhãn màu theo giá trị) · **Rich select** |
 | `url`, `email`, `phone`, `input` | **Link** (biến chuỗi thành liên kết bấm được) |
 | `textarea`, `markdown`, `richText` | **Clamp text** (cắt gọn N dòng) · **Rich display** · **Text style** |
 | `json` | **JSON view** (xem JSON gọn, có thu gọn) |
 | `date` / `datetime` | **Relative date** (“3 ngày trước”…) + xem ngày thật khi hover |
 
-> Tổng khoảng **16 widget**. Đa số **tùy chọn**; riêng **`color`** và **`icon`** thay renderer **mặc định**.
+> Tổng khoảng **16 widget**. **Tất cả đều tùy chọn (opt-in)** — renderer cơ bản của NocoBase luôn là mặc định.
 
 ## Dùng thế nào (từng bước)
 

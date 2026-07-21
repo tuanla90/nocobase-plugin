@@ -220,7 +220,7 @@ export async function materializeApp(app: any, spec: AppSpec, onProgress?: (labe
   return { pages, groups };
 }
 
-export type BuildProgress = { phase: 'collection' | 'relation' | 'computed' | 'page' | 'dashboard' | 'done'; label: string; done: number; total: number };
+export type BuildProgress = { phase: 'collection' | 'relation' | 'computed' | 'seed' | 'page' | 'dashboard' | 'done'; label: string; done: number; total: number };
 
 /** Full build, STEPPED with live progress. Drives the granular server ops (createCollection → addRelation →
  *  addComputedBatch) ONE ITEM AT A TIME instead of a single monolithic `appBuilder:apply` — a big spec (16
@@ -234,9 +234,11 @@ export async function buildApp(app: any, spec: AppSpec, onProgress?: (p: BuildPr
   colls.forEach((c) => (c.relations || []).forEach((r) => rels.push({ coll: c.name, r })));
   rels.sort((a, b) => (RELATION_ORDER[a.r.type] ?? 9) - (RELATION_ORDER[b.r.type] ?? 9));
   const computedColls = colls.filter((c) => (c.fields || []).some((f) => (f as any).computed?.expression));
-  const total = colls.length + rels.length + computedColls.length + (spec.pages || []).length + (spec.dashboards || []).length;
+  const seedColls = colls.filter((c) => (c as any).seed?.length);
+  const total = colls.length + rels.length + computedColls.length + seedColls.length + (spec.pages || []).length + (spec.dashboards || []).length;
   let done = 0;
   const errors: string[] = [];
+  const created = new Set<string>();   // collections NEWLY created this run (not skipped) → the only ones we seed
 
   // menuGroup category per collection (first page's group) — mirrors the server apply's bucketing.
   const menuGroupByColl = new Map<string, string>();
@@ -244,7 +246,7 @@ export async function buildApp(app: any, spec: AppSpec, onProgress?: (p: BuildPr
 
   for (const c of colls) {
     onProgress?.({ phase: 'collection', label: c.title || c.name, done: done++, total });
-    try { await api('createCollection', { ...c, category: menuGroupByColl.get(c.name) || spec.meta?.title || spec.meta?.name }); }
+    try { const r = await api('createCollection', { ...c, category: menuGroupByColl.get(c.name) || spec.meta?.title || spec.meta?.name }); if (!r?.skipped) created.add(c.name); }
     catch (e: any) { errors.push(`Bảng ${c.name}: ${e?.message || e}`); }
   }
   for (const { coll, r } of rels) {
@@ -257,6 +259,29 @@ export async function buildApp(app: any, spec: AppSpec, onProgress?: (p: BuildPr
     onProgress?.({ phase: 'computed', label: `${c.title || c.name} · ${cf.length} công thức`, done: done++, total });
     try { await api('addComputedBatch', { collection: c.name, fields: cf }); }
     catch (e: any) { errors.push(`Công thức ${c.name}: ${e?.message || e}`); }
+  }
+  // Seed demo rows (spec.seed per collection). The STEPPED build must do this itself — only the old monolithic
+  // `apply` seeded, and "Create app" no longer calls apply, so seed was silently dropped (app created empty).
+  // TOPOLOGICAL order (parents before children) so opSeed resolves an m2o value (a title string) against the
+  // target's already-seeded rows. Only NEWLY-created collections — re-running on an existing app must not
+  // duplicate demo rows. Per-collection failure is collected, not fatal.
+  if (seedColls.length) {
+    const byName = new Map(colls.map((c) => [c.name, c] as const));
+    // Seed a collection this run CREATED, or one that already exists but is still EMPTY (so re-running a build
+    // whose seed got dropped earlier fills it in without a delete) — but NEVER one that already has rows, so
+    // seed is never duplicated. Empty-check only runs for the not-created case; created ones seed unconditionally.
+    const isEmpty = async (name: string): Promise<boolean> => {
+      try { const r = await app.apiClient.resource(name).list({ pageSize: 1 }); const m = r?.data?.meta; return m ? Number(m.count) === 0 : !(r?.data?.data?.length); }
+      catch { return false; }   // not registered client-side / query failed → don't risk a duplicate seed
+    };
+    for (const name of topoOrder(spec)) {
+      const c: any = byName.get(name);
+      if (!c?.seed?.length) continue;
+      if (!created.has(name) && !(await isEmpty(name))) continue;
+      onProgress?.({ phase: 'seed', label: `${c.title || c.name} · ${c.seed.length} dòng demo`, done: done++, total });
+      try { await api('seed', { collection: c.name, rows: c.seed }); }
+      catch (e: any) { errors.push(`Seed ${c.name}: ${e?.message || e}`); }
+    }
   }
   // client page tier (pages + dashboards) — continues the same progress counter
   const mat = await materializeApp(app, spec, (label, phase) => onProgress?.({ phase: (phase as any) || 'page', label, done: done++, total }));
@@ -292,7 +317,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *  off vs 7-9 SECONDS/row once a table had a couple hundred rows with rules on (a ~300x difference) — import
  *  would appear to hang. Computing once at the end is also strictly more correct (no wasted recomputes on
  *  partially-imported data mid-way through). */
-export async function importData(app: any, spec: AppSpec, sourcePlan: Array<{ collection: string; docId: string | null; tab: string }>, onProgress?: (p: { done: number; total: number; label: string }) => void): Promise<{ rows: number; linked: number; results: any[]; retried: string[] }> {
+export async function importData(app: any, spec: AppSpec, sourcePlan: Array<{ collection: string; docId: string | null; tab: string; audit?: Record<string, string> }>, onProgress?: (p: { done: number; total: number; label: string }) => void): Promise<{ rows: number; linked: number; results: any[]; retried: string[] }> {
   const api = (action: string, values: any) => app.apiClient.request({ url: `appBuilder:${action}`, method: 'post', data: values }).then((r: any) => r?.data?.data ?? r?.data);
   const collByName = new Map((spec.collections || []).map((c) => [c.name, c]));
   const planByColl = new Map(sourcePlan.map((s) => [s.collection, s]));
@@ -313,7 +338,7 @@ export async function importData(app: any, spec: AppSpec, sourcePlan: Array<{ co
     for (let guard = 0; guard < 1000; guard++) {
       let res: any = null, lastErr: any = null;
       for (let attempt = 0; attempt < CHUNK_RETRIES; attempt++) {
-        try { res = await api('importSheet', { collection: cn, docId: plan.docId, tab: plan.tab, fields, relations, keyField, offset, limit: CHUNK }); lastErr = null; break; }
+        try { res = await api('importSheet', { collection: cn, docId: plan.docId, tab: plan.tab, fields, relations, keyField, offset, limit: CHUNK, ...(plan.audit ? { audit: plan.audit } : {}) }); lastErr = null; break; }
         catch (e: any) { lastErr = e; await sleep(1500 * (attempt + 1)); }
       }
       if (lastErr) { results.push({ collection: cn, error: String(lastErr?.message || lastErr) }); return false; }

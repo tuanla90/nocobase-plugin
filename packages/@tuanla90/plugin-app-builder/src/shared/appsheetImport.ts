@@ -6,12 +6,16 @@
  */
 import type { AppSpec } from './appSpec';
 
-export interface AppSheetSource { collection: string; table: string; docId: string | null; tab: string }
+/** AppSheet audit columns detected on a table → NocoBase's built-in createdAt/updatedAt/createdBy/updatedBy.
+ *  Values are the AppSheet SHEET column names/titles (= gviz CSV headers) so the import can read the real
+ *  created/updated date + user out of the Google Sheet instead of letting NocoBase auto-stamp import-time. */
+export interface AppSheetAudit { createdAt?: string; updatedAt?: string; createdBy?: string; updatedBy?: string }
+export interface AppSheetSource { collection: string; table: string; docId: string | null; tab: string; audit?: AppSheetAudit }
 export interface AppSheetReport {
   collections: number; fields: number; relations: number; o2m: number; staticEnums: number;
   dynamicEnums: string[]; computedOk: string[]; computedFlag: string[]; attachments: string[]; todos: string[];
   viewsSkipped: string[]; dashboards: number; dashCharts: number; menuTables: string[]; pagesIconized: number;
-  sliceScoped: string[]; sliceAcl: string[]; sliceComplex: string[];
+  sliceScoped: string[]; sliceAcl: string[]; sliceComplex: string[]; auditMapped: string[]; auditGuessed: string[]; auditUnmapped: string[];
 }
 export interface AppSheetConvertResult { spec: AppSpec; sourcePlan: AppSheetSource[]; report: AppSheetReport; validationErrors: string[] }
 
@@ -25,9 +29,65 @@ export function looksLikeAppSheet(obj: any): boolean {
 export function convertAppSheet(raw: any): AppSheetConvertResult {
   const app = typeof raw.app === 'string' ? JSON.parse(raw.app) : (raw.app || raw);
 
-  const report: AppSheetReport = { collections: 0, fields: 0, relations: 0, o2m: 0, staticEnums: 0, dynamicEnums: [], computedOk: [], computedFlag: [], attachments: [], todos: [], viewsSkipped: [], dashboards: 0, dashCharts: 0, menuTables: [], pagesIconized: 0, sliceScoped: [], sliceAcl: [], sliceComplex: [] };
+  const report: AppSheetReport = { collections: 0, fields: 0, relations: 0, o2m: 0, staticEnums: 0, dynamicEnums: [], computedOk: [], computedFlag: [], attachments: [], todos: [], viewsSkipped: [], dashboards: 0, dashCharts: 0, menuTables: [], pagesIconized: 0, sliceScoped: [], sliceAcl: [], sliceComplex: [], auditMapped: [], auditGuessed: [], auditUnmapped: [] };
   const slug = (s: any) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^([0-9])/, 'c$1').toLowerCase() || 'field';
   const parseAux = (s: any) => { try { return typeof s === 'string' ? JSON.parse(s) : (s || {}); } catch { return {}; } };
+
+  // ── AppSheet audit-column detection ──────────────────────────────────────────
+  // Map a table's created/updated at/by columns onto NocoBase's BUILT-IN createdAt/updatedAt/createdById/
+  // updatedById so the import can carry the REAL values (else NocoBase auto-stamps import-time for every row →
+  // all rows collapse to the same date and the real created/updated dates+users are lost). The signal is the
+  // AppSheet column DEFINITION, not the sheet data:
+  //   • "Initial value"  = attr.Default / attr.DefaultExpression.SourceExpr — set ONCE on create → createdAt / createdBy.
+  //   • "App formula"     = attr.AppFormula — RECOMPUTES on every edit → updatedAt / updatedBy (ChangeTimestamp-style).
+  // NOW()/TODAY() alone is NOT enough (NOW() is used broadly): key off WHERE it sits (initial-value vs app-formula).
+  // A DateTime whose init = NOW() but whose NAME says "updated/cập nhật" is the AppSheet "last modified" idiom →
+  // updatedAt (init NOW() and app-formula NOW() are indistinguishable by formula for created-vs-updated, so the
+  // NAME breaks that one tie). Name heuristic is the multilingual fallback when no formula signal is present.
+  const auditNorm = (s: any) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+  const initExprOf = (attr: any): string => { const de = attr && attr.DefaultExpression; return (de && typeof de === 'object' && de.SourceExpr) ? String(de.SourceExpr) : String((attr && attr.Default) || ''); };
+  const appExprOf = (attr: any): string => String((attr && attr.AppFormula) || '');
+  const isNowToday = (e: any) => /^=?\s*(NOW|TODAY)\s*\(\s*\)\s*$/i.test(String(e || '').trim());
+  const isUserFn = (e: any) => /^=?\s*(USEREMAIL|USERNAME)\s*\(\s*\)\s*$/i.test(String(e || '').trim());
+  const NAME_UPDATED_AT = /(updated|modified|last\s*modif|ngay (sua|cap nhat|chinh sua|cn)|thoi gian (sua|cap nhat))/;
+  const NAME_CREATED_AT = /(created|create[d]?\s*(on|at|date)?|date\s*created|ngay (tao|lap)|thoi gian tao)/;
+  const NAME_UPDATED_BY = /((updated|modified)\s*by|nguoi (sua|cap nhat|chinh sua)|(sua|cap nhat|chinh sua)\s*boi)/;
+  const NAME_CREATED_BY = /((created|create)\s*by|creator|nguoi tao|tao boi)/;
+  const classifyAudit = (attr: any): { role: string; by: string } | null => {
+    const type = attr.Type;
+    const isDate = type === 'Date' || type === 'DateTime';
+    const isUserish = type === 'Name' || type === 'Email' || type === 'Text' || type === 'LongText';
+    const init = initExprOf(attr), appf = appExprOf(attr);
+    const nm = auditNorm(attr.Name) + ' ' + auditNorm(attr.DisplayName);
+    // formula-first (high confidence)
+    if (isDate && isNowToday(appf)) return { role: 'updatedAt', by: 'formula' };
+    if (isDate && isNowToday(init)) return NAME_UPDATED_AT.test(nm) ? { role: 'updatedAt', by: 'formula' } : { role: 'createdAt', by: 'formula' };
+    if (isUserFn(appf)) return { role: 'updatedBy', by: 'formula' };
+    if (isUserFn(init)) return NAME_UPDATED_BY.test(nm) ? { role: 'updatedBy', by: 'formula' } : { role: 'createdBy', by: 'formula' };
+    // name-only fallback (low confidence — flagged for review)
+    if (isDate) { if (NAME_UPDATED_AT.test(nm)) return { role: 'updatedAt', by: 'name' }; if (NAME_CREATED_AT.test(nm)) return { role: 'createdAt', by: 'name' }; }
+    if (isUserish) { if (NAME_UPDATED_BY.test(nm)) return { role: 'updatedBy', by: 'name' }; if (NAME_CREATED_BY.test(nm)) return { role: 'createdBy', by: 'name' }; }
+    return null;
+  };
+  // Resolve a table's audit columns: ≤1 per role, formula beats name, first wins within a tier. Returns the
+  // { role → sheet-column-name } map (+ pushes review warnings for name-guessed and couldn't-map columns).
+  const detectAudit = (attrs: any[], cn: string): AppSheetAudit => {
+    const cands: Array<{ name: string; role: string; by: string }> = [];
+    for (const attr of attrs || []) {
+      if (!attr || !attr.Name || SYS.has(attr.Name) || attr.Name === '_RowNumber') continue;
+      const c = classifyAudit(attr); if (c) cands.push({ name: attr.Name, role: c.role, by: c.by });
+    }
+    const map: AppSheetAudit = {}; const byOf: Record<string, string> = {};
+    for (const role of ['createdAt', 'updatedAt', 'createdBy', 'updatedBy'] as const) {
+      const forRole = cands.filter((c) => c.role === role); if (!forRole.length) continue;
+      const pick = forRole.find((c) => c.by === 'formula') || forRole[0];
+      map[role] = pick.name; byOf[role] = pick.by;
+      if (pick.by === 'formula') report.auditMapped.push(`${cn}.${slug(pick.name)} → ${role}`);
+      else report.auditGuessed.push(`${cn}.${slug(pick.name)} → ${role} (theo tên)`);
+    }
+    for (const c of cands) if (map[c.role as keyof AppSheetAudit] !== c.name) report.auditUnmapped.push(`${cn}.${slug(c.name)} (giống ${c.role}) → không map được; ${c.role} sẽ là giờ import`);
+    return map;
+  };
   const FA_TO_LUCIDE: Record<string, string> = {
     'list-ul': 'list', 'list': 'list', 'list-ol': 'list-ordered', 'table': 'table', 'th': 'layout-grid', 'th-list': 'list',
     'edit': 'pencil', 'pen': 'pen', 'pencil': 'pencil', 'trash': 'trash-2', 'trash-alt': 'trash-2',
@@ -102,7 +162,10 @@ export function convertAppSheet(raw: any): AppSheetConvertResult {
     const schema: any = schemasByName.get(ds.SchemaName); if (!schema) { report.todos.push(`${ds.Name} (no schema)`); continue; }
     const cn = tableToColl.get(ds.Name) as string;
     const docId = (String(ds.Source || '').match(/DocId=([^&;]+)/) || [])[1] || null;
-    sourcePlan.push({ collection: cn, table: ds.Name, docId, tab: ds.SourceQualifier || ds.Name });
+    // Detect audit columns FIRST (a mapped one is NOT emitted as a regular field — it feeds NocoBase's built-in).
+    const audit = detectAudit(schema.Attributes || [], cn);
+    const auditCols = new Set(Object.values(audit));
+    sourcePlan.push({ collection: cn, table: ds.Name, docId, tab: ds.SourceQualifier || ds.Name, ...(Object.keys(audit).length ? { audit } : {}) });
 
     const fields: any[] = [], relations: any[] = [], computedDefs: any[] = [];
     const usedNames = new Set(['id', 'created_at', 'updated_at']);
@@ -112,6 +175,7 @@ export function convertAppSheet(raw: any): AppSheetConvertResult {
 
     for (const attr of schema.Attributes || []) {
       const title = attr.Name; if (SYS.has(title) || title === '_RowNumber') continue;
+      if (auditCols.has(title)) continue;   // mapped to a built-in createdAt/updatedAt/createdBy/updatedBy → not a regular field
       const aux = parseAux(attr.TypeAuxData);
       if (attr.IsVirtual && attr.Type === 'List') continue;
 

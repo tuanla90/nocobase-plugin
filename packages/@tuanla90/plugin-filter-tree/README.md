@@ -5,7 +5,7 @@
 > blocks on the same page. Two skins on one engine: **Filter tree** (vertical, nested) and
 > **Filter bar** (horizontal: pill / segmented / tab), plus an optional **free-text search box** — **no code**.
 
-**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.3.6
+**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.3.7
 
 ## What's new after installing?
 

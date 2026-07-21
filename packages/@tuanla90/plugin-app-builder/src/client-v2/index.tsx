@@ -714,7 +714,7 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       </div>
     );
     // Create-app / Delete buttons + created-pages result — shown on both spec tabs (New module + JSON).
-    const phaseLabel = (ph: string) => ({ collection: t('Table'), relation: t('Relation'), computed: t('Formula'), page: t('Page'), dashboard: t('Dashboard'), import: t('Importing'), done: '' } as Record<string, string>)[ph] || '';
+    const phaseLabel = (ph: string) => ({ collection: t('Table'), relation: t('Relation'), computed: t('Formula'), seed: t('Demo data'), page: t('Page'), dashboard: t('Dashboard'), import: t('Importing'), done: '' } as Record<string, string>)[ph] || '';
     const renderCreateActions = () => (
       <>
         <Space style={{ marginTop: 12 }} wrap>

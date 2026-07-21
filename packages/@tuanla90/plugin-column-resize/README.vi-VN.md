@@ -4,7 +4,7 @@
 > block** (mọi người thấy cùng một bố cục, giống hệt tính năng *Column width* có sẵn của NocoBase). Chỉ cần
 > bật lên — **không cần code**.
 
-**Nhóm:** Blocks · **Chạy trên:** **chỉ /v/ (modern)** — không phải /admin (classic) · **Phiên bản:** 0.1.1
+**Nhóm:** Blocks · **Chạy trên:** **chỉ /v/ (modern)** — không phải /admin (classic) · **Phiên bản:** 0.1.9
 
 ## Sau khi cài, có gì mới?
 

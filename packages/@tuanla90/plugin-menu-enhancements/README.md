@@ -4,7 +4,7 @@
 > and attach a live **count badge** (row count, or sum/avg/max/min of a field) to a menu item.
 > Everything is configured right on the menu item — **no code, no extra page**.
 
-**Group:** Menu · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.17
+**Group:** Menu · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.4.18
 
 ## What's new after installing?
 

@@ -3,7 +3,7 @@
 > Đổi “bộ mặt” toàn app: màu thanh bên/đầu trang/thẻ, màu nhấn, độ dày (mật độ), font,
 > tên app, favicon, logo (sáng/tối)… Có sẵn preset, **nhớ theo từng theme**, và xuất/nhập cấu hình.
 
-**Nhóm:** UI · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.9
+**Nhóm:** UI · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.18
 
 ## Sau khi cài, có gì mới?
 

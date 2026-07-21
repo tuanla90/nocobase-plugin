@@ -19,9 +19,58 @@ if (!inFile) { console.error('usage: node appsheet-to-appspec.cjs <appdef.json> 
 const raw = JSON.parse(fs.readFileSync(inFile, 'utf8'));
 const app = typeof raw.app === 'string' ? JSON.parse(raw.app) : (raw.app || raw);
 
-const report = { collections: 0, fields: 0, relations: 0, o2m: 0, staticEnums: 0, dynamicEnums: [], computedOk: [], computedFlag: [], attachments: [], todos: [], viewsSkipped: [], dashboards: 0, dashCharts: 0, menuTables: [], pagesIconized: 0, sliceScoped: [], sliceAcl: [], sliceComplex: [] };
+const report = { collections: 0, fields: 0, relations: 0, o2m: 0, staticEnums: 0, dynamicEnums: [], computedOk: [], computedFlag: [], attachments: [], todos: [], viewsSkipped: [], dashboards: 0, dashCharts: 0, menuTables: [], pagesIconized: 0, sliceScoped: [], sliceAcl: [], sliceComplex: [], auditMapped: [], auditGuessed: [], auditUnmapped: [] };
 const slug = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^([0-9])/, 'c$1').toLowerCase() || 'field';
 const parseAux = (s) => { try { return typeof s === 'string' ? JSON.parse(s) : (s || {}); } catch { return {}; } };
+
+// ── AppSheet audit-column detection (KEEP IN SYNC with src/shared/appsheetImport.ts) ─────────────────────────
+// Map a table's created/updated at/by columns onto NocoBase's BUILT-IN createdAt/updatedAt/createdById/
+// updatedById so the import carries the REAL values (else NocoBase auto-stamps import-time → all rows collapse
+// to the same date, real dates+users lost). Signal = the AppSheet column DEFINITION, not the sheet data:
+//   • "Initial value" = attr.Default / attr.DefaultExpression.SourceExpr — set ONCE on create → createdAt / createdBy.
+//   • "App formula"    = attr.AppFormula — RECOMPUTES on every edit → updatedAt / updatedBy (ChangeTimestamp-style).
+// NOW()/TODAY() alone is NOT enough (used broadly): key off WHERE it sits. A DateTime with init NOW() but a name
+// saying "updated/cập nhật" is the AppSheet "last modified" idiom → updatedAt. Name heuristic = multilingual fallback.
+const auditNorm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+const initExprOf = (attr) => { const de = attr && attr.DefaultExpression; return (de && typeof de === 'object' && de.SourceExpr) ? String(de.SourceExpr) : String((attr && attr.Default) || ''); };
+const appExprOf = (attr) => String((attr && attr.AppFormula) || '');
+const isNowToday = (e) => /^=?\s*(NOW|TODAY)\s*\(\s*\)\s*$/i.test(String(e || '').trim());
+const isUserFn = (e) => /^=?\s*(USEREMAIL|USERNAME)\s*\(\s*\)\s*$/i.test(String(e || '').trim());
+const NAME_UPDATED_AT = /(updated|modified|last\s*modif|ngay (sua|cap nhat|chinh sua|cn)|thoi gian (sua|cap nhat))/;
+const NAME_CREATED_AT = /(created|create[d]?\s*(on|at|date)?|date\s*created|ngay (tao|lap)|thoi gian tao)/;
+const NAME_UPDATED_BY = /((updated|modified)\s*by|nguoi (sua|cap nhat|chinh sua)|(sua|cap nhat|chinh sua)\s*boi)/;
+const NAME_CREATED_BY = /((created|create)\s*by|creator|nguoi tao|tao boi)/;
+function classifyAudit(attr) {
+  const type = attr.Type;
+  const isDate = type === 'Date' || type === 'DateTime';
+  const isUserish = type === 'Name' || type === 'Email' || type === 'Text' || type === 'LongText';
+  const init = initExprOf(attr), appf = appExprOf(attr);
+  const nm = auditNorm(attr.Name) + ' ' + auditNorm(attr.DisplayName);
+  if (isDate && isNowToday(appf)) return { role: 'updatedAt', by: 'formula' };
+  if (isDate && isNowToday(init)) return NAME_UPDATED_AT.test(nm) ? { role: 'updatedAt', by: 'formula' } : { role: 'createdAt', by: 'formula' };
+  if (isUserFn(appf)) return { role: 'updatedBy', by: 'formula' };
+  if (isUserFn(init)) return NAME_UPDATED_BY.test(nm) ? { role: 'updatedBy', by: 'formula' } : { role: 'createdBy', by: 'formula' };
+  if (isDate) { if (NAME_UPDATED_AT.test(nm)) return { role: 'updatedAt', by: 'name' }; if (NAME_CREATED_AT.test(nm)) return { role: 'createdAt', by: 'name' }; }
+  if (isUserish) { if (NAME_UPDATED_BY.test(nm)) return { role: 'updatedBy', by: 'name' }; if (NAME_CREATED_BY.test(nm)) return { role: 'createdBy', by: 'name' }; }
+  return null;
+}
+function detectAudit(attrs, cn) {
+  const cands = [];
+  for (const attr of attrs || []) {
+    if (!attr || !attr.Name || SYS.has(attr.Name) || attr.Name === '_RowNumber') continue;
+    const c = classifyAudit(attr); if (c) cands.push({ name: attr.Name, role: c.role, by: c.by });
+  }
+  const map = {}; const byOf = {};
+  for (const role of ['createdAt', 'updatedAt', 'createdBy', 'updatedBy']) {
+    const forRole = cands.filter((c) => c.role === role); if (!forRole.length) continue;
+    const pick = forRole.find((c) => c.by === 'formula') || forRole[0];
+    map[role] = pick.name; byOf[role] = pick.by;
+    if (pick.by === 'formula') report.auditMapped.push(`${cn}.${slug(pick.name)} → ${role}`);
+    else report.auditGuessed.push(`${cn}.${slug(pick.name)} → ${role} (theo tên)`);
+  }
+  for (const c of cands) if (map[c.role] !== c.name) report.auditUnmapped.push(`${cn}.${slug(c.name)} (giống ${c.role}) → không map được; ${c.role} sẽ là giờ import`);
+  return map;
+}
 // AppSheet view icon (Font Awesome, e.g. "fal fa-users") → NocoBase lucide key. Best-effort curated map;
 // unknown → null (caller falls back to a sensible default). Keeps only icons known to exist in lucide.
 const FA_TO_LUCIDE = {
@@ -111,7 +160,10 @@ for (const ds of business) {
   const schema = schemasByName.get(ds.SchemaName); if (!schema) { report.todos.push(`${ds.Name} (no schema)`); continue; }
   const cn = tableToColl.get(ds.Name);
   const docId = (String(ds.Source || '').match(/DocId=([^&;]+)/) || [])[1] || null;
-  sourcePlan.push({ collection: cn, table: ds.Name, docId, tab: ds.SourceQualifier || ds.Name });
+  // Detect audit columns FIRST (a mapped one is NOT emitted as a regular field — it feeds NocoBase's built-in).
+  const audit = detectAudit(schema.Attributes || [], cn);
+  const auditCols = new Set(Object.values(audit));
+  sourcePlan.push({ collection: cn, table: ds.Name, docId, tab: ds.SourceQualifier || ds.Name, ...(Object.keys(audit).length ? { audit } : {}) });
 
   const fields = [], relations = [], computedDefs = [];
   const usedNames = new Set(['id', 'created_at', 'updated_at']);
@@ -122,6 +174,7 @@ for (const ds of business) {
 
   for (const attr of schema.Attributes || []) {
     const title = attr.Name; if (SYS.has(title) || title === '_RowNumber') continue;
+    if (auditCols.has(title)) continue;   // mapped to a built-in createdAt/updatedAt/createdBy/updatedBy → not a regular field
     const aux = parseAux(attr.TypeAuxData);
     if (attr.IsVirtual && attr.Type === 'List') continue; // reverse-ref → handled as o2m (below)
 
@@ -417,6 +470,9 @@ fs.writeFileSync(`${outPrefix}.sourceplan.json`, JSON.stringify(sourcePlan, null
 const L = (s) => console.log(s);
 L(`\n=== ${app.ShortName} → App-Spec ===`);
 L(`collections: ${report.collections}  fields: ${report.fields}  m2o: ${report.relations - report.o2m}  o2m: ${report.o2m}  computed: ${report.computedOk.length}✓ ${report.computedFlag.length}⚠  static-enums: ${report.staticEnums}  pages: ${pages.length} (icon: ${report.pagesIconized})  dashboards: ${report.dashboards} (${report.dashCharts} charts)`);
+if (report.auditMapped.length) L(`\n🕒 cột audit → built-in (giữ ngày/người tạo·sửa thật): ${report.auditMapped.join(', ')}`);
+if (report.auditGuessed.length) L(`\n⚠ cột audit ĐOÁN theo tên (nên rà lại): ${report.auditGuessed.join(', ')}`);
+if (report.auditUnmapped.length) L(`\n⚠ cột giống audit nhưng KHÔNG map (sẽ dùng giờ import): ${report.auditUnmapped.join(', ')}`);
 if (report.menuTables.length) L(`\n🔲 menu ảo (bỏ trang, để sidebar tự làm nav): ${report.menuTables.join(', ')}`);
 if (report.sliceScoped.length) L(`\n🔎 data scope tĩnh (áp filter cho trang): ${report.sliceScoped.join(', ')}`);
 if (report.sliceAcl.length) L(`\n🔐 slice per-user → cần ACL role (Phase D, chưa áp): ${report.sliceAcl.length} — ${report.sliceAcl.slice(0, 6).join(', ')}${report.sliceAcl.length > 6 ? ' …' : ''}`);

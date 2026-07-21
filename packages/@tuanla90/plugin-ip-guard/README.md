@@ -3,7 +3,7 @@
 > Firewall NocoBase by the visitor's **IP address**: admit only certain IPs, or block bad ones —
 > configured right in the admin UI, **no code, no server restart**.
 
-**Group:** Security · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.0
+**Group:** Security · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.1
 
 ## What's new after installing?
 

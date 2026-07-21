@@ -4,7 +4,7 @@
 > logo, input icons, footer and post-login landing page — right in the admin UI, with **live preview**,
 > **no code**.
 
-**Group:** Auth & UI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 2.3.2
+**Group:** Auth & UI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 2.3.3
 
 ## What's new after installing?
 

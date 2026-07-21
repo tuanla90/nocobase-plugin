@@ -177,9 +177,10 @@ export function registerColorFieldModel(deps: {
   } catch (e) { console.warn('[field-enh] color registerFlow failed', e); }
 
   const binder = [PtdlColorFieldModel, Base, CollectionFieldModel].find((c: any) => c && typeof c.bindModelToInterface === 'function');
-  // isDefault:true → the Colour-chip display is the default renderer for every `color` cell (table/detail),
-  // so the library styles both edit AND display. Users can still switch a column back to the core display.
-  try { (binder as any)?.bindModelToInterface('PtdlColorFieldModel', ['color'], { isDefault: true }); }
+  // isDefault:false → OPT-IN. The core NocoBase `color` display stays the default, so a plain color field
+  // never depends on this plugin being installed (no "Model class not found" if it's absent). Users pick the
+  // Colour-chip display per column when they want it (or turn it on globally via the advanced-field config).
+  try { (binder as any)?.bindModelToInterface('PtdlColorFieldModel', ['color'], { isDefault: false }); }
   catch (e) { console.warn('[field-enh] color bind failed', e); }
 
   // EDITABLE variant — swap the core antd ColorPicker (antd default presets) for our ColorField, so the
@@ -196,9 +197,10 @@ export function registerColorFieldModel(deps: {
     flowEngine.registerModels({ PtdlColorInputFieldModel });
     try { (PtdlColorInputFieldModel as any).define?.({ label: t('Colour picker') }); } catch (_) { /* optional */ }
     const eb = [EditableItemModel, PtdlColorInputFieldModel, EditBase].find((c: any) => c && typeof c.bindModelToInterface === 'function');
-    // isDefault:true → OUR ColorField (library COLOR_PRESETS) becomes the default editor for every `color`
-    // field, replacing the core antd ColorPicker (different presets). User asked to default to the library.
-    try { (eb as any)?.bindModelToInterface('PtdlColorInputFieldModel', ['color'], { isDefault: true }); }
+    // isDefault:false → OPT-IN. The core antd ColorPicker stays the default editor, so a plain color field
+    // stays on NocoBase's basic config and is safe when this plugin isn't installed. Users switch to our
+    // ColorField (library COLOR_PRESETS) per field, or enable it globally via the advanced-field config.
+    try { (eb as any)?.bindModelToInterface('PtdlColorInputFieldModel', ['color'], { isDefault: false }); }
     catch (e) { console.warn('[field-enh] color-input bind failed', e); }
   }
 

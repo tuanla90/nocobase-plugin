@@ -3,7 +3,7 @@
 > Một **ô tìm kiếm trên thanh tiêu đề** + **bảng lệnh `Ctrl / ⌘ + K`** tìm xuyên nhiều bộ sưu tập
 > một lúc và **nhảy thẳng tới bản ghi** — kết quả gom nhóm theo bộ sưu tập, hiện ngay khi bạn gõ.
 
-**Nhóm:** UI (tìm kiếm) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.9.7
+**Nhóm:** UI (tìm kiếm) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.9.8
 
 ## Sau khi cài, có gì mới?
 

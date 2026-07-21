@@ -5,7 +5,7 @@
 > Hai kiểu trên cùng một bộ máy: **Cây lọc** (dọc, lồng nhau) và **Thanh lọc** (ngang: pill / segmented / tab),
 > kèm **ô tìm kiếm** chữ tự do tuỳ chọn — **không cần code**.
 
-**Nhóm:** Blocks · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.3.6
+**Nhóm:** Blocks · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.3.7
 
 ## Sau khi cài, có gì mới?
 

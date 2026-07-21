@@ -2,7 +2,7 @@
 
 > Hai khối để **sắp xếp nội dung trang và gom field trong form**: khối **Tabs** và khối **Collapse (Mục gập)** — đều lồng nhau được, có cả biến thể nhóm-field trong form. Kèm khả năng **đổi kiểu thanh tab** của trang/popup sẵn có sang Line, Pill, Segment, Card, Step hoặc Text, với **mặc định chung cho cả app theo từng theme**.
 
-**Nhóm:** Khối (Blocks) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.3
+**Nhóm:** Khối (Blocks) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.4
 
 ## Sau khi cài, có gì mới?
 

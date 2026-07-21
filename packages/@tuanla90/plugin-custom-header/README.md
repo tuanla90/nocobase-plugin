@@ -4,7 +4,7 @@
 > form/detail field labels and block titles: set an **icon**, **text color**, **size**, **bold**,
 > **background** (solid / gradient) and **alignment**. No code — style right on the element.
 
-**Group:** Appearance (Blocks/UI) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.3
+**Group:** Appearance (Blocks/UI) · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.4
 
 ## What's new after installing?
 

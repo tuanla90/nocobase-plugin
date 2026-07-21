@@ -4,7 +4,7 @@
 > **bảng dữ liệu, quan hệ, dữ liệu mẫu, cột tính tự động, luồng trạng thái, trang và menu** — hiện ngay
 > trên giao diện **/v/**. Cần chỉnh app đã có? AI cũng **thêm/sửa từng bước** giúp bạn.
 
-**Nhóm:** Công cụ dựng app (Low-code Builder) · **Chạy trên:** Chỉ **/v/** (modern) · **Phiên bản:** 0.6.24
+**Nhóm:** Công cụ dựng app (Low-code Builder) · **Chạy trên:** Chỉ **/v/** (modern) · **Phiên bản:** 0.6.28
 
 ## Sau khi cài, có gì mới?
 

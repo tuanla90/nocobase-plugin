@@ -4,7 +4,7 @@
 > a **Table** block of exactly those columns, plus **View / Edit / Add** buttons whose popups show those same columns.
 > No manual block/column/popup wiring. The result is a native NocoBase page you can **keep editing freely**.
 
-**Group:** Blocks · **Runs on:** **/v/** (modern) only — the **/admin** (classic) client does not have this tool · **Version:** 0.1.7
+**Group:** Blocks · **Runs on:** **/v/** (modern) only — the **/admin** (classic) client does not have this tool · **Version:** 0.1.8
 
 ## What's new after installing?
 

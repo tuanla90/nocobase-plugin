@@ -3,7 +3,7 @@
 > Add a **new column (field) while editing a table view** — no trip to the Collection Manager. Define it
 > in a small dialog and the column appears **right there** in the block you're editing.
 
-**Group:** Fields · **Runs on:** /v/ (modern) · **Version:** 0.1.3
+**Group:** Fields · **Runs on:** /v/ (modern) · **Version:** 0.1.9
 
 ## What it adds
 

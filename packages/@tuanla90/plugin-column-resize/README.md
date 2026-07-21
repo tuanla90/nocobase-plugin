@@ -4,7 +4,7 @@
 > block** (everyone sees the same layout, like NocoBase's native *Column width* setting). Just switch it
 > on — **no code**.
 
-**Group:** Blocks · **Runs on:** **/v/ (modern) only** — not /admin (classic) · **Version:** 0.1.1
+**Group:** Blocks · **Runs on:** **/v/ (modern) only** — not /admin (classic) · **Version:** 0.1.9
 
 ## What's new after installing?
 

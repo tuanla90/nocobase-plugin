@@ -5,7 +5,7 @@
 > dropdown shows **only valid next statuses**; the **server blocks** every illegal transition (including bulk edit).
 > Cells also get a **flow graph** and **quick-transition buttons**.
 
-**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.0
+**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.2
 
 ## What's new after installing?
 

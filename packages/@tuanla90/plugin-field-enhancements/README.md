@@ -4,7 +4,7 @@
 > progress bars, star ratings, coloured tags, On/Off badges, inputs with icons… all **with no code**.
 > Comes with a **RunJS snippet library** for the times you'd rather script it yourself.
 
-**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.19
+**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.35
 
 ## What's new after installing?
 
@@ -12,8 +12,9 @@
   on a block (Table, Detail, Form, List).
 - Each widget is registered as a **"Field component"**. On a field of the right data type, open ⚙ → **Field component**
   to find **new display options** (e.g. a number column gains **Progress bar**, **Star rating**, **Number with unit**).
-- **Colour (`color`)** and **icon** fields switch to the new renderer **by default** the moment you enable the plugin
-  (nothing to set); every other widget is **opt-in** — existing fields stay as they were until you pick one.
+- **Every widget is opt-in.** A field always keeps NocoBase's **basic default renderer/editor**; you pick a widget
+  per column/field when you want it (or enable them in bulk via the advanced-field config). This keeps a field
+  **independent of whether the plugin is installed** — safe, with no "Model class not found" if it's removed/absent.
 
 ## Where to configure
 
@@ -32,15 +33,15 @@ Both clients use the **same ⚙ → Field component** path. Which widgets appear
 | Numbers: `number`, `integer`, `percent` | **Progress bar**, **Number with unit**, **Percent text** |
 | Numbers: `number`, `integer` | **Star rating** |
 | `checkbox`, `boolean` | **Boolean style** — Toggle or Icon, On/Off labels, On/Off colours |
-| `color` *(default)* | **Colour chip** (dot / chip / pill / bar) · **Colour picker** (colour input) |
-| `icon` *(default)* | **Icon glyph** (shows the icon) · **Input with icon** (input with an attached icon) |
+| `color` | **Colour chip** (dot / chip / pill / bar) · **Colour picker** (colour input) |
+| `icon` | **Icon glyph** (shows the icon) · **Input with icon** (input with an attached icon) |
 | `select`, `multipleSelect` | **Button group** · **Value tag** (colour by value) · **Rich select** |
 | `url`, `email`, `phone`, `input` | **Link** (turn a string into a clickable link) |
 | `textarea`, `markdown`, `richText` | **Clamp text** (trim to N lines) · **Rich display** · **Text style** |
 | `json` | **JSON view** (compact JSON, collapsible) |
 | `date` / `datetime` | **Relative date** ("3 days ago"…) + the real date on hover |
 
-> Around **16 widgets** in total. Most are **opt-in**; only **`color`** and **`icon`** swap the renderer **by default**.
+> Around **16 widgets** in total. **All of them are opt-in** — NocoBase's basic renderer is always the default.
 
 ## How to use (step by step)
 
@@ -81,9 +82,11 @@ Both lanes register through one shared path — `src/shared/registerAll.tsx` (`r
 `index.tsx` files only inject the lane-specific base classes (`@nocobase/client` vs `@nocobase/client-v2`), so
 **add a new widget there once**, not in two places. Each widget lives in its own `src/shared/<name>Model.tsx`:
 display-only widgets subclass `DisplayTextFieldModel` and override `renderComponent`; editable widgets subclass
-`FieldModel` and override `render()` (branching on `pattern === 'readPretty'`). Most bind with `isDefault: false`
-(opt-in); `color`/`icon` bind `isDefault: true` on both the display and editable registries so they replace the core
-components end-to-end. Icons come from the shared registry (`@tuanla90/shared` → `IconByKey` / `RegistryIconPicker`); with
+`FieldModel` and override `render()` (branching on `pattern === 'readPretty'`). **Every** widget binds with
+`isDefault: false` (opt-in) against NocoBase's built-in field interfaces — the core renderer/editor stays the
+default, so a plain field never depends on this plugin being installed (no "Model class not found" when it's
+absent) and stays on NocoBase's basic config; users switch a column/field to a widget per-field, or turn it on
+globally via the advanced-field config. Icons come from the shared registry (`@tuanla90/shared` → `IconByKey` / `RegistryIconPicker`); with
 `@tuanla90/plugin-custom-icons` installed you get the full **Lucide** set, otherwise the built-in Ant Design icons.
 
 A bundled **RunJS snippet library** (`src/shared/generatedSnippets.ts`) is also seeded — snippets appear in the RunJS

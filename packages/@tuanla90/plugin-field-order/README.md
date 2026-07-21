@@ -4,7 +4,7 @@
 > no code, no server restart.
 > **Since 0.1.1**, the plugin also **tidies the Settings-page menu** into logical groups.
 
-**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.4
+**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.5
 
 ## What's new after installing?
 

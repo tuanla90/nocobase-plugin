@@ -354,6 +354,31 @@ export const SpecPreview: React.FC<{ spec: AppSpec }> = ({ spec }) => {
           };
         })}
       />
+
+      {/* Every collection's columns — INCLUDING detail/child collections that aren't a menu page (they only
+          surface above as a sub-table of a parent page, so a detail table referenced by no page would otherwise
+          be un-inspectable). Collapsed by default; click the one you want. */}
+      <div style={{ fontSize: 13, fontWeight: 500, margin: '16px 0 6px' }}>Tất cả bảng &amp; cột <span style={{ fontWeight: 400, color: token.colorTextTertiary, fontSize: 12 }}>— mọi bảng, kể cả bảng chi tiết / bảng không có trang riêng</span></div>
+      <Collapse
+        items={colls.map((c, i) => {
+          const hasPage = (spec.pages || []).some((p) => p.collection === c.name);
+          const names = (c.fields || []).filter((f) => !SYS.has(f.name)).map((f) => f.name).concat((c.relations || []).map((r) => r.name));
+          const cols = names.map((n) => resolveCol(spec, c, n));
+          return {
+            key: String(i),
+            label: (
+              <span>
+                <DatabaseOutlined style={{ marginRight: 8, opacity: 0.7 }} />{c.title || c.name}
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}> · {cols.length} cột · {c.name}</Typography.Text>
+                {!hasPage && <Tag style={{ marginLeft: 8, fontSize: 11 }}>bảng chi tiết · không có trang riêng</Tag>}
+              </span>
+            ),
+            children: cols.length
+              ? <Chips label={<span><TableOutlined /> Cột dữ liệu</span>} cols={cols} token={token} />
+              : <Typography.Text type="secondary" style={{ fontSize: 12 }}>Chỉ có cột hệ thống (id, ngày tạo…)</Typography.Text>,
+          };
+        })}
+      />
     </div>
   );
 };

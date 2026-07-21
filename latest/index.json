@@ -20,9 +20,9 @@
     {
       "packageName": "@tuanla90/plugin-app-builder",
       "slug": "app-builder",
-      "version": "0.6.27",
+      "version": "0.6.30",
       "displayName": "App Builder",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.27.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.30.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-block-custom-html",
@@ -104,9 +104,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.34",
+      "version": "0.2.35",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.34.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.35.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",

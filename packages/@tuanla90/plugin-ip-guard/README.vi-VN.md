@@ -3,7 +3,7 @@
 > Tường lửa cho NocoBase theo **địa chỉ IP** của người truy cập: chỉ cho một số IP vào, hoặc chặn
 > một số IP xấu — cấu hình ngay trong trang quản trị, **không cần code, không cần restart server**.
 
-**Nhóm:** Bảo mật (Security) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.0
+**Nhóm:** Bảo mật (Security) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.1
 
 ## Sau khi cài, có gì mới?
 

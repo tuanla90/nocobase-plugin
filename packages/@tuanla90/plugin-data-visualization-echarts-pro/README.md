@@ -5,7 +5,7 @@
 > customize fonts & number formatting, transform data with JavaScript, and a **raw ECharts option override**
 > for full control — all configured **right on the chart**, no server-side code.
 
-**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.4
+**Group:** Blocks · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.5
 
 ## What's new after installing?
 

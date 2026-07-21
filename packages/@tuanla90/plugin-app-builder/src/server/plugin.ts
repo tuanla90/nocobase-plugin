@@ -459,6 +459,31 @@ function parseCsvRows(text: string): string[][] {
   return rows;
 }
 
+/** Parse an AppSheet / Google-Sheet (gviz CSV) date-or-datetime string → a JS Date (UTC), or null if
+ *  unparseable (a bad audit value must never fail the row → caller just leaves the built-in unset). Handles:
+ *    • ISO           2020-01-15 / 2020-01-15 10:00:00 / 2020-01-15T10:00:00 (unambiguous)
+ *    • slash/dot      15/01/2020 10:00[:00] / 1.15.2020 — with optional AM/PM
+ *  Slash order is ambiguous: self-corrects when a component > 12 (day vs month), otherwise assumes DAY-first
+ *  (D/M/Y — the Vietnamese-locale prior these AppSheet apps use). Interpreted as UTC for tz-independence. */
+export function parseAuditDate(s: any): Date | null {
+  if (s == null) return null;
+  if (s instanceof Date) return isNaN(s.getTime()) ? null : s;
+  const str = String(s).trim();
+  if (!str) return null;
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) { const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0))); return isNaN(d.getTime()) ? null : d; }
+  m = str.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})(?:[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?)?/);
+  if (m) {
+    const a = +m[1], b = +m[2], y = +m[3];
+    let day: number, mon: number;
+    if (a > 12) { day = a; mon = b; } else if (b > 12) { mon = a; day = b; } else { day = a; mon = b; }   // ambiguous → day-first
+    let hh = +(m[4] || 0); const mi = +(m[5] || 0), ss = +(m[6] || 0); const ap = (m[7] || '').toLowerCase();
+    if (ap === 'pm' && hh < 12) hh += 12; if (ap === 'am' && hh === 12) hh = 0;
+    const d = new Date(Date.UTC(y, mon - 1, day, hh, mi, ss)); return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(str); return isNaN(d.getTime()) ? null : d;   // last resort (e.g. "Jan 15 2020")
+}
+
 export class PluginAppBuilderServer extends Plugin {
   // ── PRIMITIVES ──────────────────────────────────────────────────────────────────────────────────
   // Each op is a self-contained, idempotent building block. `apply` orchestrates them for a whole spec,
@@ -654,7 +679,39 @@ export class PluginAppBuilderServer extends Plugin {
       if (trepo) { try { const recs = await trepo.find({ fields: ['id', tkf] }); for (const rec of recs) { const k = rec?.[tkf]; if (k != null && k !== '') km.set(String(k), rec.id); } } catch { /* */ } }
       keymaps.set(r.target, km);
     }
+    // AUDIT: map the AppSheet audit sheet columns → built-in createdAt/updatedAt/createdById/updatedById so the
+    // REAL created/updated date+user are carried in (else NocoBase auto-stamps import-time for every row). The
+    // audit values are RAW sheet-column names (gviz headers) — resolve by original title then name-slug.
+    const audit: any = v.audit || {};
+    const auditIdx: Record<string, number> = {};
+    for (const role of ['createdAt', 'updatedAt', 'createdBy', 'updatedBy']) {
+      const nm = audit[role]; if (!nm) continue;
+      let i: any = hRaw.get(String(nm).trim()); if (i == null) i = hIndex.get(asSlug(nm));
+      if (i != null) auditIdx[role] = i as number;
+    }
+    // user resolution (createdBy/updatedBy): AppSheet USEREMAIL()/USERNAME() value → NocoBase user id, matched
+    // by email→nickname→username (case-insensitive). Queried ONCE per call; unmatched → left null (no failure).
+    const userMap = new Map<string, any>();
+    if (auditIdx.createdBy != null || auditIdx.updatedBy != null) {
+      try {
+        const urepo: any = this.db.getRepository('users');
+        const us: any[] = urepo ? await urepo.find({ fields: ['id', 'email', 'nickname', 'username'] }) : [];
+        for (const u of us) { const uid = u?.get ? u.get('id') : u?.id; for (const k of ['email', 'nickname', 'username']) { const val = u?.get ? u.get(k) : u?.[k]; if (val != null && String(val) !== '') { const key = String(val).trim().toLowerCase(); if (!userMap.has(key)) userMap.set(key, uid); } } }
+      } catch { /* users unreadable — skip user mapping */ }
+    }
+    const resolveUser = (raw: any) => { const key = String(raw ?? '').trim().toLowerCase(); return key ? (userMap.get(key) ?? null) : null; };
+    // updatedAt FIX: repo.create re-stamps updatedAt to now, and Sequelize's model.update({updatedAt},{silent})
+    // DROPS the managed timestamp — so set it with a raw queryInterface.bulkUpdate (no hooks, no re-stamp;
+    // verified on NocoBase 2.1.19 sqlite). Date must be a dialect-formatted string (sqlite stores
+    // 'YYYY-MM-DD HH:MM:SS.SSS +00:00'; PG/others accept ISO).
+    const auditModel: any = (this.db as any).getModel ? (this.db as any).getModel(collection) : (repo as any).model;
+    const qi: any = (this.db as any).sequelize?.getQueryInterface?.();
+    const dialect: string = ((this.db as any).sequelize?.getDialect?.() || '').toString();
+    const tableName: any = auditModel?.tableName;
+    const toDbDate = (d: Date) => (dialect === 'sqlite' ? d.toISOString().replace('T', ' ').replace('Z', ' +00:00') : d.toISOString());
+    const canFixUpdatedAt = !!(qi && tableName);
     let posted = 0, failed = 0, linked = 0, missed = 0, skipped = 0, firstErr = '';
+    let auditC = 0, auditU = 0, auditUsr = 0;   // rows where we set createdAt / updatedAt / a user id
     for (const row of dataRows) {
       if (kfCol != null && existing.has(String(row[kfCol as number]))) { skipped++; continue; }   // already imported
       const values: any = {};
@@ -671,11 +728,26 @@ export class PluginAppBuilderServer extends Plugin {
         const id = keymaps.get(r.target)?.get(String(kv));
         if (id != null) { values[r.name] = { id }; linked++; } else missed++;
       }
-      try { await repo.create({ values }); posted++; } catch (e: any) { failed++; if (!firstErr) firstErr = String(e?.message || e).slice(0, 160); }
+      // AUDIT built-ins. repo.create HONORS createdAt/createdById/updatedById but RE-STAMPS updatedAt to now
+      // (verified live on NocoBase 2.1.19) → set those three here, then fix updatedAt post-create via a silent
+      // raw update (no hooks → no re-stamp). Every step guarded so a bad audit value never fails the row.
+      let pendingUpdatedAt: Date | null = null;
+      try {
+        if (auditIdx.createdAt != null) { const d = parseAuditDate(row[auditIdx.createdAt]); if (d) { values.createdAt = d; auditC++; } }
+        if (auditIdx.updatedAt != null) { const d = parseAuditDate(row[auditIdx.updatedAt]); if (d) { pendingUpdatedAt = d; auditU++; } }
+        if (auditIdx.createdBy != null) { const uid = resolveUser(row[auditIdx.createdBy]); if (uid != null) { values.createdById = uid; auditUsr++; } }
+        if (auditIdx.updatedBy != null) { const uid = resolveUser(row[auditIdx.updatedBy]); if (uid != null) values.updatedById = uid; }
+      } catch { /* audit parse issue — import the row without audit overrides */ }
+      try {
+        const rec: any = await repo.create({ values }); posted++;
+        if (pendingUpdatedAt && canFixUpdatedAt && rec?.id != null) {
+          try { await qi.bulkUpdate(tableName, { updatedAt: toDbDate(pendingUpdatedAt) }, { id: rec.id }); } catch { /* updatedAt fix best-effort */ }
+        }
+      } catch (e: any) { failed++; if (!firstErr) firstErr = String(e?.message || e).slice(0, 160); }
     }
     // NB: key must NOT be `rows` — a top-level `rows` in a custom action's ctx.body triggers list-unwrap
     // (data := rows), dropping the rest of the summary. See reference_nocobase_list_response_rows_key.
-    return { collection, tab, nrows: dataRows.length, total, done: offset + dataRows.length >= total, posted, skipped, failed, linked, missed, firstErr: firstErr || undefined };
+    return { collection, tab, nrows: dataRows.length, total, done: offset + dataRows.length >= total, posted, skipped, failed, linked, missed, ...(auditC || auditU || auditUsr ? { auditC, auditU, auditUsr } : {}), firstErr: firstErr || undefined };
   }
 
   /** Seed rows into a collection. Self-contained: resolves m2o values (a string) against the target's

@@ -3,7 +3,7 @@
 > From **one parent record** → generate **N child rows** in **one transaction**, following a **rule set** you declare once.
 > The same mechanism covers **BOM explosion**, **commission splits**, and **cost / piece-rate allocation** — with cross-relation matching, dynamic recipients, group-and-sum, and rounding; run it **manually with a button** or **automatically on save**, with a **dry-run preview** + **debugger**.
 
-**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.6.11
+**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.6.12
 
 ## What's new after installing?
 
