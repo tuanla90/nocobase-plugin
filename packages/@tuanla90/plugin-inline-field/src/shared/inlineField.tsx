@@ -183,7 +183,22 @@ const InlineFieldForm: React.FC<{
   const { token } = theme.useToken();
   const taRef = React.useRef<any>(null);
   const spec: InlineFieldSpec = props.value || ({ interface: 'input', title: '' } as InlineFieldSpec);
-  const [nameEdited, setNameEdited] = React.useState<boolean>(!!spec.name);
+  // This dialog CREATES a new field, so it must open BLANK every time. The flow-settings step otherwise
+  // keeps the LAST create's config filled in (persisted step params), and that leftover `name` then LOCKS
+  // the machine name so it stops tracking a newly-typed title — the reported "mọi config còn nguyên / Mã
+  // field để nguyên" bug. Reset to the empty default once on mount if we opened with any leftover.
+  const clearedOnce = React.useRef(false);
+  React.useEffect(() => {
+    if (clearedOnce.current) return;
+    clearedOnce.current = true;
+    const s: any = props.value;
+    const leftover = !!s && (s.title || s.name || (s.options && s.options.length) || (s.states && s.states.length)
+      || s.expression || s.target || (s.interface && s.interface !== 'input'));
+    if (leftover) props.onChange?.({ interface: 'input', title: '' } as InlineFieldSpec);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Start UNLOCKED so the machine name tracks the title; only a hand-edit of the Mã field this session locks it.
+  const [nameEdited, setNameEdited] = React.useState<boolean>(false);
   const [showAdv, setShowAdv] = React.useState<boolean>(false);
   const patch = (p: Partial<InlineFieldSpec>) => props.onChange?.({ ...spec, ...p });
 
@@ -649,21 +664,32 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
             const now = Date.now();
             for (const [k, ts] of recentCreate) if (now - ts > DEDUPE_MS) recentCreate.delete(k);
             if (recentCreate.has(sig)) return;
-            recentCreate.set(sig, now);
-            // Reset the persisted step params to the empty default so a page reload can't re-run the create.
-            // In-memory here; persisted by the deferred save below (see why the save is deferred).
-            try { model.setStepParams?.('ptdlInlineAddField', 'create', { spec: { interface: 'input', title: '' } }); }
-            catch (_) { /* best-effort */ }
-            await createFieldAndColumn(model, spec, app);
-            // Persist the params reset — deferred to the next macrotask so it can't race the dialog's own
-            // OK-save (a synchronous save() here throws "Error saving configuration"). Runs UNCONDITIONALLY:
-            // on a PERSISTENT server error (e.g. a relation the block can't render) this is what stops the
-            // auto-apply from retrying the create forever — the reported "tạo cột liên tục". The dedup marker
-            // is intentionally NOT released on failure: it holds for its window to absorb the immediate
-            // re-fires while the reset persists, then expires so a later manual retry still works.
+            // Reload-safe idempotency (the dedup marker is per-session only): if this block ALREADY has a
+            // column with this title, the field was created on an earlier render/reload and the persisted
+            // step params are just stale — skip instead of creating a duplicate (the render/reload "tạo cột
+            // liên tục" loop, since the framework clobbers our params reset with the submitted values).
             try {
-              setTimeout(() => { try { model.save?.(); } catch (_) { /* best-effort */ } }, 0);
-            } catch (_) { /* setTimeout unavailable — reset stays in-memory only */ }
+              const cols = model.mapSubModels?.('columns', (c: any) => c) || [];
+              const already = cols.some((c: any) => {
+                const t = (c?.getStepParams?.('tableColumnSettings', 'title') || {}).title;
+                return t && String(t).trim() === title;
+              });
+              if (already) return;
+            } catch (_) { /* best-effort — fall through to create */ }
+            recentCreate.set(sig, now);
+            await createFieldAndColumn(model, spec, app);
+            // Reset the persisted step params back to the empty default. This is what makes the dialog open
+            // BLANK next time (not with this field's config still filled in — the reported "mọi config còn
+            // nguyên" bug) AND stops the auto-apply from recreating the field. It MUST run AFTER the settings
+            // dialog's own OK-flow writes the SUBMITTED form values into stepParams, else the framework
+            // clobbers our reset — so defer to the next macrotask (also avoids racing its save, which throws
+            // "Error saving configuration"). Reset THEN persist; runs on both outcomes.
+            try {
+              setTimeout(() => {
+                try { model.setStepParams?.('ptdlInlineAddField', 'create', { spec: { interface: 'input', title: '' } }); } catch (_) { /* best-effort */ }
+                try { model.save?.(); } catch (_) { /* best-effort */ }
+              }, 0);
+            } catch (_) { /* setTimeout unavailable — dialog's clear-on-open still blanks the form */ }
           },
         },
       },
