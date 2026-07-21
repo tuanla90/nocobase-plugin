@@ -18,7 +18,9 @@ import { t } from './i18n';
 // the labels + the HTML row (which embeds Vietnamese "màu") are translated at render via t(). The pure
 // function-name rows are identical in both languages, so t() simply returns them unchanged.
 const HELP_GROUPS: Array<[string, string]> = [
-  ['Văn bản', 'CONCATENATE · TEXTJOIN · LEFT · RIGHT · MID · UPPER · LOWER · PROPER · TRIM · LEN · SUBSTITUTE · TEXT · REPT'],
+  ['Văn bản', 'CONCATENATE · TEXTJOIN(sep,bỏ_ô_trống,…) · LEFT · RIGHT · MID · UPPER · LOWER · PROPER · TRIM · LEN · SUBSTITUTE · TEXT · REPT · SPLIT · CONTAINS · STARTSWITH · ENDSWITH'],
+  ['Regex', 'REGEXMATCH(text,"mẫu") · REGEXEXTRACT(text,"[0-9]+") · REGEXREPLACE(text,"mẫu","thay"). Lưu ý: \\d \\w \\s phải nhân đôi → "\\\\d+"'],
+  ['Danh sách/mảng', 'LIST(a,b,…) · UNIQUE(mảng) · DISTINCT · ANY(mảng) · IN(x,mảng) · SPLIT(text,sep) — đếm phần tử bằng COUNTA'],
   ['Logic', 'IF · IFS · SWITCH · AND · OR · NOT · IFERROR · ISBLANK · ISNUMBER'],
   ['Số', 'SUM · AVERAGE · MIN · MAX · COUNT · ROUND · ROUNDUP · ROUNDDOWN · ABS · MOD · POWER · CEILING · FLOOR'],
   ['Ngày', 'TODAY · NOW · DATE · YEAR · MONTH · DAY · DATEDIF · EDATE · TEXT(date,"dd/mm/yyyy")'],

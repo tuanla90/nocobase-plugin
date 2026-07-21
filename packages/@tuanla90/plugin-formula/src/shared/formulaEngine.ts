@@ -246,6 +246,49 @@ function IN(x: any, list: any): boolean {
 // AppSheet ANY(list) → the first element (≈ INDEX(list, 1)).
 function ANY(list: any): any { const arr = Array.isArray(list) ? list : list == null ? [] : [list]; return arr.length ? arr[0] : ''; }
 
+// UNIQUE(list) / UNIQUE(a, b, …) → distinct values, keeping first-seen order. OVERRIDES formulajs's UNIQUE,
+// which dedupes its ARGUMENT list — so UNIQUE(data.items.cat) (a single plucked array arg) returned
+// [theArray] instead of the distinct categories. This flattens every arg (so a to-many relation works) and
+// dedupes with a LOOSE key so 5, "5" and "5.0" collapse (formulajs used ===, which kept them separate).
+function _ukey(v: any): string {
+  if (v === null || v === undefined) return '\0n';
+  if (typeof v === 'boolean') return 'b:' + v;
+  if (typeof v === 'number') return Number.isFinite(v) ? 'n:' + v : 's:' + v;
+  const s = String(v); const t = s.trim();
+  if (t !== '' && /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(t)) { const n = Number(t); if (Number.isFinite(n)) return 'n:' + n; }
+  return 's:' + s;
+}
+function UNIQUE(...args: any[]): any[] {
+  const flat: any[] = [];
+  const walk = (v: any) => { if (Array.isArray(v)) v.forEach(walk); else flat.push(v); };
+  for (const a of args) walk(a);
+  const seen = new Set<string>(); const out: any[] = [];
+  for (const v of flat) { const k = _ukey(v); if (!seen.has(k)) { seen.add(k); out.push(v); } }
+  return out;
+}
+
+// ---------------- Regex (Google-Sheets-style REGEXMATCH / REGEXEXTRACT / REGEXREPLACE) ----------------
+// The pattern is a JS string, so a backslash class must be DOUBLED in the formula: "\\d+", "\\w", "\\s"
+// (a single "\d" collapses to "d" when the formula compiles). An invalid pattern degrades safely instead
+// of throwing (MATCH → false, EXTRACT → "", REPLACE → text unchanged).
+function _re(pattern: any, flags?: any): RegExp | null {
+  try { return new RegExp(_s(pattern), flags == null ? '' : _s(flags)); } catch { return null; }
+}
+function REGEXMATCH(text: any, pattern: any, flags?: any): boolean {
+  const re = _re(pattern, flags); return re ? re.test(_s(text)) : false;
+}
+function REGEXEXTRACT(text: any, pattern: any, flags?: any): string {
+  const re = _re(pattern, flags); if (!re) return '';
+  const m = _s(text).match(re); if (!m) return '';
+  return _s(m[1] !== undefined ? m[1] : m[0]); // first capture group if the pattern has one, else the whole match
+}
+function REGEXREPLACE(text: any, pattern: any, replacement: any, flags?: any): string {
+  const raw = flags == null ? '' : _s(flags);
+  const re = _re(pattern, raw.includes('g') ? raw : raw + 'g'); // always global — REGEXREPLACE replaces ALL (Sheets)
+  if (!re) return _s(text);
+  try { return _s(text).replace(re, _s(replacement)); } catch { return _s(text); }
+}
+
 export const CUSTOM_FNS: Record<string, (...a: any[]) => any> = {
   FILTER, filter: FILTER, SELECT: FILTER, select: FILTER, __FILTER_ROWS, __FILTER_ROWS_IDX,
   SUMIFS, sumifs: SUMIFS, SUMIF, sumif: SUMIF,
@@ -255,6 +298,9 @@ export const CUSTOM_FNS: Record<string, (...a: any[]) => any> = {
   SPLIT, split: SPLIT, STARTSWITH, startswith: STARTSWITH, ENDSWITH, endswith: ENDSWITH,
   CONTAINS, contains: CONTAINS, ISNOTBLANK, isnotblank: ISNOTBLANK,
   LIST, list: LIST, ANY, any: ANY, IN,
+  // UNIQUE overrides formulajs's broken (argument-deduping) version; DISTINCT is an alias.
+  UNIQUE, unique: UNIQUE, DISTINCT: UNIQUE, distinct: UNIQUE,
+  REGEXMATCH, regexmatch: REGEXMATCH, REGEXEXTRACT, regexextract: REGEXEXTRACT, REGEXREPLACE, regexreplace: REGEXREPLACE,
 };
 
 const RESERVED = new Set(
@@ -498,7 +544,7 @@ export function listFunctionNames(): string[] {
   return Object.keys(formulajs)
     .filter((k) => typeof (formulajs as any)[k] === 'function')
     .concat(Object.keys(HTML_FNS))
-    .concat(['FILTER', 'SELECT', 'SPLIT', 'STARTSWITH', 'ENDSWITH', 'CONTAINS', 'ISNOTBLANK', 'LIST', 'IN', 'ANY'])
+    .concat(['FILTER', 'SELECT', 'SPLIT', 'STARTSWITH', 'ENDSWITH', 'CONTAINS', 'ISNOTBLANK', 'LIST', 'IN', 'ANY', 'DISTINCT', 'REGEXMATCH', 'REGEXEXTRACT', 'REGEXREPLACE'])
     .sort();
 }
 

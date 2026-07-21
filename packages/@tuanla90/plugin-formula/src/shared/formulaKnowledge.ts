@@ -42,6 +42,11 @@ export const FORMULA_EXAMPLES: Array<[string, string]> = [
   ['Ngày đến hạn +1 tháng (date)', 'EDATE(data.order_date, 1)'],
   ['Số ngày giữa 2 mốc', 'DAYS(data.end_date, data.start_date)'],
   ['Tra đơn giá theo KHOÁ QUAN HỆ (so id — thay cho nested)', 'INDEX(SELECT(bang_gia.don_gia, bang_gia.product_id == data.product_id), 1)'],
+  ['Liệt kê loại (con) không trùng → chuỗi', 'TEXTJOIN(", ", TRUE, UNIQUE(data.items.category))'],
+  ['Tách chuỗi rồi đếm số phần tử', 'COUNTA(SPLIT(data.ho_ten, " "))'],
+  ['Lấy dãy số trong mã (regex)', 'REGEXEXTRACT(data.sku, "[0-9]+")'],
+  ['Kiểm tra đúng định dạng email (regex)', 'REGEXMATCH(data.email, "^[^@ ]+@[^@ ]+\\\\.[^@ ]+$")'],
+  ['Bỏ mọi ký tự không phải số (regex)', 'REGEXREPLACE(data.phone, "[^0-9]", "")'],
 ];
 
 /** Capability manifest — which functions exist (grouped). Shown in the "hàm" popover; fed to the AI so
@@ -53,7 +58,9 @@ export const FORMULA_FUNCTIONS: Array<[string, string]> = [
   ['Bảng tra cứu 2 khoá (gõ THẲNG tên bảng, không có data.)', 'SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b) — bang_hs = tên collection config'],
   ['Lookup khác', 'INDEX · MATCH · CHOOSE · SWITCH · VLOOKUP (VLOOKUP cần mảng 2D trong 1 field JSON, không dùng cho bảng collection)'],
   ['Logic', 'IF · IFS · AND · OR · NOT · IFERROR · ISBLANK · ISNUMBER'],
-  ['Text', 'CONCATENATE · LEFT · RIGHT · MID · UPPER · LOWER · TRIM · LEN · TEXT'],
+  ['Text', 'CONCATENATE · LEFT · RIGHT · MID · UPPER · LOWER · TRIM · LEN · TEXT · SPLIT · TEXTJOIN(sep,bỏ_ô_trống,…) · CONTAINS · STARTSWITH · ENDSWITH'],
+  ['Regex (kiểu Google Sheets — mẫu là chuỗi JS nên gõ \\d \\w \\s phải NHÂN ĐÔI: "\\\\d+")', 'REGEXMATCH(text,"mẫu")→true/false · REGEXEXTRACT(text,"[0-9]+")→phần khớp đầu (hoặc nhóm bắt đầu tiên) · REGEXREPLACE(text,"mẫu","thay")→thay TẤT CẢ'],
+  ['Danh sách / mảng', 'LIST(a,b,…) tạo mảng · UNIQUE(mảng)/DISTINCT lọc trùng · ANY(mảng) phần tử đầu · IN(x,mảng) có thuộc? · SPLIT(text,sep) tách chuỗi → mảng (đếm phần tử bằng COUNTA)'],
   ['Ngày', 'TODAY · NOW · YEAR · MONTH · DAY · DATEDIF · EDATE · DAYS'],
 ];
 
