@@ -47,6 +47,11 @@ export const FORMULA_EXAMPLES: Array<[string, string]> = [
   ['Lấy dãy số trong mã (regex)', 'REGEXEXTRACT(data.sku, "[0-9]+")'],
   ['Kiểm tra đúng định dạng email (regex)', 'REGEXMATCH(data.email, "^[^@ ]+@[^@ ]+\\\\.[^@ ]+$")'],
   ['Bỏ mọi ký tự không phải số (regex)', 'REGEXREPLACE(data.phone, "[^0-9]", "")'],
+  ['Hạn thanh toán = ngày ĐH + 30 ngày', 'ADDDAYS(data.order_date, 30)'],
+  ['Đáo hạn sau N tháng', 'ADDMONTHS(data.start_date, data.term_months)'],
+  ['Nhắc trước hạn 3 ngày (cờ)', 'ADDDAYS(data.due_date, -3) <= TODAY()'],
+  ['Tên viết tắt', 'INITIALS(data.ho_ten)'],
+  ['Kỹ năng trùng giữa 2 người', 'INTERSECT(data.a.skills, data.b.skills)'],
 ];
 
 /** Capability manifest — which functions exist (grouped). Shown in the "hàm" popover; fed to the AI so
@@ -58,10 +63,10 @@ export const FORMULA_FUNCTIONS: Array<[string, string]> = [
   ['Bảng tra cứu 2 khoá (gõ THẲNG tên bảng, không có data.)', 'SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b) — bang_hs = tên collection config'],
   ['Lookup khác', 'INDEX · MATCH · CHOOSE · SWITCH · VLOOKUP (VLOOKUP cần mảng 2D trong 1 field JSON, không dùng cho bảng collection)'],
   ['Logic', 'IF · IFS · AND · OR · NOT · IFERROR · ISBLANK · ISNUMBER'],
-  ['Text', 'CONCATENATE · LEFT · RIGHT · MID · UPPER · LOWER · TRIM · LEN · TEXT · SPLIT · TEXTJOIN(sep,bỏ_ô_trống,…) · CONTAINS · STARTSWITH · ENDSWITH'],
+  ['Text', 'CONCATENATE · LEFT · RIGHT · MID · UPPER · LOWER · TRIM · LEN · TEXT · SPLIT · TEXTJOIN(sep,bỏ_ô_trống,…) · CONTAINS · STARTSWITH · ENDSWITH · INITIALS(tên→viết tắt)'],
   ['Regex (kiểu Google Sheets — mẫu là chuỗi JS nên gõ \\d \\w \\s phải NHÂN ĐÔI: "\\\\d+")', 'REGEXMATCH(text,"mẫu")→true/false · REGEXEXTRACT(text,"[0-9]+")→phần khớp đầu (hoặc nhóm bắt đầu tiên) · REGEXREPLACE(text,"mẫu","thay")→thay TẤT CẢ'],
-  ['Danh sách / mảng', 'LIST(a,b,…) tạo mảng · UNIQUE(mảng)/DISTINCT lọc trùng · ANY(mảng) phần tử đầu · IN(x,mảng) có thuộc? · SPLIT(text,sep) tách chuỗi → mảng (đếm phần tử bằng COUNTA)'],
-  ['Ngày', 'TODAY · NOW · YEAR · MONTH · DAY · DATEDIF · EDATE · DAYS'],
+  ['Danh sách / mảng', 'LIST(a,b,…) tạo mảng · UNIQUE(mảng)/DISTINCT lọc trùng · INTERSECT(a,b) giao 2 mảng · ANY(mảng) phần tử đầu · IN(x,mảng) có thuộc? · SPLIT(text,sep) tách chuỗi → mảng (đếm phần tử bằng COUNTA)'],
+  ['Ngày', 'TODAY · NOW · YEAR · MONTH · DAY · DATEDIF · EDATE · DAYS · ADDDAYS · ADDMONTHS · ADDYEARS · DATEADD(date,n,"day"|"month"|"year") — n âm để TRỪ'],
 ];
 
 /** The DSL syntax rules the AI must follow EXACTLY (also the essence of the "hàm" popover header). */
@@ -82,7 +87,8 @@ export const APPSHEET_RULES = [
   'So sánh: AppSheet = → NocoBase == ; <> → != . Nối chuỗi & GIỮ NGUYÊN. VÀ/HOẶC: AND()/OR() giữ nguyên hoặc && / ||.',
   'Gộp bảng con SUM(SELECT(child[col], [fk]=[_THISROW].[id])) → nếu có quan hệ hasMany: SUM(data.<quan_hệ>.col); nếu không: SUM(SELECT(child.col, child.fk == data.id)) (điều kiện == được index).',
   'SELECT(table[col], cond) → SELECT(table.col, cond). Trong cond: cột bảng đang lọc = table.col, cột dòng hiện tại = data.col. ANY(x) → INDEX(x, 1). LOOKUP(v,"t",k,r) → INDEX(SELECT(t.r, t.k == v), 1). MAX(SELECT(t[c],TRUE)) → MAX(t.c).',
-  'Hàm giữ NGUYÊN vì engine đã có: IF IFS SWITCH AND OR NOT SUM MIN MAX AVERAGE IN LIST ANY SPLIT STARTSWITH ENDSWITH CONTAINS ISNOTBLANK ISBLANK NOW TODAY TEXT LEFT RIGHT MID LEN TRIM CONCATENATE. Đổi tên: NUMBER→VALUE.',
+  'Hàm giữ NGUYÊN vì engine đã có: IF IFS SWITCH AND OR NOT SUM MIN MAX AVERAGE IN LIST ANY SPLIT STARTSWITH ENDSWITH CONTAINS ISNOTBLANK ISBLANK UNIQUE INTERSECT INITIALS NOW TODAY TEXT LEFT RIGHT MID LEN TRIM CONCATENATE. Đổi tên: NUMBER→VALUE.',
+  'Cộng/trừ ngày (AppSheet dùng [date]+n cho NGÀY, EDATE cho tháng): +n ngày → ADDDAYS(date, n); +n tháng → ADDMONTHS(date, n); +n năm → ADDYEARS(date, n); hoặc DATEADD(date, n, "day"|"month"|"year"). n ÂM = trừ. Kết quả là chuỗi ngày, chain được với YEAR/MONTH/DAY/TEXT.',
   '⚠️ COUNT: AppSheet COUNT(list) đếm SỐ PHẦN TỬ của list → dùng COUNTA (Excel/engine COUNT chỉ đếm Ô SỐ). VD AppSheet count(split(x," ")) → COUNTA(SPLIT(x," ")).',
   'KHÔNG map thành công thức (báo cho người dùng, đừng bịa): UNIQUEID() (id tự sinh), USERSETTINGS() (người dùng hiện tại → field hệ thống Created by), LIST(...) cho quyền xem (ACL). Valid If dạng FILTER("t",…) = data scope của trường quan hệ, không phải công thức.',
 ].join('\n');

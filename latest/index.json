@@ -132,9 +132,9 @@
     {
       "packageName": "@tuanla90/plugin-formula",
       "slug": "formula",
-      "version": "0.1.82",
+      "version": "0.1.83",
       "displayName": "Formula & Computed Fields",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.82.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.83.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-global-search",

@@ -4,7 +4,7 @@
 > form default values, **stored columns the server recomputes** across relations, and **sequential / window** calculations
 > like running balances or FIFO / average inventory costing — **no code**.
 
-**Group:** Blocks / Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.82
+**Group:** Blocks / Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.83
 
 ## What's new after installing?
 
@@ -44,8 +44,9 @@ On top of the ~400 Excel functions (formulajs), the engine adds a few **AppSheet
 
 | Group | Functions | Example |
 |---|---|---|
-| **Text** | `SPLIT(text, sep)` → array · `TEXTJOIN(sep, ignore_empty, …)` array → string · `CONTAINS` · `STARTSWITH` · `ENDSWITH` | `TEXTJOIN(", ", TRUE, data.items.name)` |
-| **List / array** | `LIST(a, b, …)` build an array · `UNIQUE(array)` / `DISTINCT` de-dupe · `ANY(array)` first element · `IN(x, array)` membership · `ISNOTBLANK(x)` | `TEXTJOIN(", ", TRUE, UNIQUE(data.items.category))` |
+| **Text** | `SPLIT(text, sep)` → array · `TEXTJOIN(sep, ignore_empty, …)` array → string · `CONTAINS` · `STARTSWITH` · `ENDSWITH` · `INITIALS(name)` | `TEXTJOIN(", ", TRUE, data.items.name)` |
+| **List / array** | `LIST(a, b, …)` build an array · `UNIQUE(array)` / `DISTINCT` de-dupe · `INTERSECT(a, b)` common items · `ANY(array)` first element · `IN(x, array)` membership · `ISNOTBLANK(x)` | `TEXTJOIN(", ", TRUE, UNIQUE(data.items.category))` |
+| **Date — add/subtract** | `ADDDAYS(date, n)` · `ADDMONTHS(date, n)` · `ADDYEARS(date, n)` · `DATEADD(date, n, "day"/"month"/"year")`. **Negative `n` subtracts**; end-of-month clamp; returns a date string (chainable with `YEAR`/`MONTH`/`DAY`/`TEXT`) | `ADDDAYS(data.order_date, 30)` (due +30 days) |
 | **Regex** (Google-Sheets style) | `REGEXMATCH(text, "pattern")` → true/false · `REGEXEXTRACT(text, "pattern")` first match (or first capture group) · `REGEXREPLACE(text, "pattern", "repl")` replace **all** | `REGEXEXTRACT(data.sku, "[0-9]+")` |
 | **Conditional filter / aggregate** | `FILTER` / `SELECT` (≈ AppSheet SELECT) · `SUMIFS` `COUNTIFS` `AVERAGEIFS` | `SUM(FILTER(data.items.amt, data.items.status == "active"))` |
 
@@ -138,4 +139,4 @@ Use this for **ordered accumulation** (balance after each voucher, stock on hand
 
 ### For developers
 
-The engine is ~400 formulajs functions + HTML helpers + AppSheet/regex-style helpers (`SPLIT` `TEXTJOIN` `UNIQUE`/`DISTINCT` `CONTAINS` `LIST` `IN` `ANY` `REGEXMATCH`/`REGEXEXTRACT`/`REGEXREPLACE` — in `CUSTOM_FNS`, `src/shared/formulaEngine.ts`). Five entry points: the virtual column (`formulaColumnModel` + classic `formulaColumnClassic`), the display field (`formulaFieldModel`), the default value compiled to RunJS (`formulaDefaultValue`), the server computed-rule stored in `ptdlComputedRules` (client `computedRuleClient`, auto-detects dependencies + fan-out + WS live-refresh), and the sequential / window + costing engine (`ScanCalcManager`, `excelToSql`). Design details: `COMPUTED-FIELD.md` (§4b example list), `ROLLUP.md`, `LEDGER-WINDOW-MODE.md`, `COSTING.md`.
+The engine is ~400 formulajs functions + HTML helpers + AppSheet/regex-style helpers (`SPLIT` `TEXTJOIN` `UNIQUE`/`DISTINCT` `CONTAINS` `LIST` `IN` `ANY` `REGEXMATCH`/`REGEXEXTRACT`/`REGEXREPLACE` `INTERSECT` `INITIALS` `ADDDAYS`/`ADDMONTHS`/`ADDYEARS`/`DATEADD` — in `CUSTOM_FNS`, `src/shared/formulaEngine.ts`). Five entry points: the virtual column (`formulaColumnModel` + classic `formulaColumnClassic`), the display field (`formulaFieldModel`), the default value compiled to RunJS (`formulaDefaultValue`), the server computed-rule stored in `ptdlComputedRules` (client `computedRuleClient`, auto-detects dependencies + fan-out + WS live-refresh), and the sequential / window + costing engine (`ScanCalcManager`, `excelToSql`). Design details: `COMPUTED-FIELD.md` (§4b example list), `ROLLUP.md`, `LEDGER-WINDOW-MODE.md`, `COSTING.md`.

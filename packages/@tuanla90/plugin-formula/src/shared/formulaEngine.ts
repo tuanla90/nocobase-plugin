@@ -289,6 +289,62 @@ function REGEXREPLACE(text: any, pattern: any, replacement: any, flags?: any): s
   try { return _s(text).replace(re, _s(replacement)); } catch { return _s(text); }
 }
 
+// ---------------- List helpers (AppSheet parity) ----------------
+const _arr = (v: any): any[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
+// INTERSECT(a, b) → items of `a` that also appear in `b`, de-duped, first-seen order. Loose key (5 == "5").
+function INTERSECT(a: any, b: any): any[] {
+  const inB = new Set(_arr(b).map(_ukey));
+  const seen = new Set<string>(); const out: any[] = [];
+  for (const v of _arr(a)) { const k = _ukey(v); if (inB.has(k) && !seen.has(k)) { seen.add(k); out.push(v); } }
+  return out;
+}
+// INITIALS("Nguyễn Văn A") → "NVA" (first letter of each whitespace word, upper-cased).
+function INITIALS(text: any): string {
+  return _s(text).split(/\s+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase()).join('');
+}
+
+// ---------------- Date add/subtract (calendar-safe, timezone-FREE) ----------------
+// Dates here arrive as strings ('YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS…'), occasionally a JS Date. We compute
+// on the calendar PARTS and return a STRING in the SAME shape (date-only vs with-time) — so there is NO
+// timezone drift (routing through a JS Date can shift the day by one when it is later formatted in UTC, as
+// formulajs's EDATE does). Pass a NEGATIVE n to subtract. daysInMonth clamps end-of-month (Jan 31 +1mo → Feb 28).
+type DParts = { y: number; mo: number; d: number; h: number; mi: number; s: number; hasTime: boolean };
+function _dateParts(v: any): DParts | null {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    return { y: v.getUTCFullYear(), mo: v.getUTCMonth() + 1, d: v.getUTCDate(), h: v.getUTCHours(), mi: v.getUTCMinutes(), s: v.getUTCSeconds(), hasTime: true };
+  }
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/.exec(String(v).trim());
+  if (!m) return null;
+  return { y: +m[1], mo: +m[2], d: +m[3], h: m[4] ? +m[4] : 0, mi: m[5] ? +m[5] : 0, s: m[6] ? +m[6] : 0, hasTime: m[4] != null };
+}
+const _p2 = (n: number) => (n < 10 ? '0' + n : '' + n);
+function _fmtParts(p: DParts): string {
+  const date = `${String(p.y).padStart(4, '0')}-${_p2(p.mo)}-${_p2(p.d)}`;
+  return p.hasTime ? `${date} ${_p2(p.h)}:${_p2(p.mi)}:${_p2(p.s)}` : date;
+}
+function _daysInMonth(y: number, mo1: number): number { return new Date(Date.UTC(y, mo1, 0)).getUTCDate(); } // mo1 = 1..12
+function ADDMONTHS(dateVal: any, n: any): string | null {
+  const p = _dateParts(dateVal); if (!p) return null;
+  const total = p.y * 12 + (p.mo - 1) + Math.trunc(Number(n) || 0);
+  const y = Math.floor(total / 12); const mo = ((total % 12) + 12) % 12 + 1;
+  return _fmtParts({ ...p, y, mo, d: Math.min(p.d, _daysInMonth(y, mo)) });
+}
+function ADDYEARS(dateVal: any, n: any): string | null { return ADDMONTHS(dateVal, Math.trunc(Number(n) || 0) * 12); }
+function ADDDAYS(dateVal: any, n: any): string | null {
+  const p = _dateParts(dateVal); if (!p) return null;
+  const dt = new Date(Date.UTC(p.y, p.mo - 1, p.d + Math.trunc(Number(n) || 0)));
+  return _fmtParts({ y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate(), h: p.h, mi: p.mi, s: p.s, hasTime: p.hasTime });
+}
+// Generic: DATEADD(date, n, "day"|"month"|"year"). Unit defaults to days.
+function DATEADD(dateVal: any, n: any, unit?: any): string | null {
+  const u = _s(unit).toLowerCase().trim();
+  if (u === 'year' || u === 'years' || u === 'y') return ADDYEARS(dateVal, n);
+  if (u === 'month' || u === 'months' || u === 'mo' || u === 'm') return ADDMONTHS(dateVal, n);
+  return ADDDAYS(dateVal, n);
+}
+
 export const CUSTOM_FNS: Record<string, (...a: any[]) => any> = {
   FILTER, filter: FILTER, SELECT: FILTER, select: FILTER, __FILTER_ROWS, __FILTER_ROWS_IDX,
   SUMIFS, sumifs: SUMIFS, SUMIF, sumif: SUMIF,
@@ -301,6 +357,9 @@ export const CUSTOM_FNS: Record<string, (...a: any[]) => any> = {
   // UNIQUE overrides formulajs's broken (argument-deduping) version; DISTINCT is an alias.
   UNIQUE, unique: UNIQUE, DISTINCT: UNIQUE, distinct: UNIQUE,
   REGEXMATCH, regexmatch: REGEXMATCH, REGEXEXTRACT, regexextract: REGEXEXTRACT, REGEXREPLACE, regexreplace: REGEXREPLACE,
+  INTERSECT, intersect: INTERSECT, INITIALS, initials: INITIALS,
+  // Date add/subtract (negative n subtracts): ADDDAYS/ADDMONTHS/ADDYEARS + generic DATEADD(date, n, unit).
+  ADDDAYS, adddays: ADDDAYS, ADDMONTHS, addmonths: ADDMONTHS, ADDYEARS, addyears: ADDYEARS, DATEADD, dateadd: DATEADD,
 };
 
 const RESERVED = new Set(
@@ -544,7 +603,7 @@ export function listFunctionNames(): string[] {
   return Object.keys(formulajs)
     .filter((k) => typeof (formulajs as any)[k] === 'function')
     .concat(Object.keys(HTML_FNS))
-    .concat(['FILTER', 'SELECT', 'SPLIT', 'STARTSWITH', 'ENDSWITH', 'CONTAINS', 'ISNOTBLANK', 'LIST', 'IN', 'ANY', 'DISTINCT', 'REGEXMATCH', 'REGEXEXTRACT', 'REGEXREPLACE'])
+    .concat(['FILTER', 'SELECT', 'SPLIT', 'STARTSWITH', 'ENDSWITH', 'CONTAINS', 'ISNOTBLANK', 'LIST', 'IN', 'ANY', 'DISTINCT', 'REGEXMATCH', 'REGEXEXTRACT', 'REGEXREPLACE', 'INTERSECT', 'INITIALS', 'ADDDAYS', 'ADDMONTHS', 'ADDYEARS', 'DATEADD'])
     .sort();
 }
 

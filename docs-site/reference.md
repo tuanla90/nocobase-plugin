@@ -25,10 +25,10 @@ The engine wraps **`@formulajs/formulajs`** (~400 Excel functions), so most Exce
 | Two-key lookup table (type the table name directly, no `data.`) | `SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b)` — `bang_hs` = the config collection name |
 | Other lookup | `INDEX` · `MATCH` · `CHOOSE` · `SWITCH` · `VLOOKUP` (VLOOKUP needs a 2D array in one JSON field, not for a collection table) |
 | Logic | `IF` · `IFS` · `AND` · `OR` · `NOT` · `IFERROR` · `ISBLANK` · `ISNUMBER` |
-| Text | `CONCATENATE` · `LEFT` · `RIGHT` · `MID` · `UPPER` · `LOWER` · `TRIM` · `LEN` · `TEXT` · `SPLIT` · `TEXTJOIN(sep, ignore_empty, …)` · `CONTAINS` · `STARTSWITH` · `ENDSWITH` |
+| Text | `CONCATENATE` · `LEFT` · `RIGHT` · `MID` · `UPPER` · `LOWER` · `TRIM` · `LEN` · `TEXT` · `SPLIT` · `TEXTJOIN(sep, ignore_empty, …)` · `CONTAINS` · `STARTSWITH` · `ENDSWITH` · `INITIALS(name)` |
 | Regex (Google-Sheets style) | `REGEXMATCH(text, "pattern")` → true/false · `REGEXEXTRACT(text, "[0-9]+")` first match (or first capture group) · `REGEXREPLACE(text, "pattern", "repl")` replace **all**. Pattern is a string → double the `\`: `` `\\d` `` `` `\\w` `` |
-| List / array | `LIST(a, b, …)` build an array · `UNIQUE(array)` / `DISTINCT` de-dupe · `ANY(array)` first element · `IN(x, array)` membership · `SPLIT(text, sep)` — count elements with `COUNTA` |
-| Date | `TODAY` · `NOW` · `YEAR` · `MONTH` · `DAY` · `DATEDIF` · `EDATE` · `DAYS` |
+| List / array | `LIST(a, b, …)` build an array · `UNIQUE(array)` / `DISTINCT` de-dupe · `INTERSECT(a, b)` common items · `ANY(array)` first element · `IN(x, array)` membership · `SPLIT(text, sep)` — count elements with `COUNTA` |
+| Date | `TODAY` · `NOW` · `YEAR` · `MONTH` · `DAY` · `DATEDIF` · `EDATE` · `DAYS` · `ADDDAYS(date, n)` · `ADDMONTHS(date, n)` · `ADDYEARS(date, n)` · `DATEADD(date, n, "day"/"month"/"year")` — negative `n` **subtracts** |
 
 ### HTML display functions
 

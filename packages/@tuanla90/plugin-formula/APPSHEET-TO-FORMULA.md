@@ -49,10 +49,13 @@
 | **`LIST(a,b,…)`** `ANY(list)` | `LIST(a,b,…)` `ANY(list)` | ✅ native (ANY = phần tử đầu) |
 | **`UNIQUE(list)`** | `UNIQUE(list)` / `DISTINCT` | ✅ native v0.1.82 — lọc trùng **phần tử mảng** (bản formulajs cũ lọc theo đối số, đã ghi đè) |
 | **`SPLIT(t, " ")`** | `SPLIT(t, " ")` · gộp ngược `TEXTJOIN(sep, TRUE, list)` | ✅ native (TEXTJOIN sẵn từ Excel) |
+| **`INTERSECT(a, b)`** | `INTERSECT(a, b)` | ✅ native v0.1.83 — giao 2 mảng (loại trùng) |
+| **`INITIALS(name)`** | `INITIALS(name)` | ✅ native v0.1.83 — "Nguyễn Văn A" → "NVA" |
 | **`STARTSWITH` `ENDSWITH` `CONTAINS`** | như nhau | ✅ native v0.1.65 |
 | **`ISNOTBLANK(x)`** `ISBLANK(x)` | như nhau | ✅ native |
 | `LOOKUP(val, "t", key, ret)` | `INDEX(SELECT(t.ret, t.key == val), 1)` | tra 1 giá trị |
 | `NOW()` `TODAY()` `TEXT(x,"DD/MM/YYYY")` | như nhau | |
+| `[date] + n` (cộng NGÀY) · cộng tháng/năm | `ADDDAYS(date, n)` · `ADDMONTHS(date, n)` · `ADDYEARS(date, n)` · `DATEADD(date, n, "day"/"month"/"year")` | ✅ native v0.1.83 — `n` âm = trừ; tính trên phần lịch nên **không lệch múi giờ** (khác `EDATE`) |
 | `LEFT` `RIGHT` `MID` `LEN` `TRIM` `UPPER` `LOWER` `CONCATENATE` | như nhau | |
 | `IFERROR` `ROUND` `YEAR` `MONTH` | như nhau | |
 

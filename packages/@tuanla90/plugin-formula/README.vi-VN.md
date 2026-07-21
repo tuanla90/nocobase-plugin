@@ -4,7 +4,7 @@
 > giá trị mặc định của form, cột **lưu-trữ do server tự tính lại** theo quan hệ, và các phép **tuần tự / cửa sổ**
 > như số dư lũy kế hay tồn kho FIFO / bình quân — **không cần code**.
 
-**Nhóm:** Blocks / Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.82
+**Nhóm:** Blocks / Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.83
 
 ## Sau khi cài, có gì mới?
 
@@ -44,8 +44,9 @@ Ngoài ~400 hàm Excel (formulajs), engine có thêm các hàm kiểu **AppSheet
 
 | Nhóm | Hàm | Ví dụ |
 |---|---|---|
-| **Chuỗi** | `SPLIT(text, sep)` tách → mảng · `TEXTJOIN(sep, bỏ_ô_trống, …)` gộp mảng → chuỗi · `CONTAINS` · `STARTSWITH` · `ENDSWITH` | `TEXTJOIN(", ", TRUE, data.items.ten)` |
-| **Danh sách / mảng** | `LIST(a, b, …)` tạo mảng · `UNIQUE(mảng)` / `DISTINCT` lọc trùng · `ANY(mảng)` phần tử đầu · `IN(x, mảng)` có thuộc? · `ISNOTBLANK(x)` | `TEXTJOIN(", ", TRUE, UNIQUE(data.items.loai))` |
+| **Chuỗi** | `SPLIT(text, sep)` tách → mảng · `TEXTJOIN(sep, bỏ_ô_trống, …)` gộp mảng → chuỗi · `CONTAINS` · `STARTSWITH` · `ENDSWITH` · `INITIALS(tên)` viết tắt | `TEXTJOIN(", ", TRUE, data.items.ten)` |
+| **Danh sách / mảng** | `LIST(a, b, …)` tạo mảng · `UNIQUE(mảng)` / `DISTINCT` lọc trùng · `INTERSECT(a, b)` giao 2 mảng · `ANY(mảng)` phần tử đầu · `IN(x, mảng)` có thuộc? · `ISNOTBLANK(x)` | `TEXTJOIN(", ", TRUE, UNIQUE(data.items.loai))` |
+| **Ngày — cộng/trừ** | `ADDDAYS(date, n)` · `ADDMONTHS(date, n)` · `ADDYEARS(date, n)` · `DATEADD(date, n, "day"/"month"/"year")`. **`n` âm để trừ**; clamp cuối tháng; kết quả là chuỗi ngày (chain được với `YEAR`/`MONTH`/`DAY`/`TEXT`) | `ADDDAYS(data.order_date, 30)` (hạn +30 ngày) |
 | **Regex** (kiểu Google Sheets) | `REGEXMATCH(text, "mẫu")` → true/false · `REGEXEXTRACT(text, "mẫu")` lấy phần khớp (hoặc nhóm bắt `(...)` đầu tiên) · `REGEXREPLACE(text, "mẫu", "thay")` thay **tất cả** | `REGEXEXTRACT(data.sku, "[0-9]+")` |
 | **Lọc / gộp có điều kiện** | `FILTER` / `SELECT` (≈ SELECT của AppSheet) · `SUMIFS` `COUNTIFS` `AVERAGEIFS` | `SUM(FILTER(data.items.amt, data.items.status == "active"))` |
 
@@ -137,6 +138,6 @@ Dùng cho các phép **cộng dồn theo thứ tự** (số dư sau mỗi phiế
 
 ### Cho nhà phát triển
 
-Engine ~400 hàm formulajs + helper HTML + hàm kiểu AppSheet/regex (`SPLIT` `TEXTJOIN` `UNIQUE`/`DISTINCT` `CONTAINS` `LIST` `IN` `ANY` `REGEXMATCH`/`REGEXEXTRACT`/`REGEXREPLACE` — trong `CUSTOM_FNS`, `src/shared/formulaEngine.ts`). Năm điểm cắm: cột ảo (`formulaColumnModel` + classic `formulaColumnClassic`), field hiển thị (`formulaFieldModel`), giá trị mặc định biên dịch sang RunJS (`formulaDefaultValue`), rule tự tính server lưu ở `ptdlComputedRules` (client `computedRuleClient`, tự phát hiện phụ thuộc + fan-out + WS live-refresh), và tính tuần tự/cửa sổ + giá vốn (`ScanCalcManager`, `excelToSql`). Chi tiết thiết kế: `COMPUTED-FIELD.md` (§4b danh sách ví dụ), `ROLLUP.md`, `LEDGER-WINDOW-MODE.md`, `COSTING.md`, và `README.md` (tiếng Anh).
+Engine ~400 hàm formulajs + helper HTML + hàm kiểu AppSheet/regex (`SPLIT` `TEXTJOIN` `UNIQUE`/`DISTINCT` `CONTAINS` `LIST` `IN` `ANY` `REGEXMATCH`/`REGEXEXTRACT`/`REGEXREPLACE` `INTERSECT` `INITIALS` `ADDDAYS`/`ADDMONTHS`/`ADDYEARS`/`DATEADD` — trong `CUSTOM_FNS`, `src/shared/formulaEngine.ts`). Năm điểm cắm: cột ảo (`formulaColumnModel` + classic `formulaColumnClassic`), field hiển thị (`formulaFieldModel`), giá trị mặc định biên dịch sang RunJS (`formulaDefaultValue`), rule tự tính server lưu ở `ptdlComputedRules` (client `computedRuleClient`, tự phát hiện phụ thuộc + fan-out + WS live-refresh), và tính tuần tự/cửa sổ + giá vốn (`ScanCalcManager`, `excelToSql`). Chi tiết thiết kế: `COMPUTED-FIELD.md` (§4b danh sách ví dụ), `ROLLUP.md`, `LEDGER-WINDOW-MODE.md`, `COSTING.md`, và `README.md` (tiếng Anh).
 </content>
 </invoke>
