@@ -26,7 +26,7 @@ Plugin cài lúc runtime nằm ở `storage/plugins` trên **service NocoBase** 
 | ai-column | 0.7.5 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ai-column-0.7.5.tgz` |
 | app-builder | 0.6.26 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.26.tgz` |
 | block-custom-html | 0.12.9 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-block-custom-html-0.12.9.tgz` |
-| branding | 0.4.13 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.13.tgz` |
+| branding | 0.4.14 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.14.tgz` |
 | change-log | 0.1.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-change-log-0.1.4.tgz` |
 | conditional-format | 0.2.17 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.17.tgz` |
 | custom-header | 0.2.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-custom-header-0.2.4.tgz` |

@@ -34,9 +34,9 @@
     {
       "packageName": "@tuanla90/plugin-branding",
       "slug": "branding",
-      "version": "0.4.13",
+      "version": "0.4.14",
       "displayName": "Branding & Theme",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.13.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.14.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-change-log",
