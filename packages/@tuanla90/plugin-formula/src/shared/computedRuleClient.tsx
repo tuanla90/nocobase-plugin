@@ -24,6 +24,14 @@ import { NS, t as rt } from './i18n';
 // Captured in loadComputedRuleCache() so the in-form ⓘ edit modal (rendered deep inside a field model)
 // can reach the API client without threading it through every render.
 let sharedApi: any = null;
+// Captured in installComputedAutoRefresh() so the in-form ⓘ edit modal (and any non-ctx caller) can refetch
+// the page's data blocks after a save+recompute — the BUG-1 live refresh that makes a just-added/edited
+// formula's values appear WITHOUT a manual F5.
+let sharedFlowEngine: any = null;
+// The resolved core SubTableColumnModel class (set in registerComputedRuleFlow). Lets resolveCf detect a
+// sub-table column by `instanceof` (robust to minified constructor names) so a rule opened from a sub-table
+// column targets the CHILD collection + child field, never the parent's hasMany relation field.
+let SubTableColumnClass: any = null;
 // Whether the current user may CLICK the ⓘ to edit a rule in place: admins (allowAll) or roles that can
 // manage the data source (pm.data-source-manager). Everyone else gets a hover-only tooltip. Resolved once
 // at load; defaults false so the affordance stays hidden until we know the user is allowed.
@@ -200,6 +208,7 @@ let autoRefreshInstalled = false;
 export function installComputedAutoRefresh(app: any) {
   const axios = app?.apiClient?.axios;
   const flowEngine = app?.flowEngine;
+  sharedFlowEngine = flowEngine || sharedFlowEngine; // remember for the settings handler + ⓘ modal live refresh
   if (autoRefreshInstalled || !axios?.interceptors?.response || !flowEngine?.forEachModel) return;
   autoRefreshInstalled = true;
   let timer: any = null;
@@ -292,16 +301,104 @@ async function saveRule(api: any, cf: any, formula: string, runOn: string, onErr
   ruleCache.set(ck, values);
 }
 
+// `collectionField` is a getter (`return this.context.collectionField`) that resolves via the data-source
+// manager — it can THROW when the model's context isn't fully wired. Never let that break a settings dialog.
+function safeGetCf(m: any): any {
+  try {
+    return m?.collectionField || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// A relation/association field is NEVER a valid computed target — and a sub-table column's PARENT
+// (SubTableFieldModel) carries the hasMany relation field as ITS `collectionField`. So when walking up we
+// must skip that, or a sub-table rule would target `parent.<relation>` instead of `child.<field>`.
+function isAssocField(f: any): boolean {
+  if (!f) return false;
+  const t = f.type;
+  const i = f.interface;
+  return (
+    !!(f.target || f.targetCollection) &&
+    (t === 'hasMany' || t === 'belongsToMany' || t === 'hasOne' || t === 'belongsTo' ||
+      i === 'o2m' || i === 'm2m' || i === 'o2o' || i === 'm2o' || i === 'obo' || i === 'oho' || i === 'mbm')
+  );
+}
+
+// SUB-TABLE column resolver. A core `SubTableColumnModel` is initialised with the PARENT collection +
+// association-relative `fieldPath` ('items.qty'), and exposes `get collection()` = `this.parent.collection`
+// = the CHILD collection. Its own `collectionField` normally already resolves to the child LEAF field
+// (`data-source.getCollectionField('main.orders.items.qty')` → the `qty` field of the child collection,
+// whose `.collectionName` is the child). We prefer that; but if it isn't populated yet (context not wired),
+// derive the child field from `.collection` + the leaf of `fieldPath` so the rule ALWAYS targets the child
+// collection + child field — never the parent's hasMany relation. Returns null for non-sub-table models.
+function resolveSubTableChildCf(model: any): any {
+  for (let cur: any = model, i = 0; cur && i < 8; cur = cur.parent, i++) {
+    const isSubCol =
+      (SubTableColumnClass && cur instanceof SubTableColumnClass) ||
+      /SubTableColumnModel/.test(cur?.constructor?.name || '');
+    if (!isSubCol) continue;
+    const own = safeGetCf(cur);
+    if (own && !isAssocField(own)) return own; // the column's own child leaf field — the common case
+    // `.collection` (= parent.collection) and `.fieldPath` are getters that can throw on a transient model
+    // state — read them defensively so a settings dialog never crashes.
+    let childColl: any = null;
+    let fieldPath: any = null;
+    try { childColl = cur.collection; } catch (_) { /* ignore */ }
+    try { fieldPath = cur.fieldPath; } catch (_) { /* ignore */ }
+    const leaf = String(fieldPath || own?.name || '').split('.').filter(Boolean).pop();
+    if (childColl && leaf) {
+      try {
+        const f = childColl.getField?.(leaf);
+        if (f) return f;
+      } catch (_) {
+        /* ignore — fall through to a synthesized descriptor */
+      }
+      if (childColl.name) {
+        return {
+          collectionName: childColl.name,
+          name: leaf,
+          dataSourceKey: childColl.dataSourceKey || own?.dataSourceKey || 'main',
+        };
+      }
+    }
+    return own || null;
+  }
+  return null;
+}
+
 // Resolve a model's collectionField, walking up `.parent` (mirrors patchComputedHint's render-time walk —
 // SOME contexts, notably a SubTableColumnModel's column model, don't carry `collectionField` directly on
 // themselves; it lives on a parent). Without this, the rule-editor dialog opened from a sub-table column's
 // ⚙ can silently resolve `cf` to nothing (or the wrong ancestor), which shows as "Test on record" listing
 // the wrong/empty collection ("Bảng chưa có bản ghi") even though the real target collection has rows.
+// The sub-table branch runs FIRST so a sub-table rule targets the CHILD collection + child field, not the
+// parent's hasMany relation field (which a naive first-collectionField walk would grab).
 function resolveCf(model: any): any {
-  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
-    if (cur?.collectionField) return cur.collectionField;
+  const childCf = resolveSubTableChildCf(model);
+  if (childCf) return childCf;
+  for (let cur: any = model, i = 0; cur && i < 8; cur = cur.parent, i++) {
+    const cf = safeGetCf(cur);
+    if (cf) return cf;
   }
   return null;
+}
+
+// Resolve the apiClient from the WIDEST set of handles, ending at the module-level `sharedApi` captured at
+// load — so the editor/handler NEVER gets a null client, on a main-table column OR a sub-table column whose
+// context doesn't carry `api` the same way. NOTE: the client must reach the editor as a `getApi()` CLOSURE
+// (see the uiSchema): a flow-engine x-component-props clone strips an object's methods during schema compile
+// (functions survive), so a raw `api` object loses `.request` — which is exactly why a sub-table column's ⚙
+// "lost context" (field picker / lookup / Run / save all silently no-op'd).
+function resolveApi(ctx: any): any {
+  return (
+    ctx?.app?.apiClient ||
+    ctx?.model?.context?.api ||
+    ctx?.model?.flowEngine?.context?.api ||
+    ctx?.model?.flowEngine?.context?.app?.apiClient ||
+    ctx?.flowEngine?.context?.app?.apiClient ||
+    sharedApi
+  );
 }
 
 let flowRegistered = false;
@@ -351,6 +448,7 @@ export function registerComputedRuleFlow({
   // visibility predicate below can tell "this model IS a column" / "this field is nested INSIDE a column"
   // from "this is a standalone form/edit field".
   const SubTableColumn = resolveModelClass(flowEngine, 'SubTableColumnModel', undefined);
+  SubTableColumnClass = SubTableColumn || SubTableColumnClass; // let resolveCf detect sub-table columns by instanceof
   const isColumnModel = (m: any) =>
     !!m && ((TableColumn && m instanceof TableColumn) || (SubTableColumn && m instanceof SubTableColumn));
   // hideInSettings predicate for the rule step (wired below). The flow is registered on THREE bases:
@@ -387,12 +485,17 @@ export function registerComputedRuleFlow({
           // Khi lỗi + Chạy thử) — just with the Bảng/Cột-đích pickers hidden (known from this column).
           uiSchema: (ctx: any) => {
             const cf = resolveCf(ctx?.model);
-            const api = ctx?.app?.apiClient || ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api;
+            const api = resolveApi(ctx);
             return {
               rule: {
                 type: 'object',
                 'x-component': 'ComputedRuleEditorField',
-                'x-component-props': { api, collection: cf?.collectionName, targetField: cf?.name, dataSourceKey: cf?.dataSourceKey },
+                // Pass the apiClient as a `getApi()` CLOSURE, never a bare object: a flow-engine
+                // x-component-props clone strips an object's methods during schema compile (functions
+                // survive), so a raw `api` reached the editor with NO `.request` — the sub-table column's
+                // ⚙ then "lost context" (field picker / lookup / Run / save all no-op'd). The closure hands
+                // the live client through. See FormulaCodeInput for the same proven pattern.
+                'x-component-props': { getApi: () => api, collection: cf?.collectionName, targetField: cf?.name, dataSourceKey: cf?.dataSourceKey },
               },
             };
           },
@@ -406,10 +509,10 @@ export function registerComputedRuleFlow({
           async handler(ctx: any, params: any) {
             const cf = resolveCf(ctx?.model);
             if (!cf) return;
-            // Resolve the API client from the widest set of handles — on a form/edit FIELD model the api may
-            // not sit on `ctx.model.context` the way it does on a table column, so mirror the uiSchema chain
-            // (else saveRule/recompute would silently no-op when the editor is opened from a form field ⚙).
-            const api = ctx?.model?.context?.api || ctx?.app?.apiClient || ctx?.model?.flowEngine?.context?.api || sharedApi;
+            // Resolve the API client from the widest set of handles (ending at the load-time sharedApi) — on a
+            // form/edit FIELD model or a sub-table column the api may not sit on `ctx.model.context` the way it
+            // does on a main-table column, so shared resolution keeps saveRule/recompute from silently no-oping.
+            const api = resolveApi(ctx);
             const rule = params?.rule || {};
             // This step AUTO-APPLIES on EVERY render (flow-engine settings flow), with `defaultParams`
             // = the current cached rule. Writing unconditionally here made every table render re-save +
@@ -431,6 +534,19 @@ export function registerComputedRuleFlow({
               await api?.request({ url: 'ptdlComputed:recompute', method: 'post', params: { collection: cf.collectionName, field: cf.name } });
             } catch (e) {
               /* ignore */
+            }
+            // BUG-1 fix: the recompute backfilled the server rows, but the `ptdlComputed:recompute` action
+            // emits NO ws push and its request isn't a MUTATING action on a watched collection, so neither
+            // auto-refresh trigger fires — the new computed values only showed after a manual F5. Refetch the
+            // page's data blocks now (the SAME reused `refreshFlowBlocks` the ws/axios path uses). This is
+            // reached ONLY after the `unchanged` early-returns above, i.e. on a REAL save — never on the
+            // settings step's per-render auto-apply — so it can't feed the write-guarded loop. Crash-safe: a
+            // failed refresh must never throw inside the settings handler.
+            try {
+              const fe = ctx?.model?.flowEngine || ctx?.app?.flowEngine || ctx?.model?.context?.flowEngine || ctx?.flowEngine || sharedFlowEngine;
+              refreshFlowBlocks(fe);
+            } catch (e) {
+              /* ignore — live refresh is best-effort */
             }
           },
         },
@@ -519,6 +635,13 @@ const ComputedHintIcon: React.FC<{ rule: any; cf: any; editable: boolean }> = ({
         /* recompute is best-effort */
       }
       ruleCache.set(cacheKey(cf.dataSourceKey || 'main', cf.collectionName, cf.name), { ...rule, ...val });
+      // BUG-1: same as the settings handler — recompute emits no ws push, so refetch the page's blocks here
+      // too, so edits made from the in-form ⓘ modal show live without a manual F5. Crash-safe, best-effort.
+      try {
+        refreshFlowBlocks(sharedFlowEngine);
+      } catch (_) {
+        /* live refresh is best-effort */
+      }
       message.success(rt('Đã lưu — server tự tính lại các dòng liên quan'));
       setOpen(false);
     } catch (e: any) {

@@ -334,7 +334,13 @@ export function ComputedRuleEditor({
  * 'ComputedRuleEditorField' via registerFormulaComponents.
  */
 export function ComputedRuleEditorField(props: any) {
-  const { value, onChange, api, collection, targetField, dataSourceKey } = props;
+  const { value, onChange, collection, targetField, dataSourceKey } = props;
+  // The apiClient must arrive as a `getApi()` CLOSURE, not a bare `api` object: passing the client through a
+  // flow-engine `x-component-props` strips its methods during schema compile (only functions/strings survive),
+  // so `props.api` was a methodless clone with no `.request` — which made a sub-table column's ⚙ editor lose
+  // its connection (empty field picker, dead lookup/Run, silent save). A closure survives the clone; call it
+  // for the real client. Fall back to a bare `api` prop for any legacy caller. Mirrors FormulaCodeInput.
+  const api = (typeof props.getApi === 'function' ? props.getApi() : null) || props.api;
   const v: RuleValue = { collectionName: collection, targetField, dataSourceKey, formula: value?.formula || '', runOn: value?.runOn, onError: value?.onError };
   return (
     <ComputedRuleEditor
