@@ -440,17 +440,34 @@ const InlineFieldForm: React.FC<{
 };
 
 // ── field-creation + column-attach logic ─────────────────────────────────────────────────────────
-/** Resolve the /v/ display renderer model for a freshly-created field: framework default first (so
- *  @tuanla90 field widgets / overrides win), then the interface fallback map. */
+/** Resolve the /v/ display renderer model for a freshly-created field. Mirrors @tuanla90/plugin-app-builder's
+ *  verified-live resolver (makeResolver), which matters for RELATIONS: a relation/association has NO scalar
+ *  column of its own name (only a foreign key), so binding it to the text/interface fallback
+ *  (DisplayTextFieldModel) makes the block's list query reference a non-existent column →
+ *  "Invalid SQL column or table reference" (to-one) or a hasMany crash (to-many). Resolution order:
+ *   1. to-many (o2m/m2m) → DisplaySubTableFieldModel (render related rows as a nested read-only sub-table);
+ *   2. the framework default binding (getDefaultBindingByField — proper association renderer, appends-aware);
+ *   3. the first REAL binding (getBindingsByField) — an association renderer, NOT the scalar map;
+ *   4. only then the interface map (scalars land here). */
 function resolveDisplayModel(engine: any, collection: any, name: string, iface: string): string {
+  const Cls = engine?.getModelClass?.('TableColumnModel');
+  let field: any = null;
+  try { field = collection?.getField?.(name); } catch (_) { /* metadata not ready */ }
+  const relType = field?.type || field?.interface || iface;
+  const isToMany = relType === 'hasMany' || relType === 'belongsToMany' || iface === 'o2m' || iface === 'm2m';
+  // (1) to-many: never the scalar text model — it breaks the query / crashes on a hasMany.
+  if (isToMany && engine?.getModelClass?.('DisplaySubTableFieldModel')) return 'DisplaySubTableFieldModel';
+  // (2) framework default binding (custom @tuanla90 widgets / association renderers win here).
   try {
-    const Cls = engine?.getModelClass?.('TableColumnModel');
-    const field = collection?.getField?.(name);
     const b = Cls?.getDefaultBindingByField?.(engine?.context, field, { fallbackToTargetTitleField: true });
     if (b?.modelName) return b.modelName;
-  } catch (_) {
-    /* fall through to the map */
-  }
+  } catch (_) { /* fall through */ }
+  // (3) a relation has no scalar default → prefer its first real association binding over the scalar map.
+  try {
+    const bindings = Cls?.getBindingsByField?.(engine?.context, field) || [];
+    const pick = bindings.find((x: any) => x?.isDefault) || bindings[0];
+    if (pick?.modelName) return pick.modelName;
+  } catch (_) { /* fall through to the map */ }
   return DISPLAY_BY_INTERFACE[iface] || 'DisplayTextFieldModel';
 }
 
@@ -637,16 +654,13 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
             // In-memory here; persisted by the deferred save below (see why the save is deferred).
             try { model.setStepParams?.('ptdlInlineAddField', 'create', { spec: { interface: 'input', title: '' } }); }
             catch (_) { /* best-effort */ }
-            const created = await createFieldAndColumn(model, spec, app);
-            if (!created) {
-              // Create failed (or was a no-op) → release the marker so the user can immediately retry.
-              recentCreate.delete(sig);
-              return;
-            }
-            // Persist the params reset AFTER the dialog's own OK-save settles. A synchronous model.save()
-            // here races the framework's save → it throws "Error saving configuration"; deferring to the
-            // next macrotask lets the framework finish first, so this is a clean, non-racing persist that
-            // keeps a later page reload from recreating the field.
+            await createFieldAndColumn(model, spec, app);
+            // Persist the params reset — deferred to the next macrotask so it can't race the dialog's own
+            // OK-save (a synchronous save() here throws "Error saving configuration"). Runs UNCONDITIONALLY:
+            // on a PERSISTENT server error (e.g. a relation the block can't render) this is what stops the
+            // auto-apply from retrying the create forever — the reported "tạo cột liên tục". The dedup marker
+            // is intentionally NOT released on failure: it holds for its window to absorb the immediate
+            // re-fires while the reset persists, then expires so a later manual retry still works.
             try {
               setTimeout(() => { try { model.save?.(); } catch (_) { /* best-effort */ } }, 0);
             } catch (_) { /* setTimeout unavailable — reset stays in-memory only */ }

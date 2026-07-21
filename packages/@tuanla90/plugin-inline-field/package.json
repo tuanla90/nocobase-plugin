@@ -1,6 +1,6 @@
 {
   "name": "@tuanla90/plugin-inline-field",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "displayName": "Inline Field",
   "displayName.vi-VN": "Thêm cột tại chỗ",
   "description": "Add a new column while editing a table view — no trip to the Collection Manager. A ‘➕ New column…’ item in a Table block’s settings menu opens a dialog to define a scalar field (text, number, choice, date, checkbox, …); it is created on the collection, the physical column is migrated, and the column is dropped straight into the block being edited. Modern /v/ client.",
