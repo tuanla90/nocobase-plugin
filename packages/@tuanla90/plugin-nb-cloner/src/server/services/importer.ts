@@ -9,6 +9,20 @@ export interface ImportResult {
   steps: Array<{ step: string; status: 'ok' | 'error' | 'skipped'; count?: number; error?: string }>;
 }
 
+export interface PreviewReport {
+  collections: Array<{
+    name: string;
+    title: string;
+    existsOnTarget: boolean;   // a collection with this name already exists on the target app
+    matchFields: number;       // same name AND same key → will be updated cleanly
+    newFields: number;         // name not on target → will be ADDED as a new column
+    conflictFields: string[];  // name exists on target but with a DIFFERENT key → will be SKIPPED
+  }>;
+  newCollections: number;      // collections that don't exist on the target yet
+  existingCollections: number; // collections that already exist (get merged)
+  conflictFieldTotal: number;  // total same-name/different-key fields that will be skipped
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Parse cột options (có thể là JSON string hoặc object) về object an toàn. */
@@ -397,5 +411,77 @@ export class Importer {
       steps.push({ step: 'FATAL', status: 'error', error: err.message });
       return { success: false, steps };
     }
+  }
+
+  /**
+   * Dry-run: compare a bundle against the target WITHOUT writing anything, so the UI can warn before
+   * importing. Fields are matched by `key` (their PK) — a bundle field whose NAME already exists on the
+   * target under a DIFFERENT key hits the UNIQUE(collectionName, name) index on import and is silently
+   * skipped; this report surfaces exactly those, plus which collections already exist / which fields are new.
+   */
+  async preview(bundle: BundleData): Promise<PreviewReport> {
+    this.validateBundle(bundle);
+
+    const businessColNames = new Set<string>(
+      (bundle.schema.collections ?? [])
+        .filter((c: any) => !SYSTEM_COLLECTION_NAMES.has(c.name) && !opt(c.options).internal)
+        .map((c: any) => c.name),
+    );
+    const businessCols = (bundle.schema.collections ?? []).filter((c: any) => businessColNames.has(c.name));
+    const allFields = bundle.schema.fields ?? [];
+
+    const report: PreviewReport = {
+      collections: [],
+      newCollections: 0,
+      existingCollections: 0,
+      conflictFieldTotal: 0,
+    };
+
+    for (const c of businessCols) {
+      const existsOnTarget = !!this.db.getCollection(c.name);
+      const bundleFields = allFields.filter((f: any) => f.collectionName === c.name);
+      let matchFields = 0;
+      let newFields = 0;
+      const conflictFields: string[] = [];
+
+      if (existsOnTarget) {
+        report.existingCollections += 1;
+        // Target's fields → name → key
+        let targetByName = new Map<string, any>();
+        try {
+          const rows: any[] = await this.db.getRepository('fields').find({
+            filter: { collectionName: c.name },
+            fields: ['name', 'key'],
+          });
+          targetByName = new Map(rows.map((r: any) => [r.name ?? r.get?.('name'), r.key ?? r.get?.('key')]));
+        } catch {
+          /* leave empty → everything counts as new (best-effort) */
+        }
+        for (const bf of bundleFields) {
+          if (!targetByName.has(bf.name)) newFields += 1;
+          else if (targetByName.get(bf.name) === bf.key) matchFields += 1;
+          else conflictFields.push(bf.name); // same name, different key → will be SKIPPED on import
+        }
+      } else {
+        report.newCollections += 1;
+        newFields = bundleFields.length;
+      }
+
+      report.conflictFieldTotal += conflictFields.length;
+      report.collections.push({
+        name: c.name,
+        title: opt(c.options).title || c.name,
+        existsOnTarget,
+        matchFields,
+        newFields,
+        conflictFields,
+      });
+    }
+
+    // Existing collections first (they're the ones with potential conflicts), then alphabetical.
+    report.collections.sort(
+      (a, b) => Number(b.existsOnTarget) - Number(a.existsOnTarget) || a.name.localeCompare(b.name),
+    );
+    return report;
   }
 }

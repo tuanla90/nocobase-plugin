@@ -4,11 +4,11 @@
 > chọn — từ bản cài này sang bản cài khác bằng một file **`.nbc.gz`** duy nhất. Import là **UPSERT**
 > (không bao giờ xoá dữ liệu đang có).
 
-**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.9.3
+**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.10.0
 
 ## Sau khi cài, có gì mới?
 
-- **Một trang cấu hình mới trong Settings: “NB Cloner”** (biểu tượng copy) với hai tab: **Xuất (Export)** và **Nhập (Import)**.
+- **Một trang cấu hình mới trong Settings: “NB Cloner”** (biểu tượng copy) với ba tab: **Xuất (Export)**, **Nhập (Import)** và **Dọn dẹp (Clean up)**.
 - **Không thêm menu, nút hay field** nào lên các trang/khối dữ liệu của bạn.
 - Không có gì chạy tự động — mọi lần xuất/nhập đều do bạn bấm từ trang này.
 
@@ -65,6 +65,22 @@ Bảng kết quả liệt kê từng bước (`schema.collections`, `db.sync`, `
 
 > Cập nhật chính plugin thì làm theo cách thường — Plugin Manager → **Add & Update** → upload file `.tgz`
 > mới, rồi restart.
+
+### Xem trước khi nhập (dry-run)
+
+Khi bạn thả file bundle, NB Cloner **xem trước** — chưa ghi gì cả. Nó báo theo từng bảng: đã **tồn tại** ở
+app này chưa, sẽ thêm bao nhiêu **cột mới**, và bao nhiêu **cột bị bỏ qua**. Một cột bị bỏ qua khi tên cột
+đã có ở đích nhưng với `key` nội bộ khác (field khớp theo key, không theo tên) — phiên bản cột đó trong
+bundle bị bỏ, dữ liệu cũ của bạn được giữ, không xóa gì. Xem xong bấm **Vẫn nhập** hoặc Hủy. Nghĩa là NB
+Cloner **thêm** cột mới vào bảng đã có rất sạch, nhưng **không phải công cụ so-sánh-schema**: muốn đổi cột
+đã có thì bảng phải cùng "gốc" field (import vào app trắng để làm việc đó).
+
+### Dọn dẹp (xóa bảng rác)
+
+Tab **Dọn dẹp** chỉ liệt kê **bảng của bạn** (bảng hệ thống & plugin không bao giờ xóa được) kèm số dòng.
+Tích các bảng rác rồi **Xóa mục đã chọn** — hộp xác nhận liệt kê chính xác cái sẽ xóa + tổng số dòng, và
+bạn phải gõ **DELETE**. Thao tác drop từng bảng, toàn bộ dòng, và mọi quan hệ trỏ tới nó (dùng đúng cơ chế
+xóa của NocoBase), rồi khuyên restart. **Không thể hoàn tác.**
 
 ## Yêu cầu & giới hạn
 

@@ -4,11 +4,11 @@
 > from one install to another as a single **`.nbc.gz`** file. Import is an **UPSERT** (it never deletes
 > what's already there).
 
-**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.9.3
+**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.10.0
 
 ## What's new after installing?
 
-- **A new Settings page: “NB Cloner”** (copy icon) with two tabs: **Export** and **Import**.
+- **A new Settings page: “NB Cloner”** (copy icon) with three tabs: **Export**, **Import** and **Clean up**.
 - **No new menu, button or field** is added to your data pages/blocks.
 - Nothing runs automatically — you drive every export and import from that page.
 
@@ -65,6 +65,23 @@ The result table lists every step (`schema.collections`, `db.sync`, `ui.schemas`
 
 > Updating the plugin itself is done the normal way — Plugin Manager → **Add & Update** → upload the newer
 > `.tgz`, then restart.
+
+### Import preview (dry-run)
+
+When you drop a bundle, NB Cloner first shows a **preview** — nothing is written yet. It reports, per
+collection: whether it already **exists** on this app, how many **new columns** will be added, and how
+many **columns will be skipped**. A column is skipped when a same-named column already exists under a
+different internal `key` (fields are matched by key, not name) — the incoming version of that column is
+left out, your existing data is kept, and nothing is deleted. Review it, then **Import anyway** or Cancel.
+So NB Cloner cleanly *adds* new columns to an existing collection, but it is **not a schema-diff tool**:
+to change an existing column it must share the same field lineage (import into a blank app for that).
+
+### Clean up (delete junk collections)
+
+The **Clean up** tab lists **only your own collections** (system & plugin tables are never deletable) with
+their row counts. Tick the junk ones and **Delete selected** — a confirmation lists exactly what will go
+and its total rows, and you must type **DELETE**. This drops each table, all its rows, and any relations
+pointing to it (via NocoBase's own delete path), then recommends a restart. **It cannot be undone.**
 
 ## Requirements & limits
 

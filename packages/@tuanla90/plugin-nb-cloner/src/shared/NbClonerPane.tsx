@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert, Segmented, Tooltip,
+  Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert, Segmented, Tooltip, Modal,
   message, Upload, Spin, Badge, Divider, Space, Typography, Input, Row, Col,
   notification, Result, Progress,
 } from 'antd';
 import {
   DownloadOutlined, UploadOutlined, ReloadOutlined, SaveOutlined, CopyOutlined, ClearOutlined,
   DatabaseOutlined, AppstoreOutlined, CheckCircleOutlined, CloseCircleOutlined,
+  DeleteOutlined, WarningOutlined,
 } from '@ant-design/icons';
 import { ConfigContainer, formatNumber } from '@tuanla90/shared';
 import { t } from './nbClonerClient';
@@ -68,6 +69,15 @@ export function NbClonerPane({ api }: { api: any }) {
   const [importResult, setImportResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('export');
   const [pluginInfo, setPluginInfo] = useState<any>(null);
+  // Import preview (dry-run) shown before the real import runs.
+  const [previewing, setPreviewing] = useState(false);
+  const [preview, setPreview] = useState<{ report: any; base64: string; filename: string } | null>(null);
+  // Cleanup tab (delete junk collections).
+  const [cleanupSel, setCleanupSel] = useState<Record<string, boolean>>({});
+  const [deleting, setDeleting] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<any>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
 
   // Load plugin version info (header tag)
   const loadInfo = useCallback(async () => {
@@ -192,16 +202,37 @@ export function NbClonerPane({ api }: { api: any }) {
     message.success(t('Preset applied: {{name}}', { name: label[preset] }));
   };
 
-  // Import — file → base64 → JSON (multipart is blocked by NocoBase middleware)
-  const handleImport = async (file: File) => {
-    setImporting(true);
+  // File dropped → DRY-RUN preview first (no writes); the user reviews conflicts, then confirms.
+  const handleFileSelected = async (file: File) => {
     setImportResult(null);
+    setPreviewing(true);
     try {
       const base64 = await fileToBase64(file);
       const res = await api.request({
-        url: 'nbCloner:import',
+        url: 'nbCloner:previewImport',
         method: 'POST',
         data: { fileData: base64, filename: file.name },
+      });
+      const report = res.data?.data ?? res.data;
+      setPreview({ report, base64, filename: file.name });
+    } catch (err: any) {
+      notification.error({ message: t('Could not read the bundle'), description: err.message, duration: 0 });
+    } finally {
+      setPreviewing(false);
+    }
+    return false; // stop antd auto-upload
+  };
+
+  // The real import — runs only after the user confirms the preview.
+  const runImport = async (base64: string, filename: string) => {
+    setPreview(null);
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await api.request({
+        url: 'nbCloner:import',
+        method: 'POST',
+        data: { fileData: base64, filename },
       });
       const result = res.data?.data ?? res.data;
       setImportResult(result);
@@ -228,7 +259,43 @@ export function NbClonerPane({ api }: { api: any }) {
     } finally {
       setImporting(false);
     }
-    return false;
+  };
+
+  // ── Cleanup (delete junk collections) ─────────────────────────────────────────
+  const userCollections = useMemo(() => collections.filter((c) => c.category === 'user'), [collections]);
+  const cleanupNames = userCollections.filter((c) => cleanupSel[c.name]).map((c) => c.name);
+  const cleanupRows = userCollections
+    .filter((c) => cleanupSel[c.name])
+    .reduce((s, c) => s + (c.rowCount || 0), 0);
+  const CONFIRM_WORD = 'DELETE';
+
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await api.request({
+        url: 'nbCloner:deleteCollections',
+        method: 'POST',
+        data: { names: cleanupNames },
+      });
+      const r = res.data?.data ?? res.data;
+      setDeleteResult(r);
+      setConfirmOpen(false);
+      setConfirmText('');
+      setCleanupSel({});
+      const ok = (r?.results || []).filter((x: any) => x.status === 'ok').length;
+      if (ok > 0) {
+        notification.success({
+          message: t('Deleted {{count}} collections', { count: String(ok) }),
+          description: t('RESTART the app so the change is fully reflected.'),
+          duration: 10,
+        });
+      }
+      loadCollections();
+    } catch (err: any) {
+      notification.error({ message: t('Delete failed'), description: err.message, duration: 0 });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const catLabel: Record<Category, string> = {
@@ -526,13 +593,13 @@ export function NbClonerPane({ api }: { api: any }) {
                       }
                     />
                   )}
-                  <Spin spinning={importing} tip={t('Importing…')}>
-                    <Upload.Dragger accept=".nbc.gz,.gz" beforeUpload={handleImport} showUploadList={false} disabled={importing}>
+                  <Spin spinning={importing || previewing} tip={previewing ? t('Reading the bundle…') : t('Importing…')}>
+                    <Upload.Dragger accept=".nbc.gz,.gz" beforeUpload={handleFileSelected} showUploadList={false} disabled={importing || previewing}>
                       <p className="ant-upload-drag-icon">
-                        <UploadOutlined style={{ fontSize: 48, color: importing ? '#ccc' : '#1890ff' }} />
+                        <UploadOutlined style={{ fontSize: 48, color: importing || previewing ? '#ccc' : '#1890ff' }} />
                       </p>
                       <p className="ant-upload-text">{importing ? t('Processing, please wait…') : t('Drag & drop a file or click to select')}</p>
-                      <p className="ant-upload-hint">{t('Only accepts .nbc.gz files created by NB Cloner')}</p>
+                      <p className="ant-upload-hint">{t('You will see a preview of what changes before anything is written.')}</p>
                     </Upload.Dragger>
                   </Spin>
                 </Card>
@@ -586,8 +653,220 @@ export function NbClonerPane({ api }: { api: any }) {
               </Space>
             ),
           },
+          {
+            key: 'cleanup',
+            label: <span><DeleteOutlined /> {t('Clean up')}</span>,
+            children: (
+              <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Alert
+                  type="error"
+                  showIcon
+                  message={t('Danger zone — permanent delete')}
+                  description={t('Deleting a collection drops its table, ALL its rows, and any relations pointing to it. It cannot be undone. Only your own collections are listed here (system & plugin tables are never deletable).')}
+                />
+                <Card
+                  size="small"
+                  title={
+                    <Space wrap>
+                      {t('Your collections')}
+                      <Tag>{userCollections.length}</Tag>
+                      {cleanupNames.length > 0 && <Tag color="red">{t('{{count}} selected', { count: String(cleanupNames.length) })}</Tag>}
+                    </Space>
+                  }
+                  extra={<Button icon={<ReloadOutlined />} size="small" onClick={loadCollections} loading={loading}>{t('Refresh')}</Button>}
+                >
+                  <Spin spinning={loading}>
+                    <Table
+                      dataSource={userCollections}
+                      rowKey="name"
+                      size="small"
+                      locale={{ emptyText: t('No collections in this filter') }}
+                      pagination={{ pageSize: 15, hideOnSinglePage: true }}
+                      columns={[
+                        {
+                          title: (
+                            <Checkbox
+                              checked={userCollections.length > 0 && userCollections.every((c) => cleanupSel[c.name])}
+                              indeterminate={userCollections.some((c) => cleanupSel[c.name]) && !userCollections.every((c) => cleanupSel[c.name])}
+                              onChange={(e) => {
+                                const v = e.target.checked;
+                                const next: Record<string, boolean> = {};
+                                userCollections.forEach((c) => { next[c.name] = v; });
+                                setCleanupSel(next);
+                              }}
+                            />
+                          ),
+                          width: 44,
+                          render: (_: any, r: CollectionInfo) => (
+                            <Checkbox checked={!!cleanupSel[r.name]} onChange={(e) => setCleanupSel((p) => ({ ...p, [r.name]: e.target.checked }))} />
+                          ),
+                        },
+                        {
+                          title: t('Collection'),
+                          dataIndex: 'name',
+                          render: (name: string, r: CollectionInfo) => (
+                            <Space direction="vertical" size={0}>
+                              <Text strong>{r.title}</Text>
+                              <Text type="secondary" style={{ fontSize: 12 }}>{name}</Text>
+                            </Space>
+                          ),
+                        },
+                        {
+                          title: t('Rows'),
+                          dataIndex: 'rowCount',
+                          width: 100,
+                          render: (v: number, r: CollectionInfo) =>
+                            !r.tableExists ? <Tag color="red">{t('no table')}</Tag> : <Tag color={v > 0 ? 'blue' : 'default'}>{formatNumber(v || 0)}</Tag>,
+                        },
+                        { title: t('Fields'), dataIndex: 'fieldsCount', width: 70, render: (v: number) => <Tag>{formatNumber(v)}</Tag> },
+                      ]}
+                    />
+                  </Spin>
+                </Card>
+
+                <Button
+                  danger
+                  type="primary"
+                  icon={<DeleteOutlined />}
+                  disabled={cleanupNames.length === 0}
+                  onClick={() => { setConfirmText(''); setConfirmOpen(true); }}
+                  block
+                >
+                  {t('Delete selected ({{count}})', { count: String(cleanupNames.length) })}
+                </Button>
+
+                {deleteResult && (
+                  <Card size="small" title={t('Delete result')}>
+                    <Table
+                      dataSource={deleteResult.results}
+                      rowKey="name"
+                      size="small"
+                      pagination={false}
+                      columns={[
+                        { title: t('Collection'), dataIndex: 'name', render: (v: string) => <Text code>{v}</Text> },
+                        {
+                          title: t('Status'), dataIndex: 'status', width: 110,
+                          render: (v: string) => (
+                            <Tag color={v === 'ok' ? 'green' : v === 'skipped' ? 'default' : 'red'}>
+                              {v === 'ok' ? t('deleted') : v === 'skipped' ? t('skipped') : t('error')}
+                            </Tag>
+                          ),
+                        },
+                        { title: t('Rows'), dataIndex: 'rows', width: 80, render: (v: number) => (v !== undefined && v !== null ? formatNumber(v) : '-') },
+                        { title: t('Error'), dataIndex: 'error', render: (v: string) => v ? <Text type="danger" style={{ fontSize: 12 }}>{v}</Text> : '-' },
+                      ]}
+                    />
+                  </Card>
+                )}
+              </Space>
+            ),
+          },
         ]}
       />
+
+      {/* Import preview (dry-run) — shown before the real import writes anything */}
+      <Modal
+        open={!!preview}
+        width={680}
+        onCancel={() => setPreview(null)}
+        title={<Space><WarningOutlined style={{ color: (preview?.report?.conflictFieldTotal || 0) > 0 ? '#faad14' : '#1890ff' }} />{t('Import preview')}</Space>}
+        footer={[
+          <Button key="cancel" onClick={() => setPreview(null)}>{t('Cancel')}</Button>,
+          <Button
+            key="go"
+            type="primary"
+            danger={(preview?.report?.conflictFieldTotal || 0) > 0}
+            icon={<UploadOutlined />}
+            loading={importing}
+            onClick={() => preview && runImport(preview.base64, preview.filename)}
+          >
+            {t('Import anyway')}
+          </Button>,
+        ]}
+      >
+        {preview && (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Alert
+              type={(preview.report.conflictFieldTotal || 0) > 0 ? 'warning' : 'info'}
+              showIcon
+              message={t('{{newC}} new · {{existC}} already exist · {{skip}} columns will be skipped', {
+                newC: String(preview.report.newCollections || 0),
+                existC: String(preview.report.existingCollections || 0),
+                skip: String(preview.report.conflictFieldTotal || 0),
+              })}
+              description={(preview.report.conflictFieldTotal || 0) > 0
+                ? t('Some columns already exist on this app under a different internal key, so the incoming version of those columns is SKIPPED (existing data is kept — nothing is deleted). New columns are still added.')
+                : t('No conflicts detected. New collections/columns are added; matching ones are updated.')}
+            />
+            <Table
+              dataSource={preview.report.collections}
+              rowKey="name"
+              size="small"
+              pagination={{ pageSize: 10, hideOnSinglePage: true }}
+              columns={[
+                {
+                  title: t('Collection'), dataIndex: 'name',
+                  render: (name: string, r: any) => (
+                    <Space direction="vertical" size={0}>
+                      <Text strong>{r.title}</Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{name}</Text>
+                    </Space>
+                  ),
+                },
+                { title: t('On target'), dataIndex: 'existsOnTarget', width: 90, render: (v: boolean) => v ? <Tag color="orange">{t('exists')}</Tag> : <Tag color="green">{t('new')}</Tag> },
+                { title: t('+ new cols'), dataIndex: 'newFields', width: 90, render: (v: number) => <Tag color={v > 0 ? 'blue' : 'default'}>{v}</Tag> },
+                {
+                  title: t('skipped cols'), dataIndex: 'conflictFields', width: 100,
+                  render: (v: string[]) => (v && v.length ? <Tooltip title={v.join(', ')}><Tag color="red">{v.length}</Tag></Tooltip> : <Tag>0</Tag>),
+                },
+              ]}
+            />
+          </Space>
+        )}
+      </Modal>
+
+      {/* Permanent-delete confirmation (type-to-confirm) */}
+      <Modal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        title={<Space><WarningOutlined style={{ color: '#ff4d4f' }} />{t('Confirm permanent delete')}</Space>}
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmOpen(false)}>{t('Cancel')}</Button>,
+          <Button
+            key="del"
+            danger
+            type="primary"
+            icon={<DeleteOutlined />}
+            loading={deleting}
+            disabled={confirmText.trim().toUpperCase() !== CONFIRM_WORD}
+            onClick={doDelete}
+          >
+            {t('Delete permanently')}
+          </Button>,
+        ]}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Alert
+            type="error"
+            showIcon
+            message={t('This permanently deletes {{count}} collection(s) and {{rows}} row(s).', { count: String(cleanupNames.length), rows: formatNumber(cleanupRows) })}
+            description={t('Tables are dropped and relations pointing to them are removed. This cannot be undone.')}
+          />
+          <div style={{ maxHeight: 140, overflowY: 'auto' }}>
+            {cleanupNames.map((n) => <Tag key={n} style={{ margin: 2 }}>{n}</Tag>)}
+          </div>
+          <div>
+            <Text>{t('Type {{word}} to confirm:', { word: CONFIRM_WORD })}</Text>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={CONFIRM_WORD}
+              style={{ marginTop: 4 }}
+              onPressEnter={() => { if (confirmText.trim().toUpperCase() === CONFIRM_WORD) doDelete(); }}
+            />
+          </div>
+        </Space>
+      </Modal>
     </ConfigContainer>
   );
 }

@@ -1,12 +1,14 @@
 import { Plugin } from '@nocobase/server';
 import { exportAction } from './actions/export';
 import { importAction } from './actions/import';
+import { previewImportAction } from './actions/previewImport';
 import { listCollectionsAction } from './actions/listCollections';
+import { deleteCollectionsAction } from './actions/deleteCollections';
 import { infoAction } from './actions/info';
 
 /**
  * NB Cloner server — exposes the `nbCloner` resource used by the settings page:
- *   listCollections · export · import · info
+ *   listCollections · export · import · previewImport · deleteCollections · info
  *
  * The export/import actions are powerful (export reads every business table; import writes the
  * target's schema/UI/roles). They are granted to `loggedIn` — the same house pattern every @tuanla90
@@ -27,13 +29,19 @@ export class PluginNbClonerServer extends Plugin {
         listCollections: listCollectionsAction,
         export: exportAction,
         import: importAction,
+        previewImport: previewImportAction,
+        deleteCollections: deleteCollectionsAction,
         info: infoAction,
       },
     });
 
     // Custom resource + system-table access → not covered by the admin role strategy, so grant the
     // authenticated user explicitly. [[reference_nocobase_acl_system_collection_writes]]
-    this.app.acl.allow('nbCloner', ['listCollections', 'export', 'import', 'info'], 'loggedIn');
+    this.app.acl.allow(
+      'nbCloner',
+      ['listCollections', 'export', 'import', 'previewImport', 'deleteCollections', 'info'],
+      'loggedIn',
+    );
   }
 
   async install() {}
