@@ -38,6 +38,22 @@ Plugin mở ra **5 cách dùng công thức**, mỗi cách một chỗ khác nha
 - **Bảng tra cứu** (một collection khác, không phải quan hệ) → gõ **thẳng** `<tên_bảng>.<cột>`, **KHÔNG** có `data.` — vd `bang_gia.he_so`.
 - **Nối chuỗi** dùng `&`. **So sánh** dùng `==`, `<>`, `> < >= <=`; **VÀ** dùng `&&`. Tên hàm viết HOA/thường đều được.
 
+## Hàm bổ sung (ngoài 400 hàm Excel)
+
+Ngoài ~400 hàm Excel (formulajs), engine có thêm các hàm kiểu **AppSheet / Google Sheets** — mở **“Hàm & cú pháp”** ngay trong ô công thức để xem danh sách đầy đủ:
+
+| Nhóm | Hàm | Ví dụ |
+|---|---|---|
+| **Chuỗi** | `SPLIT(text, sep)` tách → mảng · `TEXTJOIN(sep, bỏ_ô_trống, …)` gộp mảng → chuỗi · `CONTAINS` · `STARTSWITH` · `ENDSWITH` | `TEXTJOIN(", ", TRUE, data.items.ten)` |
+| **Danh sách / mảng** | `LIST(a, b, …)` tạo mảng · `UNIQUE(mảng)` / `DISTINCT` lọc trùng · `ANY(mảng)` phần tử đầu · `IN(x, mảng)` có thuộc? · `ISNOTBLANK(x)` | `TEXTJOIN(", ", TRUE, UNIQUE(data.items.loai))` |
+| **Regex** (kiểu Google Sheets) | `REGEXMATCH(text, "mẫu")` → true/false · `REGEXEXTRACT(text, "mẫu")` lấy phần khớp (hoặc nhóm bắt `(...)` đầu tiên) · `REGEXREPLACE(text, "mẫu", "thay")` thay **tất cả** | `REGEXEXTRACT(data.sku, "[0-9]+")` |
+| **Lọc / gộp có điều kiện** | `FILTER` / `SELECT` (≈ SELECT của AppSheet) · `SUMIFS` `COUNTIFS` `AVERAGEIFS` | `SUM(FILTER(data.items.amt, data.items.status == "active"))` |
+
+**3 lưu ý:**
+- **Regex phải nhân đôi `\`**: gõ `\\d`, `\\w`, `\\s` (vì mẫu là chuỗi). Dùng lớp ký tự `[0-9]`, `[A-Z]` thì khỏi cần.
+- `TEXTJOIN` cần **≥ 3 tham số**: `TEXTJOIN(dấu_phân_cách, TRUE/FALSE, giá_trị)`.
+- `UNIQUE` / `REGEX*` / `SPLIT` / `TEXTJOIN` dùng ở **Cột công thức / Công thức trên field / Giá trị tự tính (Computed)** — **không** dùng ở **Tính tuần tự** (chế độ SQL). `CONTAINS` **phân biệt HOA/thường** (bọc `LOWER(...)` nếu muốn bỏ qua).
+
 ## Dùng thế nào (từng bước)
 
 ### Tình huống A — Thêm một **cột hiển thị** tính từ công thức (badge màu, HTML, gộp dòng con)
@@ -121,6 +137,6 @@ Dùng cho các phép **cộng dồn theo thứ tự** (số dư sau mỗi phiế
 
 ### Cho nhà phát triển
 
-Engine ~400 hàm formulajs + helper HTML (`src/shared/formulaEngine.ts`). Năm điểm cắm: cột ảo (`formulaColumnModel` + classic `formulaColumnClassic`), field hiển thị (`formulaFieldModel`), giá trị mặc định biên dịch sang RunJS (`formulaDefaultValue`), rule tự tính server lưu ở `ptdlComputedRules` (client `computedRuleClient`, tự phát hiện phụ thuộc + fan-out + WS live-refresh), và tính tuần tự/cửa sổ + giá vốn (`ScanCalcManager`, `excelToSql`). Chi tiết thiết kế: `COMPUTED-FIELD.md` (§4b danh sách ví dụ), `ROLLUP.md`, `LEDGER-WINDOW-MODE.md`, `COSTING.md`, và `README.md` (tiếng Anh).
+Engine ~400 hàm formulajs + helper HTML + hàm kiểu AppSheet/regex (`SPLIT` `TEXTJOIN` `UNIQUE`/`DISTINCT` `CONTAINS` `LIST` `IN` `ANY` `REGEXMATCH`/`REGEXEXTRACT`/`REGEXREPLACE` — trong `CUSTOM_FNS`, `src/shared/formulaEngine.ts`). Năm điểm cắm: cột ảo (`formulaColumnModel` + classic `formulaColumnClassic`), field hiển thị (`formulaFieldModel`), giá trị mặc định biên dịch sang RunJS (`formulaDefaultValue`), rule tự tính server lưu ở `ptdlComputedRules` (client `computedRuleClient`, tự phát hiện phụ thuộc + fan-out + WS live-refresh), và tính tuần tự/cửa sổ + giá vốn (`ScanCalcManager`, `excelToSql`). Chi tiết thiết kế: `COMPUTED-FIELD.md` (§4b danh sách ví dụ), `ROLLUP.md`, `LEDGER-WINDOW-MODE.md`, `COSTING.md`, và `README.md` (tiếng Anh).
 </content>
 </invoke>

@@ -25,7 +25,9 @@ Engine bọc **`@formulajs/formulajs`** (~400 hàm Excel) nên đa số hàm Exc
 | Bảng tra cứu 2 khoá (gõ thẳng tên bảng, không có `data.`) | `SUMIFS(bang_hs.he_so, bang_hs.tc_a, data.a, bang_hs.tc_b, data.b)` — `bang_hs` = tên collection config |
 | Lookup khác | `INDEX` · `MATCH` · `CHOOSE` · `SWITCH` · `VLOOKUP` (VLOOKUP cần mảng 2D trong 1 field JSON, không dùng cho bảng collection) |
 | Logic | `IF` · `IFS` · `AND` · `OR` · `NOT` · `IFERROR` · `ISBLANK` · `ISNUMBER` |
-| Text | `CONCATENATE` · `LEFT` · `RIGHT` · `MID` · `UPPER` · `LOWER` · `TRIM` · `LEN` · `TEXT` |
+| Text | `CONCATENATE` · `LEFT` · `RIGHT` · `MID` · `UPPER` · `LOWER` · `TRIM` · `LEN` · `TEXT` · `SPLIT` · `TEXTJOIN(sep, bỏ_ô_trống, …)` · `CONTAINS` · `STARTSWITH` · `ENDSWITH` |
+| Regex (kiểu Google Sheets) | `REGEXMATCH(text, "mẫu")` → true/false · `REGEXEXTRACT(text, "[0-9]+")` lấy phần khớp (hoặc nhóm bắt `(...)` đầu) · `REGEXREPLACE(text, "mẫu", "thay")` thay **tất cả**. Mẫu là chuỗi → nhân đôi `\`: `` `\\d` `` `` `\\w` `` |
+| Danh sách / mảng | `LIST(a, b, …)` tạo mảng · `UNIQUE(mảng)` / `DISTINCT` lọc trùng · `ANY(mảng)` phần tử đầu · `IN(x, mảng)` có thuộc? · `SPLIT(text, sep)` — đếm phần tử bằng `COUNTA` |
 | Ngày | `TODAY` · `NOW` · `YEAR` · `MONTH` · `DAY` · `DATEDIF` · `EDATE` · `DAYS` |
 
 ### Hàm hiển thị HTML

@@ -47,13 +47,16 @@
 | `SUM` `MIN` `MAX` `AVERAGE` | như nhau | |
 | **`IN(x, LIST("a","b"))`** | `IN(x, LIST("a","b"))` | ✅ native v0.1.65 |
 | **`LIST(a,b,…)`** `ANY(list)` | `LIST(a,b,…)` `ANY(list)` | ✅ native (ANY = phần tử đầu) |
-| **`SPLIT(t, " ")`** | `SPLIT(t, " ")` | ✅ native v0.1.65 |
+| **`UNIQUE(list)`** | `UNIQUE(list)` / `DISTINCT` | ✅ native v0.1.82 — lọc trùng **phần tử mảng** (bản formulajs cũ lọc theo đối số, đã ghi đè) |
+| **`SPLIT(t, " ")`** | `SPLIT(t, " ")` · gộp ngược `TEXTJOIN(sep, TRUE, list)` | ✅ native (TEXTJOIN sẵn từ Excel) |
 | **`STARTSWITH` `ENDSWITH` `CONTAINS`** | như nhau | ✅ native v0.1.65 |
 | **`ISNOTBLANK(x)`** `ISBLANK(x)` | như nhau | ✅ native |
 | `LOOKUP(val, "t", key, ret)` | `INDEX(SELECT(t.ret, t.key == val), 1)` | tra 1 giá trị |
 | `NOW()` `TODAY()` `TEXT(x,"DD/MM/YYYY")` | như nhau | |
 | `LEFT` `RIGHT` `MID` `LEN` `TRIM` `UPPER` `LOWER` `CONCATENATE` | như nhau | |
 | `IFERROR` `ROUND` `YEAR` `MONTH` | như nhau | |
+
+> **Regex (NocoBase thêm — AppSheet không có sẵn), v0.1.82:** `REGEXMATCH(text,"mẫu")` → true/false · `REGEXEXTRACT(text,"mẫu")` lấy phần khớp (hoặc nhóm bắt `(...)` đầu) · `REGEXREPLACE(text,"mẫu","thay")` thay tất cả. Hữu ích cho tách chuỗi / kiểm định dạng (email, mã…). ⚠️ Mẫu là chuỗi JS → **nhân đôi `\`** (`\\d`, `\\w`, `\\s`); dùng lớp `[0-9]` thì khỏi cần.
 
 ### ĐỔI TÊN / còn thiếu
 | AppSheet | NocoBase | |
