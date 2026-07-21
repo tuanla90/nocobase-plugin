@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Switch, Slider, Space } from 'antd';
 import { ArrayTable } from '@formily/antd-v5';
 import { observer as fObserver, useForm, useField } from '@formily/react';
-import { SegmentedGroup, colorToString, ColorField, setIconRegistry, IconByKey, RegistryIconPicker, registerFlowComponentsOnce } from '@tuanla90/shared';
+import { SegmentedGroup, colorToString, ColorField, setIconRegistry, IconByKey, RegistryIconPicker, registerFlowComponentsOnce, tagColorToHex } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 // Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
@@ -43,6 +43,24 @@ type Rule = { value?: string; color?: any; background?: any; icon?: string };
 
 function normColor(c: any): string | undefined {
   return colorToString(c);
+}
+
+// hex (#rgb / #rrggbb) → rgba with the given alpha; non-hex colours are returned unchanged.
+function withAlpha(color: string, alpha: number): string {
+  const s = String(color || '').trim();
+  let m = s.match(/^#([0-9a-f]{6})$/i);
+  if (m) { const n = parseInt(m[1], 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`; }
+  m = s.match(/^#([0-9a-f]{3})$/i);
+  if (m) { const h = m[1]; return `rgba(${parseInt(h[0] + h[0], 16)}, ${parseInt(h[1] + h[1], 16)}, ${parseInt(h[2] + h[2], 16)}, ${alpha})`; }
+  return s;
+}
+// A dropdown option's OWN colour (antd tag name like 'red' or a raw hex) → a soft "native tag" pill style
+// (light background + saturated text), so value-tag mirrors the field's existing option colours with no
+// per-value rule. null when the option carries no colour.
+function optionPillStyle(rawColor?: string): { color: string; background: string } | null {
+  if (!rawColor) return null;
+  const hex = tagColorToHex(rawColor);
+  return { color: hex, background: withAlpha(hex, 0.16) };
 }
 
 function matchRule(rules: Rule[], rawValue: any, label?: any): Rule | null {
@@ -247,19 +265,26 @@ export function registerConditionalModel({
   }
 
   class ConditionalStatusFieldModel extends Base {
-    resolveLabel(value: any): any {
+    // Resolve the field option for a value → { label, color }. `color` is the option's OWN colour
+    // (antd tag name or hex) configured on the dropdown/select field. null for non-enum fields.
+    resolveOption(value: any): { label?: any; color?: string } | null {
       try {
         const cf: any = resolveCf(this);
         const opts =
           cf?.enum || cf?.uiSchema?.enum || cf?.options || cf?.uiSchema?.['x-component-props']?.options || [];
         if (Array.isArray(opts) && opts.length) {
           const o = opts.find((x: any) => x && String(x.value) === String(value));
-          if (o) return o.label != null ? o.label : value;
+          if (o) return { label: o.label != null ? o.label : value, color: o.color };
         }
       } catch (e) {
         /* not an enum field */
       }
-      return undefined;
+      return null;
+    }
+
+    resolveLabel(value: any): any {
+      const o = this.resolveOption(value);
+      return o ? o.label : undefined;
     }
 
     // Style props are per-model (global), rule carries color/bg/icon. Shared by scalar + array paths.
@@ -284,6 +309,15 @@ export function registerConditionalModel({
     renderComponent(value: any, wrap: any) {
       const p: any = (this as any).props || {};
       const rules: Rule[] = p.rules || [];
+      const useOptionColors = p.useOptionColors !== false; // default ON: inherit the field option's own colour
+
+      // No explicit rule for this value? Fall back to the field option's OWN colour (soft native-tag pill),
+      // so a coloured dropdown shows its colours with ZERO rules — rules then act as pure overrides.
+      const autoPill = (v: any, text: any) => {
+        if (!useOptionColors) return null;
+        const st = optionPillStyle(this.resolveOption(v)?.color);
+        return st ? this.pillFor({ color: st.color, background: st.background }, text, p) : null;
+      };
 
       // multipleSelect (and any array value): match + pill PER element, else the value stringifies to
       // "a,b" and never matches any rule (silent loss of formatting). Render one pill per value.
@@ -300,7 +334,8 @@ export function registerConditionalModel({
               : v == null
                 ? ''
                 : String(v);
-          return <React.Fragment key={i}>{rule ? this.pillFor(rule, text, p) : <span>{text}</span>}</React.Fragment>;
+          const node = rule ? this.pillFor(rule, text, p) : (autoPill(v, text) ?? <span>{text}</span>);
+          return <React.Fragment key={i}>{node}</React.Fragment>;
         });
         return <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>{nodes}</span>;
       }
@@ -313,8 +348,8 @@ export function registerConditionalModel({
             ? (this as any).t(label)
             : label
           : super.renderComponent(value, wrap);
-      if (!rule) return inner;
-      return this.pillFor(rule, inner, p);
+      if (rule) return this.pillFor(rule, inner, p);
+      return autoPill(value, inner) ?? inner;
     }
   }
 
@@ -370,6 +405,13 @@ export function registerConditionalModel({
                   'x-decorator': 'FormItem',
                   'x-decorator-props': { style: { marginBottom: 0 } },
                   'x-component': 'RadiusSlider',
+                },
+                useOptionColors: {
+                  type: 'boolean',
+                  title: t('Use field option colours'),
+                  'x-decorator': 'FormItem',
+                  'x-decorator-props': { style: { marginBottom: 0 } },
+                  'x-component': 'BorderSwitch',
                 },
               },
             },
@@ -458,7 +500,7 @@ export function registerConditionalModel({
               },
             },
           },
-          defaultParams: { rules: [], radius: 24, border: false, iconPosition: 'left', textStyle: {}, textSize: 0 },
+          defaultParams: { rules: [], radius: 24, border: false, iconPosition: 'left', textStyle: {}, textSize: 0, useOptionColors: true },
           handler(ctx: any, params: any) {
             ctx.model.setProps('rules', params?.rules || []);
             ctx.model.setProps('radius', typeof params?.radius === 'number' ? params.radius : 24);
@@ -466,6 +508,7 @@ export function registerConditionalModel({
             ctx.model.setProps('iconPosition', params?.iconPosition || 'left');
             ctx.model.setProps('textStyle', params?.textStyle || {});
             ctx.model.setProps('textSize', typeof params?.textSize === 'number' ? params.textSize : 0);
+            ctx.model.setProps('useOptionColors', params?.useOptionColors !== false);
             // Global: if "Apply to all views" is on, mirror this widget + config to the field-widget store
             // so it renders on every table/detail using this field (no per-block config). Fire-and-forget.
             saveWidgetGlobal(ctx, params, 'ConditionalStatusFieldModel', {
@@ -475,6 +518,7 @@ export function registerConditionalModel({
               iconPosition: params?.iconPosition || 'left',
               textStyle: params?.textStyle || {},
               textSize: typeof params?.textSize === 'number' ? params.textSize : 0,
+              useOptionColors: params?.useOptionColors !== false,
             });
           },
         },

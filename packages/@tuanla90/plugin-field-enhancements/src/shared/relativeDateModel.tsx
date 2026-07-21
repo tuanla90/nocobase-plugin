@@ -45,7 +45,7 @@ function RT(key: string, opts?: any): string {
     if (i18n?.t) return i18n.t(key, { ns: REL_DATE_NS, ...(opts || {}) });
   } catch (_) { /* fall through — key IS the English phrase */ }
   let s = key;
-  if (opts && typeof opts.count === 'number') s = s.replace('{{count}}', String(opts.count));
+  if (opts && opts.count != null) s = s.replace('{{count}}', String(opts.count));
   return s;
 }
 
@@ -108,16 +108,16 @@ function todayLabel(diff: number, format: RdCfg['format']): string {
   const abs = Math.abs(diff);
   if (format === 'smart') {
     const { n, unit } = reduceUnit(abs);
-    return RT(past ? `{{count}} ${unit}s ago` : `in {{count}} ${unit}s`, { count: n });
+    return RT(past ? `{{count}} ${unit}s ago` : `in {{count}} ${unit}s`, { count: String(n) });
   }
-  return past ? RT('{{count}} days ago', { count: abs }) : RT('in {{count}} days', { count: abs });
+  return past ? RT('{{count}} days ago', { count: String(abs) }) : RT('in {{count}} days', { count: String(abs) });
 }
 // distance from ANOTHER date column → phrase (days only; +after / -before the reference).
 function fieldLabel(diff: number, format: RdCfg['format']): string {
   if (format === 'number') return diff > 0 ? `+${diff}` : String(diff);
   if (diff === 0) return RT('Same day');
   const abs = Math.abs(diff);
-  return diff > 0 ? RT('{{count}} days after', { count: abs }) : RT('{{count}} days before', { count: abs });
+  return diff > 0 ? RT('{{count}} days after', { count: String(abs) }) : RT('{{count}} days before', { count: String(abs) });
 }
 function colorFor(diff: number, cfg: RdCfg): string | undefined {
   if (diff < 0) return cfg.pastColor || undefined;

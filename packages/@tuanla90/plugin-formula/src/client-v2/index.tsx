@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plugin, DisplayTextFieldModel, TableCustomColumnModel, TableColumnModel, EditableFieldModel, useApp } from '@nocobase/client-v2';
+import { Plugin, DisplayTextFieldModel, TableCustomColumnModel, TableColumnModel, EditableFieldModel, FieldModel, useApp } from '@nocobase/client-v2';
 import { ComputedRulesManager } from '../shared/computedRulesManager';
 import { ScanCalcManager } from '../shared/ScanCalcManager';
 import { CollectionFieldModel, tExpr, registerRunJSLib, registerRunJSSnippet } from '@nocobase/flow-engine';
@@ -88,7 +88,7 @@ export class PluginFormulaClientV2 extends Plugin {
     // Computed field (Phase 1): "Giá trị tự tính" rule editor on a real-field column's ⚙ menu +
     // prefill cache. Writes to the server `ptdlComputedRules` collection.
     try {
-      registerComputedRuleFlow({ flowEngine: fe, flowSettings: fe?.flowSettings, TableColumnModel, EditableFieldModel, DisplayTextFieldModel, tExpr });
+      registerComputedRuleFlow({ flowEngine: fe, flowSettings: fe?.flowSettings, TableColumnModel, EditableFieldModel, FieldModel, DisplayTextFieldModel, tExpr });
       await loadComputedRuleCache(app?.apiClient);
       await loadScanHintCache(app?.apiClient);
       // Auto-refresh page blocks after a mutation on a computed-relevant collection (no manual F5).

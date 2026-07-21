@@ -22,6 +22,9 @@ type Settings = {
   // 'buttons' = dãy nút (mọi option); 'single' = chỉ hiện GIÁ TRỊ ĐANG CHỌN như 1 tag màu (như conditional-format),
   // chỉ áp cho lúc HIỂN THỊ (readPretty/detail/table); form edit vẫn là nút để bấm chọn.
   display: string;
+  // Bảng: bấm thẳng nút = lưu ngay field của dòng đó (không cần quick-edit/pencil). Tự chứa → tắt "Enable
+  // quick edit" của cột là hết icon bút chì.
+  clickSave: boolean;
 };
 
 // Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
@@ -61,6 +64,7 @@ function settingsFromProps(p: any): Settings {
     monoColor: p.ptdlMonoColor || '',
     icons: p.ptdlIcons || {},
     display: p.ptdlDisplay || 'buttons',
+    clickSave: p.ptdlClickSave === true,
   };
 }
 function settingsFromForm(v: any): Settings {
@@ -76,7 +80,61 @@ function settingsFromForm(v: any): Settings {
     monoColor: v?.monoColor || '',
     icons: v?.icons || {},
     display: v?.display || 'buttons',
+    clickSave: !!v?.clickSave,
   };
+}
+
+// Next value after clicking `opt` — multi toggles membership; single sets (or deselects if allowed).
+// Shared by the editable form model AND the inline quick-edit save so both behave identically.
+function nextValue(raw: any, opt: Opt, isMulti: boolean, allowDeselect: boolean): any {
+  if (isMulti) {
+    const cur = Array.isArray(raw) ? [...raw] : [];
+    const i = cur.findIndex((v) => v === opt.value);
+    if (i >= 0) cur.splice(i, 1);
+    else cur.push(opt.value);
+    return cur;
+  }
+  return raw === opt.value && allowDeselect ? null : opt.value;
+}
+
+// The core "Enable quick edit" column switch sets `props.editable = true` on the COLUMN model. Our display
+// field-model renders INSIDE that column, so walk up `.parent` to find it (same idea as resolveCf). When on,
+// the display buttons become click-to-save instead of needing the pencil → popover.
+function isQuickEditCell(model: any): boolean {
+  for (let cur: any = model, i = 0; cur && i < 6; cur = cur.parent, i++) {
+    if (cur?.props?.editable === true) return true;
+  }
+  return false;
+}
+
+// Persist ONE field on the current row directly (inline quick-edit). Uses the cell context's APIClient +
+// record — the same handles NocoBase exposes to table cells (verified live: context.api / context.record).
+// OPTIMISTIC IN-PLACE: mutate the observable row so ONLY this cell re-renders — deliberately NO
+// `resource.refresh()` (that refetches the whole block → the whole-table flicker the user reported). The
+// server write is fire-and-forget with rollback on failure; F5 re-syncs from the server regardless.
+async function saveInlineValue(model: any, value: any): Promise<void> {
+  const ctx: any = model?.context || {};
+  const cf = resolveCf(model);
+  const api = ctx.api || ctx.blockModel?.context?.api;
+  const record = ctx.record;
+  const fieldName = cf?.name;
+  const collectionName = cf?.collectionName || cf?.collection?.name || ctx.collection?.name;
+  const pkName = cf?.collection?.filterTargetKey || ctx.collection?.filterTargetKey || 'id';
+  const pk = record?.[pkName] ?? record?.id;
+  if (!api?.resource || !collectionName || !fieldName || pk == null) {
+    // eslint-disable-next-line no-console
+    console.warn('[field-enh] inline quick-edit skipped — missing api/collection/field/pk', { collectionName, fieldName, pk });
+    return;
+  }
+  const prev = record ? record[fieldName] : undefined;
+  if (record) record[fieldName] = value; // optimistic — observable row updates just this cell, no refetch
+  try {
+    await api.resource(collectionName).update({ filterByTk: pk, values: { [fieldName]: value } });
+  } catch (e) {
+    if (record) record[fieldName] = prev; // rollback the on-screen value
+    // eslint-disable-next-line no-console
+    console.warn('[field-enh] inline quick-edit save failed', e);
+  }
 }
 
 // Presentational — dùng CHUNG cho model.render() lẫn preview.
@@ -256,17 +314,7 @@ export function registerSelectButtonsModel(deps: {
       const canEdit = p.pattern !== 'readPretty' && !p.disabled && typeof p.onChange === 'function';
       const settings = settingsFromProps(p);
       const raw = p.value;
-      const onPick = (opt: Opt) => {
-        if (!canEdit) return;
-        if (isMulti) {
-          const cur = Array.isArray(raw) ? [...raw] : [];
-          const i = cur.findIndex((v) => v === opt.value);
-          if (i >= 0) cur.splice(i, 1); else cur.push(opt.value);
-          p.onChange(cur);
-        } else {
-          p.onChange(raw === opt.value && settings.allowDeselect ? null : opt.value);
-        }
-      };
+      const onPick = (opt: Opt) => { if (canEdit) p.onChange(nextValue(raw, opt, isMulti, settings.allowDeselect)); };
       return <ButtonGroupView options={options} isMulti={isMulti} value={raw} settings={settings} onPick={onPick} canEdit={canEdit} />;
     }
   }
@@ -293,6 +341,12 @@ export function registerSelectButtonsModel(deps: {
               },
               display: fi(t('Display'), 'PtdlSeg', {
                 componentProps: { options: [{ label: t('Button group'), value: 'buttons' }, { label: t('Single tag'), value: 'single' }] },
+              }),
+              clickSave: fi(t('Click to change (inline, no popup)'), 'PtdlBoolSwitch', {
+                type: 'boolean',
+                decoratorProps: {
+                  tooltip: t('In a table, click a button to change the value directly — saved instantly, no edit popup. Turn OFF the column’s “Enable quick edit” to remove the pencil icon.'),
+                },
               }),
               row1: {
                 type: 'void', 'x-component': 'PtdlGrid', 'x-component-props': { minColWidth: 160 },
@@ -341,7 +395,7 @@ export function registerSelectButtonsModel(deps: {
             };
           },
           defaultParams: {
-            display: 'buttons',
+            display: 'buttons', clickSave: false,
             layout: 'separated', colorMode: 'colorful', monoColor: '', size: 'default',
             fontSize: 0, radius: 4, gap: 6, allowDeselect: true, fullWidth: false, icons: {},
           },
@@ -349,6 +403,7 @@ export function registerSelectButtonsModel(deps: {
             const p = params || {};
             ctx.model.setProps({
               ptdlDisplay: p.display || 'buttons',
+              ptdlClickSave: p.clickSave === true,
               ptdlLayout: p.layout || 'separated',
               ptdlColorMode: p.colorMode || 'colorful',
               ptdlMonoColor: p.monoColor || '',
@@ -390,7 +445,14 @@ export function registerSelectButtonsModel(deps: {
       const options = resolveOptions(model);
       const isMulti = isMultiField(model);
       const settings = settingsFromProps(p);
-      return <ButtonGroupView options={options} isMulti={isMulti} value={p.value} settings={settings} onPick={() => {}} canEdit={false} />;
+      // Buttons become directly click-to-save when EITHER the self-contained "clickSave" setting is on
+      // (recommended — no pencil, just turn off the column's "Enable quick edit") OR the core quick-edit
+      // switch is on. Off → inert display exactly as before.
+      const editable = settings.clickSave === true || isQuickEditCell(model);
+      const onPick = editable
+        ? (opt: Opt) => saveInlineValue(model, nextValue(p.value, opt, isMulti, settings.allowDeselect))
+        : () => {};
+      return <ButtonGroupView options={options} isMulti={isMulti} value={p.value} settings={settings} onPick={onPick} canEdit={editable} />;
     },
   });
 

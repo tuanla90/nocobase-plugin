@@ -1,0 +1,24 @@
+{
+  "name": "@tuanla90/plugin-column-resize",
+  "version": "0.1.1",
+  "displayName": "Column Resize",
+  "displayName.vi-VN": "Kéo giãn cột",
+  "description": "Drag the right edge of any /v/ table column header to resize it. Widths are saved per-block (shared with everyone, like the native ‘Column width’ setting) and are only editable with the UI editor on. Modern (/v/) client only.",
+  "keywords": [
+    "nocobase"
+  ],
+  "license": "Apache-2.0",
+  "main": "./dist/server/index.js",
+  "devDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  },
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#column-resize"
+}

@@ -302,30 +302,43 @@ const PreviewInner: React.FC<any> = observer((props: any) => {
     const hintColl = rowPath
       ? host.block?.collection?.collectionManager?.getCollection?.(cf.collectionName)
       : host.block?.collection;
-    const { previews, pending } = evalCollectionPreviews(cf.collectionName, base, hintColl, {
-      onDone,
-      depth: rowPath ? 1 : 0,
-    });
-    if (pending) return orig;
-    if (!(cf.name in previews)) return orig;
-    const val = previews[cf.name];
-    if (val == null || (typeof val === 'number' && !Number.isFinite(val))) return orig;
-    if (sameValue(val, base[cf.name])) return orig;
-
-    // REPLACE the control with the previewed number — plain, non-editable, normal colour ("looks as if
-    // saved"). Keep the real control mounted-but-hidden so form state/binding is untouched. Hover shows
-    // the currently stored value for reference.
     const stored = base[cf.name];
-    return (
+
+    // We're PAST the trigger gate → the server WILL (re)compute this field on this save, so its value is
+    // server-controlled and the user must never type into it. REPLACE the control with a read-only number
+    // in EVERY branch below — never fall back to the raw editable `orig`. The hidden `orig` stays mounted
+    // so the form binding/submit is untouched; the tooltip shows the currently-stored value only when the
+    // live preview differs from it.
+    //
+    // Before this, three branches fell back to `orig` (the editable input): preview pending / not
+    // evaluable client-side (309–310), and — the common one — the live preview EQUAL to the stored value
+    // (313). Inside a sub-table that made a computed cell flip-flop row-by-row over its lifecycle: an
+    // empty new row showed an input (can't evaluate yet), a new row with inputs showed the read-only
+    // number, then once saved (stored == computed) it reverted to an input again ("dòng cũ thì không
+    // display-only"). Rendering read-only unconditionally here keeps the column consistently non-editable.
+    const readOnly = (display: any, showStored: boolean) => (
       <>
         <span style={{ display: 'none' }}>{orig}</span>
-        <Tooltip title={stored == null ? undefined : `${t('Số đã lưu')}: ${fmt(stored)}`}>
+        <Tooltip title={showStored && stored != null ? `${t('Số đã lưu')}: ${fmt(stored)}` : undefined}>
           <span style={{ display: 'inline-flex', alignItems: 'center', minHeight: 24, whiteSpace: 'nowrap' }}>
-            {fmt(val)}
+            {fmt(display)}
           </span>
         </Tooltip>
       </>
     );
+
+    const { previews, pending } = evalCollectionPreviews(cf.collectionName, base, hintColl, {
+      onDone,
+      depth: rowPath ? 1 : 0,
+    });
+    // No fresh preview yet (still loading) or at all (this formula isn't evaluable in the browser) → show
+    // the STORED value read-only, so the cell stays non-editable AND an already-saved value stays visible.
+    if (pending) return readOnly(stored, false);
+    if (!(cf.name in previews)) return readOnly(stored, false);
+    const val = previews[cf.name];
+    if (val == null || (typeof val === 'number' && !Number.isFinite(val))) return readOnly(stored, false);
+    // Preview available → show it read-only; surface the "saved value" tooltip only when it will change.
+    return readOnly(val, !sameValue(val, stored));
   } catch (e) {
     return orig; // preview must never break a form
   }

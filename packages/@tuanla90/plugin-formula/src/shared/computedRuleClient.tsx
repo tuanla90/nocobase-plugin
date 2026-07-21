@@ -311,6 +311,7 @@ export function registerComputedRuleFlow({
   flowSettings,
   TableColumnModel,
   EditableFieldModel,
+  FieldModel,
   DisplayTextFieldModel,
   tExpr,
 }: {
@@ -318,14 +319,19 @@ export function registerComputedRuleFlow({
   flowSettings?: any;
   TableColumnModel: any;
   EditableFieldModel?: any;
+  FieldModel?: any;
   DisplayTextFieldModel?: any;
   tExpr?: (s: string, opts?: any) => any;
 }) {
   if (flowRegistered) return;
   const t = (s: string) => (tExpr ? tExpr(s, { ns: NS }) : s);
-  // The RULE EDITOR (config dialog) lives ONLY on the table-column ⚙ — NocoBase doesn't surface an extra
-  // flow in a form/edit field's ⚙, so registering it there just added a dead menu item. Instead, form/edit
-  // + detail fields get a read-only TOOLTIP hint (below) showing the formula.
+  // The RULE EDITOR (config dialog) is registered on the table-column ⚙ AND the editable form/edit field ⚙
+  // (via the `FieldModel` base below — the same base field-enhancements' editable widgets, e.g. star-rating /
+  // input-with-icon, extend, and whose settings DO surface in a form field's ⚙). An earlier attempt put it on
+  // a form field's ⚙ and got "a dead menu item" — that was the wrong base; `FieldModel` is the one that
+  // surfaces. Detail/VIEW fields (DisplayTextFieldModel) are deliberately NOT targeted: they stay read-only
+  // and just get the TOOLTIP hint (below) showing the formula. Config is a column-level action, so the editor
+  // deliberately lives only where you configure a field (column ⚙ / editable field ⚙), not on a read-only view.
   const TableColumn = resolveModelClass(flowEngine, 'TableColumnModel', TableColumnModel);
   if (!TableColumn || typeof TableColumn.registerFlow !== 'function') {
     // eslint-disable-next-line no-console
@@ -372,7 +378,10 @@ export function registerComputedRuleFlow({
           async handler(ctx: any, params: any) {
             const cf = resolveCf(ctx?.model);
             if (!cf) return;
-            const api = ctx.model.context?.api;
+            // Resolve the API client from the widest set of handles — on a form/edit FIELD model the api may
+            // not sit on `ctx.model.context` the way it does on a table column, so mirror the uiSchema chain
+            // (else saveRule/recompute would silently no-op when the editor is opened from a form field ⚙).
+            const api = ctx?.model?.context?.api || ctx?.app?.apiClient || ctx?.model?.flowEngine?.context?.api || sharedApi;
             const rule = params?.rule || {};
             // This step AUTO-APPLIES on EVERY render (flow-engine settings flow), with `defaultParams`
             // = the current cached rule. Writing unconditionally here made every table render re-save +
@@ -399,11 +408,17 @@ export function registerComputedRuleFlow({
         },
       },
   };
-  // Register on the MAIN-table column AND the sub-table column (SubTableColumnModel does NOT extend
-  // TableColumnModel, so it inherits nothing) — both ⚙ menus then show "Giá trị tự cập nhật (công thức)".
-  const targets = [TableColumn, resolveModelClass(flowEngine, 'SubTableColumnModel', undefined)].filter(
-    (c: any) => c && typeof c.registerFlow === 'function',
-  );
+  // Register the SAME editor flow on THREE bases so "Giá trị tự cập nhật (công thức)" shows in every place a
+  // field is configured:
+  //   • TableColumnModel      — main-table column ⚙
+  //   • SubTableColumnModel   — sub-table column ⚙ (does NOT extend TableColumnModel → inherits nothing)
+  //   • FieldModel            — the editable form/edit field ⚙ (base of every form input; sub-table/detail
+  //                             DISPLAY models are a separate base, so this hits editable contexts only)
+  const targets = [
+    TableColumn,
+    resolveModelClass(flowEngine, 'SubTableColumnModel', undefined),
+    resolveModelClass(flowEngine, 'FieldModel', FieldModel),
+  ].filter((c: any) => c && typeof c.registerFlow === 'function');
   for (const Cls of targets) {
     try {
       (Cls as any).registerFlow(flowConfig);

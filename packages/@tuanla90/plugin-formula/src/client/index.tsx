@@ -9,6 +9,7 @@ import {
   TableCustomColumnModel,
   TableColumnModel,
   EditableFieldModel,
+  FieldModel,
   DisplayTextFieldModel as DisplayTextFieldModelV2,
 } from '@nocobase/client-v2';
 import { CollectionFieldModel, tExpr, registerRunJSLib, registerRunJSSnippet } from '@nocobase/flow-engine';
@@ -99,6 +100,7 @@ export class PluginFormulaClient extends Plugin {
         flowSettings: fe?.flowSettings,
         TableColumnModel,
         EditableFieldModel,
+        FieldModel,
         DisplayTextFieldModel: DisplayTextFieldModelV2,
         tExpr,
       });
