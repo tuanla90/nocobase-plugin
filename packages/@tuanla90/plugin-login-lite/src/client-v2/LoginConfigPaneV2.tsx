@@ -11,9 +11,37 @@ import { useTranslation } from 'react-i18next';
 import {
   Alert, Button, Card, Col, ColorPicker, Divider, Input, Row, Segmented, Select, Slider, Space, Spin, Switch, Typography, message,
 } from 'antd';
-import { GRADIENTS, gradientCss, resolveThemePalette, hexToRgba, svgFieldIcon, accountIconPath, passwordIconPath, ACCOUNT_ICONS, PASSWORD_ICONS } from '@tuanla90/shared';
+import { GRADIENTS, gradientCss, ACCOUNT_ICONS, PASSWORD_ICONS } from '@tuanla90/shared';
 
 const NAMESPACE = '@tuanla90/plugin-login-lite';
+
+// The REAL /v/ sign-in components, injected by the plugin (client-v2/index.tsx) so the preview
+// renders the exact same page the visitor sees — background, opacity, layout, theme all come from
+// one source of truth and can't drift. Passed as props (not imported) to avoid an index ⇄ pane
+// import cycle. See LoginPreview below.
+type PreviewComponents = {
+  AuthLayoutRenderV2: React.ComponentType<{ loginConfig?: any; children?: React.ReactNode }>;
+  CustomSignInPageV2: React.ComponentType<{ loginConfig?: any }>;
+};
+
+// A crash in the reused sign-in components (e.g. a bad embedded-webpage URL, a missing auth context)
+// must never take down the whole config screen — contain it and show a muted placeholder instead.
+class PreviewErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    // eslint-disable-next-line no-console
+    console.warn('[login-lite] preview render error', error);
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
 
 type Options = {
   useSystemName?: 'yes' | 'no';
@@ -75,7 +103,7 @@ function getErrorMessage(error: any, fallback: string): string {
   return error?.response?.data?.errors?.[0]?.message || error?.message || fallback;
 }
 
-export function LoginConfigPaneV2() {
+export function LoginConfigPaneV2({ previewComponents }: { previewComponents?: PreviewComponents } = {}) {
   const app = useApp();
   const { t } = useTranslation(NAMESPACE);
   const api = app.apiClient;
@@ -310,56 +338,61 @@ export function LoginConfigPaneV2() {
       {/* Live preview */}
       <div style={{ flex: '0 0 340px', position: 'sticky', top: 12 }}>
         <Typography.Text type="secondary">{t('Home configuration')}</Typography.Text>
-        <LoginPreview opt={opt} />
+        <LoginPreview opt={opt} components={previewComponents} />
       </div>
     </div>
   );
 }
 
-function LoginPreview({ opt }: { opt: Options }) {
-  const palette = useMemo(() => resolveThemePalette(opt as any, false), [opt]);
-  const bg =
-    opt.leftContentType === 'image' && opt.leftImage
-      ? `center/cover no-repeat url("${opt.leftImage}")`
-      : opt.leftContentType === 'gradient'
-        ? gradientCss(opt.leftGradient)
-        : palette.pageBg;
-  const float = opt.formLayout === 'float';
-  const pos = opt.formPosition || 'left';
-  const justify = pos === 'center' ? 'center' : pos === 'right' ? 'flex-end' : 'flex-start';
-  const inputStyle: React.CSSProperties = {
-    height: 26, borderRadius: 6, background: palette.inputBg, border: `1px solid ${palette.inputBorder}`,
-    marginBottom: 8, backgroundRepeat: 'no-repeat', backgroundPosition: '8px center',
-  };
-  const acctIcon = opt.showFieldIcons !== false ? svgFieldIcon(accountIconPath(opt.accountIcon), palette.inputText) : undefined;
-  const pwIcon = opt.showFieldIcons !== false ? svgFieldIcon(passwordIconPath(opt.passwordIcon), palette.inputText) : undefined;
+// The preview IS the real sign-in page, contained in a box and fed the LIVE (unsaved) form values —
+// so it can never drift from what the visitor sees. Every setting (background gradient/image/HTML/
+// embedded-webpage, form-panel transparency `themeOpacity`, layout, position, theme, logo) is applied
+// by the same `AuthLayoutRenderV2` + `CustomSignInPageV2` the login route renders.
+function LoginPreview({ opt, components }: { opt: Options; components?: PreviewComponents }) {
+  const { t } = useTranslation(NAMESPACE);
+  // `options` holds the live config; `__previewLive` tells AuthLayoutRenderV2 to render at 100% inside
+  // this box (not 100vw/100vh) and CustomSignInPageV2 to skip its document.title / ?redirect side
+  // effects. Recomputed on every edit → background + opacity + everything update instantly.
+  const previewConfig = useMemo(() => ({ options: opt, __previewLive: true }), [opt]);
 
-  const card = (
-    <div style={{
-      width: float ? '78%' : '100%', margin: float ? 'auto 0' : 0, padding: 16, borderRadius: float ? 12 : 0,
-      background: palette.cardBg, color: palette.cardText, alignSelf: 'stretch',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      boxShadow: float ? '0 8px 30px rgba(0,0,0,0.25)' : 'none',
-    }}>
-      {opt.logoUrl ? <img src={opt.logoUrl} alt="" style={{ height: 24, marginBottom: 8, objectFit: 'contain' }} /> : null}
-      <div style={{ fontWeight: 600, marginBottom: 10, color: palette.cardText, fontSize: 13 }}>
-        {opt.useSystemName === 'no' ? (opt.customSystemName || 'Sign in') : 'NocoBase'}
-      </div>
-      <div style={{ ...inputStyle, backgroundImage: acctIcon, paddingLeft: acctIcon ? 28 : 8 }} />
-      <div style={{ ...inputStyle, backgroundImage: pwIcon, paddingLeft: pwIcon ? 28 : 8 }} />
-      <div style={{ height: 28, borderRadius: 6, background: palette.btnBg, color: palette.btnText, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>Sign in</div>
+  const frame: React.CSSProperties = {
+    marginTop: 6,
+    height: 360,
+    borderRadius: 10,
+    overflow: 'hidden',
+    border: '1px solid rgba(0,0,0,0.1)',
+    position: 'relative',
+  };
+
+  if (!components) {
+    return <div style={frame} />;
+  }
+  const { AuthLayoutRenderV2, CustomSignInPageV2 } = components;
+
+  const fallback = (
+    <div
+      style={{
+        ...frame,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'rgba(0,0,0,0.45)',
+        fontSize: 12,
+        background: 'rgba(0,0,0,0.03)',
+      }}
+    >
+      {t('Preview unavailable')}
     </div>
   );
 
   return (
-    <div style={{
-      marginTop: 6, height: 300, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)',
-      background: bg, display: 'flex', justifyContent: justify, alignItems: 'stretch',
-    }}>
-      <div style={{ width: float ? '100%' : '62%', display: 'flex', justifyContent: justify, alignItems: 'center', padding: float ? 16 : 0 }}>
-        {card}
+    <PreviewErrorBoundary fallback={fallback}>
+      <div style={frame}>
+        <AuthLayoutRenderV2 loginConfig={previewConfig}>
+          <CustomSignInPageV2 loginConfig={previewConfig} />
+        </AuthLayoutRenderV2>
       </div>
-    </div>
+    </PreviewErrorBoundary>
   );
 }
 

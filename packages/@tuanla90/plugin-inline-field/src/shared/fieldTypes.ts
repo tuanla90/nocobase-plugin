@@ -259,3 +259,27 @@ export const DISPLAY_BY_INTERFACE: Record<string, string> = {
   m2o: 'DisplayTextFieldModel', o2m: 'DisplayTextFieldModel', m2m: 'DisplayTextFieldModel',
   attachment: 'DisplayTextFieldModel',
 };
+
+/**
+ * interface → default EDITABLE renderer model class (a /v/ FORM item's field sub-model). FALLBACK only:
+ * the client resolves via the framework's own `FormItemModel.getDefaultBindingByField` first (the exact
+ * path native "Configure fields" uses, so @tuanla90 widgets / relation pickers / status-flow / upload win),
+ * and drops to this map only when that can't answer. Model names verified live from nb-local 2.1.19:
+ * scalars from @nocobase/client-v2 EditableItemModel bindings; relations → RecordSelect (to-one & to-many);
+ * statusFlow → @tuanla90/plugin-status-flow's editable model; attachment → file-manager's UploadFieldModel.
+ * A computed field is created as its scalar RESULT type (default number) and rendered read-pretty in a form.
+ */
+export const EDITABLE_BY_INTERFACE: Record<string, string> = {
+  input: 'InputFieldModel', email: 'InputFieldModel', phone: 'InputFieldModel', url: 'InputFieldModel',
+  textarea: 'TextareaFieldModel',
+  number: 'NumberFieldModel', integer: 'NumberFieldModel', percent: 'PercentFieldModel',
+  select: 'SelectFieldModel', multipleSelect: 'SelectFieldModel', statusFlow: 'StatusFlowFieldModel',
+  checkbox: 'CheckboxFieldModel',
+  date: 'DateOnlyFieldModel', datetime: 'DateTimeTzFieldModel', time: 'TimeFieldModel',
+  color: 'ColorFieldModel', icon: 'IconFieldModel',
+  // relations: to-one and to-many both default to the RecordSelect editable widget (multiple for to-many).
+  m2o: 'RecordSelectFieldModel', o2m: 'RecordSelectFieldModel', m2m: 'RecordSelectFieldModel',
+  attachment: 'UploadFieldModel',
+  // attachmentUrl is created as a plain 'url' string field; computed → its scalar result type (read-pretty).
+  attachmentUrl: 'InputFieldModel', computed: 'NumberFieldModel',
+};

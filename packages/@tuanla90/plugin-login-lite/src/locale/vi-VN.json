@@ -83,5 +83,6 @@
   "Back": "Quay lại",
   "Signin": "Đăng nhập",
   "No authentication methods available.": "Không có phương thức xác thực khả dụng.",
-  "Failed to fetch login config": "Không lấy được cấu hình đăng nhập"
+  "Failed to fetch login config": "Không lấy được cấu hình đăng nhập",
+  "Preview unavailable": "Không hiển thị được bản xem trước"
 }

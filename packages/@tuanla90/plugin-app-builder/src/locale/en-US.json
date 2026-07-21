@@ -113,5 +113,14 @@
   "Could not read the dashboard fields": "Could not read the dashboard fields",
   "No filterable fields found": "No filterable fields found",
   "Pick at least one field": "Pick at least one field",
-  "Filter added": "Filter added"
+  "Filter added": "Filter added",
+  "Upload file": "Upload file",
+  "Upload an App-Spec JSON file, or an AppSheet loadApp file (downloaded from the browser).": "Upload an App-Spec JSON file, or an AppSheet loadApp file (downloaded from the browser).",
+  "File too large (max 25MB)": "File too large (max 25MB)",
+  "The file is empty": "The file is empty",
+  "AppSheet file loaded — click “Convert → App-Spec”": "AppSheet file loaded — click “Convert → App-Spec”",
+  "App-Spec loaded — Validate then Create app": "App-Spec loaded — Validate then Create app",
+  "File loaded into the editor": "File loaded into the editor",
+  "Loaded, but this is not valid JSON — check the file": "Loaded, but this is not valid JSON — check the file",
+  "Could not read the file": "Could not read the file"
 }

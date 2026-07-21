@@ -113,5 +113,14 @@
   "Could not read the dashboard fields": "Không đọc được field của dashboard",
   "No filterable fields found": "Không có field nào lọc được",
   "Pick at least one field": "Chọn ít nhất một field",
-  "Filter added": "Đã thêm bộ lọc"
+  "Filter added": "Đã thêm bộ lọc",
+  "Upload file": "Tải file lên",
+  "Upload an App-Spec JSON file, or an AppSheet loadApp file (downloaded from the browser).": "Tải file JSON App-Spec, hoặc file AppSheet loadApp (tải từ trình duyệt).",
+  "File too large (max 25MB)": "File quá lớn (tối đa 25MB)",
+  "The file is empty": "File rỗng",
+  "AppSheet file loaded — click “Convert → App-Spec”": "Đã nạp file AppSheet — bấm “Convert → App-Spec”",
+  "App-Spec loaded — Validate then Create app": "Đã nạp App-Spec — Kiểm tra rồi Tạo app",
+  "File loaded into the editor": "Đã nạp file vào ô soạn",
+  "Loaded, but this is not valid JSON — check the file": "Đã nạp, nhưng JSON không hợp lệ — kiểm tra lại file",
+  "Could not read the file": "Không đọc được file"
 }

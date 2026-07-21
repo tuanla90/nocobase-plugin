@@ -309,7 +309,7 @@ export function AuthLayoutRenderV2({
         style={{ ...rootStyle, position: 'relative' }}
       >
         <div style={{ position: 'absolute', inset: 0 }}>{bgLayer}</div>
-        {languageSwitch}
+        {!isPreview && languageSwitch}
         <div
           style={{
             position: 'relative',
@@ -358,7 +358,7 @@ export function AuthLayoutRenderV2({
       style={{ ...rootStyle, position: 'relative' }}
     >
       <div style={{ position: 'absolute', inset: 0 }}>{bgLayer}</div>
-      {languageSwitch}
+      {!isPreview && languageSwitch}
       <div
         style={{
           position: 'relative',
@@ -397,6 +397,9 @@ export function CustomSignInPageV2({ loginConfig: propsLoginConfig }: { loginCon
   const { loginConfig: contextLoginConfig } = useOutletContext<{ loginConfig?: LoginConfigRecord }>() || {};
   const rawLoginConfig = propsLoginConfig || contextLoginConfig;
   const loginConfig = normalizeLoginConfig(rawLoginConfig);
+  // Config passed via props (not Outlet context) means this is the settings-page preview, not the
+  // real sign-in route — skip page-level side effects (document.title, ?redirect injection).
+  const isPreview = !!propsLoginConfig;
   const authenticators = useContext(AuthenticatorsContext);
   const signInFormLoaders = useLoaderMap('signInFormLoader');
   const signInButtonLoaders = useLoaderMap('signInButtonLoader');
@@ -407,8 +410,9 @@ export function CustomSignInPageV2({ loginConfig: propsLoginConfig }: { loginCon
   );
 
   useEffect(() => {
+    if (isPreview) return;
     document.title = t('Signin');
-  }, [t]);
+  }, [t, isPreview]);
 
   const loginMethods = loginConfig.loginMethods || ['password'];
   const showPassword = loginMethods.includes('password');
@@ -516,7 +520,6 @@ export function CustomSignInPageV2({ loginConfig: propsLoginConfig }: { loginCon
 
   // Default landing page: inject ?redirect= when config sets one and the URL has none.
   // Only on the real sign-in page (config from Outlet context, not props → preview).
-  const isPreview = !!propsLoginConfig;
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (isPreview) return;
@@ -776,6 +779,13 @@ export function CustomAuthLayoutV2() {
   );
 }
 
+// Renders the /v/ "Login configurations" settings pane, injecting the REAL sign-in components so its
+// live preview IS the actual page (background, opacity, layout, theme all from one source of truth).
+// Injected as props rather than imported by LoginConfigPaneV2 to avoid an index ⇄ pane import cycle.
+function LoginConfigTab() {
+  return <LoginConfigPaneV2 previewComponents={{ AuthLayoutRenderV2, CustomSignInPageV2 }} />;
+}
+
 export class PluginLoginLiteClientV2 extends Plugin {
   private registerAuthRoutes = () => {
     this.router.add('auth', {
@@ -811,7 +821,7 @@ export class PluginLoginLiteClientV2 extends Plugin {
       title: this.app.i18n.t('Login configurations', { ns: NAMESPACE }),
       icon: 'SettingOutlined',
     });
-    psm?.addPageTabItem?.({ menuKey: 'plugin-login', key: 'index', Component: LoginConfigPaneV2 });
+    psm?.addPageTabItem?.({ menuKey: 'plugin-login', key: 'index', Component: LoginConfigTab });
   }
 }
 

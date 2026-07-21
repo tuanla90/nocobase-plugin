@@ -9,11 +9,11 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plugin, Icon, icons } from '@nocobase/client-v2';
-import { Alert, Button, Input, message, Modal, Popover, Progress, Segmented, Select, Space, Tabs, theme, Tooltip, Typography } from 'antd';
+import { Alert, Button, Input, message, Modal, Popover, Progress, Segmented, Select, Space, Tabs, theme, Tooltip, Typography, Upload } from 'antd';
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
   FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
-  PlayCircleOutlined, DeleteOutlined, RocketOutlined, SwapOutlined,
+  PlayCircleOutlined, DeleteOutlined, RocketOutlined, SwapOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import { validateAppSpec } from '../shared/appSpec';
 import { buildApp, createMenuGroup, createPage, deleteApp, importData, materializeApp } from '../shared/materialize';
@@ -521,6 +521,36 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       if (r.ok) message.success(t('Spec is valid') + (r.warnings.length ? ` · ${r.warnings.length} ⚠` : ''));
       else message.error(`${r.errors.length}: ` + r.errors.slice(0, 3).map((e) => e.message).join(' · '));
     };
+    // 📤 Upload a JSON file into the editor — an AppSheet `loadApp` blob (downloaded from the browser) OR a
+    // plain App-Spec JSON. We only READ the file into `text`; the existing `asBlob` memo then auto-detects an
+    // AppSheet blob and shows the "Convert → App-Spec" banner (no duplicate convert logic here). `file.text()`
+    // with a FileReader fallback keeps it working on older engines; a multi-MB AppSheet blob loads fine.
+    const readFileText = (file: File): Promise<string> =>
+      typeof (file as any).text === 'function'
+        ? (file as any).text()
+        : new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result || ''));
+            fr.onerror = () => reject(fr.error || new Error('read failed'));
+            fr.readAsText(file);
+          });
+    const onUploadFile = async (file: File) => {
+      try {
+        if (file.size > 25 * 1024 * 1024) { message.error(t('File too large (max 25MB)')); return; }
+        const content = (await readFileText(file)).trim();
+        if (!content) { message.error(t('The file is empty')); return; }
+        setText(content);
+        // Nudge the user toward the right next step based on what the file looks like (no auto-convert).
+        try {
+          const obj = JSON.parse(content);
+          if (looksLikeAppSheet(obj) && !Array.isArray(obj?.collections)) message.success(t('AppSheet file loaded — click “Convert → App-Spec”'));
+          else if (Array.isArray(obj?.collections)) message.success(t('App-Spec loaded — Validate then Create app'));
+          else message.info(t('File loaded into the editor'));
+        } catch { message.warning(t('Loaded, but this is not valid JSON — check the file')); }
+      } catch (e: any) {
+        message.error(t('Could not read the file') + ': ' + (e?.message || String(e)));
+      }
+    };
     // Is the JSON box currently an AppSheet blob (not already an App-Spec)? Gates the Convert banner.
     const asBlob = useMemo(() => { try { const o = JSON.parse(text); return looksLikeAppSheet(o) && !Array.isArray(o?.collections) ? o : null; } catch { return null; } }, [text]);
     const onConvertAppSheet = () => {
@@ -810,8 +840,15 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
                   <>
                     <Space style={{ marginBottom: 8 }} wrap>
                       <Button onClick={() => setText(JSON.stringify(SAMPLE_BAN_HANG, null, 2))} icon={<LIcon type="lucide-folder-open" fallback={<FolderOutlined />} />}>{t('Load demo')}</Button>
+                      {/* Upload a JSON file straight into the editor — reuses the existing detect/convert flow (asBlob → Convert banner). */}
+                      <Upload accept=".json,.txt,application/json" showUploadList={false} beforeUpload={(file) => { onUploadFile(file as File); return false; }}>
+                        <Button icon={<LIcon type="lucide-upload" fallback={<UploadOutlined />} />}>{t('Upload file')}</Button>
+                      </Upload>
                       <Button onClick={onValidate} icon={<LIcon type="lucide-circle-check" fallback={<CheckOutlined />} />}>{t('Validate')}</Button>
                     </Space>
+                    <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: -2, marginBottom: 8 }}>
+                      {t('Upload an App-Spec JSON file, or an AppSheet loadApp file (downloaded from the browser).')}
+                    </Typography.Paragraph>
                     {/* Paste an AppSheet app-definition blob → one-click convert to App-Spec (no CLI). */}
                     {asBlob && (
                       <Alert type="info" showIcon style={{ marginBottom: 8 }}

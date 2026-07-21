@@ -3,6 +3,12 @@ import { tExpr } from '@nocobase/flow-engine';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
 import { registerInlineField, NS } from '../shared/inlineField';
 import enUS from '../locale/en-US.json';
+// @tuanla90/shared's bundled dist imports `@formily/react` (a host-provided NocoBase external) from its
+// ConfigContainer. This plugin doesn't use it directly, but the client build only externalizes packages it
+// finds in THIS plugin's own src scan — so we declare it here (type-only, fully erased at compile, no runtime
+// edge) to force `@formily/react` into the externals map. Without it, rspack tries to bundle the build-env
+// stub and fails with "Can't resolve '@formily/react'". Mirrors sibling @tuanla90 plugins that import it.
+import type * as _FormilyReactExternal from '@formily/react';
 
 /**
  * Inline Field — modern lane (`/v/`). Adds a "➕ Thêm cột mới…" item to every Table block's ⚙ settings

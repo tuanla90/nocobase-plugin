@@ -27,7 +27,7 @@ const SLUG_CAT = {
   'ai-column': 'Fields', 'device-kit': 'Fields', 'field-enhancements': 'Fields', 'field-order': 'Fields', 'formula': 'Fields', 'status-flow': 'Fields', 'inline-field': 'Fields',
   'block-custom-html': 'Blocks', 'conditional-format': 'Blocks', 'detail-panel': 'Blocks', 'enhanced-table-block': 'Blocks', 'filter-tree': 'Blocks', 'layout-containers': 'Blocks', 'spreadsheet-view': 'Blocks', 'subtable-pro': 'Blocks', 'data-visualization-echarts-pro': 'Blocks', 'column-resize': 'Blocks',
   'app-builder': 'UI', 'branding': 'UI', 'custom-header': 'UI', 'global-search': 'UI', 'instant-create-page': 'UI', 'pwa': 'UI', 'menu-enhancements': 'UI', 'custom-icons': 'UI', 'action-enhancements': 'UI', 'print-template': 'UI',
-  'change-log': 'Data', 'gsheet-sync': 'Data', 'line-generator': 'Data',
+  'change-log': 'Data', 'gsheet-sync': 'Data', 'line-generator': 'Data', 'mailer': 'Data',
   'ip-guard': 'Security', 'login-lite': 'Security',
 };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

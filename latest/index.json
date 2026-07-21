@@ -1,7 +1,7 @@
 {
   "source": "@tuanla90/nocobase-plugin",
   "updatedAt": null,
-  "count": 35,
+  "count": 36,
   "plugins": [
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
@@ -20,9 +20,9 @@
     {
       "packageName": "@tuanla90/plugin-app-builder",
       "slug": "app-builder",
-      "version": "0.6.26",
+      "version": "0.6.27",
       "displayName": "App Builder",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.26.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.27.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-block-custom-html",
@@ -160,9 +160,9 @@
     {
       "packageName": "@tuanla90/plugin-inline-field",
       "slug": "inline-field",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "displayName": "Inline Field",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.8.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.9.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-instant-create-page",
@@ -195,9 +195,16 @@
     {
       "packageName": "@tuanla90/plugin-login-lite",
       "slug": "login-lite",
-      "version": "2.3.2",
+      "version": "2.3.3",
       "displayName": "Custom Login",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-login-lite-2.3.2.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-login-lite-2.3.3.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-mailer",
+      "slug": "mailer",
+      "version": "0.1.1",
+      "displayName": "Mailer",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-mailer-0.1.1.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-menu-enhancements",

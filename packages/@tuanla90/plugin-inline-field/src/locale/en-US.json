@@ -77,5 +77,11 @@
   "Đang tạo cột…": "Creating column…",
   "Đã thêm cột \"{{title}}\"": "Column \"{{title}}\" added",
   "Đã tạo cột nhưng chưa bật công thức: cần cài plugin Công thức": "Column created, but the formula is inactive — the Formula plugin is required",
-  "Tạo cột thất bại": "Failed to create column"
+  "Tạo cột thất bại": "Failed to create column",
+  "Thêm field mới": "Add new field",
+  "Không tìm thấy biểu mẫu của khối này": "Could not find this block's form",
+  "Đang tạo field…": "Creating field…",
+  "Đã thêm field \"{{title}}\"": "Field \"{{title}}\" added",
+  "Đã tạo field nhưng chưa bật công thức: cần cài plugin Công thức": "Field created, but the formula is inactive — the Formula plugin is required",
+  "Tạo field thất bại": "Failed to create field"
 }

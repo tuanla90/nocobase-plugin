@@ -5,13 +5,17 @@ import {
   TAG_COLORS, TAG_HEX, registerFlowComponentsOnce } from '@tuanla90/shared';
 import {
   InlineFieldSpec, InlineInterface, StatusState, INTERFACES_WITH_OPTIONS, COMPUTED_RESULT_INTERFACES,
-  RELATION_INTERFACES, TO_MANY_INTERFACES, DISPLAY_BY_INTERFACE, slugify,
+  RELATION_INTERFACES, TO_MANY_INTERFACES, DISPLAY_BY_INTERFACE, EDITABLE_BY_INTERFACE, slugify,
 } from './fieldTypes';
 
 /**
  * Inline Field — the /v/ entry point: a "Thêm cột mới" item in a Table block's ⚙ settings menu that opens
  * a small dialog to DEFINE a new field (scalar OR a computed/formula column), then creates it (server) and
- * drops the column into the very block being edited — no trip to the Collection Manager.
+ * drops the column into the very block being edited — no trip to the Collection Manager. The SAME dialog is
+ * also wired onto the Create form AND the Edit form block (⚙ → "Thêm field mới"): there it creates the field
+ * and drops it into the form's grid as an EDITABLE form item (relation → RecordSelect, status-flow → its
+ * status editor, attachment → upload, computed → a read-pretty display), resolved via the framework's own
+ * FormItemModel.getDefaultBindingByField (the exact path native "Configure fields" uses).
  *
  * Grounded end-to-end in verified framework internals (all read from nb-local 2.1.19 source):
  *  · entry point + custom dialog component = the exact pattern of @tuanla90/plugin-conditional-format
@@ -486,6 +490,25 @@ function resolveDisplayModel(engine: any, collection: any, name: string, iface: 
   return DISPLAY_BY_INTERFACE[iface] || 'DisplayTextFieldModel';
 }
 
+/** Validate a spec before hitting the server. Shared by BOTH create paths (column + form item) so they can
+ *  never diverge. Returns null when valid, '' when the caller should bail SILENTLY (no title yet — the
+ *  auto-apply no-op fires on every render before the user submits), or a VN error-key string to toast. */
+function validateSpec(spec: InlineFieldSpec): string | null {
+  const title = String(spec?.title || '').trim();
+  if (!title) return ''; // silent bail (belt-and-suspenders; the handler already guards on title)
+  if (!spec?.interface) return 'Hãy chọn loại dữ liệu';
+  if (INTERFACES_WITH_OPTIONS.includes(spec.interface) && !(spec.options && spec.options.length)) {
+    return 'Loại "lựa chọn" cần ít nhất 1 giá trị';
+  }
+  if (spec.interface === 'computed' && !String(spec.expression || '').trim()) return 'Hãy nhập công thức';
+  if (RELATION_INTERFACES.includes(spec.interface) && !String(spec.target || '').trim()) return 'Hãy chọn bảng liên kết';
+  if (spec.interface === 'statusFlow') {
+    const labels = (spec.states || []).map((s) => (typeof s === 'string' ? s : s?.label)).filter((l) => String(l || '').trim());
+    if (labels.length < 2) return 'Luồng trạng thái cần ít nhất 2 trạng thái có tên';
+  }
+  return null;
+}
+
 /** Create the field on the server, refresh client metadata, then attach the column to THIS block.
  *  Returns true only when a field was actually created — the caller uses this to decide whether to keep
  *  the one-shot dedup marker (keep on success; release on failure so the user can retry). */
@@ -498,24 +521,9 @@ async function createFieldAndColumn(blockModel: any, spec: InlineFieldSpec, app:
 
   if (!collectionName || !api) { message.error(rt('Không xác định được bảng của khối này')); return false; }
   const title = String(spec?.title || '').trim();
-  if (!title) return false; // guarded by the handler; belt-and-suspenders
-  if (!spec?.interface) { message.error(rt('Hãy chọn loại dữ liệu')); return false; }
-  if (INTERFACES_WITH_OPTIONS.includes(spec.interface) && !(spec.options && spec.options.length)) {
-    message.error(rt('Loại "lựa chọn" cần ít nhất 1 giá trị'));
-    return false;
-  }
-  if (spec.interface === 'computed' && !String(spec.expression || '').trim()) {
-    message.error(rt('Hãy nhập công thức'));
-    return false;
-  }
-  if (RELATION_INTERFACES.includes(spec.interface) && !String(spec.target || '').trim()) {
-    message.error(rt('Hãy chọn bảng liên kết'));
-    return false;
-  }
-  if (spec.interface === 'statusFlow') {
-    const labels = (spec.states || []).map((s) => (typeof s === 'string' ? s : s?.label)).filter((l) => String(l || '').trim());
-    if (labels.length < 2) { message.error(rt('Luồng trạng thái cần ít nhất 2 trạng thái có tên')); return false; }
-  }
+  const invalid = validateSpec(spec);
+  if (invalid === '') return false; // no title yet — silent
+  if (invalid) { message.error(rt(invalid)); return false; }
 
   const hide = message.loading(rt('Đang tạo cột…'), 0);
   try {
@@ -580,6 +588,124 @@ async function createFieldAndColumn(blockModel: any, spec: InlineFieldSpec, app:
   }
 }
 
+/** Resolve the /v/ EDITABLE input model for a freshly-created field in a FORM (the form analog of
+ *  resolveDisplayModel). It mirrors native "Configure fields" EXACTLY: FormItemModel.defineChildren binds a
+ *  form field via `getDefaultBindingByField` on the FORM item class, whose bindings map is the EDITABLE set
+ *  (RecordSelect for relations, StatusFlowFieldModel for status-flow, UploadFieldModel for attachment, the
+ *  scalar editors otherwise). So we ask the very same class the same way, and reuse the binding's defaultProps.
+ *  Resolution order: (1) the framework default editable binding; (2) its first real binding; (3) the
+ *  interface→editable map (defense-in-depth). `readPretty` is true only for a computed column — it is a
+ *  server-maintained value, so it renders read-only (via the `pattern` step) rather than an editable input. */
+function resolveEditableModel(
+  engine: any, collection: any, name: string, spec: InlineFieldSpec, itemModelName: string,
+): { use: string; fieldProps?: any; readPretty: boolean } {
+  const iface = spec.interface;
+  const isComputed = iface === 'computed';
+  const ItemCls = engine?.getModelClass?.(itemModelName) || engine?.getModelClass?.('FormItemModel');
+  let field: any = null;
+  try { field = collection?.getField?.(name); } catch (_) { /* metadata not ready */ }
+  const ctx = engine?.context;
+  const propsOf = (b: any) => {
+    try { return typeof b?.defaultProps === 'function' ? b.defaultProps(ctx, field) : b?.defaultProps; }
+    catch (_) { return undefined; }
+  };
+  // (1) framework default binding — the exact native "Configure fields" path (editable widgets win here).
+  try {
+    const b = ItemCls?.getDefaultBindingByField?.(ctx, field, { fallbackToTargetTitleField: true });
+    if (b?.modelName) return { use: b.modelName, fieldProps: propsOf(b), readPretty: isComputed };
+  } catch (_) { /* fall through */ }
+  // (2) first real editable binding for the interface.
+  try {
+    const bindings = ItemCls?.getBindingsByField?.(ctx, field) || [];
+    const pick = bindings.find((x: any) => x?.isDefault) || bindings[0];
+    if (pick?.modelName) return { use: pick.modelName, fieldProps: propsOf(pick), readPretty: isComputed };
+  } catch (_) { /* fall through to the map */ }
+  // (3) interface → editable model map. Computed maps by its scalar result type; attachmentUrl is a url field.
+  const mapIface = isComputed ? (spec.resultInterface || 'number')
+    : iface === 'attachmentUrl' ? 'url'
+    : iface;
+  return { use: EDITABLE_BY_INTERFACE[mapIface] || 'InputFieldModel', readPretty: isComputed };
+}
+
+/** Create the field on the server, refresh client metadata, then drop it into THIS form's grid as an
+ *  EDITABLE form item. The form analog of createFieldAndColumn. Same return contract (true only when a field
+ *  was actually created) so the caller's one-shot dedup marker is kept on success / released on failure. */
+async function createFieldAndFormItem(blockModel: any, spec: InlineFieldSpec, app: any): Promise<boolean> {
+  const collection = blockModel?.collection;
+  const collectionName = collection?.name;
+  const ds = collection?.dataSourceKey || 'main';
+  const engine = app?.flowEngine || blockModel?.flowEngine;
+  const api = blockModel?.context?.api || app?.apiClient;
+  const grid = blockModel?.subModels?.grid;
+
+  if (!collectionName || !api) { message.error(rt('Không xác định được bảng của khối này')); return false; }
+  if (!grid || !engine?.createModelAsync) { message.error(rt('Không tìm thấy biểu mẫu của khối này')); return false; }
+  const title = String(spec?.title || '').trim();
+  const invalid = validateSpec(spec);
+  if (invalid === '') return false; // no title yet — silent
+  if (invalid) { message.error(rt(invalid)); return false; }
+
+  const hide = message.loading(rt('Đang tạo field…'), 0);
+  try {
+    const res = await api.request({
+      url: 'ptdlInlineField:createField',
+      method: 'post',
+      data: { collection: collectionName, field: { ...spec, title } },
+    });
+    const body = res?.data?.data || res?.data || {};
+    const name = body.name;
+    if (!name) throw new Error('server did not return a field name');
+
+    // Refresh client collection metadata so getField(name) resolves before we bind the form item to it.
+    try { await app?.dataSourceManager?.reload?.({ keys: [ds] }); } catch (_) { /* best-effort */ }
+    const coll2 =
+      app?.dataSourceManager?.getDataSource?.(ds)?.getCollection?.(collectionName) || collection;
+
+    // Resolve the editable input model (relation→RecordSelect, statusFlow→its editor, attachment→upload,
+    // computed→read-pretty) the same way native "Configure fields" does.
+    const itemModelName = blockModel.getModelClassName?.('FormItemModel') || 'FormItemModel';
+    const { use, fieldProps, readPretty } = resolveEditableModel(engine, coll2, name, spec, itemModelName);
+    const fieldInit = { dataSourceKey: ds, collectionName, fieldPath: name };
+    const itemStepParams: any = { fieldSettings: { init: fieldInit } };
+    // Computed columns are server-maintained → render read-only in the form (the `pattern` step, "Display only").
+    if (readPretty) itemStepParams.editItemSettings = { pattern: { pattern: 'readPretty' } };
+
+    // Attach the form item the SAME way the native "Fields" button (AddSubModelButton) does for a grid:
+    // createModelAsync → isNew=true → setParent → addSubModel('items') [grid slots it into the layout via
+    // its onSubModelAdded handler, which only fires for isNew models] → afterAddAsSubModel → save.
+    const item = await engine.createModelAsync({
+      parentId: grid.uid,
+      subKey: 'items',
+      subType: 'array',
+      use: itemModelName,
+      stepParams: itemStepParams,
+      subModels: {
+        field: { use, ...(fieldProps ? { props: fieldProps } : {}), stepParams: { fieldSettings: { init: fieldInit } } },
+      },
+    });
+    item.isNew = true; // REQUIRED: GridModel.onSubModelAdded ignores non-new models (no layout row otherwise)
+    item.setParent?.(grid);
+    grid.addSubModel('items', item);
+    await item.afterAddAsSubModel?.();
+    await item.save();
+    item.isNew = false;
+
+    hide();
+    if (body.computedSkipped) {
+      message.warning(rt('Đã tạo field nhưng chưa bật công thức: cần cài plugin Công thức'));
+    } else {
+      message.success(rt('Đã thêm field "{{title}}"', { title }));
+    }
+    return true;
+  } catch (e: any) {
+    hide();
+    // eslint-disable-next-line no-console
+    console.warn('[inline-field] create form item failed', e);
+    message.error(rt('Tạo field thất bại') + ': ' + (e?.message || String(e)));
+    return false;
+  }
+}
+
 // ── registration ─────────────────────────────────────────────────────────────────────────────────
 type Deps = {
   flowEngine: any;
@@ -611,14 +737,19 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
     }
   }
 
-  try {
-    TableBlockModel.registerFlow({
+  // ── the "add a field" flow, shared by the Table block (drops a COLUMN) and the Create/Edit form blocks
+  //    (drops an editable FORM ITEM). One factory so the crash-safe + idempotent guards can never diverge:
+  //    `kind` only swaps the menu label, the reload-safe "already added?" probe, and the create call. ────
+  const buildAddFieldFlow = (kind: 'column' | 'form') => {
+    const isForm = kind === 'form';
+    const menuTitle = isForm ? 'Thêm field mới' : 'Thêm cột mới';
+    return {
       key: 'ptdlInlineAddField',
       sort: 520,
-      title: t('Thêm cột mới'),
+      title: t(menuTitle),
       steps: {
         create: {
-          title: t('Thêm cột mới'),
+          title: t(menuTitle),
           uiMode: { type: 'dialog', props: { width: 640 } },
           uiSchema: (ctx: any) => {
             // Inject the APIClient module-level (x-component-props strips its methods) so the field
@@ -664,20 +795,34 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
             const now = Date.now();
             for (const [k, ts] of recentCreate) if (now - ts > DEDUPE_MS) recentCreate.delete(k);
             if (recentCreate.has(sig)) return;
-            // Reload-safe idempotency (the dedup marker is per-session only): if this block ALREADY has a
-            // column with this title, the field was created on an earlier render/reload and the persisted
-            // step params are just stale — skip instead of creating a duplicate (the render/reload "tạo cột
-            // liên tục" loop, since the framework clobbers our params reset with the submitted values).
+            // Reload-safe idempotency (the dedup marker is per-session only): if this block ALREADY shows a
+            // field with this title, it was created on an earlier render/reload and the persisted step params
+            // are just stale — skip instead of creating a duplicate (the render/reload "tạo liên tục" loop,
+            // since the framework clobbers our params reset with the submitted values). Table probes its
+            // columns' titles; a form probes its grid items' bound-field titles.
             try {
-              const cols = model.mapSubModels?.('columns', (c: any) => c) || [];
-              const already = cols.some((c: any) => {
-                const t = (c?.getStepParams?.('tableColumnSettings', 'title') || {}).title;
-                return t && String(t).trim() === title;
-              });
-              if (already) return;
+              if (isForm) {
+                const items = model.subModels?.grid?.subModels?.items || [];
+                const already = items.some((it: any) => {
+                  const fp = (it?.getStepParams?.('fieldSettings', 'init') || {}).fieldPath;
+                  if (!fp) return false;
+                  const f = model.collection?.getField?.(String(fp).split('.')[0]);
+                  const ft = f?.title || f?.uiSchema?.title;
+                  return ft && String(ft).trim() === title;
+                });
+                if (already) return;
+              } else {
+                const cols = model.mapSubModels?.('columns', (c: any) => c) || [];
+                const already = cols.some((c: any) => {
+                  const ct = (c?.getStepParams?.('tableColumnSettings', 'title') || {}).title;
+                  return ct && String(ct).trim() === title;
+                });
+                if (already) return;
+              }
             } catch (_) { /* best-effort — fall through to create */ }
             recentCreate.set(sig, now);
-            await createFieldAndColumn(model, spec, app);
+            if (isForm) await createFieldAndFormItem(model, spec, app);
+            else await createFieldAndColumn(model, spec, app);
             // Reset the persisted step params back to the empty default. This is what makes the dialog open
             // BLANK next time (not with this field's config still filled in — the reported "mọi config còn
             // nguyên" bug) AND stops the auto-apply from recreating the field. It MUST run AFTER the settings
@@ -693,9 +838,23 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
           },
         },
       },
-    });
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[inline-field] registerFlow failed', e);
+    };
+  };
+
+  // Register on the Table block (column) + BOTH form blocks (Create + Edit → editable form item). Each is
+  // guarded independently so a missing/older core class can never abort the others or white-screen the app.
+  const targets: Array<[string, 'column' | 'form']> = [
+    ['TableBlockModel', 'column'],
+    ['CreateFormModel', 'form'],
+    ['EditFormModel', 'form'],
+  ];
+  for (const [className, kind] of targets) {
+    try {
+      const Cls: any = flowEngine.getModelClass(className);
+      if (Cls?.registerFlow) Cls.registerFlow(buildAddFieldFlow(kind));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(`[inline-field] registerFlow failed on ${className}`, e);
+    }
   }
 }
