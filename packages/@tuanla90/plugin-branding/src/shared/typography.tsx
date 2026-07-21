@@ -17,6 +17,7 @@ export type TableCfg = {
   headBg?: string;
   headText?: string;
   headWeight?: number; // 0 / undefined = default
+  headSplit?: string; // colour of the header column-divider lines (th::before / bordered border). Alpha ok — a transparent value hides them.
   border?: string;
   rowHover?: string;
   zebra?: string; // even-row background (a fixed colour)
@@ -115,8 +116,39 @@ export function buildTypographyCss(cfg: TypographyCfg, isDark: boolean = false):
   if (tb.headText) th.push(`color:${tb.headText}!important`);
   if (tb.headWeight) th.push(`font-weight:${tb.headWeight}!important`);
   if (tb.border) th.push(`border-bottom:1px solid ${tb.border}!important`);
-  if (th.length) p.push(`.ant-table-thead>tr>th{${th.join(';')}}`);
-  if (tb.border) p.push(`.ant-table-tbody>tr>td{border-bottom:1px solid ${tb.border}!important}`);
+  // Header column-divider on BORDERED tables = the header cell's inline-end border. Recolour it here
+  // (bundled into the `th` block so it rides the SAME dual-specificity emit below): skin's in-card
+  // `.ant-card .ant-table-thead>tr>th{border-color:…!important}` (0,2,2) — border-color sets
+  // border-inline-end-color in LTR — would otherwise clobber a plain (0,1,2) rule inside cards, so the
+  // (0,3,2) in-card selector is needed here too. Harmless no-op when the table has no header border.
+  if (tb.headSplit) th.push(`border-inline-end-color:${tb.headSplit}!important`);
+  if (th.length) {
+    const decl = th.join(';');
+    // Emit the header styles at TWO specificities so the user's Fill/Text/Border win everywhere:
+    //   • out-of-card tables → the plain semantic selector (specificity 0,1,2).
+    //   • in-card tables → a higher-specificity selector (0,3,2). The admin-skin builder, when a card
+    //     gradient is on, emits `.ant-card .ant-table-thead>tr>th{background:transparent;color:…}` at
+    //     (0,2,2); since BOTH rules are !important, its higher specificity used to override the user's
+    //     header Fill/Text (font-weight survived because skin never sets it). Adding `.ant-table-wrapper`
+    //     (antd's outer table wrapper — always an ancestor of `.ant-table-thead`) lifts us to (0,3,2) >
+    //     (0,2,2), so we win inside cards too, independent of stylesheet injection order (skin may
+    //     re-inject after us on a storage-sync event, so we rely on specificity, not source order).
+    p.push(`.ant-table-thead>tr>th{${decl}}`);
+    p.push(`.ant-card .ant-table-wrapper .ant-table-thead>tr>th{${decl}}`);
+  }
+  // Default (non-bordered) header column-divider = antd's `th::before` pseudo-element. Recolour it
+  // (a transparent value hides the lines). antd's own colour is NOT !important and skin never touches
+  // `::before`, so this single !important rule wins everywhere — no in-card escalation needed. It only
+  // repaints dividers antd already renders (a `::before` with no `content` isn't generated).
+  if (tb.headSplit) p.push(`.ant-table-thead>tr>th::before{background-color:${tb.headSplit}!important}`);
+  if (tb.border) {
+    // Row bottom-border at TWO specificities, same reason as the header rule above: skin's in-card
+    // `.ant-card .ant-table-tbody>tr>td{…border-color:…!important}` (0,2,2) otherwise overrides the
+    // user's Rows→Border colour. The `.ant-card .ant-table-wrapper …` variant (0,3,2) beats it in cards.
+    const bd = `border-bottom:1px solid ${tb.border}!important`;
+    p.push(`.ant-table-tbody>tr>td{${bd}}`);
+    p.push(`.ant-card .ant-table-wrapper .ant-table-tbody>tr>td{${bd}}`);
+  }
   if (tb.zebraAuto) p.push(zebraRule(autoZebraColor(isDark), true));
   else if (tb.zebra) p.push(zebraRule(tb.zebra, false));
   if (tb.rowHover) {
@@ -202,7 +234,7 @@ export function initTypographyUi(deps: { apiClient: any; t?: (s: string) => stri
   if (deps.t) _t = deps.t;
 }
 
-function ColorBtn({ value, onChange, label, disabled }: { value?: string; onChange: (v: string) => void; label: string; disabled?: boolean }) {
+function ColorBtn({ value, onChange, label, disabled, alpha }: { value?: string; onChange: (v: string) => void; label: string; disabled?: boolean; alpha?: boolean }) {
   const { token } = theme.useToken();
   return (
     <Space size={4}>
@@ -214,6 +246,9 @@ function ColorBtn({ value, onChange, label, disabled }: { value?: string; onChan
         presets={COLOR_PRESETS as any}
         allowClear
         showText
+        // `alpha` picker: show the transparency slider + rgb text so a transparent value (→ hides the
+        // divider) is producible. Omitted for the others → antd defaults (unchanged behaviour).
+        {...(alpha ? { disabledAlpha: false, format: 'rgb' as const } : {})}
         onChange={(c: any) => onChange(colorToString(c) || '')}
         onClear={() => onChange('')}
       />
@@ -261,6 +296,8 @@ function TypographyPreview({ cfg }: { cfg: TypographyCfg }) {
                   color: tb.headText || token.colorTextSecondary,
                   fontWeight: tb.headWeight || 500,
                   borderBottom: `1px solid ${border}`,
+                  // Reflect the header column-divider colour on the non-last cells.
+                  borderRight: i < 2 ? `1px solid ${tb.headSplit || 'transparent'}` : undefined,
                 }}
               >
                 {h}
@@ -429,6 +466,8 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
                 <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Header row')}</span>
                 <ColorBtn label={_t('Fill')} value={tb.headBg} onChange={(headBg) => setTable({ headBg })} />
                 <ColorBtn label={_t('Text')} value={tb.headText} onChange={(headText) => setTable({ headText })} />
+                {/* Divider = the thin vertical separators between header cells. Alpha on: a transparent value hides them. */}
+                <ColorBtn label={_t('Divider')} value={tb.headSplit} onChange={(headSplit) => setTable({ headSplit })} alpha />
               </Space>
               <Space size={10} align="center">
                 <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Header weight')}</span>

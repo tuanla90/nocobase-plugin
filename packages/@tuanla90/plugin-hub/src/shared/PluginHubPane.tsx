@@ -70,11 +70,19 @@ export function PluginHubPane({ api }: { api: any }) {
 
   useEffect(() => {
     (async () => {
+      let resolvedUrl = DEFAULTS.manifestUrl;
       try {
         const c = await req('ptdlPluginHub:getConfig');
-        setCfg({ ...DEFAULTS, ...(c || {}) });
+        const merged = { ...DEFAULTS, ...(c || {}) };
+        setCfg(merged);
+        resolvedUrl = merged.manifestUrl;
       } catch { /* keep defaults */ }
       setLoading(false);
+      // Auto-refresh on entry so the list populates without clicking "Check now" (this effect re-runs each
+      // time the pane mounts → "làm mới khi vào"). Pass the URL EXPLICITLY — the setCfg above isn't visible
+      // within this tick. Non-quiet so a genuinely broken manifest still surfaces an error, but ONLY when a
+      // URL is configured: an empty manifest URL would otherwise toast "Could not load the manifest" every entry.
+      if (resolvedUrl) await onCheck(resolvedUrl);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -366,7 +374,7 @@ export function PluginHubPane({ api }: { api: any }) {
         />
         {progress && <Alert type="info" showIcon message={progress} style={{ marginBottom: 12 }} />}
         {!items ? (
-          <Paragraph type="secondary" style={{ margin: 0 }}>{t('Press “Check now” to load the plugin list from the manifest.')}</Paragraph>
+          <Paragraph type="secondary" style={{ margin: 0 }}>{checking ? t('Refreshing the list…') : t('Press “Check now” to load the plugin list from the manifest.')}</Paragraph>
         ) : (
           <Table rowSelection={rowSelection} rowKey="packageName" size="small" dataSource={sortedItems} columns={columns as any} pagination={false} loading={checking} />
         )}

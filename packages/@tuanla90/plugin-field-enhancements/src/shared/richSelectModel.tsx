@@ -4,6 +4,7 @@ import { Select, Input, Button, Avatar, Switch, Space, Divider, Slider, theme } 
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { bindDisplayField } from './displayBinding';
+import { isQuickEditCell, quickInlineSave } from './inlineQuickEdit';
 import { SegmentedGroup, ColumnSelect, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx, registerFlowComponentsOnce, IconByKey, ColorField, colorToString } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
@@ -56,6 +57,7 @@ type RSCfg = {
   rightField: string; avatarDefault: boolean; html: string;
   avatarMode: 'image' | 'icon'; avatarSize: number;
   iconStyle: IconStyle; iconColor: string; iconColorField: string;
+  clickSave: boolean;
 };
 const ICON_STYLES: IconStyle[] = ['plain', 'filled', 'soft', 'outlined', 'square'];
 function rscfgFromProps(p: any): RSCfg {
@@ -68,6 +70,7 @@ function rscfgFromProps(p: any): RSCfg {
     avatarSize: typeof p.ptdlrsAvatarSize === 'number' && p.ptdlrsAvatarSize > 0 ? p.ptdlrsAvatarSize : 0,
     iconStyle: ICON_STYLES.includes(p.ptdlrsIconStyle) ? p.ptdlrsIconStyle : 'plain',
     iconColor: colorToString(p.ptdlrsIconColor) || '', iconColorField: p.ptdlrsIconColorField || '',
+    clickSave: p.ptdlrsClickSave === true,
   };
 }
 function rscfgFromForm(v: any): RSCfg {
@@ -80,6 +83,7 @@ function rscfgFromForm(v: any): RSCfg {
     avatarSize: typeof v?.avatarSize === 'number' && v.avatarSize > 0 ? v.avatarSize : 0,
     iconStyle: ICON_STYLES.includes(v?.iconStyle) ? v.iconStyle : 'plain',
     iconColor: colorToString(v?.iconColor) || '', iconColorField: v?.iconColorField || '',
+    clickSave: !!v?.clickSave,
   };
 }
 
@@ -213,6 +217,163 @@ function toRichValue(record: any, fieldNames: FN, isMultiple: boolean, cfg: RSCf
   return typeof record === 'object' ? conv(record) : undefined;
 }
 
+// A to-many relation (o2m/m2m) → the value is an array of records. Detect from the interface (robust even
+// when the current value is empty/null, unlike `Array.isArray(value)`).
+function isMultiRel(cf: any, p: any): boolean {
+  const i = cf?.interface;
+  if (i === 'o2m' || i === 'm2m') return true;
+  return Array.isArray(p?.value);
+}
+
+/**
+ * INLINE editor for the rich-select DISPLAY cell — reuses the SAME rich Select (RichRow options, labelInValue,
+ * search) the editable model renders, but is fully self-contained: it fetches candidate records straight from
+ * the target collection via `api.resource(...).list` (search + scroll pagination) instead of relying on the
+ * inherited RecordSelect flow machinery (which the display model doesn't wire). On pick → save inline with the
+ * target key as payload (associate-by-pk) while showing the full picked record optimistically; then close.
+ * NOTE: inline quick-create ("Add new") is intentionally not offered here — use the field's normal form to
+ * create records. Picking existing records, search and multi-select all work.
+ */
+function RichSelectInlineEditor({ model, cfg, fieldNames, isMultiple, current, onClose }: {
+  model: any; cfg: RSCfg; fieldNames: FN; isMultiple: boolean; current: any; onClose: () => void;
+}) {
+  const cf = resolveCf(model);
+  const target: string | undefined = cf?.target;
+  const dsKey: string | undefined = cf?.dataSourceKey;
+  const api = model?.context?.api || model?.flowEngine?.context?.api;
+  const [options, setOptions] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const pageRef = React.useRef(1);
+  const hasMoreRef = React.useRef(true);
+  const loadedRef = React.useRef(0);
+
+  const fetchPage = React.useCallback(async (reset: boolean) => {
+    if (!api?.request || !target) return;
+    if (reset) { pageRef.current = 1; hasMoreRef.current = true; loadedRef.current = 0; }
+    else if (!hasMoreRef.current) return;
+    setLoading(true);
+    try {
+      const titleKey = cfg.titleField || fieldNames.label;
+      const filter = search ? { [titleKey]: { $includes: search } } : undefined;
+      const res = await api.request({
+        url: `${target}:list`, method: 'get',
+        params: { page: pageRef.current, pageSize: 40, ...(filter ? { filter } : {}) },
+        headers: dsKey ? { 'X-Data-Source': dsKey } : undefined,
+      });
+      const rows: any[] = res?.data?.data || [];
+      setOptions((prev) => (reset ? rows : [...prev, ...rows]));
+      loadedRef.current = (reset ? 0 : loadedRef.current) + rows.length;
+      const count = res?.data?.meta?.count;
+      hasMoreRef.current = typeof count === 'number' ? loadedRef.current < count : rows.length >= 40;
+      pageRef.current += 1;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[field-enh] rich-select inline load failed', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [api, target, dsKey, search, cfg.titleField, fieldNames.label]);
+
+  // Load first page (and re-load on search change), debounced for search.
+  React.useEffect(() => {
+    const h = setTimeout(() => fetchPage(true), search ? 250 : 0);
+    return () => clearTimeout(h);
+  }, [search, fetchPage]);
+
+  // The selected key from an option — freshly-picked options are raw records (→ record[valueKey]); items
+  // retained via `value` in multiple mode come back as antd labelInValue objects (→ `.value`). valueKey is
+  // never the literal 'value' (normalizeFieldNames guarantees it), so this fallback is unambiguous.
+  const keyOf = (o: any) => (o == null ? undefined : (o[fieldNames.value] ?? o.value));
+  const onChange = (_v: any, option: any) => {
+    try {
+      const arr = isMultiple ? (Array.isArray(option) ? option : []) : (option ? [option] : []);
+      const keys = arr.map(keyOf).filter((k: any) => k != null);
+      // Resolve each selected key to a FULL record (from the prior value + fetched options) so the optimistic
+      // cell shows title/avatar, not a bare key. The server only needs the key (associate-by-pk).
+      const pool: any[] = [
+        ...(Array.isArray(current) ? current : current ? [current] : []),
+        ...options,
+      ];
+      const fullRecs = keys.map((k: any) => pool.find((r: any) => keyOf(r) === k) || { [fieldNames.value]: k });
+      const payload = fullRecs.map((r: any) => ({ [fieldNames.value]: keyOf(r) }));
+      if (isMultiple) {
+        quickInlineSave(model, fullRecs, { payload });
+        // keep open for more picks; the dropdown-close handler reverts to read-only
+      } else {
+        const rec = fullRecs[0] || null;
+        quickInlineSave(model, rec, { payload: rec ? payload[0] : null });
+        onClose();
+      }
+    } catch (_) { /* never break the cell */ }
+  };
+
+  return (
+    <Select
+      style={{ minWidth: 180, width: '100%' }}
+      autoFocus
+      defaultOpen
+      allowClear
+      showSearch
+      filterOption={false}
+      labelInValue
+      maxTagCount="responsive"
+      mode={isMultiple ? 'multiple' : undefined}
+      loading={loading}
+      placeholder={model?.props?.placeholder}
+      fieldNames={fieldNames}
+      options={options}
+      value={toRichValue(current, fieldNames, isMultiple, cfg)}
+      onChange={onChange}
+      onSearch={(s: string) => setSearch(s)}
+      onPopupScroll={(e: any) => {
+        const el = e?.target;
+        if (el && el.scrollTop + el.offsetHeight >= el.scrollHeight - 24 && !loading) fetchPage(false);
+      }}
+      onDropdownVisibleChange={(open: boolean) => { if (!open) onClose(); }}
+      popupMatchSelectWidth={false}
+      optionRender={({ data }: any) => <RichRow record={data} cfg={cfg} fieldNames={fieldNames} />}
+      labelRender={(data: any) => data.label}
+      listHeight={320}
+    />
+  );
+}
+
+// DISPLAY cell: read-only RichRow(s) by default; when inline-edit is enabled (widget "clickSave" setting OR
+// the column's core "Enable quick edit"), clicking the cell swaps in the inline Select (auto-opened).
+function RichSelectDisplay({ model, p }: { model: any; p: any }) {
+  const cf = resolveCf(model);
+  const cfg = rscfgFromProps(p);
+  const target = cf?.targetCollection;
+  const fieldNames = normalizeFieldNames(p.fieldNames, target);
+  const isMultiple = isMultiRel(cf, p);
+  const editable = cfg.clickSave === true || isQuickEditCell(model);
+  const [editing, setEditing] = React.useState(false);
+
+  const list = isMultiple ? (Array.isArray(p.value) ? p.value : []) : (p.value ? [p.value] : []);
+  const rows = list.length ? (
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+      {list.map((r: any, i: number) => <RichRow key={r?.[fieldNames.value] ?? i} record={r} cfg={cfg} fieldNames={fieldNames} />)}
+    </span>
+  ) : <span style={{ color: '#bfbfbf' }}>-</span>;
+
+  if (!editable) return rows;
+  if (editing) {
+    return (
+      <RichSelectInlineEditor
+        model={model} cfg={cfg} fieldNames={fieldNames} isMultiple={isMultiple}
+        current={p.value} onClose={() => setEditing(false)}
+      />
+    );
+  }
+  // Clickable read-only surface — click anywhere in the cell opens the picker immediately.
+  return (
+    <span onClick={() => setEditing(true)} style={{ cursor: 'pointer', display: 'inline-flex', minWidth: 40, minHeight: 24, alignItems: 'center' }}>
+      {rows}
+    </span>
+  );
+}
+
 // ---- settings components ------------------------------------------------------------------------
 const RS_Seg = (props: any) => (
   <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
@@ -255,7 +416,7 @@ const RS_Slider = (props: any) => {
 };
 const RS_Color = (props: any) => <ColorField value={props.value} onChange={(v: any) => props.onChange?.(v)} size="small" />;
 
-const RS_DEFAULTS = { mode: 'preset', titleField: '', subField: '', avatarField: '', rightField: '', avatarDefault: true, html: '', avatarMode: 'image', avatarSize: 0, iconStyle: 'plain', iconColor: '', iconColorField: '' };
+const RS_DEFAULTS = { mode: 'preset', titleField: '', subField: '', avatarField: '', rightField: '', avatarDefault: true, html: '', avatarMode: 'image', avatarSize: 0, iconStyle: 'plain', iconColor: '', iconColorField: '', clickSave: false };
 
 export function registerRichSelectModel(deps: {
   flowEngine: any; flowSettings?: any; Base: any; tExpr?: (s: string, o?: any) => any;
@@ -408,6 +569,10 @@ export function registerRichSelectModel(deps: {
                 'x-component': 'RS_Preview',
                 'x-component-props': { fieldTitles: Object.fromEntries(fieldOptions.map((o: any) => [o.value, o.label])), loadSample },
               },
+              clickSave: fi(t('Click to change (inline, no popup)'), 'RS_Switch', {
+                type: 'boolean',
+                decoratorProps: { tooltip: t('In a table, click the cell to open the picker and change the value directly — saved instantly. Turn OFF the column’s “Enable quick edit” to remove the pencil icon.') },
+              }),
               modeRow: {
                 type: 'void', 'x-component': 'RS_Grid',
                 'x-component-props': { style: { gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '2px 12px' } },
@@ -517,6 +682,7 @@ export function registerRichSelectModel(deps: {
               ptdlrsIconStyle: ICON_STYLES.includes(p.iconStyle) ? p.iconStyle : 'plain',
               ptdlrsIconColor: colorToString(p.iconColor) || '',
               ptdlrsIconColorField: p.iconColorField || '',
+              ptdlrsClickSave: p.clickSave === true,
             };
             ctx.model.setProps(props);
             // Global: display variant renders the same RichRow (readPretty) → save under the display model.
@@ -542,23 +708,13 @@ export function registerRichSelectModel(deps: {
     console.warn('[field-enh] rich-select bind failed', e);
   }
 
-  // Display variant (detail/table/list) — render record(s) thành RichRow, không cần Select.
+  // Display variant (detail/table/list) — render record(s) thành RichRow. When inline-edit is enabled (widget
+  // "clickSave" setting OR the column's core "Enable quick edit"), clicking the cell opens the SAME rich
+  // Select popup to pick + save inline; otherwise stays a read-only RichRow exactly as before.
   bindDisplayField({
     flowEngine, Base, name: 'PtdlRichSelectDisplayFieldModel', interfaces: RS_INTERFACES,
     label: t('Rich select'), flow: { ...richFlow, key: 'ptdlRichSelectDisplay' },
-    render: (p: any, model: any) => {
-      const cfg = rscfgFromProps(p);
-      const target = resolveCf(model)?.targetCollection;
-      const fieldNames = normalizeFieldNames(p.fieldNames, target);
-      const isMultiple = Array.isArray(p.value);
-      const list = isMultiple ? p.value : (p.value ? [p.value] : []);
-      if (!list.length) return <span style={{ color: '#bfbfbf' }}>-</span>;
-      return (
-        <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          {list.map((r: any, i: number) => <RichRow key={r?.[fieldNames.value] ?? i} record={r} cfg={cfg} fieldNames={fieldNames} />)}
-        </span>
-      );
-    },
+    render: (p: any, model: any) => <RichSelectDisplay model={model} p={p} />,
   });
 
   return PtdlRichSelectFieldModel;

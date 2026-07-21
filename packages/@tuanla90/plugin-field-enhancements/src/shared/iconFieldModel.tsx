@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { Switch, Slider } from 'antd';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
@@ -73,9 +74,9 @@ const ICO_Preview: any = observer(() => {
   const cfg = icoFromForm(form?.values || {});
   const samples = ['lucide-star', 'lucide-heart', 'lucide-check-circle', 'lucide-flag'];
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+    <PreviewBox style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
       {samples.map((n) => <IconView key={n} value={n} cfg={cfg} />)}
-    </div>
+    </PreviewBox>
   );
 });
 

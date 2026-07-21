@@ -13,6 +13,27 @@
 
 export type FieldWidget = { widgetModel: string; config: any };
 
+/**
+ * Render a widget's DISPLAY output from a config, by borrowing the configured widget class's
+ * `renderComponent`/`render` on a SYNTHETIC instance whose `props` = config (the exact mechanism the global
+ * display patch uses — see registerAll `patchGlobalFieldWidget`). Reused by the Widget-global manager pane's
+ * Preview column. Returns the rendered node, or null when the class/methods are missing (caller falls back).
+ * CRASH-SAFE for the setup; a throw INSIDE the render surfaces to React (wrap the result in an ErrorBoundary).
+ */
+export function borrowWidgetRender(flowEngine: any, model: string, props: any, value: any, cf: any, context: any): any {
+  const proto: any = flowEngine?.getModelClass?.(model)?.prototype;
+  if (!proto) return null;
+  const own = (k: string) => Object.prototype.hasOwnProperty.call(proto, k) && typeof proto[k] === 'function';
+  if (!own('renderComponent') && !own('render')) return null;
+  const inst: any = Object.create(proto);
+  inst.props = { ...(props || {}), value, pattern: 'readPretty' };
+  // collectionField/context are getter-only on the prototype → define OWN value props to shadow them.
+  try { Object.defineProperty(inst, 'collectionField', { value: cf, configurable: true, enumerable: true }); } catch (_) { /* ignore */ }
+  try { Object.defineProperty(inst, 'context', { value: context, configurable: true, enumerable: true }); } catch (_) { /* ignore */ }
+  const out = own('renderComponent') ? proto.renderComponent.call(inst, value, undefined) : proto.render.call(inst);
+  return out == null ? null : out;
+}
+
 // key = `${dataSource}.${collectionName}.${fieldName}` → FieldWidget
 const cache = new Map<string, FieldWidget>();
 

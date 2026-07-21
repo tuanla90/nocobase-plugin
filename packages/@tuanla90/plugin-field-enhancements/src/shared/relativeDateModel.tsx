@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import dayjs from 'dayjs';
 import { Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
@@ -179,14 +180,14 @@ const RD_Preview: any = observer(() => {
     { k: '+5', v: now.add(5, 'day') },
   ];
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9', display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
+    <PreviewBox style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
       {samples.map((s) => (
         <span key={s.k} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3, fontSize: 13 }}>
           <RelDateView value={s.v.toISOString()} refValue={ref} cfg={cfg} />
           <span style={{ color: '#bbb', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{s.k}</span>
         </span>
       ))}
-    </div>
+    </PreviewBox>
   );
 });
 

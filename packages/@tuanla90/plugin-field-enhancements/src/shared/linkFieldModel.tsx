@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Input, Switch, InputNumber, Button, Space } from 'antd';
 import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, SEG_PROPS, fieldItem as fi, rx, registerFlowComponentsOnce } from '@tuanla90/shared';
@@ -339,8 +340,8 @@ const LinkPreview: any = observer(() => {
   const cfg = lcfgFromForm(form?.values || {});
   const sample = cfg.kind === 'email' ? 'user@company.com' : cfg.kind === 'phone' ? '+84 912 345 678' : cfg.kind === 'url' ? 'example.com/page' : 'Sample text';
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox>
       <LinkView cfg={cfg} value={sample} fieldTitle="Field title" />
-    </div>
+    </PreviewBox>
   );
 });

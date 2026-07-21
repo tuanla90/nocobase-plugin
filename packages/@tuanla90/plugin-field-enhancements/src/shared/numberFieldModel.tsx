@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { InputNumber, Switch, Slider, Input } from 'antd';
 import { SegmentedGroup, ColumnSelect, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS, makeNumberFormatter, registerFlowComponentsOnce } from '@tuanla90/shared';
@@ -321,8 +322,8 @@ const NumberPreview: any = observer(() => {
   const cfg = ncfgFromForm(form?.values || {});
   const unit = cfg.unitMode === 'fixed' ? cfg.unitText || 'USD' : cfg.unitMode === 'field' ? `{${cfg.unitField || 'field'}}` : '';
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox>
       <NumberInput cfg={cfg} value={1000} unit={unit} />
-    </div>
+    </PreviewBox>
   );
 });

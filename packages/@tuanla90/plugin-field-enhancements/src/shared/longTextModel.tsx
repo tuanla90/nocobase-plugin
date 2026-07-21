@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { Slider, Tooltip } from 'antd';
 import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
@@ -94,9 +95,9 @@ const LT_Preview: any = observer(() => {
   const cfg = ltFromForm(form?.values || {});
   const sample = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.';
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9', maxWidth: 420 }}>
+    <PreviewBox style={{ maxWidth: 420 }}>
       <LongTextView value={sample} isHtml={false} cfg={cfg} />
-    </div>
+    </PreviewBox>
   );
 });
 

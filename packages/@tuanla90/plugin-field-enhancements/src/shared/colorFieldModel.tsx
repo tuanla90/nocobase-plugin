@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { Switch, Slider, message } from 'antd';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { observer, useForm } from '@formily/react';
@@ -102,9 +103,9 @@ const CLR_Preview: any = observer(() => {
   const cfg = clrFromForm(form?.values || {});
   const samples = ['#1677ff', '#52c41a', '#faad14', '#f5222d'];
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+    <PreviewBox style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
       {samples.map((h) => <ColorView key={h} value={h} cfg={cfg} />)}
-    </div>
+    </PreviewBox>
   );
 });
 

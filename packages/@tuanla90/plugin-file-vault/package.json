@@ -1,0 +1,37 @@
+{
+  "name": "@tuanla90/plugin-file-vault",
+  "displayName": "File Vault",
+  "displayName.vi-VN": "Quản lý tệp",
+  "description": "A central manager for every uploaded file. NocoBase stores all uploads in one `attachments` collection but gives you no place to browse them — File Vault does: browse + preview + rename + delete files, see which records use each file (usage scan), and find & bulk-clean orphaned files (uploaded but referenced by nothing) to reclaim disk space. Reads the existing attachments; creates no new data.",
+  "description.vi-VN": "Trung tâm quản lý mọi tệp đã tải lên. NocoBase lưu tất cả tệp trong một bảng `attachments` nhưng không cho bạn chỗ nào để xem — Quản lý tệp thì có: duyệt + xem trước + đổi tên + xóa tệp, biết mỗi tệp đang được bản ghi nào dùng (quét sử dụng), và tìm + dọn hàng loạt các tệp rác (đã tải lên nhưng không bản ghi nào tham chiếu) để lấy lại dung lượng. Chỉ đọc bảng attachments sẵn có; không tạo dữ liệu mới.",
+  "version": "0.1.2",
+  "main": "dist/server/index.js",
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@tuanla90/shared": "*",
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "2.x",
+    "@nocobase/server": "2.x",
+    "antd": "5.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "1.x || 2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "antd": "5.x"
+  },
+  "keywords": [
+    "file",
+    "attachment",
+    "manager",
+    "storage",
+    "orphan",
+    "cleanup"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#file-vault"
+}

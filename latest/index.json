@@ -1,7 +1,7 @@
 {
   "source": "@tuanla90/nocobase-plugin",
   "updatedAt": null,
-  "count": 34,
+  "count": 35,
   "plugins": [
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
@@ -34,9 +34,9 @@
     {
       "packageName": "@tuanla90/plugin-branding",
       "slug": "branding",
-      "version": "0.4.15",
+      "version": "0.4.18",
       "displayName": "Branding & Theme",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.15.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.18.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-change-log",
@@ -48,16 +48,16 @@
     {
       "packageName": "@tuanla90/plugin-column-resize",
       "slug": "column-resize",
-      "version": "0.1.1",
+      "version": "0.1.9",
       "displayName": "Column Resize",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-column-resize-0.1.1.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-column-resize-0.1.9.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-conditional-format",
       "slug": "conditional-format",
-      "version": "0.2.17",
+      "version": "0.2.18",
       "displayName": "Conditional Formatting",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.17.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-conditional-format-0.2.18.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-custom-header",
@@ -104,9 +104,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.25",
+      "version": "0.2.34",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.25.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.34.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",
@@ -114,6 +114,13 @@
       "version": "0.1.5",
       "displayName": "Field Order",
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-order-0.1.5.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-file-vault",
+      "slug": "file-vault",
+      "version": "0.1.2",
+      "displayName": "File Vault",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-file-vault-0.1.2.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-filter-tree",
@@ -125,9 +132,9 @@
     {
       "packageName": "@tuanla90/plugin-formula",
       "slug": "formula",
-      "version": "0.1.79",
+      "version": "0.1.80",
       "displayName": "Formula & Computed Fields",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.79.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.80.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-global-search",
@@ -146,9 +153,9 @@
     {
       "packageName": "@tuanla90/plugin-hub",
       "slug": "hub",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "displayName": "Plugin Hub",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.13.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.14.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-inline-field",

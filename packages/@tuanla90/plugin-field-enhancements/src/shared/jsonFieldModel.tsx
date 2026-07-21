@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { Slider } from 'antd';
 import { observer, useForm } from '@formily/react';
 import { SegmentedGroup, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS, registerFlowComponentsOnce } from '@tuanla90/shared';
@@ -113,9 +114,9 @@ const JSN_Preview: any = observer(() => {
   const cfg = jsnFromForm(form?.values || {});
   const sample = { id: 42, name: 'Acme', tags: ['a', 'b'], active: true };
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox>
       <JsonView value={sample} cfg={cfg} />
-    </div>
+    </PreviewBox>
   );
 });
 

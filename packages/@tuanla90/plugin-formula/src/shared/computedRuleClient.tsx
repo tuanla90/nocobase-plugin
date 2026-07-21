@@ -347,6 +347,31 @@ export function registerComputedRuleFlow({
   // so patching broadly is safe and needs no per-type maintenance list.
   patchAllFieldHints(flowEngine, [EditableFieldModel, DisplayTextFieldModel]);
 
+  // The two CANONICAL column surfaces the rule editor lives on. Resolve them once so the settings-menu
+  // visibility predicate below can tell "this model IS a column" / "this field is nested INSIDE a column"
+  // from "this is a standalone form/edit field".
+  const SubTableColumn = resolveModelClass(flowEngine, 'SubTableColumnModel', undefined);
+  const isColumnModel = (m: any) =>
+    !!m && ((TableColumn && m instanceof TableColumn) || (SubTableColumn && m instanceof SubTableColumn));
+  // hideInSettings predicate for the rule step (wired below). The flow is registered on THREE bases:
+  // TableColumnModel + SubTableColumnModel (the column ⚙) AND FieldModel (a standalone form/edit field ⚙).
+  // In /v/, a (sub-)table column's ⚙ aggregates its OWN flows PLUS its inner field component's flows
+  // (FlowsFloatContextMenu settingsMenuLevel:2 → walkSubModels), and that field component extends
+  // FieldModel — so the FieldModel registration surfaces a SECOND, duplicate "Giá trị tự cập nhật (công
+  // thức)" entry on the very same column ⚙. Kill ONLY that in-column duplicate:
+  //   • the column model itself (TableColumn/SubTableColumn) → SHOW (canonical surface).
+  //   • a field model that has a (sub-)table-column ANCESTOR → HIDE (it's the column's inner component).
+  //   • a standalone form/edit field (no column ancestor) → SHOW (must keep working).
+  // This is menu-visibility only; the step's auto-apply handler + write-guard are untouched.
+  const hideDuplicateOnColumnField = (ctx: any): boolean => {
+    const model = ctx?.model;
+    if (!model || isColumnModel(model)) return false;
+    for (let cur: any = model.parent, i = 0; cur && i < 4; cur = cur.parent, i++) {
+      if (isColumnModel(cur)) return true;
+    }
+    return false;
+  };
+
   const flowConfig: any = {
       key: 'ptdlComputedRule',
       sort: 504, // just after the Formula display flow (502)
@@ -354,6 +379,9 @@ export function registerComputedRuleFlow({
       steps: {
         rule: {
           title: t('Giá trị tự cập nhật (công thức)'),
+          // Hide the DUPLICATE entry on a (sub-)table column's ⚙ (the column already shows it); keep it on
+          // the column itself and on a standalone form/edit field. See hideDuplicateOnColumnField above.
+          hideInSettings: hideDuplicateOnColumnField,
           uiMode: { type: 'dialog', props: { width: 800 } },
           // Host the SAME full editor as the Settings page (toolbar field-picker/ví dụ/hàm/AI + triggers +
           // Khi lỗi + Chạy thử) — just with the Bảng/Cột-đích pickers hidden (known from this column).
@@ -416,7 +444,7 @@ export function registerComputedRuleFlow({
   //                             DISPLAY models are a separate base, so this hits editable contexts only)
   const targets = [
     TableColumn,
-    resolveModelClass(flowEngine, 'SubTableColumnModel', undefined),
+    SubTableColumn,
     resolveModelClass(flowEngine, 'FieldModel', FieldModel),
   ].filter((c: any) => c && typeof c.registerFlow === 'function');
   for (const Cls of targets) {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Switch, Slider, Input } from 'antd';
 import { SegmentedGroup, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, fieldItem as fi, rx, SEG_PROPS, colorStrip, registerFlowComponentsOnce } from '@tuanla90/shared';
@@ -272,9 +273,9 @@ const BoolPreview: any = observer(() => {
   const form: any = useForm();
   const cfg = bcfgFromForm(form?.values || {});
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9', display: 'flex', gap: 24, alignItems: 'center' }}>
+    <PreviewBox style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ color: '#8c8c8c', fontSize: 12 }}>On:</span><BoolView cfg={cfg} value={true} /></span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ color: '#8c8c8c', fontSize: 12 }}>Off:</span><BoolView cfg={cfg} value={false} /></span>
-    </div>
+    </PreviewBox>
   );
 });

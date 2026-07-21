@@ -9,7 +9,7 @@ const NS = 'field-enhancements';
 const GlobalWidgetsSettings: React.FC = () => {
   const app: any = useApp();
   const t = (s: string) => app?.i18n?.t?.(s, { ns: NS }) ?? s;
-  return <GlobalWidgetsPane api={app?.apiClient} appT={(s: string) => (app?.i18n?.t?.(s) ?? s)} t={t} />;
+  return <GlobalWidgetsPane api={app?.apiClient} flowEngine={app?.flowEngine} appT={(s: string) => (app?.i18n?.t?.(s) ?? s)} t={t} />;
 };
 
 // Modern lane (/v/). All widget registration lives in the shared registerAllFieldModels() so the two lanes

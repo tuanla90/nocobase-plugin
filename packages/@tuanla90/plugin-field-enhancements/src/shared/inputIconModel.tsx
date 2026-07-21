@@ -1,4 +1,5 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Input, Slider } from 'antd';
 import { SegmentedGroup, ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, CollapsibleSection, fieldItem as fi, rx, SEG_PROPS, registerFlowComponentsOnce } from '@tuanla90/shared';
@@ -331,8 +332,8 @@ const InputIconPreview: any = observer((props: any) => {
   const cfg = cfgFromForm(form?.values || {});
   const placeholder = computePlaceholder(cfg, props.fieldTitle) || props.fieldTitle || 'Placeholder';
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox>
       <IconInput cfg={cfg} placeholder={placeholder} password={!!props.password} />
-    </div>
+    </PreviewBox>
   );
 });

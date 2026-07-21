@@ -1,10 +1,12 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Progress, InputNumber, Switch } from 'antd';
 import { SegmentedGroup, ColorField, SettingsGrid, ResetButton, fieldItem as fi, rx, visibleWhen, SEG_PROPS, colorStrip, registerSettingsKit } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
+import { isQuickEditCell, quickInlineSave } from './inlineQuickEdit';
 
 // Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
 // inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
@@ -31,6 +33,7 @@ const P_DEFAULTS = {
   colorMode: 'mono', color: '',
   colorFrom: '#1677ff', colorMid: '', colorTo: '#52c41a',
   t1: 33, c1: '#ff4d4f', t2: 66, c2: '#faad14', c3: '#52c41a',
+  clickSave: false,
 };
 
 type PCfg = {
@@ -38,6 +41,7 @@ type PCfg = {
   colorMode: string; color: string;
   colorFrom: string; colorMid: string; colorTo: string;
   t1: number; c1: string; t2: number; c2: string; c3: string;
+  clickSave: boolean;
 };
 // textPos ∈ {top,bottom,inline}; textAlign ∈ {left,right}. Tương thích ngược config cũ (left/right = inline + align).
 function normTextPos(pos: any, align: any): { pos: string; align: string } {
@@ -64,6 +68,7 @@ function pcfgFromProps(p: any): PCfg {
     t2: typeof p.ptdlpT2 === 'number' ? p.ptdlpT2 : 66,
     c2: p.ptdlpC2 || '#faad14',
     c3: p.ptdlpC3 || '#52c41a',
+    clickSave: p.ptdlpClickSave === true,
   };
 }
 function pcfgFromForm(v: any): PCfg {
@@ -83,6 +88,7 @@ function pcfgFromForm(v: any): PCfg {
     t2: typeof v?.t2 === 'number' ? v.t2 : 66,
     c2: v?.c2 || '#faad14',
     c3: v?.c3 || '#52c41a',
+    clickSave: !!v?.clickSave,
   };
 }
 
@@ -252,9 +258,11 @@ function ProgressView({ cfg, percent, onPercent }: { cfg: PCfg; percent: number;
   return <LineProgress cfg={cfg} percent={percent} onPercent={onPercent} />;
 }
 
-// readPretty của field SỐ + max để trống (auto): lấy max của cột (cache) rồi scale. Loading → tạm 100.
-function ProgressAutoMax({ model, cfg, value }: { model: any; cfg: PCfg; value: any }) {
-  const info = React.useMemo(() => resolveMaxCtx(model), [model]);
+// Fetch (once, cached) the column's max for the auto-scale case. `enabled` gates the fetch so the percent
+// field / explicit-max cases never hit the aggregate endpoint. Shared by the read-only display and the
+// editable inline display so both scale by the same denominator.
+function useColumnAutoMax(model: any, enabled: boolean): number | null {
+  const info = React.useMemo(() => (enabled ? resolveMaxCtx(model) : null), [model, enabled]);
   const key = info ? maxKeyOf(info) : '';
   const [autoMax, setAutoMax] = React.useState<number | null>(() => {
     if (!key) return null;
@@ -267,7 +275,31 @@ function ProgressAutoMax({ model, cfg, value }: { model: any; cfg: PCfg; value: 
     getColumnMax(info).then((v) => { if (alive) setAutoMax(v); });
     return () => { alive = false; };
   }, [key]);
+  return autoMax;
+}
+
+// readPretty của field SỐ + max để trống (auto): lấy max của cột (cache) rồi scale. Loading → tạm 100.
+function ProgressAutoMax({ model, cfg, value }: { model: any; cfg: PCfg; value: any }) {
+  const autoMax = useColumnAutoMax(model, true);
   return <ProgressView cfg={cfg} percent={computePercent(value, cfg, false, autoMax ?? undefined)} />;
+}
+
+// Inline click-to-set display: click/drag the bar (line) or type in the centre (circle/gauge) → convert the
+// percent back to a stored value and save it inline (optimistic). Resolves the same denominator the display
+// uses (explicit max → column auto-max → 100) so what you set matches what you see.
+function ProgressInlineDisplay({ model, cfg, value, isPercent }: { model: any; cfg: PCfg; value: any; isPercent: boolean }) {
+  const needAuto = !isPercent && !(cfg.max > 0);
+  const autoMax = useColumnAutoMax(model, needAuto);
+  const percent = computePercent(value, cfg, isPercent, autoMax ?? undefined);
+  const denom = isPercent ? 100 : (cfg.max && cfg.max > 0 ? cfg.max : (autoMax && autoMax > 0 ? autoMax : 100));
+  const setFromPercent = (pct: number) => {
+    try {
+      const v = isPercent ? pct / 100 : (pct / 100) * denom;
+      const stored = isPercent ? Math.round(v * 10000) / 10000 : Math.round(v * 100) / 100;
+      quickInlineSave(model, stored);
+    } catch (_) { /* never break the cell */ }
+  };
+  return <ProgressView cfg={cfg} percent={percent} onPercent={setFromPercent} />;
 }
 
 // Editable: line = kéo/bấm; circle/gauge = InputNumber + hiển thị (khó kéo vòng tròn).
@@ -363,6 +395,10 @@ export function registerProgressFieldModel(deps: {
                 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
                 'x-component': 'P_Preview', 'x-component-props': { isPercent },
               },
+              clickSave: fi(t('Click to change (inline, no popup)'), 'P_Switch', {
+                type: 'boolean',
+                decoratorProps: { tooltip: t('In a table, click the cell to change the value directly — saved instantly, no edit popup. Turn OFF the column’s “Enable quick edit” to remove the pencil icon.') },
+              }),
               row1: {
                 type: 'void', 'x-component': 'P_Grid',
                 'x-component-props': { style: { gridTemplateColumns: '1fr 1fr auto', alignItems: 'end', gap: '0 12px' } },
@@ -479,6 +515,7 @@ export function registerProgressFieldModel(deps: {
               ptdlpT2: typeof p.t2 === 'number' ? p.t2 : 66,
               ptdlpC2: p.c2 || '#faad14',
               ptdlpC3: p.c3 || '#52c41a',
+              ptdlpClickSave: p.clickSave === true,
             };
             ctx.model.setProps(props);
             saveWidgetGlobal(ctx, params, 'PtdlProgressFieldModel', props);
@@ -504,13 +541,17 @@ export function registerProgressFieldModel(deps: {
     console.warn('[field-enh] progress bind failed', e);
   }
 
-  // Display variant (detail/table/list) — chỉ thanh, không tương tác.
+  // Display variant (detail/table/list). Interactive (click/drag the bar, or type in a circle/gauge) when
+  // EITHER the widget's own "clickSave" setting is on OR the column's core "Enable quick edit" switch is on —
+  // same gating as the button group. Off → inert display exactly as before.
   bindDisplayField({
     flowEngine, Base, name: 'PtdlProgressDisplayFieldModel', interfaces: ['number', 'integer', 'percent'],
     label: t('Progress bar'), flow: { ...progressFlow, key: 'ptdlProgressDisplay' },
     render: (p: any, model: any) => {
       const cfg = pcfgFromProps(p);
       const isPercent = resolveCf(model)?.interface === 'percent';
+      const editable = cfg.clickSave === true || isQuickEditCell(model);
+      if (editable) return <ProgressInlineDisplay model={model} cfg={cfg} value={p.value} isPercent={isPercent} />;
       return <ProgressView cfg={cfg} percent={computePercent(p.value, cfg, isPercent)} />;
     },
   });
@@ -524,9 +565,9 @@ const ProgressPreview: any = observer((props: any) => {
   const sampleValue = props.isPercent ? 0.65 : (cfg.max || 100) * 0.65;
   const percent = computePercent(sampleValue, cfg, !!props.isPercent);
   return (
-    <div style={{ padding: '12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox style={{ padding: '12px' }}>
       <ProgressView cfg={cfg} percent={percent} />
-    </div>
+    </PreviewBox>
   );
 });
 

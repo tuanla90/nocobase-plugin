@@ -14,6 +14,7 @@ import { registerIconFieldModel } from './iconFieldModel';
 import { registerJsonFieldModel } from './jsonFieldModel';
 import { registerLongTextModel } from './longTextModel';
 import { patchBulkEditSmartField } from './bulkEditSmartField';
+import { registerInstantEdit } from './instantEdit';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
 import { loadFieldWidgetCache, bindFieldWidgetAutoRefresh, fieldWidgetFor } from './fieldWidgetStore';
 import { registerGlobalWidgetComponents } from './globalWidgetToggle';
@@ -183,6 +184,14 @@ export function registerAllFieldModels(deps: RegisterAllDeps) {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn(`[field-enh] (${lane}) global-widget wiring failed (ignored)`, e);
+  }
+
+  // Block-level "Instant edit" for /v/ tables (guarded on TableBlockModel → no-ops on the classic lane).
+  try {
+    registerInstantEdit({ flowEngine, flowSettings, tExpr });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`[field-enh] (${lane}) instant-edit register failed (ignored)`, e);
   }
 
   // eslint-disable-next-line no-console

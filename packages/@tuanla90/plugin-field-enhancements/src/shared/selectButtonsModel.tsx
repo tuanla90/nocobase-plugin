@@ -1,9 +1,11 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Slider, Switch } from 'antd';
 import { SegmentedGroup, ColorField, tagColorToHex, setIconRegistry, IconByKey, RegistryIconPicker, SettingsGrid, CollapsibleSection, fieldItem as fi, rx, visibleWhen, SEG_PROPS, registerFlowComponentsOnce } from '@tuanla90/shared';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
+import { resolveCf, isQuickEditCell, quickInlineSave } from './inlineQuickEdit';
 
 /**
  * No-code widget: field select/multi-select → dãy NÚT (thay dropdown). Bản plugin-hoá của snippet
@@ -27,17 +29,8 @@ type Settings = {
   clickSave: boolean;
 };
 
-// Resolve a model's collectionField, walking up `.parent` — a SubTableColumnModel's column model (or an
-// inner field-model rendered inside a form) doesn't always carry `collectionField` directly on itself;
-// it can live on a parent (e.g. a FormItemModel). `model.collectionField` is a getter whose body is just
-// `return this.context.collectionField` — so `model.collectionField || model.context?.collectionField` is
-// NOT a real fallback (same read twice). Walking `.parent` is the only real fix.
-function resolveCf(model: any): any {
-  for (let cur: any = model, i = 0; cur && i < 4; cur = cur.parent, i++) {
-    if (cur?.collectionField) return cur.collectionField;
-  }
-  return null;
-}
+// resolveCf / isQuickEditCell / quickInlineSave now live in the shared inlineQuickEdit helper (imported
+// above) so every click-to-save widget uses one implementation.
 function resolveOptions(model: any): Opt[] {
   const p = model?.props || {};
   if (Array.isArray(p.options) && p.options.length) return p.options;
@@ -95,46 +88,6 @@ function nextValue(raw: any, opt: Opt, isMulti: boolean, allowDeselect: boolean)
     return cur;
   }
   return raw === opt.value && allowDeselect ? null : opt.value;
-}
-
-// The core "Enable quick edit" column switch sets `props.editable = true` on the COLUMN model. Our display
-// field-model renders INSIDE that column, so walk up `.parent` to find it (same idea as resolveCf). When on,
-// the display buttons become click-to-save instead of needing the pencil → popover.
-function isQuickEditCell(model: any): boolean {
-  for (let cur: any = model, i = 0; cur && i < 6; cur = cur.parent, i++) {
-    if (cur?.props?.editable === true) return true;
-  }
-  return false;
-}
-
-// Persist ONE field on the current row directly (inline quick-edit). Uses the cell context's APIClient +
-// record — the same handles NocoBase exposes to table cells (verified live: context.api / context.record).
-// OPTIMISTIC IN-PLACE: mutate the observable row so ONLY this cell re-renders — deliberately NO
-// `resource.refresh()` (that refetches the whole block → the whole-table flicker the user reported). The
-// server write is fire-and-forget with rollback on failure; F5 re-syncs from the server regardless.
-async function saveInlineValue(model: any, value: any): Promise<void> {
-  const ctx: any = model?.context || {};
-  const cf = resolveCf(model);
-  const api = ctx.api || ctx.blockModel?.context?.api;
-  const record = ctx.record;
-  const fieldName = cf?.name;
-  const collectionName = cf?.collectionName || cf?.collection?.name || ctx.collection?.name;
-  const pkName = cf?.collection?.filterTargetKey || ctx.collection?.filterTargetKey || 'id';
-  const pk = record?.[pkName] ?? record?.id;
-  if (!api?.resource || !collectionName || !fieldName || pk == null) {
-    // eslint-disable-next-line no-console
-    console.warn('[field-enh] inline quick-edit skipped — missing api/collection/field/pk', { collectionName, fieldName, pk });
-    return;
-  }
-  const prev = record ? record[fieldName] : undefined;
-  if (record) record[fieldName] = value; // optimistic — observable row updates just this cell, no refetch
-  try {
-    await api.resource(collectionName).update({ filterByTk: pk, values: { [fieldName]: value } });
-  } catch (e) {
-    if (record) record[fieldName] = prev; // rollback the on-screen value
-    // eslint-disable-next-line no-console
-    console.warn('[field-enh] inline quick-edit save failed', e);
-  }
 }
 
 // Presentational — dùng CHUNG cho model.render() lẫn preview.
@@ -450,7 +403,7 @@ export function registerSelectButtonsModel(deps: {
       // switch is on. Off → inert display exactly as before.
       const editable = settings.clickSave === true || isQuickEditCell(model);
       const onPick = editable
-        ? (opt: Opt) => saveInlineValue(model, nextValue(p.value, opt, isMulti, settings.allowDeselect))
+        ? (opt: Opt) => { try { quickInlineSave(model, nextValue(p.value, opt, isMulti, settings.allowDeselect)); } catch (_) { /* never break the cell */ } }
         : () => {};
       return <ButtonGroupView options={options} isMulti={isMulti} value={p.value} settings={settings} onPick={onPick} canEdit={editable} />;
     },
@@ -479,7 +432,7 @@ const PtdlPreview: any = observer((props: any) => {
     }
   };
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox>
       <ButtonGroupView options={options} isMulti={isMulti} value={sel} settings={settings} onPick={onPick} canEdit />
       {settings.display === 'single' ? (
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -487,6 +440,6 @@ const PtdlPreview: any = observer((props: any) => {
           <ButtonGroupView options={options} isMulti={isMulti} value={sel} settings={settings} onPick={() => {}} canEdit={false} />
         </div>
       ) : null}
-    </div>
+    </PreviewBox>
   );
 });

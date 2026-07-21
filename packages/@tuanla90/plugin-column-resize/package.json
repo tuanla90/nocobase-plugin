@@ -1,6 +1,6 @@
 {
   "name": "@tuanla90/plugin-column-resize",
-  "version": "0.1.1",
+  "version": "0.1.9",
   "displayName": "Column Resize",
   "displayName.vi-VN": "Kéo giãn cột",
   "description": "Drag the right edge of any /v/ table column header to resize it. Widths are saved per-block (shared with everyone, like the native ‘Column width’ setting) and are only editable with the UI editor on. Modern (/v/) client only.",

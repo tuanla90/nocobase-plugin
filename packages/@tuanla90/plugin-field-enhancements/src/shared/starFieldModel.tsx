@@ -1,10 +1,12 @@
 import React from 'react';
+import { PreviewBox } from './previewBox';
 import { EditableItemModel } from '@nocobase/flow-engine';
 import { Rate, Switch, Slider } from 'antd';
 import { ColorField, IconByKey, RegistryIconPicker, SettingsGrid, ResetButton, fieldItem as fi, registerFlowComponentsOnce } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 import { observer, useForm } from '@formily/react';
 import { bindDisplayField } from './displayBinding';
+import { isQuickEditCell, quickInlineSave } from './inlineQuickEdit';
 
 /**
  * No-code widget: field SỐ (number/integer) → hiển thị/nhập bằng ⭐ Rate (antd). Config: icon tuỳ chọn (mặc định sao),
@@ -12,10 +14,10 @@ import { bindDisplayField } from './displayBinding';
  */
 
 const S_DEFAULTS = {
-  icon: undefined as string | undefined, count: 5, allowHalf: true, color: '#fadb14', showValue: false,
+  icon: undefined as string | undefined, count: 5, allowHalf: true, color: '#fadb14', showValue: false, clickSave: false,
 };
 
-type SCfg = { icon?: string; count: number; allowHalf: boolean; color: string; showValue: boolean };
+type SCfg = { icon?: string; count: number; allowHalf: boolean; color: string; showValue: boolean; clickSave: boolean };
 function scfgFromProps(p: any): SCfg {
   return {
     icon: p.ptdlsIcon,
@@ -23,6 +25,7 @@ function scfgFromProps(p: any): SCfg {
     allowHalf: p.ptdlsAllowHalf !== false,
     color: p.ptdlsColor || '#fadb14',
     showValue: !!p.ptdlsShowValue,
+    clickSave: p.ptdlsClickSave === true,
   };
 }
 function scfgFromForm(v: any): SCfg {
@@ -32,6 +35,7 @@ function scfgFromForm(v: any): SCfg {
     allowHalf: v?.allowHalf !== false,
     color: v?.color || '#fadb14',
     showValue: !!v?.showValue,
+    clickSave: !!v?.clickSave,
   };
 }
 
@@ -121,6 +125,10 @@ export function registerStarFieldModel(deps: {
               'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
               'x-component': 'S_Preview',
             },
+            clickSave: fi(t('Click to change (inline, no popup)'), 'S_Switch', {
+              type: 'boolean',
+              decoratorProps: { tooltip: t('In a table, click the cell to change the value directly — saved instantly, no edit popup. Turn OFF the column’s “Enable quick edit” to remove the pencil icon.') },
+            }),
             row1: {
               type: 'void', 'x-component': 'S_Grid',
               'x-component-props': { style: { gridTemplateColumns: 'auto 1fr auto', alignItems: 'end', gap: '0 12px' } },
@@ -152,6 +160,7 @@ export function registerStarFieldModel(deps: {
               ptdlsAllowHalf: p.allowHalf !== false,
               ptdlsColor: p.color || '#fadb14',
               ptdlsShowValue: !!p.showValue,
+              ptdlsClickSave: p.clickSave === true,
             };
             ctx.model.setProps(props);
             saveWidgetGlobal(ctx, params, 'PtdlStarFieldModel', props);
@@ -177,11 +186,20 @@ export function registerStarFieldModel(deps: {
     console.warn('[field-enh] star bind failed', e);
   }
 
-  // Display variant (detail/table/list).
+  // Display variant (detail/table/list). Stars become directly click-to-save when EITHER the widget's own
+  // "clickSave" setting is on OR the column's core "Enable quick edit" switch is on — same gating as the
+  // button group. Off → inert display exactly as before (detail pages, read-only, exports).
   bindDisplayField({
     flowEngine, Base, name: 'PtdlStarDisplayFieldModel', interfaces: ['number', 'integer'],
     label: t('Star rating'), flow: { ...starFlow, key: 'ptdlStarDisplay' },
-    render: (p: any) => <StarView cfg={scfgFromProps(p)} value={p.value} disabled />,
+    render: (p: any, model: any) => {
+      const cfg = scfgFromProps(p);
+      const editable = cfg.clickSave === true || isQuickEditCell(model);
+      if (!editable) return <StarView cfg={cfg} value={p.value} disabled />;
+      // Click star N → save N inline (antd Rate returns 0 when the current value is clicked again = clear);
+      // save whatever Rate emits, matching the editable model's behaviour exactly.
+      return <StarView cfg={cfg} value={p.value} disabled={false} onChange={(v: any) => { try { quickInlineSave(model, v); } catch (_) { /* never break the cell */ } }} />;
+    },
   });
 
   return PtdlStarFieldModel;
@@ -192,9 +210,9 @@ const StarPreview: any = observer(() => {
   const cfg = scfgFromForm(form?.values || {});
   const sample = cfg.allowHalf ? Math.min(cfg.count, 3.5) : Math.min(cfg.count, 3);
   return (
-    <div style={{ padding: '10px 12px', background: 'var(--colorFillQuaternary, #fafafa)', borderRadius: 6, border: '1px dashed #d9d9d9' }}>
+    <PreviewBox>
       <StarView cfg={cfg} value={sample} />
-    </div>
+    </PreviewBox>
   );
 });
 
