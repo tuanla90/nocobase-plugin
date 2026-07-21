@@ -42,7 +42,7 @@ Plugin cài lúc runtime nằm ở `storage/plugins` trên **service NocoBase** 
 | global-search | 0.9.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.8.tgz` |
 | gsheet-sync | 0.1.3 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-gsheet-sync-0.1.3.tgz` |
 | hub | 0.1.13 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.13.tgz` |
-| inline-field | 0.1.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.4.tgz` |
+| inline-field | 0.1.5 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.5.tgz` |
 | instant-create-page | 0.1.8 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-instant-create-page-0.1.8.tgz` |
 | ip-guard | 0.2.1 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-ip-guard-0.2.1.tgz` |
 | layout-containers | 0.4.4 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-layout-containers-0.4.4.tgz` |

@@ -626,14 +626,18 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
             if (creatingInBlock.has(model)) return;
             creatingInBlock.add(model);
             // Consume the one-shot spec immediately: reset the persisted step params to the empty default so
-            // neither this render cascade nor a later page reload can recreate the field. `save()` in the
-            // finally persists both the reset params and the freshly-added column.
+            // neither this render cascade nor a later page reload can recreate the field. This is an
+            // IN-MEMORY mutation only — the flow-settings dialog persists the model right after this handler,
+            // and that save serializes the reset we do here.
             try { model.setStepParams?.('ptdlInlineAddField', 'create', { spec: { interface: 'input', title: '' } }); }
             catch (_) { /* best-effort */ }
             try {
               await createFieldAndColumn(model, spec, app);
             } finally {
-              try { await model.save?.(); } catch (_) { /* best-effort persist of reset params + column */ }
+              // Do NOT call model.save() here. The dialog's own OK handler saves the model immediately after
+              // this handler returns; a second save() from inside the handler races the framework's save →
+              // the framework's save throws → "Error saving configuration" + duplicate toasts. The in-memory
+              // setStepParams reset above is enough — the framework's save writes it out.
               creatingInBlock.delete(model);
             }
           },
