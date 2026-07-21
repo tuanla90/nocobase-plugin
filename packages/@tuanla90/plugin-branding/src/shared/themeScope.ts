@@ -30,6 +30,31 @@ export function scopedType(base: string, uid?: string): string {
   return uid ? `${base}@${uid}` : base;
 }
 
+/**
+ * Is the active theme dark? Read synchronously from the same cached `NOCOBASE_THEME` (its `config.algorithm`
+ * is `theme.darkAlgorithm` for dark themes), with a dark-in-uid heuristic and a `prefers-color-scheme`
+ * fallback. Used so token-derived styles (e.g. the "Auto" zebra tint) can pick a light-on-dark vs
+ * dark-on-light overlay without pulling the antd token (which isn't available outside React).
+ */
+export function currentThemeIsDark(): boolean {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const t = JSON.parse(localStorage.getItem('NOCOBASE_THEME') || '{}');
+      const algo = JSON.stringify(t?.config?.algorithm ?? t?.algorithm ?? '');
+      if (/dark/i.test(algo)) return true;
+      if (/dark/i.test(String(t?.uid || ''))) return true;
+      if (algo && algo !== '""') return false; // a resolved light theme → definitively light
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch {
+    return false;
+  }
+}
+
 export type ThemeInfo = { uid: string; name: string; dark: boolean; isDefault: boolean };
 
 // Full theme list for the settings scope dropdown (async, one request; cache at the call site).

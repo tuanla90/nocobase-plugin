@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button, Card, ColorPicker, Divider, Input, Slider, Space, Switch, message, theme } from 'antd';
+import { Button, Card, ColorPicker, Divider, Input, Slider, Space, Switch, Tooltip, message, theme } from 'antd';
 import { COLOR_PRESETS, colorToString, SegmentedGroup } from '@tuanla90/shared';
-import { currentThemeUid, scopedType } from './themeScope';
+import { currentThemeUid, currentThemeIsDark, scopedType } from './themeScope';
 
 /**
  * @tuanla90/plugin-branding — Typography & Tables. A second server-backed config (`type: 'typography'`)
@@ -19,9 +19,19 @@ export type TableCfg = {
   headWeight?: number; // 0 / undefined = default
   border?: string;
   rowHover?: string;
-  zebra?: string; // even-row background
+  zebra?: string; // even-row background (a fixed colour)
+  zebraAuto?: boolean; // derive the zebra tint from the theme instead of `zebra` (adapts to light/dark)
   compact?: boolean;
 };
+
+// The "Auto" zebra: a translucent overlay that sits on top of the row's own (opaque) background, so it
+// reads correctly in both light and dark without knowing the exact token colour. Lightens on dark,
+// darkens on light — mirrors antd's own `colorFillQuaternary` feel.
+export const AUTO_ZEBRA_DARK = 'rgba(255,255,255,0.05)';
+export const AUTO_ZEBRA_LIGHT = 'rgba(0,0,0,0.022)';
+export function autoZebraColor(isDark: boolean): string {
+  return isDark ? AUTO_ZEBRA_DARK : AUTO_ZEBRA_LIGHT;
+}
 export type TypographyCfg = {
   fontUrl?: string; // Google Fonts stylesheet URL (or a pasted <link>/@import)
   fontFamily?: string; // family name to apply, e.g. 'Inter'
@@ -72,8 +82,21 @@ function quoteFamily(fam: string): string {
   return /\s/.test(clean) ? `'${clean}'` : clean;
 }
 
+// Zebra rule that does NOT clobber the selected/hover row highlight (excludes those states so antd's
+// own highlight wins), and skips the summary/measure row (only `.ant-table-row` data rows striped).
+// `translucent` (the Auto tint) additionally skips fixed columns — a semi-transparent fill on a sticky
+// cell would let the horizontally-scrolled body show through.
+function zebraRule(color: string, translucent: boolean): string {
+  const sel =
+    '.ant-table-tbody>tr.ant-table-row:nth-child(2n):not(.ant-table-row-selected):not(:hover)>td' +
+    (translucent ? ':not(.ant-table-cell-fix-left):not(.ant-table-cell-fix-right)' : '');
+  return `${sel}{background:${color}!important}`;
+}
+
 // TypographyCfg → global CSS. Targets antd's semantic classes; `!important` beats antd's own tokens.
-export function buildTypographyCss(cfg: TypographyCfg): string {
+// `isDark` (defaults to the active theme) resolves the "Auto" zebra tint. Kept optional so existing
+// callers/tests keep working.
+export function buildTypographyCss(cfg: TypographyCfg, isDark: boolean = false): string {
   if (!cfg || typeof cfg !== 'object') return '';
   const p: string[] = [];
   const fam = (cfg.fontFamily || '').trim();
@@ -94,7 +117,8 @@ export function buildTypographyCss(cfg: TypographyCfg): string {
   if (tb.border) th.push(`border-bottom:1px solid ${tb.border}!important`);
   if (th.length) p.push(`.ant-table-thead>tr>th{${th.join(';')}}`);
   if (tb.border) p.push(`.ant-table-tbody>tr>td{border-bottom:1px solid ${tb.border}!important}`);
-  if (tb.zebra) p.push(`.ant-table-tbody>tr:nth-child(2n)>td{background:${tb.zebra}!important}`);
+  if (tb.zebraAuto) p.push(zebraRule(autoZebraColor(isDark), true));
+  else if (tb.zebra) p.push(zebraRule(tb.zebra, false));
   if (tb.rowHover) {
     p.push(
       `.ant-table-wrapper .ant-table-tbody>tr.ant-table-row:hover>td,` +
@@ -135,11 +159,32 @@ export function injectFontLink(url?: string) {
 
 export function applyTypography(cfg: TypographyCfg) {
   injectFontLink(cfg?.fontUrl);
-  injectTypographyCss(buildTypographyCss(cfg || {}));
+  injectTypographyCss(buildTypographyCss(cfg || {}, currentThemeIsDark()));
 }
 
-// Every client calls this at startup to apply the saved typography.
+// localStorage key bumped on every Save. Other open tabs/views listen for the `storage` event and
+// re-fetch+apply — so a saved change reaches already-open tables without a manual reload (the settings
+// page only live-previews its OWN document; app views loaded earlier would otherwise stay stale).
+const REV_KEY = 'ptdl-branding-typography-rev';
+let _syncBound = false;
+function bindTypographySync(apiClient: any) {
+  if (_syncBound || typeof window === 'undefined') return;
+  _syncBound = true;
+  window.addEventListener('storage', (e) => {
+    if (e.key === REV_KEY) loadAndApplyTypography(apiClient);
+  });
+}
+export function notifyTypographyChanged() {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(REV_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Every client calls this at startup to apply the saved typography (and wire the cross-tab sync).
 export async function loadAndApplyTypography(apiClient: any) {
+  bindTypographySync(apiClient);
   try {
     const res = await apiClient.request({ url: 'brandingConfigs:getActive', params: { type: scopedType('typography', currentThemeUid()) } });
     const cfg = res?.data?.data?.options || res?.data?.data || {};
@@ -157,13 +202,14 @@ export function initTypographyUi(deps: { apiClient: any; t?: (s: string) => stri
   if (deps.t) _t = deps.t;
 }
 
-function ColorBtn({ value, onChange, label }: { value?: string; onChange: (v: string) => void; label: string }) {
+function ColorBtn({ value, onChange, label, disabled }: { value?: string; onChange: (v: string) => void; label: string; disabled?: boolean }) {
   const { token } = theme.useToken();
   return (
     <Space size={4}>
       <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{label}</span>
       <ColorPicker
         size="small"
+        disabled={disabled}
         value={value || undefined}
         presets={COLOR_PRESETS as any}
         allowClear
@@ -224,7 +270,7 @@ function TypographyPreview({ cfg }: { cfg: TypographyCfg }) {
         </thead>
         <tbody>
           {rows.map((r, ri) => (
-            <tr key={ri} style={{ background: tb.zebra && ri % 2 === 1 ? tb.zebra : 'transparent' }}>
+            <tr key={ri} style={{ background: ri % 2 === 1 ? (tb.zebraAuto ? token.colorFillQuaternary : tb.zebra) || 'transparent' : 'transparent' }}>
               {r.map((c, ci) => (
                 <td
                   key={ci}
@@ -292,6 +338,7 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
     try {
       await _api.request({ url: 'brandingConfigs:save', method: 'post', data: { type: scopedType('typography', scopeUid), options: cfg } });
       savedRef.current = cfg;
+      notifyTypographyChanged(); // push the change to other open tabs/views (no manual reload needed)
       message.success(_t('Saved'));
     } catch (e) {
       message.error(_t('Save failed'));
@@ -399,7 +446,13 @@ export function BrandingTypographyPage({ scopeUid }: { scopeUid?: string } = {})
               <Space size={10} align="center" wrap>
                 <span style={{ fontSize: 12, color: token.colorTextTertiary, width: 70, flex: 'none' }}>{_t('Rows')}</span>
                 <ColorBtn label={_t('Border')} value={tb.border} onChange={(border) => setTable({ border })} />
-                <ColorBtn label={_t('Zebra')} value={tb.zebra} onChange={(zebra) => setTable({ zebra })} />
+                <ColorBtn label={_t('Zebra')} value={tb.zebra} onChange={(zebra) => setTable({ zebra })} disabled={!!tb.zebraAuto} />
+                <Space size={4} align="center">
+                  <Switch size="small" checked={!!tb.zebraAuto} onChange={(v) => setTable({ zebraAuto: v })} />
+                  <Tooltip title={_t('Derive the zebra tint from the theme — adapts to light/dark and keeps the selected-row highlight.')}>
+                    <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{_t('Auto (theme)')}</span>
+                  </Tooltip>
+                </Space>
                 <ColorBtn label={_t('Hover')} value={tb.rowHover} onChange={(rowHover) => setTable({ rowHover })} />
               </Space>
               <Space size={8}>

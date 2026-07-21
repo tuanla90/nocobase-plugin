@@ -91,6 +91,8 @@
   "Semibold": "Đậm vừa",
   "Rows": "Dòng",
   "Zebra": "Sọc",
+  "Auto (theme)": "Tự động (theo theme)",
+  "Derive the zebra tint from the theme — adapts to light/dark and keeps the selected-row highlight.": "Lấy màu sọc theo theme — tự hợp sáng/tối và giữ nguyên màu tô hàng đang chọn.",
   "Hover": "Di chuột",
   "Compact rows": "Dòng gọn",
   "Import / export": "Nhập / Xuất",

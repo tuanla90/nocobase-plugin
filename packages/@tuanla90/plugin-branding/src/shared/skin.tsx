@@ -286,6 +286,11 @@ export function buildMotionCss(level: 'off' | 'subtle' | 'lively'): string {
   // ── Sidebar / menu micro-interactions: smooth hover tint + a small slide so items feel responsive.
   m.push(`.ant-menu-item,.ant-menu-submenu-title{transition:background-color .2s ease,color .2s ease,transform .18s ${EASE}!important}`);
   m.push(`.ant-layout-sider .ant-menu-item:hover,.ant-layout-sider .ant-menu-submenu-title:hover{transform:translateX(${lively ? 4 : 3}px)}`);
+  // Items that @tuanla90/plugin-menu-enhancements converts into an inert section (divider / group title)
+  // are still `li.ant-menu-item` but host a `[data-ptdl-menu-kind]` marker — a divider/label must NOT
+  // slide on hover. A SEPARATE override (rather than `:not(:has())` on the rule above) so the normal slide
+  // still works on the rare browser without `:has()`; there the section plugin itself is inert anyway.
+  m.push('.ant-layout-sider .ant-menu-item:has([data-ptdl-menu-kind]):hover{transform:none!important}');
   m.push(`.ant-menu-item .anticon,.ant-menu-submenu-title .anticon,.ant-menu-item svg,.ant-menu-submenu-title svg{transition:transform .18s ${EASE}}`);
   m.push(`.ant-layout-sider .ant-menu-item:hover .anticon,.ant-layout-sider .ant-menu-submenu-title:hover .anticon,.ant-layout-sider .ant-menu-item:hover svg,.ant-layout-sider .ant-menu-submenu-title:hover svg{transform:scale(${lively ? 1.16 : 1.1})}`);
   // Sider collapse/expand — refine the width slide antd already runs.

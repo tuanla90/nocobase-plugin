@@ -123,6 +123,7 @@ function installLogoHandler() {
 // interval re-applies, so a re-render restoring the native src OR a theme toggle is picked up.
 let _logoLight = '';
 let _logoDark = '';
+let _favicon = ''; // browser-tab icon; re-applied on the same interval as the logo (core re-asserts it)
 let _lastDark: boolean | null = null;
 let _logoTimer = 0;
 
@@ -209,25 +210,36 @@ function applyLogoImages(): void {
   });
 }
 
-function ensureLogoTimer(active: boolean): void {
+// Re-assert both DOM-level brand tweaks (logo images + favicon link). Both are cheap: each compares
+// the current value before writing, so this is a no-op unless something (a re-render / theme toggle)
+// actually reverted it.
+function reapplyBranding(): void {
+  applyLogoImages();
+  applyFavicon();
+}
+
+function ensureBrandingTimer(active: boolean): void {
   if (typeof window === 'undefined') return;
   if (active && !_logoTimer) {
-    // Cheap re-apply (src is compared before any write): catches a React re-render restoring the
-    // native logo AND a live light↔dark theme toggle.
-    _logoTimer = window.setInterval(applyLogoImages, 1200);
+    // Cheap re-apply: catches a React re-render restoring the native logo / core favicon AND a live
+    // light↔dark theme toggle.
+    _logoTimer = window.setInterval(reapplyBranding, 1200);
   } else if (!active && _logoTimer) {
     window.clearInterval(_logoTimer);
     _logoTimer = 0;
-    applyLogoImages(); // final pass restores the native logo
+    reapplyBranding(); // final pass restores the native logo + default favicon
   }
 }
 
 // ---- Favicon (browser-tab icon) -------------------------------------------------------------------
 // Core NocoBase renders a `<link rel="shortcut icon">` (default `/favicon/favicon.ico`) but has NO
 // admin setting for it — we point that link at a custom URL. Clearing restores the core default.
+// React-safe: core re-asserts the default `href` on later re-renders (route change / settings refetch),
+// so — exactly like the logo — a light interval re-applies. `href` is compared before any write.
 let _faviconApplied = false;
-function applyFavicon(url?: string): void {
+function applyFavicon(): void {
   if (typeof document === 'undefined') return;
+  const url = _favicon;
   let link = document.querySelector('link[rel="shortcut icon"], link[rel="icon"]') as HTMLLinkElement | null;
   if (url) {
     if (!link) {
@@ -270,14 +282,13 @@ export function applyNav(cfg: NavCfg): void {
   _logoSelector = c.logoSelector || DEFAULT_LOGO_SELECTOR;
   if (_logoLink) installLogoHandler();
 
-  // Custom light/dark logo override.
+  // Custom light/dark logo override + custom favicon. Both are DOM tweaks that core re-asserts on
+  // re-render, so they share one light re-apply interval (see reapplyBranding / ensureBrandingTimer).
   _logoLight = c.logoLight || '';
   _logoDark = c.logoDark || '';
-  applyLogoImages();
-  ensureLogoTimer(!!(_logoLight || _logoDark));
-
-  // Custom favicon.
-  applyFavicon(c.favicon);
+  _favicon = c.favicon || '';
+  reapplyBranding();
+  ensureBrandingTimer(!!(_logoLight || _logoDark || _favicon));
 }
 
 /** Every client calls this at startup to apply the saved nav config. */
