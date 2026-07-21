@@ -34,9 +34,9 @@
     {
       "packageName": "@tuanla90/plugin-branding",
       "slug": "branding",
-      "version": "0.4.14",
+      "version": "0.4.15",
       "displayName": "Branding & Theme",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.14.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-branding-0.4.15.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-change-log",
@@ -146,9 +146,9 @@
     {
       "packageName": "@tuanla90/plugin-inline-field",
       "slug": "inline-field",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "displayName": "Inline Field",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.5.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-inline-field-0.1.6.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-instant-create-page",

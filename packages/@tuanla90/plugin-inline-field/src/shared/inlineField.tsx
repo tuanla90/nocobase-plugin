@@ -65,13 +65,17 @@ const HintLine: React.FC<{ icon: string; color?: string; iconSize?: number; styl
 // renders — the exact pattern @tuanla90/plugin-conditional-format uses for its field pickers.
 let injectedApi: any = null;
 
-// Re-entrancy guard for the one-shot "create column" flow. `TableBlockModel.registerFlow` steps are
-// AUTO-APPLY: the flow-engine re-runs the step handler on every block render / reactive change. Creating
-// a field + column mutates the block, which schedules another apply — so without a guard the SAME field
-// is created again and again ("thêm cột liên tục, không dừng"). Keyed by the block-model instance and set
-// synchronously BEFORE any await, so a re-entrant run bails immediately. Sibling plugins avoid this by
-// keeping their handlers idempotent (setProps only); here the create is not idempotent, so we gate it.
-const creatingInBlock = new WeakSet<any>();
+// One-shot guard for the "create column" flow. `TableBlockModel.registerFlow` steps are AUTO-APPLY: the
+// flow-engine re-runs the step handler on every block render / reactive change, and saving the dialog can
+// trigger it more than once (concurrently OR right after, before the params reset lands). Creating a field
+// is NOT idempotent, so an extra invocation creates a SECOND field — one wins, the duplicate 500s on the
+// concurrent column migration ("Tạo cột thất bại: 500" alongside a success toast). A content-keyed,
+// time-windowed marker collapses those extra invocations into a single create: same block+type+title
+// submitted within the window → skip. Keyed by content (not just the model) so two genuinely-different
+// fields are never wrongly merged; check-and-set is synchronous, before any await, so it also serializes
+// concurrent re-entry. Sibling plugins sidestep all this by keeping handlers idempotent (setProps only).
+const recentCreate = new Map<string, number>();
+const DEDUPE_MS = 8000;
 
 // ── the "define a field" dialog body (a controlled Formily x-component) ───────────────────────────
 // interface → friendly label (VN source) + which group it sits under, for the type <Select>.
@@ -450,37 +454,35 @@ function resolveDisplayModel(engine: any, collection: any, name: string, iface: 
   return DISPLAY_BY_INTERFACE[iface] || 'DisplayTextFieldModel';
 }
 
-/** Create the field on the server, refresh client metadata, then attach the column to THIS block. */
-async function createFieldAndColumn(blockModel: any, spec: InlineFieldSpec, app: any): Promise<void> {
+/** Create the field on the server, refresh client metadata, then attach the column to THIS block.
+ *  Returns true only when a field was actually created — the caller uses this to decide whether to keep
+ *  the one-shot dedup marker (keep on success; release on failure so the user can retry). */
+async function createFieldAndColumn(blockModel: any, spec: InlineFieldSpec, app: any): Promise<boolean> {
   const collection = blockModel?.collection;
   const collectionName = collection?.name;
   const ds = collection?.dataSourceKey || 'main';
   const engine = app?.flowEngine || blockModel?.flowEngine;
   const api = blockModel?.context?.api || app?.apiClient;
 
-  if (!collectionName || !api) { message.error(rt('Không xác định được bảng của khối này')); return; }
+  if (!collectionName || !api) { message.error(rt('Không xác định được bảng của khối này')); return false; }
   const title = String(spec?.title || '').trim();
-  // This step's handler AUTO-APPLIES on every TableBlock render with defaultParams (title:'' — the user
-  // hasn't opened the dialog), so a missing title here just means "nothing to create yet", NOT a user
-  // validation failure. Return SILENTLY — a toast here fires "Please enter a column name" on every page
-  // load (the reported bug). The dialog's own form guards a real empty submit; the create path needs a title.
-  if (!title) return;
-  if (!spec?.interface) { message.error(rt('Hãy chọn loại dữ liệu')); return; }
+  if (!title) return false; // guarded by the handler; belt-and-suspenders
+  if (!spec?.interface) { message.error(rt('Hãy chọn loại dữ liệu')); return false; }
   if (INTERFACES_WITH_OPTIONS.includes(spec.interface) && !(spec.options && spec.options.length)) {
     message.error(rt('Loại "lựa chọn" cần ít nhất 1 giá trị'));
-    return;
+    return false;
   }
   if (spec.interface === 'computed' && !String(spec.expression || '').trim()) {
     message.error(rt('Hãy nhập công thức'));
-    return;
+    return false;
   }
   if (RELATION_INTERFACES.includes(spec.interface) && !String(spec.target || '').trim()) {
     message.error(rt('Hãy chọn bảng liên kết'));
-    return;
+    return false;
   }
   if (spec.interface === 'statusFlow') {
     const labels = (spec.states || []).map((s) => (typeof s === 'string' ? s : s?.label)).filter((l) => String(l || '').trim());
-    if (labels.length < 2) { message.error(rt('Luồng trạng thái cần ít nhất 2 trạng thái có tên')); return; }
+    if (labels.length < 2) { message.error(rt('Luồng trạng thái cần ít nhất 2 trạng thái có tên')); return false; }
   }
 
   const hide = message.loading(rt('Đang tạo cột…'), 0);
@@ -536,11 +538,13 @@ async function createFieldAndColumn(blockModel: any, spec: InlineFieldSpec, app:
     } else {
       message.success(rt('Đã thêm cột "{{title}}"', { title }));
     }
+    return true;
   } catch (e: any) {
     hide();
     // eslint-disable-next-line no-console
     console.warn('[inline-field] create failed', e);
     message.error(rt('Tạo cột thất bại') + ': ' + (e?.message || String(e)));
+    return false;
   }
 }
 
@@ -620,26 +624,32 @@ export function registerInlineField({ flowEngine, flowSettings, tExpr, app, Icon
             // submits a named field there is nothing to create — bail silently (a toast here would fire on
             // every page load). The dialog's OK is the only path that supplies a real title.
             if (!title || !model) return;
-            // Creating the column mutates the block → schedules another auto-apply → this handler re-fires.
-            // Guard synchronously (before any await) so the re-entrant run bails instead of recreating the
-            // field forever — the reported "thêm liên tục không dừng lại được" bug.
-            if (creatingInBlock.has(model)) return;
-            creatingInBlock.add(model);
-            // Consume the one-shot spec immediately: reset the persisted step params to the empty default so
-            // neither this render cascade nor a later page reload can recreate the field. This is an
-            // IN-MEMORY mutation only — the flow-settings dialog persists the model right after this handler,
-            // and that save serializes the reset we do here.
+            // Collapse duplicate invocations (concurrent auto-apply, or a sequential re-fire before the
+            // params reset lands) into ONE create. Synchronous check-and-set BEFORE any await, keyed by
+            // content so different fields aren't merged; entries expire after DEDUPE_MS so a later legit
+            // re-create of the same title is still allowed.
+            const sig = `${model.uid || 'blk'}::${spec.interface || 'input'}::${title}`;
+            const now = Date.now();
+            for (const [k, ts] of recentCreate) if (now - ts > DEDUPE_MS) recentCreate.delete(k);
+            if (recentCreate.has(sig)) return;
+            recentCreate.set(sig, now);
+            // Reset the persisted step params to the empty default so a page reload can't re-run the create.
+            // In-memory here; persisted by the deferred save below (see why the save is deferred).
             try { model.setStepParams?.('ptdlInlineAddField', 'create', { spec: { interface: 'input', title: '' } }); }
             catch (_) { /* best-effort */ }
-            try {
-              await createFieldAndColumn(model, spec, app);
-            } finally {
-              // Do NOT call model.save() here. The dialog's own OK handler saves the model immediately after
-              // this handler returns; a second save() from inside the handler races the framework's save →
-              // the framework's save throws → "Error saving configuration" + duplicate toasts. The in-memory
-              // setStepParams reset above is enough — the framework's save writes it out.
-              creatingInBlock.delete(model);
+            const created = await createFieldAndColumn(model, spec, app);
+            if (!created) {
+              // Create failed (or was a no-op) → release the marker so the user can immediately retry.
+              recentCreate.delete(sig);
+              return;
             }
+            // Persist the params reset AFTER the dialog's own OK-save settles. A synchronous model.save()
+            // here races the framework's save → it throws "Error saving configuration"; deferring to the
+            // next macrotask lets the framework finish first, so this is a clean, non-racing persist that
+            // keeps a later page reload from recreating the field.
+            try {
+              setTimeout(() => { try { model.save?.(); } catch (_) { /* best-effort */ } }, 0);
+            } catch (_) { /* setTimeout unavailable — reset stays in-memory only */ }
           },
         },
       },
