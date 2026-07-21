@@ -1,7 +1,7 @@
 {
   "source": "@tuanla90/nocobase-plugin",
   "updatedAt": null,
-  "count": 33,
+  "count": 34,
   "plugins": [
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
@@ -44,6 +44,13 @@
       "version": "0.1.4",
       "displayName": "Change Log",
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-change-log-0.1.4.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-column-resize",
+      "slug": "column-resize",
+      "version": "0.1.1",
+      "displayName": "Column Resize",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-column-resize-0.1.1.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-conditional-format",
@@ -97,9 +104,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.24",
+      "version": "0.2.25",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.24.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.25.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",
@@ -118,9 +125,9 @@
     {
       "packageName": "@tuanla90/plugin-formula",
       "slug": "formula",
-      "version": "0.1.77",
+      "version": "0.1.79",
       "displayName": "Formula & Computed Fields",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.77.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-formula-0.1.79.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-global-search",
