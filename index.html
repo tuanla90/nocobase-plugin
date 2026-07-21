@@ -210,7 +210,7 @@ a:hover{text-decoration:underline}
 </tr>
 <tr>
 <td>Text</td>
-<td><code>CONCATENATE</code> · <code>LEFT</code> · <code>RIGHT</code> · <code>MID</code> · <code>UPPER</code> · <code>LOWER</code> · <code>TRIM</code> · <code>LEN</code> · <code>TEXT</code> · <code>SPLIT</code> · <code>TEXTJOIN(sep, bỏ_ô_trống, …)</code> · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code></td>
+<td><code>CONCATENATE</code> · <code>LEFT</code> · <code>RIGHT</code> · <code>MID</code> · <code>UPPER</code> · <code>LOWER</code> · <code>TRIM</code> · <code>LEN</code> · <code>TEXT</code> · <code>SPLIT</code> · <code>TEXTJOIN(sep, bỏ_ô_trống, …)</code> · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code> · <code>INITIALS(tên)</code></td>
 </tr>
 <tr>
 <td>Regex (kiểu Google Sheets)</td>
@@ -218,11 +218,11 @@ a:hover{text-decoration:underline}
 </tr>
 <tr>
 <td>Danh sách / mảng</td>
-<td><code>LIST(a, b, …)</code> tạo mảng · <code>UNIQUE(mảng)</code> / <code>DISTINCT</code> lọc trùng · <code>ANY(mảng)</code> phần tử đầu · <code>IN(x, mảng)</code> có thuộc? · <code>SPLIT(text, sep)</code> — đếm phần tử bằng <code>COUNTA</code></td>
+<td><code>LIST(a, b, …)</code> tạo mảng · <code>UNIQUE(mảng)</code> / <code>DISTINCT</code> lọc trùng · <code>INTERSECT(a, b)</code> giao 2 mảng · <code>ANY(mảng)</code> phần tử đầu · <code>IN(x, mảng)</code> có thuộc? · <code>SPLIT(text, sep)</code> — đếm phần tử bằng <code>COUNTA</code></td>
 </tr>
 <tr>
 <td>Ngày</td>
-<td><code>TODAY</code> · <code>NOW</code> · <code>YEAR</code> · <code>MONTH</code> · <code>DAY</code> · <code>DATEDIF</code> · <code>EDATE</code> · <code>DAYS</code></td>
+<td><code>TODAY</code> · <code>NOW</code> · <code>YEAR</code> · <code>MONTH</code> · <code>DAY</code> · <code>DATEDIF</code> · <code>EDATE</code> · <code>DAYS</code> · <code>ADDDAYS(date, n)</code> · <code>ADDMONTHS(date, n)</code> · <code>ADDYEARS(date, n)</code> · <code>DATEADD(date, n, &quot;day&quot;/&quot;month&quot;/&quot;year&quot;)</code> — <code>n</code> âm để <strong>trừ</strong></td>
 </tr>
 </tbody>
 </table>
@@ -630,7 +630,7 @@ a:hover{text-decoration:underline}
 </tr>
 <tr>
 <td>Text</td>
-<td><code>CONCATENATE</code> · <code>LEFT</code> · <code>RIGHT</code> · <code>MID</code> · <code>UPPER</code> · <code>LOWER</code> · <code>TRIM</code> · <code>LEN</code> · <code>TEXT</code> · <code>SPLIT</code> · <code>TEXTJOIN(sep, ignore_empty, …)</code> · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code></td>
+<td><code>CONCATENATE</code> · <code>LEFT</code> · <code>RIGHT</code> · <code>MID</code> · <code>UPPER</code> · <code>LOWER</code> · <code>TRIM</code> · <code>LEN</code> · <code>TEXT</code> · <code>SPLIT</code> · <code>TEXTJOIN(sep, ignore_empty, …)</code> · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code> · <code>INITIALS(name)</code></td>
 </tr>
 <tr>
 <td>Regex (Google-Sheets style)</td>
@@ -638,11 +638,11 @@ a:hover{text-decoration:underline}
 </tr>
 <tr>
 <td>List / array</td>
-<td><code>LIST(a, b, …)</code> build an array · <code>UNIQUE(array)</code> / <code>DISTINCT</code> de-dupe · <code>ANY(array)</code> first element · <code>IN(x, array)</code> membership · <code>SPLIT(text, sep)</code> — count elements with <code>COUNTA</code></td>
+<td><code>LIST(a, b, …)</code> build an array · <code>UNIQUE(array)</code> / <code>DISTINCT</code> de-dupe · <code>INTERSECT(a, b)</code> common items · <code>ANY(array)</code> first element · <code>IN(x, array)</code> membership · <code>SPLIT(text, sep)</code> — count elements with <code>COUNTA</code></td>
 </tr>
 <tr>
 <td>Date</td>
-<td><code>TODAY</code> · <code>NOW</code> · <code>YEAR</code> · <code>MONTH</code> · <code>DAY</code> · <code>DATEDIF</code> · <code>EDATE</code> · <code>DAYS</code></td>
+<td><code>TODAY</code> · <code>NOW</code> · <code>YEAR</code> · <code>MONTH</code> · <code>DAY</code> · <code>DATEDIF</code> · <code>EDATE</code> · <code>DAYS</code> · <code>ADDDAYS(date, n)</code> · <code>ADDMONTHS(date, n)</code> · <code>ADDYEARS(date, n)</code> · <code>DATEADD(date, n, &quot;day&quot;/&quot;month&quot;/&quot;year&quot;)</code> — negative <code>n</code> <strong>subtracts</strong></td>
 </tr>
 </tbody>
 </table>
@@ -1730,7 +1730,7 @@ app to come back</strong> and refreshes the list. Normal — “Update all” ac
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Công thức &amp; Trường tự tính</span><span class="lang lang-en" hidden>Formula &amp; Computed Fields</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Trường / Field</span><span class="lang lang-en" hidden>Fields</span></span>
-        <span class="chip">v0.1.82</span>
+        <span class="chip">v0.1.83</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -1738,7 +1738,7 @@ app to come back</strong> and refreshes the list. Normal — “Update all” ac
 giá trị mặc định của form, cột <strong>lưu-trữ do server tự tính lại</strong> theo quan hệ, và các phép <strong>tuần tự / cửa sổ</strong>
 như số dư lũy kế hay tồn kho FIFO / bình quân — <strong>không cần code</strong>.</p>
 </blockquote>
-<p><strong>Nhóm:</strong> Blocks / Fields · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>Phiên bản:</strong> 0.1.82</p>
+<p><strong>Nhóm:</strong> Blocks / Fields · <strong>Chạy trên:</strong> /admin (classic) + /v/ (modern) · <strong>Phiên bản:</strong> 0.1.83</p>
 <h3>Sau khi cài, có gì mới?</h3>
 <p>Plugin mở ra <strong>5 cách dùng công thức</strong>, mỗi cách một chỗ khác nhau:</p>
 <table>
@@ -1830,13 +1830,18 @@ cột / field bằng nút bánh răng ⚙ (bật <strong>UI Editor</strong> trư
 <tbody>
 <tr>
 <td><strong>Chuỗi</strong></td>
-<td><code>SPLIT(text, sep)</code> tách → mảng · <code>TEXTJOIN(sep, bỏ_ô_trống, …)</code> gộp mảng → chuỗi · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code></td>
+<td><code>SPLIT(text, sep)</code> tách → mảng · <code>TEXTJOIN(sep, bỏ_ô_trống, …)</code> gộp mảng → chuỗi · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code> · <code>INITIALS(tên)</code> viết tắt</td>
 <td><code>TEXTJOIN(&quot;, &quot;, TRUE, data.items.ten)</code></td>
 </tr>
 <tr>
 <td><strong>Danh sách / mảng</strong></td>
-<td><code>LIST(a, b, …)</code> tạo mảng · <code>UNIQUE(mảng)</code> / <code>DISTINCT</code> lọc trùng · <code>ANY(mảng)</code> phần tử đầu · <code>IN(x, mảng)</code> có thuộc? · <code>ISNOTBLANK(x)</code></td>
+<td><code>LIST(a, b, …)</code> tạo mảng · <code>UNIQUE(mảng)</code> / <code>DISTINCT</code> lọc trùng · <code>INTERSECT(a, b)</code> giao 2 mảng · <code>ANY(mảng)</code> phần tử đầu · <code>IN(x, mảng)</code> có thuộc? · <code>ISNOTBLANK(x)</code></td>
 <td><code>TEXTJOIN(&quot;, &quot;, TRUE, UNIQUE(data.items.loai))</code></td>
+</tr>
+<tr>
+<td><strong>Ngày — cộng/trừ</strong></td>
+<td><code>ADDDAYS(date, n)</code> · <code>ADDMONTHS(date, n)</code> · <code>ADDYEARS(date, n)</code> · <code>DATEADD(date, n, &quot;day&quot;/&quot;month&quot;/&quot;year&quot;)</code>. <strong><code>n</code> âm để trừ</strong>; clamp cuối tháng; kết quả là chuỗi ngày (chain được với <code>YEAR</code>/<code>MONTH</code>/<code>DAY</code>/<code>TEXT</code>)</td>
+<td><code>ADDDAYS(data.order_date, 30)</code> (hạn +30 ngày)</td>
 </tr>
 <tr>
 <td><strong>Regex</strong> (kiểu Google Sheets)</td>
@@ -1945,7 +1950,7 @@ Cột này <strong>không lưu vào cơ sở dữ liệu</strong> — nó tính 
 </ul>
 <hr>
 <h4>Cho nhà phát triển</h4>
-<p>Engine ~400 hàm formulajs + helper HTML + hàm kiểu AppSheet/regex (<code>SPLIT</code> <code>TEXTJOIN</code> <code>UNIQUE</code>/<code>DISTINCT</code> <code>CONTAINS</code> <code>LIST</code> <code>IN</code> <code>ANY</code> <code>REGEXMATCH</code>/<code>REGEXEXTRACT</code>/<code>REGEXREPLACE</code> — trong <code>CUSTOM_FNS</code>, <code>src/shared/formulaEngine.ts</code>). Năm điểm cắm: cột ảo (<code>formulaColumnModel</code> + classic <code>formulaColumnClassic</code>), field hiển thị (<code>formulaFieldModel</code>), giá trị mặc định biên dịch sang RunJS (<code>formulaDefaultValue</code>), rule tự tính server lưu ở <code>ptdlComputedRules</code> (client <code>computedRuleClient</code>, tự phát hiện phụ thuộc + fan-out + WS live-refresh), và tính tuần tự/cửa sổ + giá vốn (<code>ScanCalcManager</code>, <code>excelToSql</code>). Chi tiết thiết kế: <code>COMPUTED-FIELD.md</code> (§4b danh sách ví dụ), <code>ROLLUP.md</code>, <code>LEDGER-WINDOW-MODE.md</code>, <code>COSTING.md</code>, và <code>README.md</code> (tiếng Anh).
+<p>Engine ~400 hàm formulajs + helper HTML + hàm kiểu AppSheet/regex (<code>SPLIT</code> <code>TEXTJOIN</code> <code>UNIQUE</code>/<code>DISTINCT</code> <code>CONTAINS</code> <code>LIST</code> <code>IN</code> <code>ANY</code> <code>REGEXMATCH</code>/<code>REGEXEXTRACT</code>/<code>REGEXREPLACE</code> <code>INTERSECT</code> <code>INITIALS</code> <code>ADDDAYS</code>/<code>ADDMONTHS</code>/<code>ADDYEARS</code>/<code>DATEADD</code> — trong <code>CUSTOM_FNS</code>, <code>src/shared/formulaEngine.ts</code>). Năm điểm cắm: cột ảo (<code>formulaColumnModel</code> + classic <code>formulaColumnClassic</code>), field hiển thị (<code>formulaFieldModel</code>), giá trị mặc định biên dịch sang RunJS (<code>formulaDefaultValue</code>), rule tự tính server lưu ở <code>ptdlComputedRules</code> (client <code>computedRuleClient</code>, tự phát hiện phụ thuộc + fan-out + WS live-refresh), và tính tuần tự/cửa sổ + giá vốn (<code>ScanCalcManager</code>, <code>excelToSql</code>). Chi tiết thiết kế: <code>COMPUTED-FIELD.md</code> (§4b danh sách ví dụ), <code>ROLLUP.md</code>, <code>LEDGER-WINDOW-MODE.md</code>, <code>COSTING.md</code>, và <code>README.md</code> (tiếng Anh).
 </content>
 </invoke></p>
 </div>
@@ -1954,7 +1959,7 @@ Cột này <strong>không lưu vào cơ sở dữ liệu</strong> — nó tính 
 form default values, <strong>stored columns the server recomputes</strong> across relations, and <strong>sequential / window</strong> calculations
 like running balances or FIFO / average inventory costing — <strong>no code</strong>.</p>
 </blockquote>
-<p><strong>Group:</strong> Blocks / Fields · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Version:</strong> 0.1.82</p>
+<p><strong>Group:</strong> Blocks / Fields · <strong>Runs on:</strong> /admin (classic) + /v/ (modern) · <strong>Version:</strong> 0.1.83</p>
 <h3>What’s new after installing?</h3>
 <p>The plugin opens up <strong>5 ways to use formulas</strong>, each in a different place:</p>
 <table>
@@ -2046,13 +2051,18 @@ column / field with the ⚙ gear button (turn on the <strong>UI Editor</strong> 
 <tbody>
 <tr>
 <td><strong>Text</strong></td>
-<td><code>SPLIT(text, sep)</code> → array · <code>TEXTJOIN(sep, ignore_empty, …)</code> array → string · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code></td>
+<td><code>SPLIT(text, sep)</code> → array · <code>TEXTJOIN(sep, ignore_empty, …)</code> array → string · <code>CONTAINS</code> · <code>STARTSWITH</code> · <code>ENDSWITH</code> · <code>INITIALS(name)</code></td>
 <td><code>TEXTJOIN(&quot;, &quot;, TRUE, data.items.name)</code></td>
 </tr>
 <tr>
 <td><strong>List / array</strong></td>
-<td><code>LIST(a, b, …)</code> build an array · <code>UNIQUE(array)</code> / <code>DISTINCT</code> de-dupe · <code>ANY(array)</code> first element · <code>IN(x, array)</code> membership · <code>ISNOTBLANK(x)</code></td>
+<td><code>LIST(a, b, …)</code> build an array · <code>UNIQUE(array)</code> / <code>DISTINCT</code> de-dupe · <code>INTERSECT(a, b)</code> common items · <code>ANY(array)</code> first element · <code>IN(x, array)</code> membership · <code>ISNOTBLANK(x)</code></td>
 <td><code>TEXTJOIN(&quot;, &quot;, TRUE, UNIQUE(data.items.category))</code></td>
+</tr>
+<tr>
+<td><strong>Date — add/subtract</strong></td>
+<td><code>ADDDAYS(date, n)</code> · <code>ADDMONTHS(date, n)</code> · <code>ADDYEARS(date, n)</code> · <code>DATEADD(date, n, &quot;day&quot;/&quot;month&quot;/&quot;year&quot;)</code>. <strong>Negative <code>n</code> subtracts</strong>; end-of-month clamp; returns a date string (chainable with <code>YEAR</code>/<code>MONTH</code>/<code>DAY</code>/<code>TEXT</code>)</td>
+<td><code>ADDDAYS(data.order_date, 30)</code> (due +30 days)</td>
 </tr>
 <tr>
 <td><strong>Regex</strong> (Google-Sheets style)</td>
@@ -2162,7 +2172,7 @@ This column is <strong>not stored in the database</strong> — it recomputes on 
 </ul>
 <hr>
 <h4>For developers</h4>
-<p>The engine is ~400 formulajs functions + HTML helpers + AppSheet/regex-style helpers (<code>SPLIT</code> <code>TEXTJOIN</code> <code>UNIQUE</code>/<code>DISTINCT</code> <code>CONTAINS</code> <code>LIST</code> <code>IN</code> <code>ANY</code> <code>REGEXMATCH</code>/<code>REGEXEXTRACT</code>/<code>REGEXREPLACE</code> — in <code>CUSTOM_FNS</code>, <code>src/shared/formulaEngine.ts</code>). Five entry points: the virtual column (<code>formulaColumnModel</code> + classic <code>formulaColumnClassic</code>), the display field (<code>formulaFieldModel</code>), the default value compiled to RunJS (<code>formulaDefaultValue</code>), the server computed-rule stored in <code>ptdlComputedRules</code> (client <code>computedRuleClient</code>, auto-detects dependencies + fan-out + WS live-refresh), and the sequential / window + costing engine (<code>ScanCalcManager</code>, <code>excelToSql</code>). Design details: <code>COMPUTED-FIELD.md</code> (§4b example list), <code>ROLLUP.md</code>, <code>LEDGER-WINDOW-MODE.md</code>, <code>COSTING.md</code>.</p>
+<p>The engine is ~400 formulajs functions + HTML helpers + AppSheet/regex-style helpers (<code>SPLIT</code> <code>TEXTJOIN</code> <code>UNIQUE</code>/<code>DISTINCT</code> <code>CONTAINS</code> <code>LIST</code> <code>IN</code> <code>ANY</code> <code>REGEXMATCH</code>/<code>REGEXEXTRACT</code>/<code>REGEXREPLACE</code> <code>INTERSECT</code> <code>INITIALS</code> <code>ADDDAYS</code>/<code>ADDMONTHS</code>/<code>ADDYEARS</code>/<code>DATEADD</code> — in <code>CUSTOM_FNS</code>, <code>src/shared/formulaEngine.ts</code>). Five entry points: the virtual column (<code>formulaColumnModel</code> + classic <code>formulaColumnClassic</code>), the display field (<code>formulaFieldModel</code>), the default value compiled to RunJS (<code>formulaDefaultValue</code>), the server computed-rule stored in <code>ptdlComputedRules</code> (client <code>computedRuleClient</code>, auto-detects dependencies + fan-out + WS live-refresh), and the sequential / window + costing engine (<code>ScanCalcManager</code>, <code>excelToSql</code>). Design details: <code>COMPUTED-FIELD.md</code> (§4b example list), <code>ROLLUP.md</code>, <code>LEDGER-WINDOW-MODE.md</code>, <code>COSTING.md</code>.</p>
 </div>
     </section>
 
@@ -7058,7 +7068,7 @@ bash recipes/add-markers.sh storage/tar/@tuanla90/plugin-detail-panel-0.1.0.tgz
       <div class="plugin-head">
         <h2><span class="lang lang-vi">Dựng app từ mô tả</span><span class="lang lang-en" hidden>App Builder</span></h2>
         <span class="chip chip-cat"><span class="lang lang-vi">Giao diện</span><span class="lang lang-en" hidden>Interface</span></span>
-        <span class="chip">v0.6.28</span>
+        <span class="chip">v0.6.30</span>
         <a class="chip chip-top" href="#top" title="Top">↑</a>
       </div>
       <div class="prose lang lang-vi"><blockquote>
@@ -7066,7 +7076,7 @@ bash recipes/add-markers.sh storage/tar/@tuanla90/plugin-detail-panel-0.1.0.tgz
 <strong>bảng dữ liệu, quan hệ, dữ liệu mẫu, cột tính tự động, luồng trạng thái, trang và menu</strong> — hiện ngay
 trên giao diện <strong>/v/</strong>. Cần chỉnh app đã có? AI cũng <strong>thêm/sửa từng bước</strong> giúp bạn.</p>
 </blockquote>
-<p><strong>Nhóm:</strong> Công cụ dựng app (Low-code Builder) · <strong>Chạy trên:</strong> Chỉ <strong>/v/</strong> (modern) · <strong>Phiên bản:</strong> 0.6.28</p>
+<p><strong>Nhóm:</strong> Công cụ dựng app (Low-code Builder) · <strong>Chạy trên:</strong> Chỉ <strong>/v/</strong> (modern) · <strong>Phiên bản:</strong> 0.6.30</p>
 <h3>Sau khi cài, có gì mới?</h3>
 <ul>
 <li><strong>Một nút nổi</strong> ở <strong>góc dưới bên phải</strong> màn hình: <strong>“🛠 Dựng app”</strong> (chỉ trên giao diện <strong>/v/</strong>). Bấm để mở hộp thoại <strong>“Dựng app từ App-Spec”</strong> — đây là nơi duy nhất bạn thao tác.</li>
@@ -7263,7 +7273,7 @@ NocoBase app for you: <strong>collections, relations, seed data, auto-computed c
 pages and menu</strong> — right in the <strong>/v/</strong> interface. Need to change an existing app? AI <strong>adds/modifies
 it step by step</strong> too.</p>
 </blockquote>
-<p><strong>Group:</strong> Low-code builder · <strong>Runs on:</strong> /v/ (modern) only · <strong>Version:</strong> 0.6.28</p>
+<p><strong>Group:</strong> Low-code builder · <strong>Runs on:</strong> /v/ (modern) only · <strong>Version:</strong> 0.6.30</p>
 <h3>What’s new after installing?</h3>
 <ul>
 <li><strong>A floating button</strong> at the <strong>bottom-right</strong> of the screen: <strong>“🛠 Build app”</strong> (on the <strong>/v/</strong> interface only). Click it to open the <strong>“Build app from an App-Spec”</strong> dialog — the one and only place you work.</li>
