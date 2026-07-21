@@ -9,7 +9,7 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plugin, Icon, icons } from '@nocobase/client-v2';
-import { Alert, Button, Input, message, Modal, Popover, Progress, Segmented, Select, Space, Tabs, theme, Tooltip, Typography, Upload } from 'antd';
+import { Alert, Button, Checkbox, Input, message, Modal, Popover, Progress, Segmented, Select, Space, Tabs, theme, Tooltip, Typography, Upload } from 'antd';
 import {
   ToolOutlined, DashboardOutlined, ThunderboltOutlined, NumberOutlined, LineChartOutlined,
   FilterOutlined, EditOutlined, ReloadOutlined, CheckOutlined, FolderOutlined, PlusOutlined,
@@ -296,6 +296,8 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
     // AppSheet import: when the JSON box holds an AppSheet blob, offer a one-click convert → App-Spec.
     // sourcePlan (docId+tab per collection) is kept so "Import data" can pull the Google Sheets afterwards.
     const [sourcePlan, setSourcePlan] = useState<AppSheetSource[] | null>(null);
+    // AppSheet apps: pull the Google Sheets automatically right after "Create app" (opt-out via the checkbox).
+    const [autoImport, setAutoImport] = useState(true);
     const [asReport, setAsReport] = useState<{ computedOk: number; computedFlag: number; dashboards: number; dynamicEnums: number; attachments: number; menuTables: string[] } | null>(null);
     const [desc, setDesc] = useState('');
     const [aiBusy, setAiBusy] = useState(false);
@@ -563,17 +565,22 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         message.success(`${t('Converted')}: ${spec.collections.length} ${t('tables')}, ${report.computedOk.length} ${t('formulas')}, ${report.dashboards} dashboard`);
       } catch (e: any) { message.error(t('AppSheet convert failed') + ': ' + (e?.message || e)); }
     };
-    // Import data from the AppSheet Google Sheets (after building). Needs the sourcePlan from a convert.
+    // Core AppSheet import (Google Sheets → collections) — shared by the manual "Import data" button and the
+    // auto-import-after-Create path. The CALLER owns busy/progress teardown; this just runs + reports.
+    const runImport = async (spec: any) => {
+      if (!sourcePlan) return;
+      const res = await importData(app, spec, sourcePlan, (p) => setProgress({ phase: 'import', label: p.label, done: p.done, total: p.total }));
+      const bad = res.results.filter((r: any) => r?.error);
+      const retriedNote = res.retried?.length ? ` · ${res.retried.length} ${t('had a hiccup, auto-retried')}` : '';
+      message[bad.length ? 'warning' : 'success'](`${t('Imported')} ${res.rows} ${t('rows')}, ${res.linked} ${t('links')}${bad.length ? ` · ${bad.length} ${t('sheets failed (see console)')}` : ''}${retriedNote}`);
+      if (bad.length) console.warn('[app-builder] import issues:', bad);
+    };
+    // Import data from the AppSheet Google Sheets (manual button). Needs the sourcePlan from a convert.
     const onImportData = async () => {
       const spec = parse(); if (!spec || !sourcePlan) return;
       setBusy(true); setProgress({ phase: 'page', label: t('Importing data…'), done: 0, total: 1 });
-      try {
-        const res = await importData(app, spec, sourcePlan, (p) => setProgress({ phase: 'import', label: p.label, done: p.done, total: p.total }));
-        const bad = res.results.filter((r: any) => r?.error);
-        const retriedNote = res.retried?.length ? ` · ${res.retried.length} ${t('had a hiccup, auto-retried')}` : '';
-        message[bad.length ? 'warning' : 'success'](`${t('Imported')} ${res.rows} ${t('rows')}, ${res.linked} ${t('links')}${bad.length ? ` · ${bad.length} ${t('sheets failed (see console)')}` : ''}${retriedNote}`);
-        if (bad.length) console.warn('[app-builder] import issues:', bad);
-      } catch (e: any) { message.error(e?.message || String(e)); }
+      try { await runImport(spec); }
+      catch (e: any) { message.error(e?.message || String(e)); }
       finally { setBusy(false); setProgress(null); }
     };
     const onBuild = async () => {
@@ -588,6 +595,14 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
         const errs = (res.data?.errors || []) as string[];
         if (errs.length) message.warning(`${t('Created')} ${res.pages.length} ${t('pages')} — ${errs.length} ${t('items skipped (see console)')}`), console.warn('[app-builder] build issues:', errs);
         else message.success(`${t('Created')} ${res.pages.length} ${t('pages')}`);
+        // AppSheet apps carry a sourcePlan (Google Sheet per collection) but NO seed — so pull the real data
+        // straight after Create, no manual second click. Opt-out via the "Auto-import" checkbox. A failed
+        // import is reported but does NOT undo the created app (the user can retry with the manual button).
+        if (sourcePlan && autoImport) {
+          setProgress({ phase: 'import', label: t('Importing data…'), done: 0, total: 1 });
+          try { await runImport(spec); }
+          catch (e: any) { message.error(`${t('Data import failed')}: ${e?.message || String(e)}`); }
+        }
       } catch (e: any) {
         message.error(e?.message || String(e));
       } finally {
@@ -719,7 +734,11 @@ function createLauncher(app: any, t: (s: string) => string): React.FC<{ children
       <>
         <Space style={{ marginTop: 12 }} wrap>
           <Button type="primary" loading={busy} onClick={onBuild} icon={<LIcon type="lucide-rocket" fallback={<RocketOutlined />} />}>{t('Create app')}</Button>
-          {/* After a convert, the sourcePlan lets us pull the AppSheet Google Sheets straight in. */}
+          {/* AppSheet convert → sourcePlan present: Create auto-pulls the Google Sheets (opt-out here), and the
+              manual button stays for a re-import or when auto is off. */}
+          {sourcePlan && (
+            <Checkbox checked={autoImport} onChange={(e) => setAutoImport(e.target.checked)}>{t('Auto-import data after creating')}</Checkbox>
+          )}
           {sourcePlan && (
             <Button loading={busy} onClick={onImportData} icon={<LIcon type="lucide-download" fallback={<FolderOutlined />} />}>{t('Import data from sheets')}</Button>
           )}

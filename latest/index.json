@@ -20,9 +20,9 @@
     {
       "packageName": "@tuanla90/plugin-app-builder",
       "slug": "app-builder",
-      "version": "0.6.30",
+      "version": "0.6.31",
       "displayName": "App Builder",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.30.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.31.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-block-custom-html",

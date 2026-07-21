@@ -122,5 +122,14 @@
   "App-Spec loaded — Validate then Create app": "Đã nạp App-Spec — Kiểm tra rồi Tạo app",
   "File loaded into the editor": "Đã nạp file vào ô soạn",
   "Loaded, but this is not valid JSON — check the file": "Đã nạp, nhưng JSON không hợp lệ — kiểm tra lại file",
-  "Could not read the file": "Không đọc được file"
+  "Could not read the file": "Không đọc được file",
+  "Auto-import data after creating": "Tự động nhập dữ liệu sau khi tạo",
+  "Data import failed": "Nhập dữ liệu thất bại",
+  "Import data from sheets": "Nhập dữ liệu từ Google Sheet",
+  "Importing data…": "Đang nhập dữ liệu…",
+  "Imported": "Đã nhập",
+  "rows": "dòng",
+  "links": "liên kết",
+  "had a hiccup, auto-retried": "gặp trục trặc, đã tự thử lại",
+  "sheets failed (see console)": "sheet lỗi (xem console)"
 }
