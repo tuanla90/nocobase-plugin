@@ -4,7 +4,7 @@
 > thêm **dòng tổng**, đổi **kiểu hiển thị** (bảng / danh sách / thẻ), có **nút +/− số lượng**, và **cầu nối** để
 > bấm 1 dòng ở block khác là tự thêm/tăng dòng ở đây — hợp cho **báo giá, đơn hàng, soạn hàng**. Lưu vẫn **100% như bản gốc**.
 
-**Nhóm:** Khối & Trường (Blocks / Fields) · **Chạy trên:** /v/ (modern) · **Phiên bản:** 0.2.9
+**Nhóm:** Khối & Trường (Blocks / Fields) · **Chạy trên:** /v/ (modern) · **Phiên bản:** 0.2.10
 
 ## Sau khi cài, có gì mới?
 

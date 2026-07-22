@@ -4,7 +4,7 @@
 > và gắn **badge đếm số** sống (số dòng hoặc tổng/trung bình/lớn nhất/nhỏ nhất của một field) lên mục menu.
 > Tất cả chỉnh ngay trên mục menu — **không cần code, không thêm trang**.
 
-**Nhóm:** Menu · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.18
+**Nhóm:** Menu · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.4.19
 
 ## Sau khi cài, có gì mới?
 

@@ -4,7 +4,7 @@
 > giá trị mặc định của form, cột **lưu-trữ do server tự tính lại** theo quan hệ, và các phép **tuần tự / cửa sổ**
 > như số dư lũy kế hay tồn kho FIFO / bình quân — **không cần code**.
 
-**Nhóm:** Blocks / Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.83
+**Nhóm:** Blocks / Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.86
 
 ## Sau khi cài, có gì mới?
 
