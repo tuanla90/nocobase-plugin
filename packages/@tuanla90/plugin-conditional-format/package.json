@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Định dạng có điều kiện",
   "displayName.zh-CN": "条件格式",
   "description": "Conditional formatting with three rule modes: Condition (style a column’s text/fill/bold/italic/border/icon when a condition on any field, including relations, matches), Colour scale (2/3-colour heatmap over a numeric column) and Data bar (in-cell bar). Rules can be block-level or GLOBAL (field-level): an “Apply to all views” toggle plus a central settings page save the rule set per collection so every Table and Detail view applies it automatically.",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

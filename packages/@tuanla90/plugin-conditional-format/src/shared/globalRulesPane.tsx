@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Select, Button, message, Empty, Spin, Tag, theme, Divider, Table, Popconfirm, Tooltip } from 'antd';
+// Mark @formily/react as EXTERNAL for the client build. Our config pane transitively uses it via
+// @tuanla90/shared's ConfigContainer (useForm/observer). nocobase-build derives the client externals
+// from a STATIC text scan of THIS plugin's own src imports (getPluginBrowserSourcePackages), so this
+// direct import is required so @formily/react is externalized (provided by the host at runtime) rather
+// than bundled — otherwise rspack tries to bundle the build-env stub and fails to resolve it.
+import '@formily/react';
 import { ConfigContainer, colorToString, IconByKey } from '@tuanla90/shared';
 import { CondRulesEditor, rt, Rule } from './tableRulesModel';
 import {

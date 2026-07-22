@@ -285,6 +285,12 @@ export class PluginFormulaServer extends Plugin {
           ctx.body = this.computed.graph();
           await next();
         },
+        // Impact of recomputing one field: row count + the transitive cascade of dependent computed fields.
+        impact: async (ctx: any, next: any) => {
+          const v = ctx.action?.params?.values || ctx.action?.params || {};
+          ctx.body = await this.computed.impact(v.collection, v.field);
+          await next();
+        },
         // Live preview: evaluate a formula against one record without writing.
         test: async (ctx: any, next: any) => {
           const v = ctx.action?.params?.values || ctx.action?.params || {};
@@ -333,6 +339,7 @@ export class PluginFormulaServer extends Plugin {
         'ptdlComputedRules:destroy',
         'ptdlComputed:recompute',
         'ptdlComputed:graph',
+        'ptdlComputed:impact',
         'ptdlComputed:test',
         'ptdlComputed:aiWrite',
         'ptdlComputed:aiSuggest',

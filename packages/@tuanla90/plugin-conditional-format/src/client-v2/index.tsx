@@ -4,6 +4,7 @@ import { tExpr } from '@nocobase/flow-engine';
 import { registerTableConditionalFormat, NS } from '../shared/tableRulesModel';
 import { GlobalRulesPane } from '../shared/globalRulesPane';
 import { setSharedT, SHARED_NS, sharedEnUS, setIconRegistry } from '@tuanla90/shared';
+import { installKeepaliveCap } from '../shared/keepaliveCap';
 import enUS from '../locale/en-US.json';
 
 // Modern lane (/v/) settings page for the GLOBAL rules — registered via addMenuItem + addPageTabItem.
@@ -55,8 +56,18 @@ export class PluginConditionalFormatClientV2 extends Plugin {
       // eslint-disable-next-line no-console
       console.warn('[cond-fmt] settings page register failed (ignored)', e);
     }
+    // keepalive-cap: caps NocoBase v2's unbounded subpage keep-alive (DOM grows unbounded across menu
+    // navigation → render lag). Installs a crash-safe, OFF-by-default evictor + console API
+    // (window.__ptdlKeepaliveCap). Folded here (not a standalone plugin) so it ships with an
+    // already-enabled /v/ bundle — no new DB row, no pm2 restart. See ../shared/keepaliveCap.ts.
+    try {
+      installKeepaliveCap((this as any).app);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[cond-fmt] keepalive-cap install failed (ignored)', e);
+    }
     // eslint-disable-next-line no-console
-    console.log('[cond-fmt] client-v2 loaded (block + global rules + settings)');
+    console.log('[cond-fmt] client-v2 loaded (block + global rules + settings + keepalive-cap)');
   }
 }
 

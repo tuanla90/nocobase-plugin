@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Input, Button, Switch, Select, Space, message, Tag, Popover, Tooltip, Cascader, Checkbox, theme } from 'antd';
+import { Input, Button, Switch, Select, Space, message, Modal, Tag, Popover, Tooltip, Cascader, Checkbox, theme } from 'antd';
 
 // Bridge antd theme tokens → the `--colorX` CSS vars used below, so Modal/Popover PORTALS (which don't
 // inherit page-scoped vars) render in the live theme instead of the light fallbacks. See computedRulesManager.
@@ -81,6 +81,7 @@ export function ComputedRuleEditor({
   const [testId, setTestId] = useState<any>('');
   const [testRes, setTestRes] = useState<any>(null);
   const [testing, setTesting] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
   const [aiDesc, setAiDesc] = useState('');
   const [aiBusy, setAiBusy] = useState('');
   const [aiResult, setAiResult] = useState<any>(null);
@@ -152,6 +153,41 @@ export function ComputedRuleEditor({
     setTesting(false);
   };
 
+  // Backfill this rule's stored values across the whole table, AFTER first showing the impact (row count +
+  // the transitive set of OTHER computed fields that cascade). Recompute runs the SAVED rule — so if the
+  // formula was just edited, the user must Save (dialog OK) before the new formula takes effect.
+  const onRecompute = async () => {
+    const coll = value.collectionName; const field = value.targetField;
+    if (!coll || !field) { message.warning(t('Chưa có cột đích — lưu công thức trước khi tính lại')); return; }
+    setRecomputing(true);
+    let imp: any = {};
+    try { imp = unwrap(await req('ptdlComputed:impact', { method: 'post', data: { collection: coll, field } })); }
+    catch { /* impact is best-effort; still allow the recompute */ }
+    setRecomputing(false);
+    const deps: any[] = imp.dependents || [];
+    Modal.confirm({
+      title: t('Tính lại cột "{{f}}"?', { f: field }),
+      width: 480,
+      content: (
+        <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+          <div>• {t('Tính lại')} <b>{imp.rows ?? '?'}</b> {t('dòng')} {t('của bảng')} <code>{coll}</code>.</div>
+          <div>• {deps.length
+            ? <>{t('{{n}} công thức khác PHỤ THUỘC sẽ tính lại theo (cascade)', { n: String(deps.length) })}: <span style={{ color: 'var(--colorTextTertiary)' }}>{deps.slice(0, 8).map((d) => `${d.collection}.${d.field}`).join(', ')}{deps.length > 8 ? '…' : ''}</span></>
+            : t('Không có công thức nào phụ thuộc.')}</div>
+          {(imp.rows ?? 0) > 2000 && <div style={{ color: '#d48806', marginTop: 4 }}>{t('Bảng lớn — có thể mất một lúc.')}</div>}
+          <div style={{ color: 'var(--colorTextTertiary)', marginTop: 6, fontSize: 12 }}>{t('Chạy theo công thức ĐÃ LƯU. Nếu vừa sửa, hãy Lưu trước rồi tính lại.')}</div>
+        </div>
+      ),
+      okText: t('Tính lại'), cancelText: t('Huỷ'),
+      onOk: async () => {
+        try {
+          const r = unwrap(await req('ptdlComputed:recompute', { method: 'post', data: { collection: coll, field } }));
+          message.success(t('Đã tính lại {{n}} dòng', { n: String(r.recomputed ?? 0) }));
+        } catch (e: any) { message.error(e?.response?.data?.errors?.[0]?.message || e?.message || t('Lỗi tính lại')); }
+      },
+    });
+  };
+
   // AI tools (server self-validates via Chạy thử).
   const aiClear = () => { setAiResult(null); setAiOptions(null); setAiExplainText(''); };
   const aiCall = async (busy: string, url: string, data: any, onOk: (d: any) => void) => {
@@ -185,9 +221,17 @@ export function ComputedRuleEditor({
       {FN_HELP.map(([g, fns]) => <div key={g} style={{ marginBottom: 6 }}><div style={{ fontSize: 12, fontWeight: 600, color: 'var(--colorTextTertiary, #888)' }}>{t(g)}</div><div style={{ fontSize: 12, fontFamily: 'monospace' }}>{t(fns)}</div></div>)}
     </div>
   );
+  // A computed test result can be a scalar OR a relation RECORD (object) — `String(obj)` shows an unhelpful
+  // "[object Object]", so render the object's real content (truncated) so the user can SEE which record it is.
+  const fmtTestValue = (v: any): string => {
+    if (v === null || v === undefined) return 'null';
+    if (typeof v === 'object') { try { const s = JSON.stringify(v); return s.length > 220 ? s.slice(0, 220) + '…' : s; } catch { return String(v); } }
+    return String(v);
+  };
+  const isRecordValue = (v: any) => v !== null && typeof v === 'object' && !Array.isArray(v);
   const testBadge = (tr: any, tries?: number) => !tr ? null : (tr.error
     ? <span style={{ color: '#d48806' }}>{t('Chạy thử lỗi')}{tries ? ` (${tries} ${t('lần')})` : ''}: {tr.error}</span>
-    : <span style={{ color: '#389e0d' }}>{t('Chạy thử OK')}{tries ? ` (${tries} ${t('lần')})` : ''} → <b>{JSON.stringify(tr.value)}</b></span>);
+    : <span style={{ color: '#389e0d' }}>{t('Chạy thử OK')}{tries ? ` (${tries} ${t('lần')})` : ''} → <b>{fmtTestValue(tr.value)}</b></span>);
   const aiPopover = (
     <div style={{ width: 430, ...tv }}>
       <Input.TextArea rows={2} value={aiDesc} onChange={(e) => setAiDesc(e.target.value)}
@@ -320,9 +364,20 @@ export function ComputedRuleEditor({
           <Button size="small" type="dashed" loading={testing} onClick={() => runTest()}>{t('Chạy')}</Button>
           {testRes && (testRes.error
             ? <Tag color="red" style={{ whiteSpace: 'normal', maxWidth: 520 }}>{t('Lỗi')}: {testRes.error}</Tag>
-            : <Tag color="green" style={{ whiteSpace: 'normal', maxWidth: 520 }}>{t('Kết quả')} = <b>{testRes.value === null || testRes.value === undefined ? 'null' : String(testRes.value)}</b>{testRes.recordId != null ? ` · id ${testRes.recordId}` : ''}</Tag>)}
+            : <Tag color={isRecordValue(testRes.value) ? 'gold' : 'green'} style={{ whiteSpace: 'normal', maxWidth: 520 }}>
+                {t('Kết quả')} = <b>{fmtTestValue(testRes.value)}</b>{testRes.recordId != null ? ` · id ${testRes.recordId}` : ''}
+                {isRecordValue(testRes.value) && <div style={{ fontSize: 11, opacity: 0.85, marginTop: 3 }}>{t('Đây là 1 bản ghi quan hệ. Để gán vào cột quan hệ, engine tự lấy .id — hãy kiểm id/nội dung trên có đúng bản ghi cần không.')}</div>}
+              </Tag>)}
         </Space>
       </div>
+      {isEdit && value.collectionName && value.targetField && (
+        <div style={{ marginTop: 8 }}>
+          <Space wrap size={8} align="center">
+            <Button size="small" icon={<PartitionOutlined />} loading={recomputing} onClick={onRecompute}>{t('Tính lại toàn bảng…')}</Button>
+            <span style={{ fontSize: 11.5, color: 'var(--colorTextTertiary)' }}>{t('Xem ảnh hưởng (số dòng · số công thức phụ thuộc) rồi backfill cột này.')}</span>
+          </Space>
+        </div>
+      )}
     </div>
   );
 }

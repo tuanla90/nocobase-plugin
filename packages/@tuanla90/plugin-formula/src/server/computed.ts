@@ -109,6 +109,11 @@ type ResolvedDeps = {
 
 const NUMERIC_TYPES = new Set(['integer', 'bigInt', 'double', 'decimal', 'float', 'real', 'number', 'percent']);
 const INT_TYPES = new Set(['integer', 'bigInt']);
+// Formulajs returns spreadsheet ERROR VALUES as plain strings (INDEX past the end → "#REF!", no match →
+// "#N/A", bad arg → "#VALUE!"…) rather than throwing. Treat them as an error so the rule's `onError`
+// (null/keep) applies — else the literal "#REF!" gets stored in the column (what the user was seeing).
+const FORMULA_ERROR_VALUE = /^#(REF|N\/A|VALUE|DIV\/0|NAME|NUM|NULL|SPILL|CALC|GETTING_DATA|FIELD|BLOCKED|CONNECT|UNKNOWN)[!?]?$/i;
+const isFormulaErrorValue = (v: any): boolean => typeof v === 'string' && FORMULA_ERROR_VALUE.test(v.trim());
 
 function get(row: any, k: string): any {
   return typeof row?.get === 'function' ? row.get(k) : row?.[k];
@@ -218,10 +223,42 @@ export class ComputedManager {
       const res = evaluateFormula(formula, row.toJSON(), undefined, Object.keys(tables).length ? tables : undefined);
       const recordId = row.get(this.pkOf(collectionName));
       if ('error' in res) return { error: String((res as any).error?.message || res.error), recordId };
-      return { value: (res as any).value, recordId };
+      const raw = (res as any).value;
+      // A formulajs error VALUE (#REF!, #N/A…) is not a thrown error — surface it AS an error so the preview
+      // doesn't read like a valid result, and say it'll be written per "Khi lỗi".
+      if (isFormulaErrorValue(raw)) return { error: `${String(raw).trim()} — công thức trả GIÁ TRỊ LỖI (thường do SELECT không khớp bản ghi nào / INDEX vượt danh sách). Theo "Khi lỗi" sẽ ghi null.`, recordId };
+      // A relation RECORD that the lookup table didn't load serialises to an empty {} — useless to store. The
+      // lookup tables load scalar columns (incl. the FK) but NOT nested relations, so guide the user to the FK
+      // column (which IS loaded) to get a clean id that actually sets the relation.
+      if (raw && typeof raw === 'object' && !Array.isArray(raw) && Object.keys(raw).length === 0) {
+        return { error: 'Công thức trả về 1 QUAN HỆ chưa nạp (rỗng {}). Bảng tra cứu không tự nạp quan hệ — hãy dùng cột KHOÁ NGOẠI thay vì cột quan hệ, vd đổi "…phan_loai_hang" thành "…phan_loai_hang_id" để lấy id trực tiếp (engine sẽ gán id đó vào cột quan hệ đích).', recordId };
+      }
+      return { value: raw, recordId };
     } catch (e: any) {
       return { error: e?.message || String(e) };
     }
+  }
+
+  /** Impact of recomputing (collection.targetField): the row count that will be recomputed + the TRANSITIVE
+   *  set of OTHER computed fields that cascade from it (so the editor's "Recompute" button can warn first).
+   *  Walks the reverse-dependency graph from this node, following only 'source'-triggered edges. */
+  async impact(collectionName: string, targetField: string): Promise<{ rows: number; dependents: Array<{ collection: string; field: string }>; dependentCount: number }> {
+    let rows = 0;
+    try { rows = await this.db.getRepository(collectionName).count(); } catch { /* best-effort */ }
+    const start = `${collectionName}.${targetField}`;
+    const seen = new Set<string>([start]);
+    const out: Array<{ collection: string; field: string }> = [];
+    const queue = [start];
+    while (queue.length) {
+      const key = queue.shift() as string;
+      for (const d of this.dependents.get(key) || []) {
+        if (!d.rule.triggers.has('source')) continue;
+        const rk = `${d.rule.collectionName}.${d.rule.targetField}`;
+        if (seen.has(rk)) continue;
+        seen.add(rk); out.push({ collection: d.rule.collectionName, field: d.rule.targetField }); queue.push(rk);
+      }
+    }
+    return { rows, dependents: out, dependentCount: out.length };
   }
 
   /** Dependency graph for the UI: computed-field nodes (with topo rank + derived deps) + edges
@@ -554,11 +591,17 @@ export class ComputedManager {
       try {
         const res = evaluateFormula(rule.formula, instance.toJSON());
         if ('error' in res) {
-          if (rule.onError === 'null') instance.set(rule.targetField, null);
+          if (rule.onError === 'null') { const w = this.targetWrite(collectionName, rule.targetField, null); instance.set(w.field, w.value); }
           this.logger?.warn?.(`[ptdl-computed] ${rule.key}: ${res.error.message}`);
           continue;
         }
-        instance.set(rule.targetField, this.coerce((res as any).value, this.fieldType(collectionName, rule.targetField)));
+        if (isFormulaErrorValue((res as any).value)) {
+          if (rule.onError === 'null') { const w = this.targetWrite(collectionName, rule.targetField, null); instance.set(w.field, w.value); }
+          this.logger?.warn?.(`[ptdl-computed] ${rule.key}: formula error value ${(res as any).value}`);
+          continue;
+        }
+        const w = this.targetWrite(collectionName, rule.targetField, (res as any).value);
+        instance.set(w.field, w.value);
       } catch (e: any) {
         this.logger?.error?.(`[ptdl-computed] ${rule.key} local failed: ${e?.message || e}`);
       }
@@ -730,17 +773,25 @@ export class ComputedManager {
       const tables: Record<string, any[]> = {};
       for (const t of rule._resolved!.table) tables[t.alias] = await this.loadTable(t.tableCollection);
       const res = evaluateFormula(rule.formula, data, undefined, Object.keys(tables).length ? tables : undefined);
-      let value: any;
+      let raw: any;
       if ('error' in res) {
         if (rule.onError === 'keep') { this.logger?.warn?.(`[ptdl-computed] ${rule.key}: ${res.error.message} (kept old)`); return false; }
-        value = null;
+        raw = null;
         this.logger?.warn?.(`[ptdl-computed] ${rule.key}: ${res.error.message}`);
+      } else if (isFormulaErrorValue((res as any).value)) {
+        // A formulajs error VALUE (#REF!, #N/A…) is not a thrown error — handle it the same way, per onError.
+        if (rule.onError === 'keep') { this.logger?.warn?.(`[ptdl-computed] ${rule.key}: error value ${(res as any).value} (kept old)`); return false; }
+        raw = null;
+        this.logger?.warn?.(`[ptdl-computed] ${rule.key}: formula error value ${(res as any).value}`);
       } else {
-        value = this.coerce((res as any).value, this.fieldType(collectionName, targetField));
+        raw = (res as any).value;
       }
-      const current = row.get(targetField);
-      if (String(current ?? '') === String(value ?? '')) return false; // unchanged → dependents unaffected
-      await repo.update({ filterByTk: rowKey, values: { [targetField]: value }, hooks: false });
+      // targetWrite resolves a relation (belongsTo) target to its FK + the record's id; a scalar target to
+      // the coerced value on the field itself.
+      const w = this.targetWrite(collectionName, targetField, raw);
+      const current = row.get(w.field);
+      if (String(current ?? '') === String(w.value ?? '')) return false; // unchanged → dependents unaffected
+      await repo.update({ filterByTk: rowKey, values: { [w.field]: w.value }, hooks: false });
       return true;
     } catch (e: any) {
       this.logger?.error?.(`[ptdl-computed] recompute ${rule.key}#${rowKey}: ${e?.message || e}`);
@@ -791,6 +842,27 @@ export class ComputedManager {
     const n = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(n)) return null;
     return fieldType && INT_TYPES.has(fieldType) ? Math.round(n) : n;
+  }
+
+  /** Where a computed value actually LANDS, given the target field's type:
+   *   • belongsTo (m2o) target → write the FOREIGN KEY column with the related record's id. A bare
+   *     `{ relation: <object> }` update with `hooks:false` does NOT set the FK (the association-writing
+   *     hooks are bypassed), so the relation would appear empty. If the formula returned the whole related
+   *     RECORD (e.g. INDEX(SELECT(coll.some_relation, …))), we pull its `.id`; if it returned a bare id we
+   *     use it as-is. So a relation-target rule works whether the formula yields the record or its id.
+   *   • anything else → the coerced value on the field itself (unchanged behaviour).
+   *  Returns the concrete { field, value } to persist. */
+  private targetWrite(collectionName: string, targetField: string, raw: any): { field: string; value: any } {
+    try {
+      const f = this.db.getCollection?.(collectionName)?.getField?.(targetField);
+      const o: any = f?.options || f || {};
+      if (o.type === 'belongsTo' && o.foreignKey) {
+        const tk = o.targetKey || 'id';
+        const id = raw && typeof raw === 'object' ? (raw[tk] ?? raw.id ?? null) : raw;
+        return { field: o.foreignKey, value: id === undefined || id === '' ? null : id };
+      }
+    } catch { /* fall through to scalar */ }
+    return { field: targetField, value: this.coerce(raw, this.fieldType(collectionName, targetField)) };
   }
 
   /** Backfill: recompute stored values for existing rows, in topo order so multi-level chains settle. */

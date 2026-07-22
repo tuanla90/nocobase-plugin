@@ -1029,6 +1029,51 @@ export function registerSubtablePro(deps: { flowEngine: any; flowSettings?: any 
     console.warn('[subtable-pro] SubTableFieldModel not registered — skip (are you on /v/?)');
     return;
   }
+  // ── CRASH GUARD (defense-in-depth) ──────────────────────────────────────────────────────────────
+  // A malformed o2m (missing reverse belongsTo / mismatched FK — exactly what app-builder ≤0.6.31 could
+  // leave behind) yields a sub-table COLUMN whose `collectionField` can't resolve. Core then runs that
+  // column's `beforeRender` flow → SubTableColumnModel's `subModel` step `defaultParams` calls
+  // `getDefaultBindingByField(ctx, undefined)`, which reads `.interface` on `undefined` → TypeError. Because
+  // core applies ALL columns through one SHARED `Promise.all` (FlowModel.applySubModelsBeforeRenderFlows),
+  // that single rejection propagates to the parent sub-table's render flow and RENDER-LOOPS the whole app
+  // ("đơ luôn" — freeze) when the user toggles the o2m sub-table field ON in an Add-new form. We can't patch
+  // core's `getDefaultBindingByField`, so we ISOLATE each sub-model's `beforeRender` here: one broken column
+  // degrades to a placeholder/empty column (its own cell ErrorBoundary handles the rest) instead of freezing
+  // everything. Patched ONCE, as an own method on the core SubTableFieldModel prototype (shadows the inherited
+  // FlowModel method) so it is scoped to sub-tables only and BOTH the native sub-table AND this Pro subclass
+  // are protected. Idempotent + fully guarded (never throws at install time). Mirrors the crash-safe fallbacks
+  // in column-resize/inline-field.
+  try {
+    const proto: any = (Base as any)?.prototype;
+    if (proto && !proto.__ptdlColumnFlowIsolated && typeof proto.applySubModelsBeforeRenderFlows === 'function') {
+      const orig = proto.applySubModelsBeforeRenderFlows;
+      proto.applySubModelsBeforeRenderFlows = async function (subKey: any, inputArgs?: any, shared?: any) {
+        try {
+          // Re-implement core's loop but ISOLATE each sub-model so one unresolvable column can't reject the
+          // shared Promise.all (core: `Promise.all(mapSubModels(k, s => s.dispatchEvent('beforeRender')))`).
+          await Promise.all(
+            (this.mapSubModels(subKey, async (sub: any) => {
+              try {
+                await sub.dispatchEvent('beforeRender', inputArgs);
+              } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn('[subtable-pro] sub-table sub-model beforeRender skipped (unresolvable field / broken association)', subKey, e);
+              }
+            }) as any[]),
+          );
+        } catch (e) {
+          // Last-resort: never let this method reject (that is what froze the app). Fall back to core.
+          // eslint-disable-next-line no-console
+          console.warn('[subtable-pro] isolated beforeRender loop failed — falling back to core', e);
+          return orig.call(this, subKey, inputArgs, shared);
+        }
+      };
+      proto.__ptdlColumnFlowIsolated = true;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[subtable-pro] column-flow isolation guard failed to install', e);
+  }
   const t = _t;
 
   if (flowSettings?.registerComponents) {

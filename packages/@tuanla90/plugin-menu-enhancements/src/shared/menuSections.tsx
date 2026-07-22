@@ -111,6 +111,37 @@ li.ant-menu-item:has([data-ptdl-menu-kind="groupLabel"]) {
   line-height: normal !important;
   margin-block: 2px !important;
 }
+/* ── COLLAPSED sidebar (~48px rail) ────────────────────────────────────────────────────────────────
+   antd puts \`.ant-menu-inline-collapsed\` on the menu <ul> when the sider is collapsed. In that narrow
+   rail a section's caption cannot fit, so it used to truncate MID-WORD ("Chính" → "Chí…"), and an
+   "on the line" divider crammed a rule + caption + rule together. Render EVERY section (group label
+   OR divider) as ONE clean, short, centered horizontal rule instead — caption hidden, no truncation.
+   Gated entirely on \`.ant-menu-inline-collapsed\` so the EXPANDED menu is 100% unchanged. The rule
+   colour is \`currentColor\` (the slot's already-themed menu text — white on a dark sider, dark on a
+   light one), so it is theme-proof in light AND dark without resolving any absolute token. */
+.ant-menu-inline-collapsed li.ant-menu-item:has([data-ptdl-menu-kind]) {
+  height: auto !important;
+  min-height: 0 !important;
+  line-height: normal !important;
+  padding-inline: 0 !important;
+  margin-block: 8px !important;
+}
+.ant-menu-inline-collapsed [data-ptdl-menu-kind] {
+  display: block !important;
+  width: 24px !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  overflow: hidden !important; /* clip the group-label's own text node so nothing peeks out */
+  text-indent: 0 !important;
+  border-top: 1px solid currentColor !important; /* THE single clean rule */
+  opacity: 0.5 !important;
+}
+/* Hide the divider node's inner structure (rule segments + caption) — only the marker's own rule shows. */
+.ant-menu-inline-collapsed [data-ptdl-menu-kind] > * {
+  display: none !important;
+}
 `;
   document.head.appendChild(el);
 }

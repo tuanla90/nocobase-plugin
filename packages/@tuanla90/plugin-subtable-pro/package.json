@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Bảng con Pro",
   "displayName.zh-CN": "增强子表格",
   "description": "Enhanced sub-table field for hasMany/m2m associations; subclasses the native model so saving stays 100% native. Adds a totals row, table/list/card views, a quantity +/− stepper, and a bridge so clicking a row in another block adds or increments line items here (quotes, orders, picking).",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

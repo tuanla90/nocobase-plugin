@@ -306,6 +306,7 @@ function appSpecSystemPrompt(): string {
     '- name của collection/field = KHÔNG DẤU, snake_case (vd "khach_hang", "ngay_dat"); title = tiếng Việt có dấu — SOÁT KỸ đừng bỏ sót dấu ở BẤT KỲ title nào (vd đừng để "phòng" thành "phong").',
     '- Mỗi collection có titleField = 1 field string chính (vd "ten", "ma").',
     '- Đơn có dòng chi tiết: khai o2m ở bảng cha (reverseName = tên m2o ở bảng con) + m2o ở bảng con; cột computed line-total dùng data.<field>.',
+    '- QUAN HỆ 2 CHIỀU (BẮT BUỘC): mỗi m2o tới một bảng MASTER/DANH MỤC hay bảng GIAO DỊCH (khách hàng, sản phẩm, nhà cung cấp, phiếu…) nên có o2m NGƯỢC ở bảng target để bảng đó XEM ĐƯỢC danh sách con của nó (vd đã khai order.khach_hang m2o thì khai thêm khach_hang.orders o2m reverseName="khach_hang" — để mở 1 khách thấy mọi đơn của họ). Cứ khai o2m ở bên "cha/master" (reverseName = tên m2o ở bên con); compiler tự tạo cặp FK dùng CHUNG 1 khoá, không nhân đôi.',
     '- Seed 2-3 dòng demo mỗi collection; giá trị quan hệ m2o = giá trị titleField của bản ghi target.',
     '- Mỗi collection nên có 1 page; nhóm menu hợp lý (Danh mục / Vận hành…).',
     '',
@@ -413,6 +414,7 @@ function toolPlanSystemPrompt(state: string): string {
     '- DỰNG MỚI: createCollection từng bảng TRƯỚC → addRelation → createMenuGroup + createPage. Tên snake không dấu, title tiếng Việt.',
     '- SỬA app CÓ SẴN: CHỈ đụng cái cần đổi trên collection ĐÃ CÓ trong TRẠNG THÁI — thêm (addField/addStatusFlow/addComputed/addRelation/createPage), XOÁ (dropField/dropCollection), hoặc đổi tên hiển thị (renameField). TUYỆT ĐỐI KHÔNG createCollection lại collection đã tồn tại. CHỈ dropField/dropCollection field/bảng CÓ THẬT trong TRẠNG THÁI.',
     '- addRelation chỉ sau khi cả 2 collection tồn tại (đã có, hoặc được createCollection trước đó trong plan).',
+    '- QUAN HỆ 2 CHIỀU: khi thêm m2o tới bảng master/giao dịch, nên thêm luôn o2m NGƯỢC ở bảng target (reverseName = tên m2o bên con) để mở 1 bản ghi master thấy danh sách con — compiler tự tạo cặp FK chung 1 khoá, an toàn nếu chỉ khai 1 chiều (tự sinh chiều còn lại).',
     '- THIẾT KẾ UI/UX (bạn là designer): thứ tự cột theo luồng đọc-nhập (định danh/quan hệ chính ĐẦU → thuộc tính → status → computed CUỐI); "columns" bảng chỉ 4-6 cột quan trọng, field phụ để "popupColumns"; chọn widget theo ngữ nghĩa (%/tiến độ→Progress bar, nhãn→Value tag, quan hệ→Rich select).',
     '- CHỈ trả JSON {"steps":[...], "explain":"..."}.',
     '',
@@ -626,16 +628,81 @@ export class PluginAppBuilderServer extends Plugin {
     } catch (e: any) { return { name: revName, error: e?.message || String(e) }; }
   }
 
-  /** Create one relation field on `coll`. Idempotent. (Both endpoint collections must already exist.) */
-  private async opAddRelation(coll: string, r: RelationSpec): Promise<any> {
+  /** Ensure the TARGET (master) of a m2o has a hasMany back to the SOURCE (sharing the SAME FK) so the
+   *  reverse o2m is navigable — e.g. `order` has m2o `customer` (belongsTo, FK `customer_id`) ⇒ `customer`
+   *  gets hasMany `orders` (FK `customer_id`, sourceKey `id`). Without this, AI/AppSheet apps (which emit
+   *  m2o everywhere, almost never the reverse o2m) leave every master with NO child list ("customer has no
+   *  orders"). Symmetric to `ensureReverseBelongsTo`. Idempotent + collision-safe + skips system collections.
+   *  A hasMany adds NO physical column (the FK already lives on the child, created by the m2o belongsTo), so
+   *  no explicit sync is needed — the `context:{}` create hook registers the association; the apply loop's
+   *  batch sync covers newly-created collections too. */
+  private async ensureReverseHasMany(childColl: string, r: RelationSpec, foreignKey: string): Promise<any> {
+    const masterColl = r.target;
+    // SKIP noise reverses: never hang a reverse list off `users`/`roles`/other NocoBase system collections
+    // (or from one) — only user DATA collections get an auto reverse.
+    if (CORE_COLLECTIONS.has(masterColl) || CORE_COLLECTIONS.has(childColl)) return { skipped: 'system', target: masterColl };
+    const fieldRepo: any = this.db.getRepository('fields');
+    // IDEMPOTENT by (target, FK): the reverse for THIS exact pair already exists — either a prior run's auto
+    // reverse, or the spec's own declared o2m (which shares this FK). Never double-create a second, conflicting
+    // hasMany on the same FK. NB: `target`/`foreignKey` are NOT physical `fields` columns (they live inside the
+    // `options` JSON) — so filter by the real columns (collectionName+type) then match target/FK in JS.
+    const relOptOf = (f: any) => (f?.get ? f.get('options') : f?.options) || {};
+    const hasManyRows: any[] = await fieldRepo.find({ filter: { collectionName: masterColl, type: 'hasMany' } });
+    const existing = (hasManyRows || []).find((f) => { const o = relOptOf(f); return o.target === childColl && o.foreignKey === foreignKey; });
+    if (existing) { const nm = existing.get ? existing.get('name') : existing.name; return { name: nm, target: childColl, foreignKey, skipped: 'exists' }; }
+    // COLLISION-SAFE name: prefer the m2o's declared reverseName, else the source collection name; if that
+    // name is already taken on the target (e.g. one master referenced by several same-named m2o), disambiguate
+    // with the m2o field name (`order` → `order_ship_status`), then a numeric suffix — so no two collide and
+    // none clashes an existing field.
+    const taken = async (nm: string) => !!(await fieldRepo.findOne({ filter: { collectionName: masterColl, name: nm } }));
+    const base = r.reverseName || childColl;
+    let name = base;
+    if (await taken(name)) {
+      const alt = `${childColl}_${r.name}`;
+      name = alt;
+      let i = 2;
+      while (await taken(name)) { name = `${alt}_${i++}`; if (i > 20) break; }
+    }
+    const title = (await this.collTitle(childColl)) || name;
+    try {
+      await fieldRepo.create({ values: {
+        collectionName: masterColl, name, type: 'hasMany', interface: 'o2m', target: childColl, foreignKey, sourceKey: 'id', targetKey: 'id',
+        uiSchema: { title, 'x-component': 'AssociationField', 'x-component-props': { multiple: true } },
+      }, context: {} });
+      return { name, target: childColl, foreignKey };
+    } catch (e: any) { return { name, target: childColl, foreignKey, error: e?.message || String(e) }; }
+  }
+
+  /** Create one relation field on `coll`. Idempotent. (Both endpoint collections must already exist.)
+   *  Guarantees a COMPLETE, COLLISION-SAFE, BIDIRECTIONAL pair: an o2m also gets the child's belongsTo, and a
+   *  m2o also gets the master's hasMany (unless `opts.suppressAutoReverse` — set for a m2o whose pair already
+   *  declares the explicit o2m, so the pair converges on ONE declared o2m instead of two conflicting hasMany). */
+  private async opAddRelation(coll: string, r: RelationSpec, opts: { suppressAutoReverse?: boolean } = {}): Promise<any> {
     const fieldRepo: any = this.db.getRepository('fields');
     if (await fieldRepo.findOne({ filter: { collectionName: coll, name: r.name } })) return { coll, name: r.name, skipped: 'exists' };
     const def = relationDef(coll, r);
     // Friendly display label: AI-provided title > target collection's title > the machine name.
     if (!r.title) { const t = await this.collTitle(r.target); if (t) def.uiSchema = { ...def.uiSchema, title: t }; }
+    // o2m IDEMPOTENT-by-FK: an auto reverse hasMany for this pair (same target + FK) may already exist (the
+    // child m2o's ensureReverseHasMany ran in a prior run / granular add-both sequence). Don't create a second
+    // conflicting hasMany on the same FK — reuse it (still ensure the child's belongsTo). Full-spec
+    // apply/buildApp suppress the auto reverse for declared pairs, so this only trips on re-apply-after-lone-m2o.
+    if (r.type === 'o2m') {
+      // `target`/`foreignKey` live in the `options` JSON, not as `fields` columns — query the real columns then
+      // match in JS (see ensureReverseHasMany).
+      const dupRows: any[] = await fieldRepo.find({ filter: { collectionName: coll, type: 'hasMany' } });
+      const dup = (dupRows || []).find((f) => { const o = (f?.get ? f.get('options') : f?.options) || {}; return o.target === r.target && o.foreignKey === def.foreignKey; });
+      if (dup) {
+        const dupName = dup.get ? dup.get('name') : dup.name;
+        const paired = await this.ensureReverseBelongsTo(coll, r, def.foreignKey);
+        return { coll, name: dupName, type: r.type, foreignKey: def.foreignKey, reusedAutoReverse: dupName, ...(paired ? { paired } : {}) };
+      }
+    }
     await fieldRepo.create({ values: def, context: {} });
-    // A parent-declared o2m: also give the child a belongsTo back to the parent (bidirectional).
-    const paired = r.type === 'o2m' ? await this.ensureReverseBelongsTo(coll, r, def.foreignKey) : undefined;
+    // Bidirectional completion: o2m → child belongsTo (shared FK); m2o → master hasMany (shared FK).
+    let paired: any;
+    if (r.type === 'o2m') paired = await this.ensureReverseBelongsTo(coll, r, def.foreignKey);
+    else if (r.type === 'm2o' && !opts.suppressAutoReverse) paired = await this.ensureReverseHasMany(coll, r, def.foreignKey);
     return { coll, name: r.name, type: r.type, foreignKey: def.foreignKey, ...(paired ? { paired } : {}) };
   }
 
@@ -887,8 +954,16 @@ export class PluginAppBuilderServer extends Plugin {
             for (const c of spec.collections || []) { const r = await this.opCreateCollection(c, menuGroupByColl.get(c.name) || spec.meta?.title || spec.meta?.name); if (!r.skipped) created.push(c.name); report.collections.push(r); }
             const rels: Array<{ coll: string; r: RelationSpec }> = [];
             for (const c of spec.collections || []) for (const r of c.relations || []) rels.push({ coll: c.name, r });
+            // Pairs that already declare the explicit o2m on the parent (`parent>child`). For a child m2o whose
+            // reverse would land on that same parent, SUPPRESS the auto reverse hasMany — the declared o2m IS
+            // the reverse, so the pair converges on ONE hasMany (never two conflicting ones with the same FK).
+            const explicitO2m = new Set<string>();
+            for (const { coll, r } of rels) if (r.type === 'o2m' && r.target) explicitO2m.add(`${coll}>${r.target}`);
             rels.sort((a, b) => (RELATION_ORDER[a.r.type] ?? 9) - (RELATION_ORDER[b.r.type] ?? 9));
-            for (const { coll, r } of rels) report.relations.push(await this.opAddRelation(coll, r));
+            for (const { coll, r } of rels) {
+              const suppressAutoReverse = r.type === 'm2o' && explicitO2m.has(`${r.target}>${coll}`);
+              report.relations.push(await this.opAddRelation(coll, r, { suppressAutoReverse }));
+            }
             for (const name of created) { try { await (this.db.getCollection(name) as any)?.sync?.({ alter: true }); } catch {} }
             for (const c of spec.collections || []) { const cf = (c.fields || []).filter((f) => f.computed?.expression); if (cf.length) (await this.opAddComputedRules(c.name, cf)).forEach((x) => report.computed.push({ coll: c.name, ...x })); }
             // Seed ONLY newly-created collections — re-applying a spec, or patching into an app whose
@@ -908,7 +983,7 @@ export class PluginAppBuilderServer extends Plugin {
         // {collection, field:FieldSpec}
         addField: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opAddField(v.collection, v.field); await next(); },
         // {collection, relation:RelationSpec}
-        addRelation: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opAddRelation(v.collection, v.relation); await next(); },
+        addRelation: async (ctx: any, next: any) => { const v = readVals(ctx); ctx.body = await this.opAddRelation(v.collection, v.relation, { suppressAutoReverse: !!v.suppressAutoReverse }); await next(); },
         // {collection, field:{name,title,interface?,computed:{expression}}} OR {collection, field:{name,title}, expression}
         addComputed: async (ctx: any, next: any) => {
           const v = readVals(ctx); const f = v.field || {};

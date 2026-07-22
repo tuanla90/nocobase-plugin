@@ -76,7 +76,9 @@ export const FORMULA_RULES = [
   'Nối chuỗi dùng & (vd: data.a & " " & data.b). So sánh: == (hoặc ===), != hoặc <>, > < >= <=. VÀ = && (hoặc AND(...)). KHÔNG dùng = đơn (là gán) hay & đơn cho VÀ.',
   'CHỈ dùng hàm có trong danh sách CAPABILITY. KHÔNG bịa hàm (không có XLOOKUP, không có mảng-động Excel FILTER(arr, boolArr)).',
   'Quan hệ lồng 2+ tầng KHÔNG nạp được (data.a.b.c hay bang.quan_he.cot ra rỗng) → so theo KHOÁ id: bang.rel_id == data.x_id.',
-  'Cột đích có thể là số / text / date / boolean — trả đúng kiểu (so sánh → boolean, ghép chuỗi/IF → text, EDATE/TODAY → date).',
+  'ĐIỀU KIỆN của SELECT/FILTER so 1 cột QUAN HỆ (m2o) của bảng lọc: PHẢI dùng KHOÁ NGOẠI, KHÔNG so cột quan hệ trực tiếp (là object → so với chuỗi/số ra rỗng/#REF!). Vd bang.<rel> trỏ về CHÍNH bảng đang tính → bang.<rel>_id == data.id (PK hiện tại); trỏ về bảng khác mà dòng hiện tại cũng có FK tới đó → bang.<rel>_id == data.<fk>_id. TUYỆT ĐỐI không viết bang.<rel> == data.<x>.',
+  'SELECT trả về CỘT QUAN HỆ (m2o/Ref): SELECT(bang.<quan_hệ>, cond) ra RỖNG {} — bảng tra cứu KHÔNG auto-nạp quan hệ nên bị pluck rỗng. Hai cách ĐÚNG: (a) lấy KHOÁ NGOẠI → INDEX(SELECT(bang.<quan_hệ>_id, cond), 1) trả id (engine tự gán id vào CỘT QUAN HỆ đích); (b) lấy CẢ DÒNG rồi truy → INDEX(SELECT(bang, cond), 1).<quan_hệ>. Với cột VÔ HƯỚNG (text/số/ngày) thì SELECT(bang.<cột>, cond) vẫn đúng như thường.',
+  'Cột đích có thể là số / text / date / boolean / QUAN HỆ (m2o) — trả đúng kiểu (so sánh → boolean, ghép chuỗi/IF → text, EDATE/TODAY → date; cột QUAN HỆ → trả id hoặc bản ghi, engine ghi vào khoá ngoại).',
 ].join('\n');
 
 /** AppSheet → NocoBase conversion knowledge (single source of truth for the AI converter + the UI hint).
@@ -86,7 +88,7 @@ export const APPSHEET_RULES = [
   'Deref quan hệ 1 tầng: [ref].[field] → data.ref.field. NHƯNG 2+ tầng ([a].[b].[c]) KHÔNG chạy → cảnh báo cần "flatten" (đặt computed phẳng từng chặng), đừng bịa data.a.b.c.',
   'So sánh: AppSheet = → NocoBase == ; <> → != . Nối chuỗi & GIỮ NGUYÊN. VÀ/HOẶC: AND()/OR() giữ nguyên hoặc && / ||.',
   'Gộp bảng con SUM(SELECT(child[col], [fk]=[_THISROW].[id])) → nếu có quan hệ hasMany: SUM(data.<quan_hệ>.col); nếu không: SUM(SELECT(child.col, child.fk == data.id)) (điều kiện == được index).',
-  'SELECT(table[col], cond) → SELECT(table.col, cond). Trong cond: cột bảng đang lọc = table.col, cột dòng hiện tại = data.col. ANY(x) → INDEX(x, 1). LOOKUP(v,"t",k,r) → INDEX(SELECT(t.r, t.k == v), 1). MAX(SELECT(t[c],TRUE)) → MAX(t.c).',
+  'SELECT(table[col], cond) → SELECT(table.col, cond) KHI col là cột VÔ HƯỚNG (text/số/ngày). NHƯNG nếu col (hoặc r trong LOOKUP) là cột QUAN HỆ (Ref) thì SELECT(table.col, cond) ra rỗng {} → ĐỔI thành lấy CẢ DÒNG rồi truy: INDEX(SELECT(table, cond), 1).col ; hoặc lấy KHOÁ NGOẠI: INDEX(SELECT(table.col_id, cond), 1). Trong cond: cột bảng đang lọc = table.col, cột dòng hiện tại = data.col. ANY(x) → INDEX(x, 1). LOOKUP(v,"t",k,r): r vô hướng → INDEX(SELECT(t.r, t.k == v), 1); r là QUAN HỆ → INDEX(SELECT(t, t.k == v), 1).r. MAX(SELECT(t[c],TRUE)) → MAX(t.c).',
   'Hàm giữ NGUYÊN vì engine đã có: IF IFS SWITCH AND OR NOT SUM MIN MAX AVERAGE IN LIST ANY SPLIT STARTSWITH ENDSWITH CONTAINS ISNOTBLANK ISBLANK UNIQUE INTERSECT INITIALS NOW TODAY TEXT LEFT RIGHT MID LEN TRIM CONCATENATE. Đổi tên: NUMBER→VALUE.',
   'Cộng/trừ ngày (AppSheet dùng [date]+n cho NGÀY, EDATE cho tháng): +n ngày → ADDDAYS(date, n); +n tháng → ADDMONTHS(date, n); +n năm → ADDYEARS(date, n); hoặc DATEADD(date, n, "day"|"month"|"year"). n ÂM = trừ. Kết quả là chuỗi ngày, chain được với YEAR/MONTH/DAY/TEXT.',
   '⚠️ COUNT: AppSheet COUNT(list) đếm SỐ PHẦN TỬ của list → dùng COUNTA (Excel/engine COUNT chỉ đếm Ô SỐ). VD AppSheet count(split(x," ")) → COUNTA(SPLIT(x," ")).',
@@ -106,6 +108,8 @@ export const APPSHEET_MAP: Array<[string, string]> = [
   ['IF(ISNOTBLANK([sku_1]),1,0)', 'IF(ISNOTBLANK(data.sku_1),1,0)'],
   ['INDEX(SPLIT([ho_va_ten]," "), COUNT(SPLIT([ho_va_ten]," ")))', 'INDEX(SPLIT(data.ho_va_ten," "), COUNTA(SPLIT(data.ho_va_ten," ")))'],
   ['LOOKUP(USERSETTINGS("User name"),"nhan_vien","id","ho_va_ten")', 'INDEX(SELECT(nhan_vien.ho_va_ten, nhan_vien.id == value), 1)  /* USERSETTINGS→người dùng hiện tại: cân nhắc field hệ thống */'],
+  ['INDEX(SELECT(don_thanh_toan[phan_loai_hang], [so_xe]=[_THISROW].[so_xe]), 1)  /* [so_xe] trên don_thanh_toan là Ref→xe (bảng hiện tại) */', 'INDEX(SELECT(don_thanh_toan.phan_loai_hang, don_thanh_toan.so_xe_id == data.id), 1)  /* ĐK so cột QUAN HỆ so_xe → dùng KHOÁ NGOẠI so_xe_id == data.id (PK dòng hiện tại). KHÔNG so_xe == data.so_xe (object Ref vs chuỗi → rỗng/#REF!) */'],
+  ['SELECT(hang_hoa_tq[thanh_tien], [id_don].[ma] = [_THISROW].[ma])  /* [id_don] là Ref→don, so tiếp .ma */', 'SELECT(hang_hoa_tq.thanh_tien, hang_hoa_tq.id_don_id == data.id)  /* Ref so bằng KHOÁ NGOẠI ..._id == data.id, KHÔNG deref .ma qua bảng tra cứu (không nạp) */'],
 ];
 
 /** Build the AI system prompt: rules + capability + few-shot + the live collection schema (injected). */

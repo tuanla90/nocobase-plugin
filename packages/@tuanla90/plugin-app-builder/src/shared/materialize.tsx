@@ -232,6 +232,10 @@ export async function buildApp(app: any, spec: AppSpec, onProgress?: (p: BuildPr
   const colls = spec.collections || [];
   const rels: Array<{ coll: string; r: any }> = [];
   colls.forEach((c) => (c.relations || []).forEach((r) => rels.push({ coll: c.name, r })));
+  // Pairs with an explicit o2m declared on the parent (`parent>child`) — suppress the child m2o's server-side
+  // auto reverse hasMany for these, so the declared o2m stays the ONE reverse (mirrors the server `apply`).
+  const explicitO2m = new Set<string>();
+  colls.forEach((c) => (c.relations || []).forEach((r) => { if (r.type === 'o2m' && r.target) explicitO2m.add(`${c.name}>${r.target}`); }));
   rels.sort((a, b) => (RELATION_ORDER[a.r.type] ?? 9) - (RELATION_ORDER[b.r.type] ?? 9));
   const computedColls = colls.filter((c) => (c.fields || []).some((f) => (f as any).computed?.expression));
   const seedColls = colls.filter((c) => (c as any).seed?.length);
@@ -251,7 +255,8 @@ export async function buildApp(app: any, spec: AppSpec, onProgress?: (p: BuildPr
   }
   for (const { coll, r } of rels) {
     onProgress?.({ phase: 'relation', label: `${coll} → ${r.target}`, done: done++, total });
-    try { await api('addRelation', { collection: coll, relation: r }); }
+    const suppressAutoReverse = r.type === 'm2o' && explicitO2m.has(`${r.target}>${coll}`);
+    try { await api('addRelation', { collection: coll, relation: r, suppressAutoReverse }); }
     catch (e: any) { errors.push(`Quan hệ ${coll}.${r.name}: ${e?.message || e}`); }
   }
   for (const c of computedColls) {

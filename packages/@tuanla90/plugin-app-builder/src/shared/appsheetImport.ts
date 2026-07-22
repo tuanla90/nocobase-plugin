@@ -186,6 +186,11 @@ export function convertAppSheet(raw: any): AppSheetConvertResult {
         const rname = nameOf(title);
         const type = attr.Type === 'EnumList' ? 'm2m' : 'm2o';
         const rel: any = { name: rname, type, target, title };
+        // Reverse-ref name from AppSheet → `reverseName` on the child m2o. The app-builder server
+        // (opAddRelation → ensureReverseHasMany) now MATERIALIZES this into a real reverse hasMany on the
+        // target sharing the SAME FK — so the master collection can list its children (bidirectional). Even a
+        // m2o WITHOUT a reverse-ref here still gets an auto reverse server-side (named after the child), so no
+        // explicit o2m object is needed in the spec — keep this light; the server auto-reverse is the safety net.
         const revName = revByParent.get(refTable)?.get(ds.Name);
         if (type === 'm2o' && revName) {
           rel.reverseName = slug(revName);
@@ -253,7 +258,26 @@ export function convertAppSheet(raw: any): AppSheetConvertResult {
     s = s.replace(/\[_THISROW\]\.\[([^\]]+)\]/g, (_, x) => sameRowRef(coll, x));
     s = s.replace(/\[([^\]]+)\]\.\[([^\]]+)\]/g, (_, a, b) => `${childSlug}.${slug(a)}.${slug(b)}`);
     s = s.replace(/\[([^\]]+)\]/g, (_, x) => `${childSlug}.${slug(x)}`);
+    // AppSheet Refs compare by business KEY; NocoBase must compare the FOREIGN KEY, not the relation object.
+    // If a filtered column is a m2o back to the CURRENT collection, `child.<rel> == data.<x>` (object vs scalar
+    // → never matches → empty/#REF!) becomes `child.<rel>_id == data.id` (FK == current PK). Covers the common
+    // `SELECT(child[…], [ref_to_me] = [_THISROW].[key])` idiom (the user's `don_thanh_toan.so_xe == data.so_xe`).
+    const childSpec: any = collections.find((c: any) => c.name === childSlug);
+    for (const r of (childSpec?.relations || [])) {
+      if ((r.type !== 'm2o' && r.type !== 'o2o') || r.target !== coll?.name) continue;
+      const fk = `${childSlug}.${r.name}_id`;
+      s = s.replace(new RegExp(`\\b${childSlug}\\.${r.name}\\b\\s*(==?|!=|<>)\\s*data\\.[A-Za-z0-9_.]+`, 'g'), `${fk} $1 data.id`);   // rel == data.x
+      s = s.replace(new RegExp(`data\\.[A-Za-z0-9_.]+\\s*(==?|!=|<>)\\s*\\b${childSlug}\\.${r.name}\\b`, 'g'), `data.id $1 ${fk}`);   // data.x == rel (reversed)
+    }
     return s;
+  };
+  // A SELECT/LOOKUP that RETURNS a Ref (relation) column must yield the FK (…_id), NOT the relation itself:
+  // `SELECT(t.<ref>, …)` auto-plucks the lookup table's unloaded relation → empty `{}`. The FK form
+  // `INDEX(SELECT(t.<ref>_id, …), 1)` yields the id, which the computed engine writes straight into the
+  // target relation's own FK. (formulaKnowledge.ts teaches the AI the same rule; this is the static path.)
+  const retFk = (collName: any, colSlug: string): string => {
+    const spec = collections.find((c: any) => c.name === collName);
+    return relOf(spec, colSlug) ? `${colSlug}_id` : colSlug;
   };
   const translateSelects = (s: string, coll: any): string => {
     const re = /\bSELECT\s*\(/gi;
@@ -273,7 +297,7 @@ export function convertAppSheet(raw: any): AppSheetConvertResult {
       if (!hm) { out += s.slice(m.index, k); i = k; continue; }
       const childColl = resolveColl(hm[1]);
       if (!childColl) throw { flag: `SELECT table "${hm[1].trim()}" not a synced collection` };
-      out += `SELECT(${childColl}.${slug(hm[2])}, ${transCond(cond, childColl, coll)})`;
+      out += `SELECT(${childColl}.${retFk(childColl, slug(hm[2]))}, ${transCond(cond, childColl, coll)})`;
       i = k;
       if (++guard > 300) throw { flag: 'SELECT loop' };
     }
@@ -305,7 +329,7 @@ export function convertAppSheet(raw: any): AppSheetConvertResult {
       const rel: any = directM && relOf(coll, slug(directM[1] || directM[2]));
       if (rel && rel.target === targetColl) { out += `data.${rel.name}.${slug(bare(parts[3]))}`; i = k; if (++guard > 300) throw { flag: 'LOOKUP loop' }; continue; }
       const val = translateLookups(rawVal, coll);
-      out += `INDEX(SELECT(${targetColl}.${slug(bare(parts[3]))}, ${targetColl}.${slug(bare(parts[2]))} = ${val}), 1)`;
+      out += `INDEX(SELECT(${targetColl}.${retFk(targetColl, slug(bare(parts[3])))}, ${targetColl}.${slug(bare(parts[2]))} = ${val}), 1)`;
       i = k;
       if (++guard > 300) throw { flag: 'LOOKUP loop' };
     }
