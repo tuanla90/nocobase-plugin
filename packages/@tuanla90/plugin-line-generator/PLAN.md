@@ -350,3 +350,52 @@ field vào employees/orders, seed dữ liệu G1–G4.
 
 ⚠️ Chuẩn hóa dữ liệu rate: lưu THẬP PHÂN (0.25% = 0.0025, KHÔNG phải 0.25); UI hiện tại hiển thị
 2 số lẻ nên 0.0025 hiện thành "0.00" — cần format cột dạng % trong UI để người nhập không nhầm ×100.
+
+## 10. v0.7 — matchTiers + recurse + JOIN builder (2026-07-22)
+
+Ba nâng cấp, **giữ back-compat tuyệt đối** (config cũ không có trường mới → chạy y hệt; test Scenario J chứng minh byte-identical). Engine ở `generateCore.ts`; UI ở `RulesManager.tsx`; type ở `types.ts`. `bash test/run.sh` = **88/88** (thêm Scenario H/I/J).
+
+### A. `matchTiers?: RuleWhere[][]` — khớp theo bậc ưu tiên (đích danh > chung)
+- `ruleWhere` vẫn là **bộ lọc nền (AND)**; `matchTiers` áp **TRÊN** các dòng đã qua nền. Bậc 0 = cụ thể nhất.
+- Với MỖI dòng nguồn (src): duyệt bậc từ trên xuống, **dùng bậc ĐẦU TIÊN cho ≥1 dòng khớp rồi DỪNG** (không rơi tiếp).
+- **Auto-exclude (chống đếm trùng):** ở bậc i, một dòng chỉ tính nếu thoả điều kiện bậc i **VÀ** mọi `field` mà bậc cao hơn khai đều **rỗng/null** trên dòng đó → dòng "đích danh" (đã điền field cụ thể) không bị bậc chung vơ vào.
+- Cài ở `selectMatchedRules()` (gọi trong vòng lặp per-src của `generateCore`) + `condListPass()` tách ra dùng chung cho nền lẫn từng bậc. Ví dụ nghiệm thu: đơn [A,B] × [role=NV,user=A,10% | role=NV,user=null,6%], tiers=[[user==src.emp],[role==src.role]] → A=10% (bậc0), B=6% (bậc1), KHÔNG A dính cả hai.
+
+### B. `recurse` + `recurseParentKey/recurseChildKey/recurseQtyField/maxDepth/recurseOutput` — nổ đệ quy (self-join)
+- Sau lượt nổ cấp 0, `recurseExplode()` đi từng dòng sinh ra: lấy `row[recurseChildKey]` làm khoá cha cấp sau, tra lại chính config (`rule[recurseParentKey] == khoá`), áp **cùng ruleWhere/matchTiers**.
+- **Lá vs cụm:** không tra được dòng nào → **lá** (giữ); tra ra dòng → **cụm** (nổ tiếp; `leaves` bỏ cụm, `all` giữ mọi cấp + đóng dấu `_level`/`_recurseParent`).
+- **Nhân số lượng dồn xuống:** đặt `srcBase = {...row, [recurseQtyField]:1}` rồi eval lineOutputs → ra **định mức/đơn vị**, sau đó `child.qty = row.qty × per-unit` → đúng `qty(cấp n)=qty(cấp n-1)×định mức`. Công thức qty phải đọc `src.<recurseQtyField>` để nối cấp.
+- **Chống vòng:** theo dõi tập khoá cha trên đường đi (seed từ `src[recurseParentKey]`); khoá lặp lại trong tổ tiên → **dừng nhánh** + log `recurse-cycle`; `maxDepth` (mặc định 20) là chốt cứng.
+- Server `buildRuleFilter`: khi `recurse`, KHÔNG đẩy điều kiện `recurseParentKey` xuống DB (khoá biến thiên theo cấp) → nạp đủ cả bảng định mức. Ví dụ nghiệm thu: SP×10, P→[S×2,R1×3], S→[R2×4,R3×1] → lá R1=30, R2=80, R3=20, S bị bỏ ('leaves').
+
+### C. UI = trình dựng JOIN (`RulesManager.tsx`)
+- Banner **LEFT (nguồn) ⋈ RIGHT (định mức) → KẾT QUẢ** + huy hiệu `↻ đệ quy` trên RIGHT + caption **"SQL tương đương"** suy ra từ config.
+- Mục: ① Kích hoạt · ② LEFT nguồn (segmented "Chính bản ghi này" / "Đi theo quan hệ →") · ③ RIGHT định mức (+ toggle Nổ đệ quy mở các trường recurse) · ④ ON điều kiện nối = ruleWhere nền **+ thang Bậc ưu tiên** (thêm/xoá/đổi thứ tự, nhãn "cụ thể nhất"…"chung/dự phòng") · ⑤ KẾT QUẢ (targetPath + lineOutputs + groupBy) · ⑥ Nâng cao.
+- Tái dùng: `CondFieldCascader`/`opsForType`/`EditTable`/`previewInline` (debug). Grid điều kiện dùng chung cho nền lẫn từng bậc (`ruleCondColumns`). Template mới: "Hoa hồng theo bậc ưu tiên" + "Nổ định mức BOM đa cấp".
+
+## 11. v0.8 — PIPELINE JOIN nhiều bước (2026-07-22)
+
+Tổng quát hoá phép JOIN đơn thành **pipeline N bước có thứ tự**, mỗi bước nối một bảng/quan hệ khác nhau; **output bước i = input (`src.*`) bước i+1** → số lượng nhân dồn theo dây chuyền. **Back-compat tuyệt đối** (không có `joinSteps` → chạy y hệt 0.7, Scenario A–J byte-identical). `bash test/run.sh` = **111/111** (thêm K/L/M/O/P). Engine `generateCore.ts`; server `generator.ts`; UI `RulesManager.tsx`; type `types.ts`; template `templates.ts`.
+
+### Shape + threading
+- `JoinStep` (`types.ts`) = bản per-step của cấu hình join: `{ stepType, relationPath?, ruleCollection?, ruleAppends?, ruleWhere?, matchTiers?, deriveVars?, skipIf?, lineOutputs, groupBy?, sumFields?, recurse?/recurseParentKey/…/recurseOutput }` — TRÙNG tên các trường join của `LineGenConfig` (nên single-join = pipeline 1 bước, chính config làm step).
+- `LineGenConfig.joinSteps?: JoinStep[]` (có → chạy pipeline) + `maxRows?` (mặc định 10000). `CoreResult.aborted?: {reason,detail}`.
+- **Threading:** `let rows = srcRows; for (step of joinSteps) rows = runJoinStep(step, rows, parent, stepRules[i], …)`. Bước sau đọc `src.*` = dòng vào (mang theo field tích luỹ từ các bước trước) + `rule.*` (dòng phải bước này) + `parent.*`. Sau bước cuối: group/SUM top-level + write.
+
+### Refactor `runJoinStep` (dùng CHUNG cho cả 2 nhánh)
+- Tách lõi "nổ" v0.7 (evalPair derive/skipIf/outputs + level-0 matching + FEATURE-A tiers + FEATURE-B recurse) thành **`runJoinStep(step, inputRows, parent, rules, evaluate, ctx)`** trả về rows (chưa group/marker/hash). Helper `pairMatches/ruleWherePass/selectMatchedRules/recurseExplode/groupRows` đổi tham số `config` → type `JoinLike` (subset, cả `JoinStep` lẫn `LineGenConfig` đều thoả).
+- **Single-join** = `runJoinStep(config, srcRows, …)` rồi đuôi chung (group/round/marker/hash). Marker/hash **dời từ evalPair xuống đuôi** (chứng minh tương đương: group giữ marker của dòng đầu = key; hash gồm marker vẫn như cũ) → Scenario A–J byte-identical.
+- **stepType:'relation'** (theo yêu cầu điều phối): thay vì quét bảng config, ĐI THEO quan hệ `src[relationPath]` (mảng bản ghi liên kết) làm fan-out — `rule.*` = bản ghi liên kết; `ruleWhere/matchTiers` post-filter tuỳ chọn. `pool` recurse = union các mảng liên kết (self-referential vẫn đệ quy được). Hợp nhất luôn hop `sourceLinesPath` cũ (chỉ là 1 relation step). Server nạp appends `relationPath` cho bước đầu (relative parent/sourceLinesPath); config step nạp từ `ruleCollection` riêng.
+- **maxRows safety:** `checkCap(n)` ném sentinel khi vượt (sau level0, sau recurse mỗi push, sau mỗi bước) → driver bắt → `aborted` + rows=[]. Server surface `core.aborted` → `{ok:false, error, detail}` (cả preview lẫn commit). KHÔNG cắt cụt/treo.
+
+### Server (`generator.ts`)
+- `joinSteps`? → loop nạp `stepRules[i]`: config step = `buildRuleFilter(step,parent)` + `find(ruleCollection, appends)`; relation step = `[]` (fan-out từ association đã append). `generateCore(config, {parent, srcRows, rules:[], stepRules, …})`. `if (core.aborted) return ok:false`.
+
+### UI pipeline builder (`RulesManager.tsx`)
+- `StepCard` (component ổn định, hook riêng): header **"Bước N · ⋈ [bảng]"** + badge **↻ lặp (đệ quy)** + ↑/↓/✕; toggle **"Bảng config (khớp điều kiện)" / "Quan hệ có sẵn (theo key)"** hiện `ruleCollection`+ON grid+recurse+matchTiers HOẶC `relationPath`+lọc tuỳ chọn; lineOutputs của bước; gộp-theo-bước tuỳ chọn; gợi ý *"output bước N = input bước N+1 (src.*)"*.
+- Mục ③ thành danh sách step-card (thêm/xoá/**đổi thứ tự**) + **"＋ Thêm bước join"**; ④ ON ẩn; ⑤ chỉ còn target + group/SUM top-level (+ maxRows ở ⑥). Nút **"⛓ Chuyển sang pipeline nhiều bước"** (single→joinSteps[0]) / **"↩ Quay lại JOIN một bước"**. Banner + "SQL tương đương" dạng multi-JOIN. Tái dùng `CondFieldCascader/opsForType/EditTable/FieldSelect/SegmentedGroup/previewInline`. Song ngữ (en-US bổ sung). Template mới **"Nổ combo → BOM (pipeline nhiều bước)"**.
+
+### Verify
+- **Harness 111/111**: K combo→BOM (order_item combo qty2 → **gỗ=10 (4+6), đinh=12 (8+4)** + nested SETX×3 → gỗ15/đinh18 chứng minh đệ quy trong bước); L 3 bảng khác nhau (val nhân dồn 10×2×3×5/7 = 300/420); M maxRows cap (100>50 → abort, dưới cap chạy 100 dòng); O relation-step fan-out (2 dòng liên kết, không quét bảng; +post-filter); P relation step0 hợp nhất sourceLinesPath (gỗ10/đinh12). Scenario A–J giữ nguyên.
+- **Deployed artifact run** (`nb-local/.../dist/shared/generateCore.js`, real evalExpr): combo→BOM gỗ=10/đinh=12, relation A=2/B=3, maxRows abort — ALL PASSED.
+- Build 0.8.0 (client+client-v2+server sạch, markers `client.js`/`client-v2.js`), deploy FLAT tgz vào **cả** node_modules/@tuanla90 **lẫn** storage/plugins/@tuanla90, `pm2 restart index`; HTTP 200; served==deployed client-v2 = 175226 bytes; server generator.js có joinSteps/stepRules/core.aborted; client-v2 bundle có joinSteps/relationPath/maxRows/pipeline. **Chưa test:** click-through UI pipeline builder trên trình duyệt (chỉ verify code compiled + served).

@@ -13,7 +13,59 @@ export interface MailTemplate {
   enabled?: boolean;
 }
 
-/** Config as SENT TO the client by mailer:getConfig — secrets are NEVER included, only "hasX" flags. */
+/** One named "sending method" (ptdlMailerMethods row) — a backend config with a name, on/off + default flag. */
+export interface MailMethod {
+  id?: number;
+  /** Stable id used by pickers (workflow node / send action) so a method can be renamed without breaking refs. */
+  key: string;
+  name: string;
+  backend: MailerBackend;
+  enabled?: boolean;
+  isDefault?: boolean;
+  fromName?: string;
+  /** apps-script (SECRET) */
+  appsScriptUrl?: string;
+  sharedToken?: string; // SECRET
+  /** smtp */
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+  smtpUser?: string;
+  smtpPass?: string; // SECRET
+  smtpFrom?: string;
+}
+
+/** A method as SENT TO the settings UI by mailer:getMethods — secrets masked, only "hasX" flags returned. */
+export interface MailMethodView {
+  id: number;
+  key: string;
+  name: string;
+  backend: MailerBackend;
+  enabled: boolean;
+  isDefault: boolean;
+  fromName: string;
+  appsScriptUrlMask: string;
+  hasAppsScriptUrl: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpFrom: string;
+  hasSmtpPass: boolean;
+  hasSharedToken: boolean;
+}
+
+/** Minimal, secret-free method option for the loggedIn pickers (mailer:methodOptions). */
+export interface MailMethodOption {
+  key: string;
+  name: string;
+  backend: MailerBackend;
+  enabled: boolean;
+  isDefault: boolean;
+}
+
+/** Config as SENT TO the client by mailer:getConfig — secrets are NEVER included, only "hasX" flags.
+ *  @deprecated v0.2.0 replaced the single config with a methods list (MailMethodView). Kept for reference. */
 export interface MailerConfigView {
   backend: MailerBackend;
   enabled: boolean;
@@ -44,6 +96,6 @@ export interface SendInput {
   bcc?: string | string[];
   /** Attachment ids from the `attachments` collection. */
   attachments?: Array<number | { id: number }>;
-  /** Optional per-send backend override ('' / 'default' = use the configured backend). */
-  backend?: MailerBackend | 'default' | '';
+  /** Which sending method to use (its stable `key`, or numeric id). Empty/absent → the default method. */
+  methodKey?: string | number | null;
 }

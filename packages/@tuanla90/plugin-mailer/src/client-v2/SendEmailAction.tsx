@@ -2,8 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { App as AntApp, Button, Checkbox, Divider, Input, Modal, Segmented, Select, Space, Spin, Tag, theme, Tooltip } from 'antd';
 import { renderEmail, extractTokens } from '../shared/renderEngine';
 import { TEMPLATES_COLLECTION, MAILER_RESOURCE } from '../shared/constants';
-import type { MailTemplate } from '../shared/types';
-import { t } from '../shared/mailerClient';
+import type { MailTemplate, MailMethodOption } from '../shared/types';
+import { t, mailerMethodsSettingsUrl } from '../shared/mailerClient';
+
+/** "Configure sending methods ↗" — opens the mailer settings (Tab 1) in a new tab (same app). */
+const ConfigMethodsLink: React.FC<{ small?: boolean }> = ({ small }) => (
+  <a
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.open(mailerMethodsSettingsUrl(), '_blank', 'noopener');
+    }}
+    style={{ fontSize: small ? 12 : 13, whiteSpace: 'nowrap' }}
+  >
+    {t('Configure sending methods ↗')}
+  </a>
+);
 
 const HtmlPreview: React.FC<{ html: string }> = ({ html }) => {
   const { token } = theme.useToken();
@@ -44,6 +58,8 @@ const SendEmailDialog: React.FC<{
 
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<MailTemplate[]>([]);
+  const [methods, setMethods] = useState<MailMethodOption[]>([]);
+  const [methodKey, setMethodKey] = useState<string>(''); // '' = use the default method
   const [record, setRecord] = useState<any>(null);
   const [attachmentOptions, setAttachmentOptions] = useState<AttachmentOption[]>([]);
 
@@ -83,7 +99,15 @@ const SendEmailDialog: React.FC<{
           /* best-effort */
         }
 
-        // 2) templates
+        // 2) sending methods (minimal, secret-free) + templates
+        try {
+          const mRes = await api.request({ url: `${MAILER_RESOURCE}:methodOptions`, method: 'post' });
+          const allMethods: MailMethodOption[] = (mRes?.data?.data || mRes?.data || []) as MailMethodOption[];
+          if (!cancelled) setMethods(allMethods);
+        } catch {
+          /* pickers fall back to the server-side default method */
+        }
+
         const tplRes = await api.request({ url: `${TEMPLATES_COLLECTION}:list`, params: { paginate: false, sort: ['-id'] } });
         const allTpls: MailTemplate[] = (tplRes?.data?.data || []).filter((x: any) => x.enabled !== false);
         if (cancelled) return;
@@ -146,6 +170,7 @@ const SendEmailDialog: React.FC<{
         cc,
         bcc,
         attachments: selectedAttachments,
+        methodKey: methodKey || undefined, // '' → let the server use the default method
       };
       if (mode === 'template') payload.templateId = templateId;
       else {
@@ -173,6 +198,27 @@ const SendEmailDialog: React.FC<{
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
       {/* left: compose */}
       <div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{t('Sending method')}</span>
+            <ConfigMethodsLink small />
+          </div>
+          <Select
+            style={{ width: '100%' }}
+            showSearch
+            optionFilterProp="label"
+            value={methodKey}
+            onChange={(v) => setMethodKey(v)}
+            options={[
+              { value: '', label: t('Default method') },
+              ...methods.map((m) => ({
+                value: m.key,
+                label: `${m.name || m.key} · ${m.backend === 'smtp' ? t('SMTP') : t('Apps Script')}${m.isDefault ? ' · ' + t('Default') : ''}${m.enabled === false ? ' · ' + t('Off') : ''}`,
+              })),
+            ]}
+          />
+        </div>
+
         <Segmented
           block
           value={mode}

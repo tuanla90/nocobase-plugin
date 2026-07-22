@@ -1,0 +1,28 @@
+{
+  "name": "@tuanla90/plugin-perf-guard",
+  "displayName": "Performance & Stability",
+  "displayName.vi-VN": "Tối ưu & Ổn định",
+  "displayName.zh-CN": "性能与稳定",
+  "description": "Client-side defense layers for the modern (/v/) client. CRASH GUARD (active): a malformed relation (missing reverse belongsTo / mismatched FK) can make a column's beforeRender flow throw and render-loop the whole app (freeze) — this isolates each sub-model's beforeRender so one broken column degrades to an empty cell instead of freezing everything. KEEP-ALIVE CAP (experimental, OFF by default): NocoBase v2 keeps every visited sub-page mounted, so the DOM grows unbounded across navigation — the plugin can detect the stale pages, but the only unmount primitive available (flowEngine.destroyModel) also DELETES the page from the DB, so auto-eviction stays disabled until a non-destructive unmount exists; the settings page shows the live DOM signal and a report-only scan.",
+  "description.vi-VN": "Các lớp bảo vệ phía client cho giao diện hiện đại (/v/). CHỐNG TREO (đang bật): một quan hệ hỏng (thiếu belongsTo ngược / lệch khóa ngoại) có thể khiến flow beforeRender của một cột ném lỗi và làm treo cả app — plugin cô lập beforeRender từng sub-model để một cột hỏng chỉ thành ô trống thay vì treo tất cả. GIỚI HẠN KEEP-ALIVE (thử nghiệm, mặc định TẮT): NocoBase v2 giữ mọi trang con đã mở nên DOM phình dần khi điều hướng — plugin phát hiện được các trang tồn đọng, nhưng primitive unmount duy nhất (flowEngine.destroyModel) lại XÓA trang khỏi DB, nên auto-dọn bị tắt cho tới khi có cách unmount không hủy diệt; trang cấu hình hiển thị tín hiệu DOM và nút quét chỉ-báo-cáo.",
+  "version": "0.1.5",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x"
+  },
+  "keywords": [
+    "System services"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#perf-guard"
+}

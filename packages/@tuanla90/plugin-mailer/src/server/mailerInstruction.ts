@@ -32,7 +32,9 @@ export function makeMailerInstruction(app: any, wf: any) {
         cc: config.cc,
         bcc: config.bcc,
         attachments: config.attachments,
-        backend: config.backend,
+        // Which named sending method to use (its stable key). Empty → the default method. Credentials live
+        // in Settings → Mailer → Sending methods, NOT on the node.
+        methodKey: config.methodKey,
       });
       if (result.ok) return { status: JOB_STATUS.RESOLVED, result };
       // ignoreFail → resolve anyway so the workflow continues (mirrors core mailer node semantics).

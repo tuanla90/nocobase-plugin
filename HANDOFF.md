@@ -2,6 +2,39 @@
 
 Trạng thái công việc "gom thư viện dùng chung `@tuanla90/shared`" + bối cảnh, để session khác follow được.
 
+## 📌 Trạng thái session 2026-07-22 (mới nhất — đọc trước)
+
+**Đã ship + commit/push** (main `4e0de48` → `ebd1fb6` → `fcfe7dd`; gh-pages docs-site `6d0c916`; source == tgz == manifest == registry == README footer == docs-site):
+- **field-enhancements 0.2.35** — color/icon về opt-in (`isDefault:false`); mặc định là renderer lõi NocoBase → an toàn khi chưa cài plugin (hết "Model class not found").
+- **app-builder 0.6.33** — auto-Import sheet sau Create (opt-out); reverse-hasMany 2 chiều + guard freeze sub-table o2m hỏng; AppSheet audit-column → createdAt/updatedAt/By chuẩn khi import; SpecPreview liệt kê mọi bảng (kể cả bảng con); stepped-build có bước seed; converter SELECT/LOOKUP trả/so cột quan hệ → dùng khoá ngoại `_id`.
+- **subtable-pro 0.2.10** — guard cô lập `beforeRender` từng cột sub-table (1 cột hỏng không freeze cả app — lỗi core `getDefaultBindingByField` đọc `.interface` của collectionField undefined).
+- **menu-enhancements 0.4.19** — menu thu gọn: nhãn nhóm về 1 vạch gọn (hết cắt chữ "Chí…"), gate `.ant-menu-inline-collapsed`.
+- **conditional-format 0.2.19** — kèm **keepalive-cap**: evict subpage `/v/` tồn đọng khi điều hướng (fix leak DOM tăng dần của NocoBase v2 core; OFF mặc định; `window.__ptdlKeepaliveCap` / `__ptdlEvictSubpages`).
+- **formula 0.1.86** — computed cột quan hệ ghi vào **FK** (tự lấy `.id`, vì `hooks:false` bỏ association); `#REF!`/`#N/A` → theo "Khi lỗi" (null); preview hiện nội dung object; nút **"Tính lại toàn bảng" + đánh giá impact** (số dòng + công thức phụ thuộc); dạy AI + AppSheet converter dùng `_id` cho cột quan hệ (cả return lẫn condition).
+
+**Vừa xong session này — deploy nb-local + verify độc lập (CHỜ user test live, CHƯA commit/push, CHƯA sync latest/registry/docs-site):**
+- **line-generator 0.8.0** — **pipeline N-bước** (`joinSteps[]`, output bước N = input bước N+1, qty nhân dồn, per-step tiers/recurse, `maxRows` cap an toàn, mỗi step chọn kiểu **quan hệ (FK-index) hoặc config (khớp điều kiện)**). Config cũ = pipeline 1-bước (back-compat). **Verify: 111/111 test tự chạy lại (real evalExpr) — A–J byte-identical + K/L/M/O/P mới; server `generator.ts` (stepRules load + `core.aborted` surface) + deployed artifact.**
+- **mailer 0.2.0** — 1 backend đơn → **danh sách nhiều phương thức gửi** (Tab 1 methods + Tab Mẫu); workflow node/action chỉ chọn method + mẫu + **link nhanh** config; collection mới `ptdlMailerMethods`; migration config cũ → 1 method "Mặc định". **Verify: đọc kỹ `resolveMethod` (explicit key thắng kể cả disabled→caller báo; fallback default-enabled→any-enabled→any→first) + `migrateLegacyConfig` (guard count>0 idempotent, gate "meaningful" bỏ row rỗng, try/catch) + served==deployed.**
+- **perf-guard 0.1.0 (MỚI — plugin độc lập "Tối ưu & Ổn định")** — hiện thực hoá hướng #1 (perf+chống crash):
+  - **keepalive-cap** productized: **mặc định ON**, **LRU** giữ `maxAlive`=3 trang nền gần nhất (quan sát trang đang hiện để chấm mốc) + evict phần cũ qua `flowEngine.destroyModel`; `maxAlive=0`=aggressive. Trang settings (⚙ cả /v/ + /admin) toggle + maxAlive + Quét thử/Dọn ngay + tín hiệu DOM trực tiếp; console `window.__ptdlPerfGuard` (`.scan/.evict/.setMax/.disable/.status`). Keys `localStorage['ptdl:perf-guard:*']`.
+  - **crash-guard TOÀN CỤC**: đi ngược prototype chain từ core model class → patch **base `FlowModel.prototype.applySubModelsBeforeRenderFlows`** (không chỉ SubTableFieldModel như subtable-pro) → cô lập `beforeRender` từng sub-model cho **mọi block** (Table/Details/Form/sub-table). Idempotent (`__ptdlBeforeRenderIsolated`), giữ bản gốc fallback, retry 1 tick.
+  - Thuần client, **không collection** → install gọn (row `applicationPlugins` id 124, enabled=1, KHÔNG cần tạo bảng). Deploy nb-local 2 vị trí; served==deployed 26901B; cả 2 marker + `__ptdlPerfGuard` trong bundle phục vụ; classic lane 200 (không trắng trang).
+  - ⚠️ **keepalive-cap cũ trong conditional-format 0.2.19 giờ THỪA** (OFF mặc định, keys `ptdl:keepalive-cap:*` + global `__ptdlKeepaliveCap` khác nên KHÔNG xung đột) — nên **gỡ khỏi condfmt ở release sau** để tránh 2 bản.
+
+**Bug LÕI NocoBase v2 phát hiện (không phải plugin mình — đã né/guard, giờ gói trong `perf-guard`):**
+- `nb-subpages-slot` giữ mọi trang đã ghé còn mount (keep-alive không evict) → DOM tăng dần (3k→21k) → chậm dần; F5 mới sạch. → **perf-guard keepalive-cap** (LRU cap tự động).
+- `getDefaultBindingByField` (core) crash khi cột có `collectionField` undefined (quan hệ hỏng) → 1 cột hỏng freeze cả app. → **perf-guard crash-guard toàn cục** (+ subtable-pro guard cục bộ vẫn giữ).
+- Client v2 tích state không dọn → build app các page sau chậm dần (cùng họ leak; keepalive-cap đỡ phần điều hướng, phần build-loop per-page CHƯA xử riêng — theo dõi).
+
+- **app-doctor 0.1.0 (MỚI — plugin độc lập "App Doctor")** — hiện thực hoá hướng #2 (chữa app hỏng):
+  - **Server scan** (`src/server/doctor.ts`): đọc 1 lần `fields` repo + allowlist bảng dữ liệu từ `collections` repo (bỏ system), với mỗi field quan hệ kiểm tra reverse tồn tại trên target (belongsTo↔hasMany/hasOne theo cùng `foreignKey`; n-n theo `through`). Phát hiện **missing-reverse** (tự sửa), **broken-target**, **broken-through** (thủ công). Guard: chỉ report/fix khi FK biết chắc (tránh tạo reverse lệch khoá).
+  - **Repair**: re-scan server-side rồi tạo field ngược qua `fields` repo — **idempotent theo (target,FK)** + tên tránh trùng (mượn cơ chế app-builder `ensureReverseHasMany`). Additive, KHÔNG đụng data.
+  - 2 action `ptdlAppDoctor:scan|repair` **admin-only** (snippet `pm.app-doctor` + `requireAdmin` qua `currentRoles`); `ctx.body` raw. Client: trang ⚧ "App Doctor" (auto-scan → bảng issue → nút Sửa/Sửa tất cả). Thuần server + UI, không collection.
+  - Deploy nb-local (row id 125, enabled=1); served==deployed 18094B; endpoint `:scan`→401 (đăng ký OK); classic 200.
+  - **Verify trên DB THẬT**: replica scan → **24 bảng, 89 quan hệ, 49 missing-reverse, 0 broken** (đúng "relation cũ không tự khỏi" của user). ⚠️ Nhiều reverse là kiểu audit (`nguoi_tao/cap_nhat/xac_nhan_id`→`nhan_vien`) — có thể là "nhiễu"; nên fix chọn lọc cái master-detail (doi_tac/xe/lead→list) hơn là Fix-all. **Follow-up ý tưởng: heuristic gắn cờ audit để Fix-all mặc định bỏ qua.**
+
+**Hướng đang theo (user chốt 2026-07-22): "làm cứng" hệ (perf+ổn định).** #1 perf-guard = XONG. #2 **App Doctor** = XONG (đang chờ test UI + user duyệt danh sách 49 issue). #3 bulletproof AppSheet migration (khi migrate loạt app). **Cả 3 CHƯA commit/push + CHƯA sync latest/registry/docs-site.**
+
 ## 0b. Git remote (đồng bộ đa máy)
 - Repo: **`https://github.com/tuanla90/nocobase-plugin`** (nhánh `main`, remote `origin`). Máy này đã có credential GitHub sẵn (push OK).
 - **Cài trên máy khác:** `git clone/pull` → upload `.tgz` từ `latest/@tuanla90/` qua Plugin Manager UI (không cần build). Xem README §"Cài trên máy khác".

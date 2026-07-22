@@ -10,6 +10,7 @@ import * as formilyAntd from '@formily/antd-v5';
 import * as nbClient from '@nocobase/client';
 import { MailOutlined } from '@ant-design/icons';
 import { MailerTemplateSelect } from './MailerTemplateSelect';
+import { MailerMethodSelect, MailerConfigMethodsLink } from './MailerMethodSelect';
 import { NS } from '../shared/mailerClient';
 
 /** i18n token compiled by the SchemaComponent's `t` — bilingual via the plugin NS resources. */
@@ -35,6 +36,26 @@ export function registerMailerWorkflowNode(app: any): boolean {
     icon = (React as any).createElement(MailOutlined, {});
 
     fieldset: any = {
+      methodKey: {
+        type: 'string',
+        title: tt('Sending method'),
+        description: tt('Which named sending method to use. Leave "Default method" to use whichever is marked default. Credentials are configured once in Settings → Mailer → Sending methods — NOT here.'),
+        'x-decorator': 'FormItem',
+        'x-component': 'MailerMethodSelect',
+        default: '',
+      },
+      configLink: {
+        type: 'void',
+        'x-decorator': 'FormItem',
+        'x-component': 'MailerConfigMethodsLink',
+      },
+      templateId: {
+        type: 'number',
+        title: tt('Template'),
+        description: tt('Pick a managed template by name (Settings → Mailer → Templates). Choose "Inline (no template)" to write the Subject/Content below.'),
+        'x-decorator': 'FormItem',
+        'x-component': 'MailerTemplateSelect',
+      },
       to: {
         type: 'string',
         required: true,
@@ -55,12 +76,13 @@ export function registerMailerWorkflowNode(app: any): boolean {
         'x-decorator': 'FormItem',
         'x-component': 'WorkflowVariableTextArea',
       },
-      templateId: {
-        type: 'number',
-        title: tt('Template'),
-        description: tt('Pick a managed template by name (Settings → Mailer → Templates). Choose "Inline (no template)" to write the Subject/Content below.'),
+      attachments: {
+        type: 'string',
+        title: tt('Attachments'),
+        description: tt('A variable resolving to an attachment field value (or array of attachment ids) — e.g. the trigger record\'s file field.'),
         'x-decorator': 'FormItem',
-        'x-component': 'MailerTemplateSelect',
+        'x-component': WorkflowVariableInput ? 'WorkflowVariableInput' : 'Input',
+        'x-component-props': WorkflowVariableInput ? { changeOnSelect: true } : {},
       },
       data: {
         type: 'object',
@@ -85,19 +107,6 @@ export function registerMailerWorkflowNode(app: any): boolean {
         'x-component': 'WorkflowVariableRawTextArea',
         'x-component-props': { autoSize: { minRows: 8 } },
       },
-      backend: {
-        type: 'string',
-        title: tt('Backend (this node)'),
-        description: tt('Per-node override of the global backend. Credentials (Apps Script URL / SMTP host & password) are set once in Settings → Mailer → Backend — NOT here. "Use configured backend" sends via whatever is set globally; picking Google Apps Script or SMTP forces that backend for this node (still using its globally-configured credentials). If the forced backend has no credentials, the send fails with a clear error.'),
-        'x-decorator': 'FormItem',
-        'x-component': 'Radio.Group',
-        enum: [
-          { label: tt('Use configured backend'), value: 'default' },
-          { label: 'Google Apps Script', value: 'apps-script' },
-          { label: 'SMTP', value: 'smtp' },
-        ],
-        default: 'default',
-      },
       ignoreFail: {
         type: 'boolean',
         'x-content': tt('Ignore a failed send and continue the workflow'),
@@ -110,6 +119,8 @@ export function registerMailerWorkflowNode(app: any): boolean {
       ArrayItems: (formilyAntd as any)?.ArrayItems,
       SchemaComponentContext: (nbClient as any)?.SchemaComponentContext,
       MailerTemplateSelect,
+      MailerMethodSelect,
+      MailerConfigMethodsLink,
       ...(WorkflowVariableInput ? { WorkflowVariableInput } : {}),
       ...(WorkflowVariableTextArea ? { WorkflowVariableTextArea } : {}),
       ...(WorkflowVariableRawTextArea ? { WorkflowVariableRawTextArea } : {}),

@@ -2,6 +2,7 @@
 
 > Scope chuẩn: `@tuanla90/plugin-<name>`. Target NocoBase **2.1.19**. Build qua `build-env/` (xem `build-env/BUILD.md`).
 > Version khởi điểm mỗi plugin: `0.1.0`. Cập nhật: 2026-07-09.
+> **⚠️ Trạng thái mới nhất (2026-07-22) ở `HANDOFF.md` § "Trạng thái session 2026-07-22"** — nguồn sự thật cho versions/what-shipped hiện tại (36 plugin live; PLAN.md dưới đây là roadmap gốc, một số mục đã ship xa hơn ghi chú ở đây). Versions chuẩn: `latest/index.json` + `PLUGIN-REGISTRY.md`.
 
 > **⭐ Chiến lược "snippet-first" (đúc kết 2026-07-09):** RunJS snippet (dán tay vào JS Column / JS Field / JS editable
 > field) đang giải quyết **kha khá nhu cầu thật** với chi phí gần bằng 0 (không build, không cài, không restart, sửa

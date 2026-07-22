@@ -327,6 +327,301 @@ console.log('\nScenario G — per-line BOM ruleWhere (src.product_id) + group/SU
   eq(out.trace?.pairs?.length, 5, 'exactly 5 matched pairs (3 Ghế + 2 Bàn), NOT the 10-row cross-product');
 }
 
+// ============ Scenario H: FEATURE A — matchTiers priority fallback (specific > general) ============
+// Task worked example: orders [id1 emp A, id2 emp B]; config rows [role=NV,user=A,10%] & [role=NV,user=null,6%];
+// tiers=[[user==src.emp],[role==src.role]]. → id1 tier0 (A-row) 10%; id2 tier1 (null-row) 6%; NEVER id1=both.
+console.log('\nScenario H — matchTiers (specific employee row overrides role fallback):');
+{
+  const RULES = [
+    { role: 'NV', user: 'A', rate: 0.10 }, // SPECIFIC: employee A
+    { role: 'NV', user: null, rate: 0.06 }, // GENERAL: whole role NV (user blank)
+  ];
+  const cfg: LineGenConfig = {
+    key: 'tier', title: 'Tier', enabled: true, sourceCollection: 'orders', sourceLinesPath: 'lines',
+    ruleCollection: 'commission_rules',
+    ruleWhere: [], // base filter empty — both rows are candidates
+    matchTiers: [
+      [{ field: 'user', op: 'eq', value: 'src.emp' }], // tier 0 = most specific
+      [{ field: 'role', op: 'eq', value: 'src.role' }], // tier 1 = role fallback
+    ],
+    lineOutputs: [
+      { targetField: 'emp', formula: 'src.emp', required: true },
+      { targetField: 'matched_user', formula: 'rule.user' },
+      { targetField: 'rate', formula: 'rule.rate', required: true },
+    ],
+    targetPath: 'order_commissions', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+  const parent = { id: 'ord', lines: [{ emp: 'A', role: 'NV' }, { emp: 'B', role: 'NV' }] };
+  const out = generateCore(cfg, { parent, srcRows: parent.lines, rules: RULES, runVersion: 1 } as any);
+  eq(out.rows.length, 2, 'exactly 2 rows (one per order line) — id1 NOT double-counted');
+  const A = out.rows.filter((r) => r.emp === 'A');
+  const B = out.rows.filter((r) => r.emp === 'B');
+  eq(A.length, 1, 'emp A → exactly ONE row (tier 0 stops fall-through)');
+  eq(A[0].rate, 0.10, 'id1 (emp A) → tier 0 specific A-row → 10%');
+  eq(A[0].matched_user, 'A', 'id1 matched the SPECIFIC (user=A) row');
+  eq(B.length, 1, 'emp B → exactly ONE row');
+  eq(B[0].rate, 0.06, 'id2 (emp B) → tier 0 empty → tier 1 role fallback → 6%');
+  eq(B[0].matched_user, null, 'id2 matched the GENERAL (user=null) row — auto-exclude kept it off the A-row');
+}
+
+// ============ Scenario I: FEATURE B — recursive multi-level BOM explosion (self-join) ============
+// Task worked example: order product ×10; bom product→[S×2,R1×3]; S→[R2×4,R3×1]; R1/R2/R3 leaves.
+// → leaves R1=30, R2=80 (10×2×4), R3=20 (10×2×1). S is a sub-assembly (dropped in 'leaves' mode).
+console.log('\nScenario I — recursive BOM (multi-level, qty multiplies down the tree):');
+{
+  const BOM = [
+    { product_id: 'P', material_id: 'S', qty_per_unit: 2 }, // product → sub-assembly S ×2
+    { product_id: 'P', material_id: 'R1', qty_per_unit: 3 }, // product → raw R1 ×3
+    { product_id: 'S', material_id: 'R2', qty_per_unit: 4 }, // S → raw R2 ×4
+    { product_id: 'S', material_id: 'R3', qty_per_unit: 1 }, // S → raw R3 ×1
+  ];
+  const base: LineGenConfig = {
+    key: 'rbom', title: 'RBOM', enabled: true, sourceCollection: 'orders', sourceLinesPath: 'order_lines',
+    ruleCollection: 'bom_lines',
+    ruleWhere: [{ field: 'product_id', op: 'eq', value: 'src.product_id' }],
+    recurse: true, recurseParentKey: 'product_id', recurseChildKey: 'material_id', recurseQtyField: 'qty',
+    lineOutputs: [
+      { targetField: 'material_id', formula: 'rule.material_id', required: true },
+      { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per_unit)', required: true },
+    ],
+    targetPath: 'material_requirements', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+  const parent = { id: 1, order_lines: [{ product_id: 'P', qty: 10 }] };
+
+  // ---- 'leaves' mode (default) + group/SUM ----
+  const leavesCfg: LineGenConfig = { ...base, recurseOutput: 'leaves', groupBy: ['material_id'], sumFields: ['qty'] };
+  const L = generateCore(leavesCfg, { parent, srcRows: parent.order_lines, rules: BOM, runVersion: 1 } as any);
+  const byMat = Object.fromEntries(L.rows.map((r) => [r.material_id, r.qty]));
+  eq(L.rows.length, 3, "'leaves' → 3 raw materials (S sub-assembly dropped)");
+  eq(byMat['R1'], 30, 'R1 = 10 × 3 = 30 (level-1 leaf)');
+  eq(byMat['R2'], 80, 'R2 = 10 × 2 × 4 = 80 (multiplied down through S)');
+  eq(byMat['R3'], 20, 'R3 = 10 × 2 × 1 = 20 (multiplied down through S)');
+  assert(!('S' in byMat), "sub-assembly S is NOT in the leaves output");
+
+  // ---- 'all' mode: every node kept, stamped with _level + _recurseParent ----
+  const allCfg: LineGenConfig = { ...base, recurseOutput: 'all' };
+  const AA = generateCore(allCfg, { parent, srcRows: parent.order_lines, rules: BOM, runVersion: 1 } as any);
+  eq(AA.rows.length, 4, "'all' → 4 rows (S + R1 + R2 + R3)");
+  const S = AA.rows.find((r) => r.material_id === 'S');
+  const R2 = AA.rows.find((r) => r.material_id === 'R2');
+  eq(S?.qty, 20, 'S sub-assembly qty = 10 × 2 = 20');
+  eq(S?._level, 0, 'S stamped level 0');
+  eq(R2?._level, 1, 'R2 stamped level 1 (one level deeper)');
+  eq(R2?._recurseParent, 'S', 'R2 parent-link = S');
+  eq(R2?.qty, 80, 'R2 qty in all-mode still 80');
+
+  // ---- cyclic BOM: guard stops the branch instead of looping forever ----
+  const CYCLE = [
+    { product_id: 'P', material_id: 'A', qty_per_unit: 2 },
+    { product_id: 'A', material_id: 'B', qty_per_unit: 2 },
+    { product_id: 'B', material_id: 'A', qty_per_unit: 2 }, // A ↔ B cycle
+  ];
+  const C = generateCore(leavesCfg, { parent, srcRows: parent.order_lines, rules: CYCLE, runVersion: 1 } as any);
+  assert(C.skipped.some((s) => s.reason === 'recurse-cycle'), 'cyclic BOM detected & stopped (recurse-cycle logged)');
+  assert(C.rows.length > 0 && C.rows.length < 50, 'cycle terminated (finite rows, no infinite loop)');
+}
+
+// ============ Scenario J: BACK-COMPAT — new fields absent/false ≡ old behavior, byte-identical ============
+console.log('\nScenario J — back-compat (no matchTiers / recurse:false ≡ pre-0.7):');
+{
+  // Same BOM config as Scenario G, once plain and once with the new fields explicitly neutral.
+  const RULES = [
+    { product_id: 1, material_id: 10, qty_per_unit: 4, unit: 'cái' },
+    { product_id: 1, material_id: 20, qty_per_unit: 1, unit: 'tấm' },
+    { product_id: 2, material_id: 10, qty_per_unit: 4, unit: 'cái' },
+  ];
+  const plainCfg: LineGenConfig = {
+    key: 'bc', title: 'BC', enabled: true, sourceCollection: 'orders', sourceLinesPath: 'order_lines',
+    ruleCollection: 'bom_lines',
+    ruleWhere: [{ field: 'product_id', op: 'eq', value: 'src.product_id' }],
+    lineOutputs: [
+      { targetField: 'material_id', formula: 'rule.material_id', required: true },
+      { targetField: 'qty', formula: 'NUM(src.quantity) * NUM(rule.qty_per_unit)' },
+    ],
+    groupBy: ['material_id'], sumFields: ['qty'],
+    targetPath: 'material_requirements', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+  const parent = { id: 1, order_lines: [{ product_id: 1, quantity: 10 }, { product_id: 2, quantity: 5 }] };
+  const before = generateCore(plainCfg, { parent, srcRows: parent.order_lines, rules: RULES, runVersion: 1 } as any);
+  const neutralCfg: LineGenConfig = { ...plainCfg, matchTiers: undefined, recurse: false };
+  const after = generateCore(neutralCfg, { parent, srcRows: parent.order_lines, rules: RULES, runVersion: 1 } as any);
+  eq(JSON.stringify(after.rows), JSON.stringify(before.rows), 'recurse:false + matchTiers:undefined → byte-identical rows');
+  eq(JSON.stringify(after.skipped), JSON.stringify(before.skipped), 'skipped identical');
+  // An EMPTY matchTiers array must also be a no-op (all ruleWhere-passing rules used).
+  const emptyTiers = generateCore({ ...plainCfg, matchTiers: [] }, { parent, srcRows: parent.order_lines, rules: RULES, runVersion: 1 } as any);
+  eq(JSON.stringify(emptyTiers.rows), JSON.stringify(before.rows), 'matchTiers:[] → no-op (identical rows)');
+}
+
+// ============ Scenario K: v0.8 PIPELINE — combo → BOM (2 config steps, recurse, qty multiplies) =======
+// Task worked example: order_item combo "Ghế+Bàn" qty 2; step1 combo_config (recurse-capable) explodes a
+// combo into its products; step2 bom explodes each product into raw materials; group by material + SUM.
+// qty multiplies across steps: order_item.qty × combo.qty_per × bom.qty_per → gỗ=10 (4+6), đinh=12 (8+4).
+console.log('\nScenario K — PIPELINE combo→BOM (2 different config tables, qty multiplies, group+SUM):');
+{
+  const COMBO_CFG = [
+    { combo_id: 'COMBO', item_id: 'GHE', qty_per: 1 }, // COMBO = 1 Ghế + 1 Bàn
+    { combo_id: 'COMBO', item_id: 'BAN', qty_per: 1 },
+    { combo_id: 'SETX', item_id: 'COMBO', qty_per: 1 }, // SETX = 1 COMBO (a combo of combos → recursion)
+  ];
+  const BOM2 = [
+    { product_id: 'GHE', material_id: 'GO', qty_per: 2 }, // Ghế → gỗ 2, đinh 4
+    { product_id: 'GHE', material_id: 'DINH', qty_per: 4 },
+    { product_id: 'BAN', material_id: 'GO', qty_per: 3 }, // Bàn → gỗ 3, đinh 2
+    { product_id: 'BAN', material_id: 'DINH', qty_per: 2 },
+  ];
+  // step1: ⋈ combo_config, recurse ON (a combo can contain combos); step2: ⋈ bom. src.* carries qty forward.
+  const comboStep = {
+    stepType: 'config' as const, ruleCollection: 'combo_config',
+    ruleWhere: [{ field: 'combo_id', op: 'eq' as const, value: 'src.product_id' }],
+    recurse: true, recurseParentKey: 'combo_id', recurseChildKey: 'product_id', recurseQtyField: 'qty',
+    lineOutputs: [
+      { targetField: 'product_id', formula: 'rule.item_id', required: true },
+      { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true },
+    ],
+  };
+  const bomStep = {
+    stepType: 'config' as const, ruleCollection: 'bom',
+    ruleWhere: [{ field: 'product_id', op: 'eq' as const, value: 'src.product_id' }],
+    lineOutputs: [
+      { targetField: 'material_id', formula: 'rule.material_id', required: true },
+      { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true },
+    ],
+  };
+  const comboBomCfg: LineGenConfig = {
+    key: 'combo-bom', title: 'Combo→BOM', enabled: true, sourceCollection: 'orders', sourceLinesPath: 'order_items',
+    joinSteps: [comboStep, bomStep],
+    groupBy: ['material_id'], sumFields: ['qty'],
+    targetPath: 'material_requirements', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+
+  // Order 1 — a plain COMBO (Ghế+Bàn) qty 2 → the exact acceptance numbers.
+  const parent1 = { id: 1, order_items: [{ product_id: 'COMBO', qty: 2 }] };
+  const K = generateCore(comboBomCfg, { parent: parent1, srcRows: parent1.order_items, rules: [], stepRules: [COMBO_CFG, BOM2], runVersion: 1 });
+  const byMat = Object.fromEntries(K.rows.map((r) => [r.material_id, r.qty]));
+  eq(K.errors.length, 0, 'no evaluation errors across the pipeline');
+  eq(K.rows.length, 2, 'grouped to 2 materials (gỗ, đinh)');
+  eq(byMat['GO'], 10, 'gỗ = combo qty2 × (Ghế 1×2 + Bàn 1×3) = 4 + 6 = 10');
+  eq(byMat['DINH'], 12, 'đinh = combo qty2 × (Ghế 1×4 + Bàn 1×2) = 8 + 4 = 12');
+
+  // Order 2 — a NESTED combo (SETX = 1 COMBO = Ghế+Bàn) qty 3 → proves recursion multiplies inside a step.
+  const parent2 = { id: 2, order_items: [{ product_id: 'SETX', qty: 3 }] };
+  const K2 = generateCore(comboBomCfg, { parent: parent2, srcRows: parent2.order_items, rules: [], stepRules: [COMBO_CFG, BOM2], runVersion: 1 });
+  const byMat2 = Object.fromEntries(K2.rows.map((r) => [r.material_id, r.qty]));
+  eq(byMat2['GO'], 15, 'nested: SETX×3 → 3 Ghế + 3 Bàn → gỗ = 3×2 + 3×3 = 15 (recurse × 2 steps)');
+  eq(byMat2['DINH'], 18, 'nested: đinh = 3×4 + 3×2 = 18');
+}
+
+// ============ Scenario L: v0.8 PIPELINE — 3 DIFFERENT tables chain (value multiplies through each) =====
+console.log('\nScenario L — PIPELINE 3 different config tables (chained rows, value multiplies):');
+{
+  const TA = [{ k: 'K', f: 2 }];
+  const TB = [{ k: 'K', f: 3 }];
+  const TC = [{ k: 'K', mat: 'M1', f: 5 }, { k: 'K', mat: 'M2', f: 7 }]; // fans 1 → 2 rows at the last step
+  const cfgL: LineGenConfig = {
+    key: 'multi3', title: '3-step', enabled: true, sourceCollection: 'orders', sourceLinesPath: 'lines',
+    joinSteps: [
+      { stepType: 'config', ruleCollection: 'tableA', ruleWhere: [{ field: 'k', op: 'eq', value: 'src.key' }],
+        lineOutputs: [{ targetField: 'key', formula: 'src.key' }, { targetField: 'val', formula: 'NUM(src.qty) * NUM(rule.f)' }] },
+      { stepType: 'config', ruleCollection: 'tableB', ruleWhere: [{ field: 'k', op: 'eq', value: 'src.key' }],
+        lineOutputs: [{ targetField: 'key', formula: 'src.key' }, { targetField: 'val', formula: 'NUM(src.val) * NUM(rule.f)' }] },
+      { stepType: 'config', ruleCollection: 'tableC', ruleWhere: [{ field: 'k', op: 'eq', value: 'src.key' }],
+        lineOutputs: [{ targetField: 'mat', formula: 'rule.mat' }, { targetField: 'val', formula: 'NUM(src.val) * NUM(rule.f)' }] },
+    ],
+    targetPath: 'x', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+  const parentL = { id: 1, lines: [{ key: 'K', qty: 10 }] };
+  const L = generateCore(cfgL, { parent: parentL, srcRows: parentL.lines, rules: [], stepRules: [TA, TB, TC], runVersion: 1 });
+  const byMat = Object.fromEntries(L.rows.map((r) => [r.mat, r.val]));
+  eq(L.rows.length, 2, '2 chained rows (tableC fans the single row into M1/M2)');
+  eq(byMat['M1'], 300, 'M1 = 10 × 2 (A) × 3 (B) × 5 (C) = 300 — value threaded through 3 tables');
+  eq(byMat['M2'], 420, 'M2 = 10 × 2 × 3 × 7 = 420');
+}
+
+// ============ Scenario M: v0.8 FAN-OUT SAFETY — maxRows cap ABORTS (no hang / no silent truncate) ======
+console.log('\nScenario M — maxRows cap aborts a runaway pipeline:');
+{
+  const many = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i, x: 1 }));
+  const cfgM = (maxRows: number): LineGenConfig => ({
+    key: 'cap', title: 'cap', enabled: true, sourceCollection: 'orders', sourceLinesPath: 'lines',
+    joinSteps: [
+      { stepType: 'config', ruleCollection: 'a', ruleWhere: [], lineOutputs: [{ targetField: 'v', formula: '1' }] },
+      { stepType: 'config', ruleCollection: 'b', ruleWhere: [], lineOutputs: [{ targetField: 'v', formula: '1' }] },
+    ],
+    maxRows,
+    targetPath: 'x', targetForeignKey: 'order_id', regenPolicy: 'append',
+  });
+  const parentM = { id: 1, lines: [{ id: 1 }] };
+  // step1: 1 src × 10 rules = 10 rows; step2: 10 × 10 = 100 rows. Cap 50 → abort at step2.
+  const M = generateCore(cfgM(50), { parent: parentM, srcRows: parentM.lines, rules: [], stepRules: [many(10), many(10)], runVersion: 1 });
+  assert(!!M.aborted, 'run ABORTED (not a hang, not a silent truncate)');
+  eq(M.aborted?.reason, 'max-rows-exceeded', 'abort reason is max-rows-exceeded');
+  eq(M.rows.length, 0, 'no rows returned on abort');
+  assert(/maxRows/.test(M.aborted?.detail || ''), 'abort detail is a clear message mentioning maxRows');
+  // Same pipeline under a higher cap runs to completion (100 rows, no abort).
+  const Mok = generateCore(cfgM(500), { parent: parentM, srcRows: parentM.lines, rules: [], stepRules: [many(10), many(10)], runVersion: 1 });
+  assert(!Mok.aborted, 'under a sufficient cap the same pipeline completes');
+  eq(Mok.rows.length, 100, '10 × 10 = 100 rows produced when within the cap');
+}
+
+// ============ Scenario O: v0.8 RELATION step — fan out an association, NO config table =================
+console.log('\nScenario O — relation-type step fans out the linked rows (no config table):');
+{
+  const cfgO: LineGenConfig = {
+    key: 'rel', title: 'relation hop', enabled: true, sourceCollection: 'orders', sourceLinesPath: null,
+    joinSteps: [
+      { stepType: 'relation', relationPath: 'order_items',
+        lineOutputs: [{ targetField: 'product_id', formula: 'rule.product_id', required: true }, { targetField: 'qty', formula: 'NUM(rule.qty)' }] },
+    ],
+    targetPath: 'x', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+  // sourceLinesPath null → the parent is the single source row; the relation step follows parent.order_items.
+  const parentO = { id: 1, order_items: [{ product_id: 'A', qty: 2 }, { product_id: 'B', qty: 3 }] };
+  const O = generateCore(cfgO, { parent: parentO, srcRows: [], rules: [], stepRules: [[]], runVersion: 1 });
+  const byP = Object.fromEntries(O.rows.map((r) => [r.product_id, r.qty]));
+  eq(O.rows.length, 2, 'exactly the 2 FK-linked order_items fanned out (no config table scanned)');
+  eq(byP['A'], 2, 'A row read from the association (rule.* = the related record)');
+  eq(byP['B'], 3, 'B row read from the association');
+  // OPTIONAL post-filter with ruleWhere on the fetched relation rows.
+  const cfgOf: LineGenConfig = { ...cfgO, joinSteps: [{ ...cfgO.joinSteps![0], ruleWhere: [{ field: 'qty', op: 'gt', value: '2' }] }] };
+  const Of = generateCore(cfgOf, { parent: parentO, srcRows: [], rules: [], stepRules: [[]], runVersion: 1 });
+  eq(Of.rows.length, 1, 'ruleWhere post-filters the relation rows (qty > 2 → only B)');
+  eq(Of.rows[0].product_id, 'B', 'the surviving relation row is B');
+}
+
+// ============ Scenario P: v0.8 UNIFICATION — relation step REPLACES sourceLinesPath in combo→BOM ========
+console.log('\nScenario P — relation step0 replaces the sourceLinesPath hop (combo→BOM, same result):');
+{
+  const COMBO_CFG = [
+    { combo_id: 'COMBO', item_id: 'GHE', qty_per: 1 },
+    { combo_id: 'COMBO', item_id: 'BAN', qty_per: 1 },
+  ];
+  const BOM2 = [
+    { product_id: 'GHE', material_id: 'GO', qty_per: 2 }, { product_id: 'GHE', material_id: 'DINH', qty_per: 4 },
+    { product_id: 'BAN', material_id: 'GO', qty_per: 3 }, { product_id: 'BAN', material_id: 'DINH', qty_per: 2 },
+  ];
+  const cfgP: LineGenConfig = {
+    key: 'combo-bom-rel', title: 'Combo→BOM (relation hop)', enabled: true, sourceCollection: 'orders', sourceLinesPath: null,
+    joinSteps: [
+      // step0 = a RELATION hop (order → order_items) instead of sourceLinesPath — the unification the design calls for.
+      { stepType: 'relation', relationPath: 'order_items',
+        lineOutputs: [{ targetField: 'product_id', formula: 'rule.product_id', required: true }, { targetField: 'qty', formula: 'NUM(rule.qty)', required: true }] },
+      { stepType: 'config', ruleCollection: 'combo_config', ruleWhere: [{ field: 'combo_id', op: 'eq', value: 'src.product_id' }],
+        recurse: true, recurseParentKey: 'combo_id', recurseChildKey: 'product_id', recurseQtyField: 'qty',
+        lineOutputs: [{ targetField: 'product_id', formula: 'rule.item_id', required: true }, { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true }] },
+      { stepType: 'config', ruleCollection: 'bom', ruleWhere: [{ field: 'product_id', op: 'eq', value: 'src.product_id' }],
+        lineOutputs: [{ targetField: 'material_id', formula: 'rule.material_id', required: true }, { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true }] },
+    ],
+    groupBy: ['material_id'], sumFields: ['qty'],
+    targetPath: 'material_requirements', targetForeignKey: 'order_id', regenPolicy: 'append',
+  };
+  const parentP = { id: 1, order_items: [{ product_id: 'COMBO', qty: 2 }] };
+  const P = generateCore(cfgP, { parent: parentP, srcRows: [], rules: [], stepRules: [[], COMBO_CFG, BOM2], runVersion: 1 });
+  const byMat = Object.fromEntries(P.rows.map((r) => [r.material_id, r.qty]));
+  eq(P.rows.length, 2, '3-step pipeline (relation → combo → bom) → 2 materials');
+  eq(byMat['GO'], 10, 'gỗ = 10 (same as the sourceLinesPath version — relation step unifies the hop)');
+  eq(byMat['DINH'], 12, 'đinh = 12');
+}
+
 console.log('');
 if (failures) {
   console.log(`FAILED: ${failures} assertion(s)`);

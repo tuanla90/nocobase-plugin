@@ -57,6 +57,10 @@ function buildRuleFilter(config: LineGenConfig, parent: AnyObj): AnyObj {
     const filter: AnyObj = {};
     for (const w of config.ruleWhere || []) {
       if (!w || !w.field) continue;
+      // FEATURE B: with recursion on, the recurseParentKey is the LEVEL-VARYING self-join key — never
+      // push it to the DB filter or we'd load only the level-0 rows. It (and all matchTiers/per-line
+      // conditions) are re-enforced in-core per level. Load the full rule set instead.
+      if (config.recurse && config.recurseParentKey && w.field === config.recurseParentKey) continue;
       const value = resolveWhereValue(w.value, parent);
       if (value === undefined) continue; // '' or an unresolved parent ref → skip this condition
       switch (w.op || 'eq') {
@@ -130,6 +134,18 @@ export class GenerateManager {
       const srcPaths = [config.sourceLinesPath, ...(config.srcAppends || []).map((a) => `${config.sourceLinesPath}.${a}`)];
       for (const p of expandAppends(srcPaths)) if (!appends.includes(p)) appends.push(p);
     }
+    // v0.8 relation-step appends: a stepType:'relation' step FOLLOWS an association on its input rows. The
+    // FIRST step's input is the source rows (the sourceLinesPath hop, or the parent itself) — materialize
+    // that association (+ its appends) so the engine can fan out by FK without a table scan. (Deeper relation
+    // steps read generated rows, which carry only what a prior step's lineOutputs forwarded — user's concern.)
+    if (config.joinSteps && config.joinSteps.length) {
+      const first = config.joinSteps[0];
+      if (first?.stepType === 'relation' && first.relationPath) {
+        const base = config.sourceLinesPath ? `${config.sourceLinesPath}.${first.relationPath}` : first.relationPath;
+        const relPaths = [base, ...(first.ruleAppends || []).map((a) => `${base}.${a}`)];
+        for (const p of expandAppends(relPaths)) if (!appends.includes(p)) appends.push(p);
+      }
+    }
     const parentModel = await parentRepo.findOne({ filterByTk, appends });
     if (!parentModel) return { ok: false, error: 'record-not-found' };
     const parent = plain(parentModel);
@@ -141,20 +157,41 @@ export class GenerateManager {
 
     const runVersion = (config.runVersionSource ? Number(parent[config.runVersionSource]) || 0 : 0) + 1;
     const srcRows = config.sourceLinesPath ? parent[config.sourceLinesPath] || [] : [];
+    const user = opts.userId != null ? { id: opts.userId } : null;
 
-    // Rules: inline (embedded in this config, filtered by scope `when`) or an external collection.
-    let rules: AnyObj[];
-    if (config.ruleSource === 'inline') {
-      rules = resolveInlineRules(config, parent);
+    let core;
+    if (config.joinSteps && config.joinSteps.length) {
+      // PIPELINE: load the RIGHT side of each CONFIG step from its OWN table (each step can join a different
+      // config table). A RELATION step needs no query — its fan-out is the input rows' association, already
+      // materialized via the appends above. generateCore threads step output → next step input.
+      const stepRules: AnyObj[][] = [];
+      for (const step of config.joinSteps) {
+        if (step.stepType === 'relation') { stepRules.push([]); continue; }
+        if (!step.ruleCollection) return { ok: false, error: 'bad-config', detail: 'joinStep ruleCollection missing' };
+        const filter = buildRuleFilter(step as any, parent);
+        const models = await db.getRepository(step.ruleCollection).find({ filter, appends: expandAppends(step.ruleAppends) });
+        stepRules.push((models || []).map(plain));
+      }
+      core = generateCore(config, { parent, srcRows, rules: [], stepRules, user, runVersion, debug: opts.debug });
     } else {
-      if (!config.ruleCollection) return { ok: false, error: 'bad-config', detail: 'ruleCollection missing' };
-      const filter = buildRuleFilter(config, parent);
-      const ruleModels = await db.getRepository(config.ruleCollection).find({ filter, appends: expandAppends(config.ruleAppends) });
-      rules = (ruleModels || []).map(plain);
+      // Rules: inline (embedded in this config, filtered by scope `when`) or an external collection.
+      let rules: AnyObj[];
+      if (config.ruleSource === 'inline') {
+        rules = resolveInlineRules(config, parent);
+      } else {
+        if (!config.ruleCollection) return { ok: false, error: 'bad-config', detail: 'ruleCollection missing' };
+        const filter = buildRuleFilter(config, parent);
+        const ruleModels = await db.getRepository(config.ruleCollection).find({ filter, appends: expandAppends(config.ruleAppends) });
+        rules = (ruleModels || []).map(plain);
+      }
+      core = generateCore(config, { parent, srcRows, rules, user, runVersion, debug: opts.debug });
     }
 
-    const user = opts.userId != null ? { id: opts.userId } : null;
-    const core = generateCore(config, { parent, srcRows, rules, user, runVersion, debug: opts.debug });
+    // v0.8 pipeline safety: a maxRows abort is a hard failure — surface it (both dry-run and commit) instead
+    // of writing a partial/exploded result. `lines` carries the (empty) rows so the client shape is uniform.
+    if (core.aborted) {
+      return { ok: false, error: core.aborted.reason, detail: core.aborted.detail, lines: core.rows, skipped: core.skipped, errors: core.errors };
+    }
 
     const valid = checkValidations(config, core.rows);
     if (!valid.ok) {

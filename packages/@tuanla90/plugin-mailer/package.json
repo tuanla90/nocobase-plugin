@@ -2,9 +2,9 @@
   "name": "@tuanla90/plugin-mailer",
   "displayName": "Mailer",
   "displayName.vi-VN": "Gửi Email",
-  "description": "Send emails from records and workflows using reusable HTML templates. Two selectable backends: Google Apps Script (GmailApp — no SMTP server needed, just deploy the provided script) or SMTP (nodemailer). Templates reuse the Print Template Handlebars engine ({{field}} / {{relation.field}} variables + date/number/currency helpers) with a live preview. Exposed as a record action and a workflow node. Secrets stay server-side.",
-  "description.vi-VN": "Gửi email từ bản ghi và workflow bằng các mẫu HTML tái sử dụng. Hai backend có thể chọn: Google Apps Script (GmailApp — không cần máy chủ SMTP, chỉ cần deploy đoạn script kèm sẵn) hoặc SMTP (nodemailer). Mẫu dùng lại bộ engine Handlebars của Print Template (biến {{field}} / {{relation.field}} + hàm ngày/số/tiền tệ) kèm xem trước trực tiếp. Có sẵn dưới dạng thao tác trên bản ghi và node workflow. Bí mật luôn nằm ở phía máy chủ.",
-  "version": "0.1.1",
+  "description": "Send emails from records and workflows using reusable HTML templates. Define a list of named sending methods, each Google Apps Script (GmailApp — no SMTP server needed, just deploy the provided script) or SMTP (nodemailer); mark one default. The record action and workflow node just pick a method + a template. Templates reuse the Print Template Handlebars engine ({{field}} / {{relation.field}} variables + date/number/currency helpers) with a live preview. Secrets stay server-side.",
+  "description.vi-VN": "Gửi email từ bản ghi và workflow bằng các mẫu HTML tái sử dụng. Định nghĩa danh sách các phương thức gửi có tên, mỗi phương thức là Google Apps Script (GmailApp — không cần máy chủ SMTP, chỉ cần deploy đoạn script kèm sẵn) hoặc SMTP (nodemailer); đánh dấu một cái mặc định. Action trên bản ghi và node workflow chỉ cần chọn phương thức + mẫu. Mẫu dùng lại bộ engine Handlebars của Print Template (biến {{field}} / {{relation.field}} + hàm ngày/số/tiền tệ) kèm xem trước trực tiếp. Bí mật luôn nằm ở phía máy chủ.",
+  "version": "0.2.0",
   "main": "dist/server/index.js",
   "dependencies": {
     "handlebars": "^4.7.8",

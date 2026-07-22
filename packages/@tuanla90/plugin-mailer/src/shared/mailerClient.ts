@@ -18,3 +18,18 @@ export function t(s: string, opts?: Record<string, any>): string {
     return s;
   }
 }
+
+/** URL of the mailer settings → "Sending methods" tab (Tab 1). The settings page lives ONLY in the modern
+ *  client (/v/), so this always points there — reusing the current /v base if we're already inside it (e.g.
+ *  the v2 send action), or defaulting to /v when linking from the classic workflow editor. Route derived
+ *  from client-v2 pluginSettingsManager.getRoutePath → /admin/settings/<menuKey>/<tabKey>. */
+export function mailerMethodsSettingsUrl(): string {
+  try {
+    const p = (typeof window !== 'undefined' && window.location && window.location.pathname) || '';
+    const m = p.match(/^(.*?\/v)(?:\/|$)/); // capture an existing "…/v" base if present
+    const base = m ? m[1] : '/v';
+    return `${base}/admin/settings/ptdl-mailer/methods`;
+  } catch {
+    return '/v/admin/settings/ptdl-mailer/methods';
+  }
+}

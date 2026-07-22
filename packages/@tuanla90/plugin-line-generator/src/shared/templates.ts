@@ -104,6 +104,125 @@ export const BOM_TEMPLATE: LineGenConfig = {
   hashField: '_genHash',
 };
 
+// MULTI-LEVEL BOM (v0.7 recursion) — one run explodes product → sub-assembly → raw materials at any depth.
+// The self-join: each generated child's material_id becomes the next level's product_id. The qty formula
+// reads BOTH src.qty (the generated parent row, at deeper levels) and src.quantity (the order line, level 0)
+// so it CHAINS: qty(level n) = qty(level n-1) × qty_per_unit. recurseQtyField='qty' makes it exact.
+export const MULTI_LEVEL_BOM_TEMPLATE: LineGenConfig = {
+  key: 'order-bom-recursive',
+  title: 'Nổ định mức BOM đa cấp (đệ quy)',
+  enabled: true,
+  sourceCollection: 'orders',
+  sourceLinesPath: 'order_lines',
+  ruleCollection: 'bom_lines',
+  ruleWhere: [{ field: 'product_id', op: 'eq', value: 'src.product_id' }],
+  recurse: true,
+  recurseParentKey: 'product_id', // RIGHT/config field = the "parent product" of a BOM row
+  recurseChildKey: 'material_id', // generated field whose value is the next level's parent product
+  recurseQtyField: 'qty', // output qty multiplied down the tree
+  maxDepth: 20,
+  recurseOutput: 'leaves', // keep only raw materials; drop intermediate sub-assemblies
+  preload: ['order_lines'],
+  ruleAppends: ['material'],
+  deriveVars: [],
+  skipIf: null,
+  lineOutputs: [
+    { targetField: 'material_id', formula: 'rule.material_id', required: true },
+    { targetField: 'material_name', formula: 'rule.material.name' },
+    // reads src.qty (deeper: the generated parent row) OR src.quantity (level 0: the order line) → chains down.
+    { targetField: 'qty', formula: '(NUM(src.qty) + NUM(src.quantity)) * NUM(rule.qty_per_unit)', required: true },
+    { targetField: 'unit', formula: 'rule.unit' },
+  ],
+  groupBy: ['material_id'],
+  sumFields: ['qty'],
+  targetPath: 'material_requirements',
+  targetForeignKey: 'order_id',
+  regenPolicy: 'append',
+  markerField: '_genRule',
+};
+
+// MULTI-STEP PIPELINE (v0.8 joinSteps) — combo → BOM in ONE run. The order's lines carry COMBO products;
+// step 1 joins `combo_config` (recurse ON: a combo may contain sub-combos) to explode a combo into its
+// constituent products; step 2 joins `bom` to explode each product into raw materials. The OUTPUT of step 1
+// (product_id + qty) is the INPUT (`src.*`) of step 2, so quantities multiply down the chain
+// (order_item.qty × combo.qty_per × bom.qty_per). The top-level groupBy+SUM totals the material demand.
+export const MULTI_STEP_COMBO_BOM_TEMPLATE: LineGenConfig = {
+  key: 'order-combo-bom',
+  title: 'Nổ combo → BOM (pipeline nhiều bước)',
+  enabled: true,
+  sourceCollection: 'orders',
+  sourceLinesPath: 'order_items', // LEFT: each order line (a COMBO + qty) is one source row
+  preload: ['order_items'],
+  joinSteps: [
+    {
+      // STEP 1 — ⋈ combo_config, recurse ON (a combo can contain combos). Explodes COMBO → its products.
+      stepType: 'config',
+      ruleCollection: 'combo_config',
+      ruleWhere: [{ field: 'combo_id', op: 'eq', value: 'src.product_id' }],
+      recurse: true,
+      recurseParentKey: 'combo_id', // config field naming a row's parent combo (the self-join key)
+      recurseChildKey: 'product_id', // generated field = the component that becomes the next level's combo key
+      recurseQtyField: 'qty', // qty multiplied down the recursion
+      maxDepth: 20,
+      recurseOutput: 'leaves', // keep only real products (drop intermediate sub-combos)
+      lineOutputs: [
+        { targetField: 'product_id', formula: 'rule.item_id', required: true },
+        { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true },
+      ],
+    },
+    {
+      // STEP 2 — ⋈ bom. Explodes each product (from step 1) into raw materials; qty keeps multiplying.
+      stepType: 'config',
+      ruleCollection: 'bom',
+      ruleWhere: [{ field: 'product_id', op: 'eq', value: 'src.product_id' }],
+      ruleAppends: ['material'],
+      lineOutputs: [
+        { targetField: 'material_id', formula: 'rule.material_id', required: true },
+        { targetField: 'material_name', formula: 'rule.material.name' },
+        { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true },
+        { targetField: 'unit', formula: 'rule.unit' },
+      ],
+    },
+  ],
+  maxRows: 10000, // fan-out safety: abort (not truncate/hang) if the working set explodes past this
+  groupBy: ['material_id'], // total the demand across every combo/product
+  sumFields: ['qty'],
+  targetPath: 'material_requirements',
+  targetForeignKey: 'order_id',
+  regenPolicy: 'append',
+  markerField: '_genRule',
+};
+
+// PRIORITY-TIER commission (v0.7 matchTiers) — "specific employee overrides role default". A rate table
+// has both employee-specific rows (employee_id filled) and role-default rows (employee_id blank). Tier 0
+// uses the specific row if one exists for this order's staff; else tier 1 falls back to the role row —
+// and the role tier auto-excludes any employee-specific row, so nobody is paid twice.
+export const TIERED_COMMISSION_TEMPLATE: LineGenConfig = {
+  key: 'order-commission-tiered',
+  title: 'Hoa hồng theo bậc ưu tiên (đích danh > vai trò)',
+  enabled: true,
+  sourceCollection: 'orders',
+  sourceLinesPath: null,
+  ruleCollection: 'commission_rate_rules',
+  ruleWhere: [{ field: 'is_active', op: 'eq', value: 'true' }], // base filter: active rows only
+  matchTiers: [
+    [{ field: 'employee_id', op: 'eq', value: 'parent.responsible_staff_id' }], // tier 0 — specific employee
+    [{ field: 'role', op: 'eq', value: 'parent.responsible_role' }], // tier 1 — role fallback
+  ],
+  preload: [],
+  deriveVars: [],
+  skipIf: null,
+  lineOutputs: [
+    { targetField: 'employee_id', formula: 'parent.responsible_staff_id', required: true },
+    { targetField: 'rate', formula: 'rule.rate', required: true },
+    { targetField: 'commission_amt', formula: 'NUM(parent.order_total) * NUM(rule.rate)' },
+  ],
+  groupBy: null,
+  targetPath: 'order_commissions',
+  targetForeignKey: 'order_id',
+  regenPolicy: 'append',
+};
+
 // ---- INLINE commission template: rules embedded in the config (NO external rule tables) -------
 // Scopes = the G1–G4 matrix (shipping_type × quotation_method). Only rule #1 ("Lương vận chuyển")
 // differs per group; the other 14 are shared. Input tables needed: orders + employees only.
@@ -161,5 +280,8 @@ export const COMMISSION_INLINE_TEMPLATE: LineGenConfig = {
 // exported for engine tests + existing configs, but is no longer offered for new generators).
 export const TEMPLATES: Array<{ label: string; config: LineGenConfig }> = [
   { label: 'Hoa hồng (quy tắc từ bảng dữ liệu)', config: COMMISSION_TEMPLATE },
+  { label: 'Hoa hồng theo bậc ưu tiên (đích danh > vai trò)', config: TIERED_COMMISSION_TEMPLATE },
   { label: 'Nổ định mức BOM', config: BOM_TEMPLATE },
+  { label: 'Nổ định mức BOM đa cấp (đệ quy)', config: MULTI_LEVEL_BOM_TEMPLATE },
+  { label: 'Nổ combo → BOM (pipeline nhiều bước)', config: MULTI_STEP_COMBO_BOM_TEMPLATE },
 ];

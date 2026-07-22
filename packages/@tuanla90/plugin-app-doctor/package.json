@@ -1,0 +1,27 @@
+{
+  "name": "@tuanla90/plugin-app-doctor",
+  "displayName": "App Doctor",
+  "displayName.vi-VN": "App Doctor (Bác sĩ ứng dụng)",
+  "displayName.zh-CN": "应用医生",
+  "description": "Scans the app's data collections for relation-integrity problems and repairs them in one click. Finds one-sided relations (a belongsTo without the master's hasMany, a hasMany without the child's belongsTo, or a one-sided many-to-many) — the incomplete-bidirectional damage that imports and auto-generated apps leave behind, and the class that makes a sub-table column's field unresolvable and can freeze the app. Also flags relations that point at a non-existent collection or junction table. Repair is additive (it only creates the missing reverse relation field) and never touches your data.",
+  "description.vi-VN": "Quét các bảng dữ liệu của app để tìm quan hệ hỏng và sửa bằng một cú bấm. Phát hiện quan hệ một chiều (belongsTo thiếu hasMany của bảng cha, hasMany thiếu belongsTo của bảng con, hoặc nhiều-nhiều một chiều) — đúng loại hỏng do import/sinh app tự động để lại, và là nguyên nhân khiến cột sub-table không phân giải được field và có thể treo app. Cũng cảnh báo quan hệ trỏ tới bảng/bảng trung gian không tồn tại. Việc sửa chỉ THÊM quan hệ ngược còn thiếu, không bao giờ đụng tới dữ liệu.",
+  "version": "0.1.0",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x"
+  },
+  "keywords": [
+    "System services"
+  ],
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#app-doctor"
+}

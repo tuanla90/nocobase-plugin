@@ -5,7 +5,7 @@ import '@formily/react';
 import React from 'react';
 import { ActionModel, Plugin, useApp } from '@nocobase/client-v2';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
-import { BackendConfig } from './BackendConfig';
+import { MethodsManager } from './MethodsManager';
 import { TemplateManager } from './TemplateManager';
 import { defineSendEmailActionModel } from './SendEmailAction';
 import { setI18n, t, NS } from '../shared/mailerClient';
@@ -13,9 +13,9 @@ import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
 // @nocobase/client-v2 has no useAPIClient — the app's client lives on useApp().apiClient.
-const BackendConfigTab: React.FC = () => {
+const MethodsManagerTab: React.FC = () => {
   const app: any = useApp();
-  return <BackendConfig api={app?.apiClient} />;
+  return <MethodsManager api={app?.apiClient} />;
 };
 const TemplateManagerTab: React.FC = () => {
   const app: any = useApp();
@@ -44,10 +44,11 @@ export class PluginMailerClientV2 extends Plugin {
       console.warn('[mailer] record action registration failed', e);
     }
 
-    // Settings screen: one menu item + two tabs (Backend config + Templates).
+    // Settings screen: one menu item + two tabs (Sending methods + Templates).
+    // Tab-1 key is 'methods' → route /admin/settings/ptdl-mailer/methods (the quick-link target).
     const psm: any = this.app.pluginSettingsManager;
     psm?.addMenuItem?.({ key: 'ptdl-mailer', title: t('Mailer'), icon: 'MailOutlined' });
-    psm?.addPageTabItem?.({ menuKey: 'ptdl-mailer', key: 'backend', title: t('Backend'), Component: BackendConfigTab });
+    psm?.addPageTabItem?.({ menuKey: 'ptdl-mailer', key: 'methods', title: t('Sending methods'), Component: MethodsManagerTab });
     psm?.addPageTabItem?.({ menuKey: 'ptdl-mailer', key: 'templates', title: t('Templates'), Component: TemplateManagerTab });
   }
 }

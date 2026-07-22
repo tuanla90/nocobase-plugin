@@ -4,7 +4,19 @@
 > Cùng một cơ chế lo được: **nổ định mức BOM**, **chia hoa hồng**, **phân bổ chi phí/lương khoán** — có khớp qua quan hệ,
 > người nhận động, gộp-và-tổng, làm tròn; chạy **thủ công bằng nút** hoặc **tự động khi lưu**, kèm **xem thử (dry-run)** + **trình gỡ lỗi**.
 
-**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.6.12
+**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.8.0
+
+> **Mới ở 0.8** — phép JOIN đơn được tổng quát thành một **pipeline JOIN nhiều bước có thứ tự**. Trình cấu hình trở thành **trình dựng pipeline**: LEFT nguồn ở trên, ở giữa là danh sách **thẻ bước** (thêm/xoá/đổi thứ tự — mỗi thẻ nối một bảng RIGHT riêng), dưới cùng là gộp/SUM + nơi ghi kết quả.
+> - **Pipeline N bước** — mỗi bước nối một **bảng config khác nhau** (hoặc đi theo quan hệ) và nổ dòng ra; **output bước N là input bước N+1** (công thức bước sau đọc dòng vào qua `src.*`), nên **số lượng nhân dồn tự nhiên** theo dây chuyền. Ca đích thực tế: đơn → order_items → **⋈ combo_config (đệ quy)** → **⋈ bom** → gộp theo NVL + SUM.
+> - **Hai kiểu bước** — vế RIGHT của một bước là **bảng config** (quét bảng chuẩn/định mức, khớp theo điều kiện) *hoặc* **quan hệ có sẵn** (đi theo hasMany/o2m theo khoá ngoại đã đánh chỉ mục — không quét bảng). Kiểu quan hệ cũng gộp chung cách "đi theo bảng con nguồn" cũ.
+> - **Đệ quy + bậc ưu tiên theo từng bước** — nổ đệ quy (self-join) và khớp đích-danh-thắng-chung-chung của 0.7 giờ áp **cho mỗi bước**.
+> - **An toàn nổ dây chuyền (`maxRows`, mặc định 10000)** — nổ nhiều tầng có thể bùng nổ số dòng, nên nếu tập đang xử lý vượt ngưỡng ở bất kỳ bước nào thì cả lần chạy **bị huỷ kèm thông báo rõ ràng** (không cắt cụt, không treo).
+>
+> Cấu hình **không có** bước join vẫn giữ nguyên bố cục JOIN một bước của 0.7 và cho kết quả **byte-identical** (tương thích ngược hoàn toàn).
+
+> **Mới ở 0.7** — trình cấu hình được vẽ lại như một **phép JOIN** (LEFT nguồn ⋈ RIGHT định mức THEO điều kiện nối → kết quả), thêm hai kiểu khớp tuỳ chọn:
+> - **Khớp theo bậc ưu tiên** (*đích danh thắng chung chung*): thử dòng cụ thể trước (vd dòng cho đúng nhân viên này); không có thì lùi về dòng chung (vd dòng cho vai trò) — tự chống đếm trùng.
+> - **Nổ đệ quy** (*BOM nhiều cấp trong 1 lần chạy*): cây sản phẩm → cụm → NVL gốc sâu bao nhiêu cũng nổ hết trong một lượt, số lượng nhân dồn xuống, có chặn BOM vòng lặp. Cấu hình không dùng các trường này vẫn chạy y như cũ.
 
 ## Sau khi cài, có gì mới?
 

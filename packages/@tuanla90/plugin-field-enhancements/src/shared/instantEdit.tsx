@@ -40,6 +40,14 @@ export const IE_INLINE = 'ptdlIeInline'; // sub-toggle: literal in-cell input fo
 function ielog(msg: string, obj?: any): void {
   try {
     if (typeof console === 'undefined') return;
+    // DEBUG-GATED: silent unless explicitly enabled — this used to log unconditionally and spam the console.
+    // Enable with `window.__ptdlIeDebug = true` or localStorage['ptdl:ie:debug']='1'.
+    let dbg = false;
+    try {
+      dbg = (typeof window !== 'undefined' && (window as any).__ptdlIeDebug === true) ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('ptdl:ie:debug') === '1');
+    } catch (_) { /* ignore */ }
+    if (!dbg) return;
     if (obj !== undefined) console.log('[ptdl-ie] ' + msg, obj);
     else console.log('[ptdl-ie] ' + msg);
   } catch (_) { /* ignore */ }
@@ -521,11 +529,22 @@ export function registerInstantEdit(deps: {
             const inline = params?.inline !== false; // default ON
             const excluded = Array.isArray(params?.excluded) ? params.excluded : [];
             // setProps is reactive → the table re-renders and getColumnProps re-decides each column's route.
-            // The flow step's saved params re-apply this handler on every load, so it persists across reloads.
-            ctx.model.setProps(IE_FLAG, enabled);
-            ctx.model.setProps(IE_INLINE, inline);
-            ctx.model.setProps(IE_EXCLUDED, excluded);
-            ielog('activate', { enabled, inline, excluded });
+            // The flow step's saved params re-apply this handler on EVERY render. ⚠️ setProps must be GUARDED
+            // to fire only on a REAL change — otherwise `setProps(IE_EXCLUDED, [])` hands mobx a NEW empty-array
+            // reference every render → re-render → re-apply → INFINITE LOOP (observed: `[ptdl-ie] activate`
+            // spamming + the table re-rendering non-stop on a wide table = major slowdown). Comparing first
+            // makes the handler idempotent so a steady-state render does nothing.
+            const p = ctx.model?.props || {};
+            const flagChanged = p[IE_FLAG] !== enabled;
+            const inlineChanged = p[IE_INLINE] !== inline;
+            const cur = p[IE_EXCLUDED];
+            const exChanged = !(
+              Array.isArray(cur) && cur.length === excluded.length && cur.every((x: any, i: number) => x === excluded[i])
+            );
+            if (flagChanged) ctx.model.setProps(IE_FLAG, enabled);
+            if (inlineChanged) ctx.model.setProps(IE_INLINE, inline);
+            if (exChanged) ctx.model.setProps(IE_EXCLUDED, excluded);
+            if (flagChanged || inlineChanged || exChanged) ielog('activate', { enabled, inline, excluded });
           },
         },
       },

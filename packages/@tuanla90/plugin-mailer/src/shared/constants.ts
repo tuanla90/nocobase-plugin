@@ -2,10 +2,15 @@
 // NO react/antd/nodemailer here). The collection names, the backend enum, the masked-secret sentinel,
 // and the copy-paste-ready Google Apps Script the settings page shows.
 
+/** Legacy SINGLE-ROW backend config (v0.1.x). Still defined + readable so an upgrade can migrate it into
+ *  the new methods list, but sending no longer reads it directly. */
 export const CONFIG_COLLECTION = 'ptdlMailerConfig';
+/** v0.2.0+ — a LIST of named "sending methods" (each = one backend config with a name/enabled/isDefault). */
+export const METHODS_COLLECTION = 'ptdlMailerMethods';
 export const TEMPLATES_COLLECTION = 'ptdlMailTemplates';
 
-/** The `mailer` resource name (custom actions live here: send, getConfig, saveConfig, sendTest). */
+/** The `mailer` resource name (custom actions live here: send, methodOptions, getMethods, saveMethod,
+ *  deleteMethod, setDefaultMethod, sendTest). */
 export const MAILER_RESOURCE = 'mailer';
 
 export type MailerBackend = 'apps-script' | 'smtp';

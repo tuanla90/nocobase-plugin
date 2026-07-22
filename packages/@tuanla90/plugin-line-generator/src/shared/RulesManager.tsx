@@ -317,6 +317,147 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
     );
   };
 
+  // A fresh empty join step (v0.8 pipeline). Defaults to a config-join with one blank output.
+  const newJoinStep = (): any => ({ stepType: 'config', ruleCollection: '', ruleWhere: [], lineOutputs: [{ targetField: '', formula: '', required: false }] });
+
+  // ---- v0.8 PIPELINE — ONE join-step card (reuses the v0.7 RIGHT + ON + recurse + outputs UI) ----------
+  // Stable component (defined once at manager scope) so its inputs don't remount on every parent render;
+  // it owns its own resolved-types hook for the ON grid of THIS step's rule table. `onChange(patch)` merges
+  // a partial into this step; onMove/onRemove reorder/delete it. `relationCollection` = the collection the
+  // relation picker lists associations from (the source-lines table, or the parent). `outputCollection` =
+  // the collection whose columns the output/recurse pickers suggest (the final target, for the last step).
+  const StepCard: React.FC<{
+    api: any; step: any; index: number; total: number; collections: any[];
+    relationCollection?: string; outputCollection?: string; trackFocus: (e: React.FocusEvent) => void;
+    onChange: (patch: any) => void; onMove: (dir: -1 | 1) => void; onRemove: () => void;
+  }> = ({ api, step, index, total, collections, relationCollection, outputCollection, trackFocus, onChange, onMove, onRemove }) => {
+    const { token } = theme.useToken();
+    const isRel = (step.stepType || 'config') === 'relation';
+    const relFields = useCollectionFields(api, isRel ? (relationCollection || undefined) : undefined);
+    const relOptions = relFields.filter((f) => ['hasMany', 'belongsToMany', 'hasOne', 'belongsTo'].includes(f.type))
+      .map((f) => ({ value: f.name, label: fieldLabel(f) }));
+    // op-by-type for THIS step's ON grid (base ruleWhere + every matchTiers tier), resolved on the step table.
+    const ondTypes = useResolvedTypes(api, step.ruleCollection || undefined, [
+      ...((step.ruleWhere || []).map((r: any) => r.field)),
+      ...(([] as any[]).concat(...(step.matchTiers || [])).map((r: any) => r.field)),
+    ].filter(Boolean) as string[]);
+    const mono = { fontFamily: 'monospace', fontSize: 12.5 } as React.CSSProperties;
+
+    // The rule/tier condition grid for THIS step (rule column op value; value typed like the single-join ON).
+    const condCols = () => ([
+      { title: tt('Cột quy tắc'), key: 'field', render: (row: any, patch: any) => <CondFieldCascader api={api} collection={step.ruleCollection || undefined} value={row.field} onPick={(p: string, t?: string) => { const ops = opsForType(t).map((o) => o.value); patch({ field: p, ...(row.op && !ops.includes(row.op) ? { op: 'eq' } : {}) }); }} placeholder={tt('cột quy tắc')} /> },
+      { title: tt('Toán tử'), key: 'op', width: 96, render: (row: any, patch: any) => <Select size="middle" style={{ width: '100%' }} value={row.op || 'eq'} onChange={(v) => patch({ op: v })} options={opsForType(ondTypes[row.field])} /> },
+      { title: tt('Giá trị'), key: 'value', render: (row: any, patch: any) => isDateType(ondTypes[row.field])
+        ? <Input type="date" size="middle" style={{ width: '100%' }} value={String(row.value ?? '')} onChange={(e) => patch({ value: e.target.value })} onFocus={trackFocus} />
+        : <Input size="middle" style={{ width: '100%' }} value={row.value ?? ''} onChange={(e) => patch({ value: e.target.value })} onFocus={trackFocus} placeholder={tt('gõ: true, NV, parent.x, src.x')} /> },
+    ]);
+
+    // matchTiers ladder (per step).
+    const tiers = step.matchTiers || [];
+    const setTiers = (next: any[][]) => onChange({ matchTiers: next });
+    const moveTier = (i: number, dir: -1 | 1) => { const j = i + dir; if (j < 0 || j >= tiers.length) return; const next = tiers.map((t: any) => t); [next[i], next[j]] = [next[j], next[i]]; setTiers(next); };
+    const tierLabel = (i: number, n: number) => (i === 0 ? tt('cụ thể nhất') : i === n - 1 ? tt('chung/dự phòng') : tt('bậc giữa'));
+
+    const rightName = isRel ? `→ ${step.relationPath || tt('(quan hệ)')}` : (step.ruleCollection || tt('(bảng config)'));
+    return (
+      <div style={{ border: `1px solid ${step.recurse ? token.colorPrimary : token.colorBorderSecondary}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, background: token.colorBgContainer }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <b style={{ fontSize: 13 }}>{tt('Bước {{n}}', { n: index + 1 })} · <span style={{ color: token.colorTextSecondary }}>⋈ {rightName}</span>
+            {step.recurse ? <span title={tt('nổ đệ quy (self-join)')} style={{ marginLeft: 8, background: token.colorPrimary, color: '#fff', borderRadius: 10, fontSize: 11, padding: '1px 7px', fontWeight: 600 }}>↻ {tt('lặp (đệ quy)')}</span> : null}
+          </b>
+          <Space size={2}>
+            <Button size="small" type="text" disabled={index === 0} onClick={() => onMove(-1)}>↑</Button>
+            <Button size="small" type="text" disabled={index === total - 1} onClick={() => onMove(1)}>↓</Button>
+            <Button size="small" type="text" danger onClick={onRemove}>✕</Button>
+          </Space>
+        </div>
+
+        <SettingRow label={tt('Nguồn nối (RIGHT)')} hint={tt('Bảng config = quét bảng chuẩn/định mức, khớp theo điều kiện. Quan hệ có sẵn = đi theo hasMany/o2m sẵn có của dòng hiện tại (nhanh, chỉ dòng liên kết theo khoá ngoại).')}>
+          <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }} value={step.stepType || 'config'} onChange={(v: any) => onChange({ stepType: v })}
+            options={[{ value: 'config', label: tt('Bảng config (khớp điều kiện)') }, { value: 'relation', label: tt('Quan hệ có sẵn (theo key)') }]} />
+        </SettingRow>
+
+        {isRel ? (
+          <>
+            <SettingRow label={tt('Quan hệ để đi theo (relationPath)')} hint={tt('Quan hệ hasMany/o2m trên dòng đầu vào của bước này — các bản ghi liên kết trở thành rule.* để nổ ra. Bước đầu đọc quan hệ của bảng nguồn/cha.')}>
+              <AutoComplete size="middle" style={{ width: '100%' }} options={relOptions} value={step.relationPath} onChange={(v) => onChange({ relationPath: v as string })} placeholder={tt('vd order_items')} filterOption={(input, o) => String(o?.label || '').toLowerCase().includes(input.toLowerCase())} />
+            </SettingRow>
+            <SettingRow layout="vertical" label={tt('Lọc thêm dòng quan hệ (tuỳ chọn)')} hint={tt('Không bắt buộc — lọc bớt các bản ghi liên kết đã lấy về. rule.* = bản ghi liên kết.')}>
+              <EditTable rows={step.ruleWhere || []} onChange={(v) => onChange({ ruleWhere: v })} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={condCols()} />
+            </SettingRow>
+          </>
+        ) : (
+          <>
+            <SettingRow label={tt('Bảng config (RIGHT)')} hint={tt('Bảng chuẩn/định mức của bước này (vd combo_config, bom). Khớp với dòng đầu vào theo điều kiện nối bên dưới.')}>
+              <Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={step.ruleCollection || undefined} onChange={(v) => onChange({ ruleCollection: v })} placeholder={tt('Chọn bảng')} />
+            </SettingRow>
+            <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của config (appends)')} hint={tt('Quan hệ của bảng config mà điều kiện/công thức cần đọc (vd material của bom).')}>
+              <RelationAppendsPicker api={api} collectionName={step.ruleCollection || undefined} value={step.ruleAppends} onChange={(v) => onChange({ ruleAppends: v })} />
+            </SettingRow>
+            <SettingRow layout="vertical" label={tt('Điều kiện nối (ON) — VÀ')} hint={tt('Cột config so với giá trị bạn gõ: true / NV là hằng; src.product_id là khớp động theo dòng đầu vào của bước này (= output bước trước).')}>
+              <EditTable rows={step.ruleWhere || []} onChange={(v) => onChange({ ruleWhere: v })} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={condCols()} />
+            </SettingRow>
+            <SettingRow layout="vertical" label={tt('Bậc khớp ưu tiên (tuỳ chọn)')} hint={tt('thử bậc 1 trước; có kết quả thì dùng & dừng; bậc dưới tự bỏ dòng đã khai bậc trên (chống đếm trùng).')}>
+              <div>
+                {tiers.map((tier: any, i: number) => (
+                  <div key={i} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: '8px 10px', marginBottom: 8, background: token.colorFillQuaternary }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <b style={{ fontSize: 12.5 }}>{tt('Bậc {{n}}', { n: i + 1 })} · <span style={{ color: token.colorPrimary }}>{tierLabel(i, tiers.length)}</span></b>
+                      <Space size={2}>
+                        <Button size="small" type="text" disabled={i === 0} onClick={() => moveTier(i, -1)}>↑</Button>
+                        <Button size="small" type="text" disabled={i === tiers.length - 1} onClick={() => moveTier(i, 1)}>↓</Button>
+                        <Button size="small" type="text" danger onClick={() => setTiers(tiers.filter((_: any, j: number) => j !== i))}>✕</Button>
+                      </Space>
+                    </div>
+                    <EditTable rows={tier} onChange={(v) => setTiers(tiers.map((t: any, j: number) => (j === i ? v : t)))} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={condCols()} />
+                  </div>
+                ))}
+                <Button size="small" type="dashed" onClick={() => setTiers([...tiers, []])}>＋ {tt('Thêm bậc ưu tiên')}</Button>
+              </div>
+            </SettingRow>
+            <SettingRow label={tt('Nổ đệ quy (self-join)')} hint={tt('BOM/combo nhiều cấp trong bước này: mỗi dòng con lại tra tiếp bảng config. Tắt = 1 cấp.')}>
+              <Checkbox checked={!!step.recurse} onChange={(e) => onChange({ recurse: e.target.checked })} />
+            </SettingRow>
+            {step.recurse ? (
+              <div style={{ border: `1px solid ${token.colorPrimaryBorder || token.colorBorder}`, borderRadius: 8, padding: '10px 12px', margin: '2px 0 6px', background: token.colorFillQuaternary }}>
+                <SettingRow label={tt('Khoá cha (trên bảng config)')} hint={tt('Cột trên bảng config đóng vai "cha" của một dòng — khoá self-join. VD combo_id.')}>
+                  <FieldSelect api={api} collection={step.ruleCollection || undefined} value={step.recurseParentKey || ''} onChange={(v) => onChange({ recurseParentKey: v })} placeholder={tt('vd combo_id')} size="middle" style={{ width: '100%' }} />
+                </SettingRow>
+                <SettingRow label={tt('Component (cột sinh ra → khoá cha cấp sau)')} hint={tt('Cột SINH RA chứa id linh kiện; giá trị của nó thành "khoá cha" cấp sau. VD product_id.')}>
+                  <FieldSelect api={api} collection={outputCollection} value={step.recurseChildKey || ''} onChange={(v) => onChange({ recurseChildKey: v })} placeholder={tt('vd product_id')} size="middle" style={{ width: '100%' }} />
+                </SettingRow>
+                <SettingRow label={tt('Cột số lượng (nhân dồn xuống)')} hint={tt('Cột SINH RA chứa số lượng, nhân dồn theo cây. Công thức nên đọc src.<cột này>. VD qty.')}>
+                  <FieldSelect api={api} collection={outputCollection} value={step.recurseQtyField || ''} onChange={(v) => onChange({ recurseQtyField: v })} placeholder={tt('vd qty')} size="middle" style={{ width: '100%' }} />
+                </SettingRow>
+                <SettingRow label={tt('Độ sâu tối đa')}><InputNumber min={1} max={100} value={step.maxDepth ?? 20} onChange={(v) => onChange({ maxDepth: v ?? 20 })} /></SettingRow>
+                <SettingRow label={tt('Xuất ra')}>
+                  <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }} value={step.recurseOutput || 'leaves'} onChange={(v: any) => onChange({ recurseOutput: v })}
+                    options={[{ value: 'leaves', label: tt('Chỉ lá (NVL gốc)') }, { value: 'all', label: tt('Mọi cấp') }]} />
+                </SettingRow>
+              </div>
+            ) : null}
+          </>
+        )}
+
+        <div style={{ height: 1, background: token.colorBorderSecondary, margin: '10px 0 8px' }} />
+        <SettingRow layout="vertical" label={tt('Cột sinh ra của bước này')} hint={tt('Mỗi dòng = 1 cột trên dòng output của bước. Output bước này = input bước sau (đọc qua src.*). Đọc parent / src (dòng vào) / rule (dòng phải) + REL / NUM / YMONTH.')}>
+          <EditTable rows={step.lineOutputs || []} onChange={(v) => onChange({ lineOutputs: v })} addLabel={tt('Thêm cột')} newRow={() => ({ targetField: '', formula: '', required: false })}
+            columns={[
+              { title: tt('Cột đích'), key: 'targetField', width: 220, render: (row, patch) => <FieldSelect api={api} collection={outputCollection} value={row.targetField} onChange={(v) => patch({ targetField: v })} placeholder={tt('cột đích')} size="middle" style={{ width: '100%' }} /> },
+              { title: tt('Công thức'), key: 'formula', render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.formula} onChange={(e) => patch({ formula: e.target.value })} onFocus={trackFocus} placeholder={tt('công thức')} /> },
+              { title: tt('Bắt buộc'), key: 'required', width: 84, align: 'center', render: (row, patch) => <Tooltip title={tt('Bắt buộc — null thì bỏ dòng')}><Checkbox checked={!!row.required} onChange={(e) => patch({ required: e.target.checked })} /></Tooltip> },
+            ]} />
+        </SettingRow>
+        <SettingRow label={tt('Gộp theo bước (tuỳ chọn)')} hint={tt('Gộp output của bước này trước khi sang bước sau (cột số cộng dồn). Thường chỉ cần gộp ở KẾT QUẢ cuối.')}>
+          <Space wrap>
+            <FieldMultiSelect api={api} collection={outputCollection} value={step.groupBy || undefined} onChange={(v) => onChange({ groupBy: v })} placeholder={tt('vd material_id')} style={{ width: 200 }} />
+            <FieldMultiSelect api={api} collection={outputCollection} value={step.sumFields} onChange={(v) => onChange({ sumFields: v })} placeholder={tt('cột cộng dồn')} style={{ width: 200 }} />
+          </Space>
+        </SettingRow>
+      </div>
+    );
+  };
+
   const EditorDrawer: React.FC<{
     api: any; open: boolean; initial: LineGenConfig; collections: any[]; existingKeys: Set<string>; onClose: () => void; onSaved: () => void;
   }> = ({ api, open, initial, collections, existingKeys, onClose, onSaved }) => {
@@ -328,12 +469,16 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
     const [preview, setPreview] = useState<RunResult | null>(null);
     const [previewing, setPreviewing] = useState(false);
     const [askClose, setAskClose] = useState(false);
+    // LEFT source mode: 'self' (parent record) vs 'relation' (a hasMany). Kept in UI state so the relation
+    // picker can show BEFORE a relation is picked; derived from sourceLinesPath on open / template load.
+    const [srcMode, setSrcMode] = useState<'self' | 'relation'>('self');
 
     // Baseline of the config as it was opened — used to detect unsaved edits so closing can warn.
     const baselineRef = useRef('');
     useEffect(() => {
       const m = migrateConfig(initial);
       setCfg(m); baselineRef.current = JSON.stringify(m);
+      setSrcMode(m.sourceLinesPath ? 'relation' : 'self');
       setPreview(null); setSampleTk(undefined); setAskClose(false);
     }, [initial, open]);
     const set = (patch: Partial<LineGenConfig>) => setCfg((p) => ({ ...p, ...patch }));
@@ -371,8 +516,88 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
     const relOptions = srcFields.filter((f) => ['hasMany', 'belongsToMany'].includes(f.type))
       .map((f) => ({ value: f.name, label: fieldLabel(f), target: f.target, foreignKey: f.foreignKey }));
     const targetCollection = relOptions.find((r) => r.value === cfg.targetPath)?.target;
-    const ruleWhereTypes = useResolvedTypes(api, cfg.ruleCollection || undefined, (cfg.ruleWhere || []).map((r) => r.field)); // op-by-type (nested) for the rule filter
+    // op-by-type (nested) for EVERY rule-side condition surface: base ruleWhere + every matchTiers tier.
+    const ruleCondTypes = useResolvedTypes(api, cfg.ruleCollection || undefined, [
+      ...(cfg.ruleWhere || []).map((r) => r.field),
+      ...(([] as any[]).concat(...(cfg.matchTiers || [])).map((r: any) => r.field)),
+    ].filter(Boolean) as string[]);
     const srcLinesCollection = relOptions.find((r) => r.value === cfg.sourceLinesPath)?.target; // "bảng dòng nguồn"
+
+    // ---- JOIN builder helpers (FEATURE C) --------------------------------------------------------
+    // The rule/tier condition grid — reused by the BASE ruleWhere AND every matchTiers tier. A condition
+    // is "rule column op value", where value is typed: true / NV / parent.x / src.x (see resolveWhereValue).
+    const ruleCondColumns = () => ([
+      { title: tt('Cột quy tắc'), key: 'field', render: (row: any, patch: any) => <CondFieldCascader api={api} collection={cfg.ruleCollection || undefined} value={row.field} onPick={(p: string, t?: string) => { const ops = opsForType(t).map((o) => o.value); patch({ field: p, ...(row.op && !ops.includes(row.op) ? { op: 'eq' } : {}) }); }} placeholder={tt('cột quy tắc')} /> },
+      { title: tt('Toán tử'), key: 'op', width: 96, render: (row: any, patch: any) => <Select size="middle" style={{ width: '100%' }} value={row.op || 'eq'} onChange={(v) => patch({ op: v })} options={opsForType(ruleCondTypes[row.field])} /> },
+      { title: tt('Giá trị'), key: 'value', render: (row: any, patch: any) => isDateType(ruleCondTypes[row.field])
+        ? <Input type="date" size="middle" style={{ width: '100%' }} value={String(row.value ?? '')} onChange={(e) => patch({ value: e.target.value })} onFocus={trackFocus} />
+        : <Input size="middle" style={{ width: '100%' }} value={row.value ?? ''} onChange={(e) => patch({ value: e.target.value })} onFocus={trackFocus} placeholder={tt('gõ: true, NV, parent.x, src.x')} /> },
+    ]);
+
+    // matchTiers ladder ops.
+    const tiers = cfg.matchTiers || [];
+    const setTiers = (next: any[][]) => set({ matchTiers: next });
+    const moveTier = (i: number, dir: -1 | 1) => { const j = i + dir; if (j < 0 || j >= tiers.length) return; const next = tiers.map((t) => t); [next[i], next[j]] = [next[j], next[i]]; setTiers(next); };
+    const tierLabel = (i: number, n: number) => (i === 0 ? tt('cụ thể nhất') : i === n - 1 ? tt('chung/dự phòng') : tt('bậc giữa'));
+
+    // ---- v0.8 PIPELINE (joinSteps) helpers -------------------------------------------------------
+    // pipeline mode is derived from the presence of joinSteps. The single-join layout (③④⑤) shows when it
+    // is off; the step-card list replaces ③④ + the outputs of ⑤ when it is on.
+    const pipeline = !!(cfg.joinSteps && cfg.joinSteps.length);
+    const steps = cfg.joinSteps || [];
+    const patchStep = (i: number, patch: any) => set({ joinSteps: steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+    const moveStep = (i: number, dir: -1 | 1) => { const j = i + dir; if (j < 0 || j >= steps.length) return; const next = steps.slice(); [next[i], next[j]] = [next[j], next[i]]; set({ joinSteps: next }); };
+    const removeStep = (i: number) => set({ joinSteps: steps.filter((_, j) => j !== i) });
+    const addStep = () => set({ joinSteps: [...steps, newJoinStep()] });
+    // Convert the current single-join into joinSteps[0] (preserve the user's work), then run as a pipeline.
+    const toPipeline = () => {
+      if (steps.length) return;
+      const s0: any = {
+        stepType: 'config', ruleCollection: cfg.ruleCollection || '', ruleAppends: cfg.ruleAppends,
+        ruleWhere: cfg.ruleWhere || [], matchTiers: cfg.matchTiers, deriveVars: cfg.deriveVars, skipIf: cfg.skipIf,
+        lineOutputs: (cfg.lineOutputs && cfg.lineOutputs.length) ? cfg.lineOutputs : [{ targetField: '', formula: '', required: false }],
+        recurse: cfg.recurse, recurseParentKey: cfg.recurseParentKey, recurseChildKey: cfg.recurseChildKey,
+        recurseQtyField: cfg.recurseQtyField, maxDepth: cfg.maxDepth, recurseOutput: cfg.recurseOutput,
+      };
+      set({ joinSteps: [s0] });
+    };
+    // Collapse back to a single join: fold joinSteps[0] into the top-level fields, drop the pipeline.
+    const toSingle = () => {
+      const s0: any = steps[0] || {};
+      set({
+        joinSteps: undefined,
+        ruleCollection: s0.ruleCollection ?? cfg.ruleCollection, ruleAppends: s0.ruleAppends ?? cfg.ruleAppends,
+        ruleWhere: s0.ruleWhere ?? cfg.ruleWhere ?? [], matchTiers: s0.matchTiers, deriveVars: s0.deriveVars, skipIf: s0.skipIf,
+        lineOutputs: (s0.lineOutputs && s0.lineOutputs.length) ? s0.lineOutputs : (cfg.lineOutputs || [{ targetField: '', formula: '', required: false }]),
+        recurse: s0.recurse, recurseParentKey: s0.recurseParentKey, recurseChildKey: s0.recurseChildKey,
+        recurseQtyField: s0.recurseQtyField, maxDepth: s0.maxDepth, recurseOutput: s0.recurseOutput,
+      });
+    };
+
+    // "SQL tương đương" — a read-only caption so the config reads like the JOIN(s) it is.
+    const leftName = cfg.sourceLinesPath ? `${cfg.sourceCollection || '?'} ▸ ${cfg.sourceLinesPath}` : (cfg.sourceCollection || 'nguồn');
+    const condSql = (list: any[]) => (list || []).filter((w) => w && w.field).map((w) => { const opm: any = { eq: '=', ne: '<>', gt: '>', lt: '<', gte: '>=', lte: '<=', contains: 'LIKE' }; return `R.${w.field} ${opm[w.op || 'eq'] || '='} ${/^(parent|src)\b/.test(String(w.value || '')) ? String(w.value).replace(/^parent/, 'L').replace(/^src/, 'L') : JSON.stringify(w.value ?? '')}`; }).join(' AND ');
+    const joinSql = (() => {
+      if (pipeline) {
+        // Multi-JOIN / chained form: LEFT ⋈ step1 ⋈ step2 … ; output of step i is the input (src) of i+1.
+        let s = `FROM ${leftName} L0`;
+        steps.forEach((st: any, i: number) => {
+          const on = condSql(st.ruleWhere || []) || '1=1';
+          const right = (st.stepType === 'relation') ? `L${i}.${st.relationPath || '(quan hệ)'}` : `${st.ruleCollection || '(config)'}`;
+          s += `\n${st.recurse ? 'JOIN RECURSIVE' : 'JOIN'} ${right} R${i + 1} ON ${st.stepType === 'relation' ? '(FK)' : on}  -- → src(bước ${i + 2 <= steps.length ? i + 2 : '→KQ'})`;
+          if (st.recurse && st.recurseParentKey && st.recurseChildKey) s += `\n  ↻ next: R${i + 1}.${st.recurseParentKey} = child.${st.recurseChildKey}`;
+        });
+        if (cfg.groupBy && cfg.groupBy.length) s += `\nGROUP BY ${cfg.groupBy.join(', ')}`;
+        return s;
+      }
+      if (!cfg.ruleCollection) return '';
+      const on = condSql(cfg.ruleWhere || []) || '1=1';
+      let s = `FROM ${leftName} L\n${cfg.recurse ? 'JOIN RECURSIVE' : 'JOIN'} ${cfg.ruleCollection} R ON ${on}`;
+      if (cfg.recurse && cfg.recurseParentKey && cfg.recurseChildKey) s += `\n  ↻ next: R.${cfg.recurseParentKey} = child.${cfg.recurseChildKey}`;
+      if (tiers.length) s += `\n  PRIORITY: ${tiers.map((t, i) => `[${i + 1}] ${condSql(t) || '…'}`).join(' ELSE ')}`;
+      if (cfg.groupBy && cfg.groupBy.length) s += `\nGROUP BY ${cfg.groupBy.join(', ')}`;
+      return s;
+    })();
 
     // Prominent shared formula toolbar (point 5): inserts a parent./src./rule. column token into whatever
     // formula input was last focused — used by sections 2 (skipIf), 3 (rule filter value) and 4 (all formulas).
@@ -433,6 +658,49 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
       for (const k of dropEmptyStr) if (!c[k]) delete c[k];
       if (c.rounding && (!c.rounding.fields || !c.rounding.fields.length)) delete c.rounding;
       if (c.validations && !c.validations.sumField) delete c.validations;
+      // v0.7 FEATURE A — priority tiers: drop blank conditions + empty tiers; remove the key if none remain.
+      if (Array.isArray(c.matchTiers)) {
+        c.matchTiers = c.matchTiers.map((t: any) => (Array.isArray(t) ? t.filter((w: any) => w && w.field) : [])).filter((t: any[]) => t.length);
+        if (!c.matchTiers.length) delete c.matchTiers;
+      }
+      // v0.7 FEATURE B — recursion: keep the recurse block only when enabled; strip it entirely otherwise
+      // (absent ⇒ single-pass = back-compat).
+      if (!c.recurse) {
+        for (const k of ['recurse', 'recurseParentKey', 'recurseChildKey', 'recurseQtyField', 'maxDepth', 'recurseOutput']) delete c[k];
+      } else {
+        for (const k of ['recurseParentKey', 'recurseChildKey', 'recurseQtyField', 'recurseOutput']) if (!c[k]) delete c[k];
+        if (c.maxDepth == null) delete c.maxDepth;
+      }
+      // v0.8 PIPELINE (joinSteps): clean each step; in pipeline mode the single-join TOP-LEVEL join fields are
+      // unused (each step carries its own RIGHT/ON/recurse/outputs) → strip them so the two never coexist.
+      if (Array.isArray(c.joinSteps) && c.joinSteps.length) {
+        const cleanStep = (st0: any): any => {
+          const st: any = { ...(st0 || {}) };
+          st.stepType = st.stepType === 'relation' ? 'relation' : 'config';
+          if (st.stepType === 'relation') delete st.ruleCollection; else delete st.relationPath;
+          if (Array.isArray(st.ruleWhere)) st.ruleWhere = st.ruleWhere.filter((r: any) => r && r.field);
+          if (Array.isArray(st.matchTiers)) {
+            st.matchTiers = st.matchTiers.map((t: any) => (Array.isArray(t) ? t.filter((w: any) => w && w.field) : [])).filter((t: any[]) => t.length);
+            if (!st.matchTiers.length) delete st.matchTiers;
+          }
+          if (Array.isArray(st.lineOutputs)) st.lineOutputs = st.lineOutputs.filter((o: any) => o && (o.targetField || o.formula));
+          for (const k of ['ruleWhere', 'ruleAppends', 'deriveVars', 'groupBy', 'sumFields']) if (Array.isArray(st[k]) && !st[k].length) delete st[k];
+          if (!st.skipIf) delete st.skipIf;
+          if (!st.recurse) {
+            for (const k of ['recurse', 'recurseParentKey', 'recurseChildKey', 'recurseQtyField', 'maxDepth', 'recurseOutput']) delete st[k];
+          } else {
+            for (const k of ['recurseParentKey', 'recurseChildKey', 'recurseQtyField', 'recurseOutput']) if (!st[k]) delete st[k];
+            if (st.maxDepth == null) delete st.maxDepth;
+          }
+          return st;
+        };
+        c.joinSteps = c.joinSteps.map(cleanStep);
+        for (const k of ['ruleCollection', 'ruleWhere', 'ruleAppends', 'matchTiers', 'deriveVars', 'skipIf', 'lineOutputs', 'recurse', 'recurseParentKey', 'recurseChildKey', 'recurseQtyField', 'maxDepth', 'recurseOutput', 'ruleSource', 'ruleFields', 'scopes', 'matchMap', 'ruleFilter']) delete c[k];
+        if (c.maxRows == null) delete c.maxRows;
+      } else {
+        delete c.joinSteps;
+        delete c.maxRows;
+      }
       if (!c.regenPolicy) c.regenPolicy = 'append'; // v0.4: append-only from the UI
       return c;
     };
@@ -451,9 +719,16 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
       c.key = autoKey(c);
       if (!c.sourceCollection) return message.warning(tt('Chọn bảng nguồn'));
       if (!c.targetPath) return message.warning(tt('Chọn nơi ghi kết quả'));
-      if (!c.lineOutputs?.length) return message.warning(tt('Thêm ít nhất 1 cột sinh ra'));
-      if (c.ruleSource === 'inline' && !(c.scopes || []).some((s: any) => (s.rules || []).length)) return message.warning(tt('Thêm ít nhất 1 nhóm quy tắc có quy tắc'));
-      if (c.ruleSource !== 'inline' && !c.ruleCollection) return message.warning(tt('Chọn bảng quy tắc'));
+      const pipe = Array.isArray((c as any).joinSteps) && (c as any).joinSteps.length;
+      if (pipe) {
+        const js = (c as any).joinSteps as any[];
+        if (!js.every((s) => (s.lineOutputs || []).length)) return message.warning(tt('Mỗi bước join cần ít nhất 1 cột sinh ra'));
+        if (!js.every((s) => (s.stepType === 'relation' ? s.relationPath : s.ruleCollection))) return message.warning(tt('Mỗi bước join cần chọn bảng config hoặc quan hệ'));
+      } else {
+        if (!c.lineOutputs?.length) return message.warning(tt('Thêm ít nhất 1 cột sinh ra'));
+        if (c.ruleSource === 'inline' && !(c.scopes || []).some((s: any) => (s.rules || []).length)) return message.warning(tt('Thêm ít nhất 1 nhóm quy tắc có quy tắc'));
+        if (c.ruleSource !== 'inline' && !c.ruleCollection) return message.warning(tt('Chọn bảng quy tắc'));
+      }
       setSaving(true);
       try {
         const existingId = (initial as any).__id;
@@ -489,7 +764,45 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
 
             {FormulaToolbar}
 
-            <CollapsibleSection title={tt('1. Kích hoạt — bảng cha (parent), khi nào chạy')}>
+            {/* JOIN banner: single-join reads LEFT ⋈ RIGHT → KẾT QUẢ; pipeline reads LEFT ⋈ B1 ⋈ B2 … → KẾT QUẢ. */}
+            <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8, padding: '12px 14px', marginBottom: 14, background: token.colorFillQuaternary }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>{pipeline ? tt('Bộ sinh = một PIPELINE nhiều bước JOIN: LEFT (nguồn) ⋈ B1 ⋈ B2 … → KẾT QUẢ (output bước N = input bước N+1)') : tt('Bộ sinh = một phép JOIN: LEFT (nguồn) ⋈ RIGHT (định mức) theo ĐIỀU KIỆN NỐI → KẾT QUẢ')}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 110, textAlign: 'center', border: `1px solid ${token.colorBorder}`, borderRadius: 6, padding: '8px 6px', background: token.colorBgContainer }}>
+                  <div style={{ fontSize: 11, color: token.colorTextTertiary }}>{tt('LEFT · nguồn')}</div>
+                  <div style={{ fontWeight: 600, fontSize: 12.5, wordBreak: 'break-all' }}>{leftName}</div>
+                </div>
+                {pipeline ? (
+                  steps.map((st: any, i: number) => (
+                    <React.Fragment key={i}>
+                      <div style={{ fontSize: 18, color: token.colorTextSecondary }}>⋈</div>
+                      <div style={{ position: 'relative', flex: 1, minWidth: 110, textAlign: 'center', border: `1px solid ${st.recurse ? token.colorPrimary : token.colorBorder}`, borderRadius: 6, padding: '8px 6px', background: token.colorBgContainer }}>
+                        <div style={{ fontSize: 11, color: token.colorTextTertiary }}>{tt('Bước {{n}}', { n: i + 1 })}{st.stepType === 'relation' ? ' · →' : ''}</div>
+                        <div style={{ fontWeight: 600, fontSize: 12.5, wordBreak: 'break-all' }}>{st.stepType === 'relation' ? (st.relationPath || tt('(quan hệ)')) : (st.ruleCollection || tt('(bảng config)'))}</div>
+                        {st.recurse ? <div title={tt('nổ đệ quy (self-join)')} style={{ position: 'absolute', top: -9, right: -9, background: token.colorPrimary, color: '#fff', borderRadius: 10, fontSize: 11, padding: '1px 7px', fontWeight: 600 }}>↻</div> : null}
+                      </div>
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <>
+                    <div style={{ fontSize: 18, color: token.colorTextSecondary }}>⋈</div>
+                    <div style={{ position: 'relative', flex: 1, minWidth: 120, textAlign: 'center', border: `1px solid ${cfg.recurse ? token.colorPrimary : token.colorBorder}`, borderRadius: 6, padding: '8px 6px', background: token.colorBgContainer }}>
+                      <div style={{ fontSize: 11, color: token.colorTextTertiary }}>{tt('RIGHT · định mức')}</div>
+                      <div style={{ fontWeight: 600, fontSize: 12.5, wordBreak: 'break-all' }}>{cfg.ruleCollection || tt('(bảng quy tắc)')}</div>
+                      {cfg.recurse ? <div title={tt('nổ đệ quy (self-join)')} style={{ position: 'absolute', top: -9, right: -9, background: token.colorPrimary, color: '#fff', borderRadius: 10, fontSize: 11, padding: '1px 7px', fontWeight: 600 }}>↻ {tt('đệ quy')}</div> : null}
+                    </div>
+                  </>
+                )}
+                <div style={{ fontSize: 18, color: token.colorTextSecondary }}>→</div>
+                <div style={{ flex: 1, minWidth: 110, textAlign: 'center', border: `1px solid ${token.colorBorder}`, borderRadius: 6, padding: '8px 6px', background: token.colorBgContainer }}>
+                  <div style={{ fontSize: 11, color: token.colorTextTertiary }}>{tt('→ KẾT QUẢ')}</div>
+                  <div style={{ fontWeight: 600, fontSize: 12.5, wordBreak: 'break-all' }}>{cfg.targetPath || tt('(bảng con)')}</div>
+                </div>
+              </div>
+              {joinSql ? <pre style={{ margin: '10px 0 0', padding: 8, fontSize: 11, lineHeight: 1.5, background: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 4, overflow: 'auto', whiteSpace: 'pre', color: token.colorTextSecondary }}>{tt('SQL tương đương')}:{'\n'}{joinSql}</pre> : null}
+            </div>
+
+            <CollapsibleSection title={tt('① Kích hoạt — bảng cha (parent), khi nào chạy')}>
               <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '0 0 10px' }}>{tt('Bảng cha = bản ghi đặt nút / lắng trigger. Trong mọi công thức, bản ghi này được gọi là parent (vd parent.shipping_type).')}</div>
               <SettingRow label={tt('Tên')} hint={tt('Tên hiển thị trong danh sách và trên menu nút.')}><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} placeholder={tt('VD: Tính hoa hồng đơn hàng')} /></SettingRow>
               <SettingRow label={tt('Bảng kích hoạt (cha)')} hint={tt('Nơi đặt nút / lắng trigger. Mỗi bản ghi của bảng này là một "cha" — công thức đọc nó qua parent.*')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.sourceCollection || undefined} onChange={(v) => set({ sourceCollection: v, targetPath: '', targetForeignKey: '', sourceLinesPath: null })} placeholder={tt('Chọn bảng')} /></SettingRow>
@@ -525,13 +838,24 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
               </SettingRow>
             </CollapsibleSection>
 
-            <CollapsibleSection title={tt('2. Đầu vào — nhân theo bảng nào (src)')}>
-              <SettingRow label={tt('Bảng dòng nguồn (src)')} hint={tt('Cái đem NHÂN với quy tắc. Mặc định = chính bản ghi cha (1 dòng — hoa hồng: 15 quy tắc → 15 dòng). Chọn bảng con = nhân theo TỪNG DÒNG của cha (BOM: mỗi dòng sản phẩm × định mức của nó); công thức đọc dòng qua src.*, và src.* tự về parent.* khi để mặc định.')}>
-                <Select style={{ width: '100%' }} allowClear options={relOptions} value={cfg.sourceLinesPath || undefined}
-                  onChange={(v) => set({ sourceLinesPath: v || null, srcAppends: v ? cfg.srcAppends : [] })}
-                  placeholder={tt('Chính bản ghi cha — 1 dòng (mặc định)')}
-                  notFoundContent={cfg.sourceCollection ? tt('Bảng nguồn chưa có quan hệ bảng con') : tt('Chọn bảng nguồn trước')} />
+            <CollapsibleSection title={tt('② LEFT · Nguồn — nhân theo dòng nào (src)')}>
+              <SettingRow label={tt('Lấy dòng nguồn từ')} hint={tt('LEFT của phép JOIN: cái đem NHÂN với bảng định mức. "Chính bản ghi này" = 1 dòng (hoa hồng: 15 quy tắc → 15 dòng). "Đi theo quan hệ" = nhân theo TỪNG DÒNG bảng con (BOM: mỗi dòng sản phẩm × định mức của nó); công thức đọc dòng qua src.*, và src.* tự về parent.* khi chọn chính bản ghi.')}>
+                <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }}
+                  value={srcMode}
+                  onChange={(v: any) => { setSrcMode(v); if (v === 'self') set({ sourceLinesPath: null, srcAppends: [] }); }}
+                  options={[
+                    { value: 'self', label: tt('Chính bản ghi này') },
+                    { value: 'relation', label: tt('Đi theo quan hệ →') },
+                  ]} />
               </SettingRow>
+              {srcMode === 'relation' ? (
+                <SettingRow label={tt('Quan hệ bảng con (src)')} hint={tt('Quan hệ hasMany trên bảng cha — mỗi dòng của nó là một src. VD order_lines.')}>
+                  <Select style={{ width: '100%' }} allowClear options={relOptions} value={cfg.sourceLinesPath || undefined}
+                    onChange={(v) => set({ sourceLinesPath: v || null, srcAppends: v ? cfg.srcAppends : [] })}
+                    placeholder={tt('Chọn quan hệ bảng con (hasMany)')}
+                    notFoundContent={cfg.sourceCollection ? tt('Bảng nguồn chưa có quan hệ bảng con') : tt('Chọn bảng nguồn trước')} />
+                </SettingRow>
+              ) : null}
               {cfg.sourceLinesPath ? (
                 <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng dòng nguồn (src)')} hint={tt('Quan hệ của BẢNG DÒNG NGUỒN mà công thức cần đọc (src.*), vd product của order_lines. Nạp toàn bộ cột của object trên đường đi.')}>
                   <RelationAppendsPicker api={api} collectionName={srcLinesCollection} value={cfg.srcAppends} onChange={(v) => set({ srcAppends: v })} />
@@ -540,7 +864,26 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
               <SettingRow label={tt('Bỏ qua dòng khi')} hint={tt('Điều kiện lọc bớt đầu vào: biểu thức true = bỏ, không tính. Xem được src / parent / rule. VD src.quantity == 0, hay parent.is_internal == true.')}><Input style={mono} value={cfg.skipIf || ''} onChange={(e) => set({ skipIf: e.target.value })} onFocus={trackFocus} placeholder={tt('(tuỳ chọn)')} /></SettingRow>
             </CollapsibleSection>
 
-            <CollapsibleSection title={tt('3. Bảng quy tắc (rule)')}>
+            {/* v0.8 PIPELINE — the ordered join-step list (replaces ③ RIGHT + ④ ON when pipeline mode is on). */}
+            {pipeline ? (
+              <CollapsibleSection title={tt('③ Các bước JOIN (pipeline) — nối tuần tự nhiều bảng')}>
+                <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '0 0 10px' }}>{tt('Mỗi bước nối thêm một bảng/quan hệ và nổ dòng ra. OUTPUT bước N = INPUT bước N+1 (bước sau đọc dòng vào qua src.*). Kéo ↑/↓ để đổi thứ tự.')}</div>
+                {steps.map((st: any, i: number) => (
+                  <StepCard key={i} api={api} step={st} index={i} total={steps.length} collections={collections}
+                    relationCollection={i === 0 ? (srcLinesCollection || cfg.sourceCollection || undefined) : undefined}
+                    outputCollection={i === steps.length - 1 ? targetCollection : undefined}
+                    trackFocus={trackFocus}
+                    onChange={(patch) => patchStep(i, patch)} onMove={(dir) => moveStep(i, dir)} onRemove={() => removeStep(i)} />
+                ))}
+                <Space>
+                  <Button type="dashed" onClick={addStep}>＋ {tt('Thêm bước join')}</Button>
+                  {steps.length <= 1 ? <Button size="small" type="text" onClick={toSingle}>{tt('↩ Quay lại JOIN một bước')}</Button> : null}
+                </Space>
+              </CollapsibleSection>
+            ) : null}
+
+            {!pipeline ? (
+            <CollapsibleSection title={tt('③ RIGHT · Bảng định mức (rule)')}>
               {cfg.ruleSource === 'inline' ? (
                 // Inline rules were removed from the product (kept engine-side so old configs keep RUNNING).
                 // Editing them here is no longer possible — recreate as a collection-mode generator.
@@ -549,33 +892,77 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 </div>
               ) : (
                 <>
-                  <SettingRow label={tt('Bảng quy tắc')} hint={tt('Bảng dữ liệu chứa các dòng quy tắc (vd định mức BOM) — hợp khi quy tắc nhiều, import Excel, do nghiệp vụ tự quản.')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.ruleCollection || undefined} onChange={(v) => set({ ruleCollection: v })} placeholder={tt('Chọn bảng')} /></SettingRow>
+                  <SettingRow label={tt('Bảng quy tắc')} hint={tt('RIGHT của phép JOIN: bảng dữ liệu chứa các dòng định mức/quy tắc (vd BOM) — hợp khi quy tắc nhiều, import Excel, do nghiệp vụ tự quản.')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.ruleCollection || undefined} onChange={(v) => set({ ruleCollection: v })} placeholder={tt('Chọn bảng')} /></SettingRow>
                   <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của quy tắc (appends)')} hint={tt('Quan hệ của bảng quy tắc mà điều kiện/công thức cần đọc (vd nhóm của rule). Chọn là nạp toàn bộ cột.')}>
                     <RelationAppendsPicker api={api} collectionName={cfg.ruleCollection || undefined} value={cfg.ruleAppends} onChange={(v) => set({ ruleAppends: v })} />
                   </SettingRow>
-                  <SettingRow layout="vertical" label={tt('Chỉ lấy dòng quy tắc thoả')} hint={tt('Mỗi dòng là một điều kiện — tất cả phải đúng (VÀ). Cột quy tắc so với giá trị bạn gõ: gõ true / Chính ngạch là so hằng; gõ parent.shipping_type (hay src.*) là khớp động theo bản ghi đang tính. Cột quy tắc đi xuyên quan hệ được.')}>
-                    <EditTable
-                      rows={cfg.ruleWhere || []} onChange={(v) => set({ ruleWhere: v })}
-                      newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')}
-                      columns={[
-                        { title: tt('Cột quy tắc'), key: 'field', render: (row, patch) => <CondFieldCascader api={api} collection={cfg.ruleCollection || undefined} value={row.field} onPick={(p, t) => { const ops = opsForType(t).map((o) => o.value); patch({ field: p, ...(row.op && !ops.includes(row.op) ? { op: 'eq' } : {}) }); }} placeholder={tt('cột quy tắc')} /> },
-                        { title: tt('Toán tử'), key: 'op', width: 96, render: (row, patch) => <Select size="middle" style={{ width: '100%' }} value={row.op || 'eq'} onChange={(v) => patch({ op: v })} options={opsForType(ruleWhereTypes[row.field])} /> },
-                        { title: tt('Giá trị'), key: 'value', render: (row, patch) => isDateType(ruleWhereTypes[row.field])
-                          ? <Input type="date" size="middle" style={{ width: '100%' }} value={String(row.value ?? '')} onChange={(e) => patch({ value: e.target.value })} onFocus={trackFocus} />
-                          : <Input size="middle" style={{ width: '100%' }} value={row.value ?? ''} onChange={(e) => patch({ value: e.target.value })} onFocus={trackFocus} placeholder={tt('gõ cái gì ăn cái đó (true, Chính ngạch, parent.shipping_type)')} /> },
-                      ]}
-                    />
+                  <SettingRow label={tt('Nổ đệ quy (self-join nhiều cấp)')} hint={tt('BOM nhiều cấp trong 1 lần chạy: mỗi dòng con lại tra tiếp bảng định mức. Tắt = 1 cấp như cũ.')}>
+                    <Checkbox checked={!!cfg.recurse} onChange={(e) => set({ recurse: e.target.checked })} />
                   </SettingRow>
+                  {cfg.recurse ? (
+                    <div style={{ border: `1px solid ${token.colorPrimaryBorder || token.colorBorder}`, borderRadius: 8, padding: '10px 12px', margin: '2px 0 6px', background: token.colorFillQuaternary }}>
+                      <div style={{ fontSize: 11.5, color: token.colorTextTertiary, marginBottom: 8 }}>↻ {tt('khi đệ quy, khoá cha của cấp sau = component của cấp trước')}</div>
+                      <SettingRow label={tt('Khoá cha (trên bảng định mức)')} hint={tt('Cột trên bảng định mức đóng vai "sản phẩm cha" của một dòng — khoá self-join. VD bom.product_id.')}>
+                        <FieldSelect api={api} collection={cfg.ruleCollection || undefined} value={cfg.recurseParentKey || ''} onChange={(v) => set({ recurseParentKey: v })} placeholder={tt('vd product_id')} size="middle" style={{ width: '100%' }} />
+                      </SettingRow>
+                      <SettingRow label={tt('Component (cột sinh ra → khoá cha cấp sau)')} hint={tt('Cột SINH RA chứa id linh kiện; giá trị của nó trở thành "khoá cha" khi tra cấp tiếp theo. VD material_id.')}>
+                        <FieldSelect api={api} collection={targetCollection} value={cfg.recurseChildKey || ''} onChange={(v) => set({ recurseChildKey: v })} placeholder={tt('vd material_id')} size="middle" style={{ width: '100%' }} />
+                      </SettingRow>
+                      <SettingRow label={tt('Cột số lượng (nhân dồn xuống)')} hint={tt('Cột SINH RA chứa số lượng; nhân dồn theo cây: sl(cấp sau) = sl(cấp trước) × định mức/đơn vị. Công thức số lượng nên đọc src.<cột này> để nối cấp. VD qty.')}>
+                        <FieldSelect api={api} collection={targetCollection} value={cfg.recurseQtyField || ''} onChange={(v) => set({ recurseQtyField: v })} placeholder={tt('vd qty')} size="middle" style={{ width: '100%' }} />
+                      </SettingRow>
+                      <SettingRow label={tt('Độ sâu tối đa')} hint={tt('Chặn BOM vòng lặp / chạy vô hạn. Mặc định 20.')}>
+                        <InputNumber min={1} max={100} value={cfg.maxDepth ?? 20} onChange={(v) => set({ maxDepth: v ?? 20 })} />
+                      </SettingRow>
+                      <SettingRow label={tt('Xuất ra')} hint={tt('Chỉ lá = chỉ giữ NVL gốc (bỏ cụm trung gian). Mọi cấp = giữ tất cả, đánh dấu cấp + cha.')}>
+                        <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }} value={cfg.recurseOutput || 'leaves'} onChange={(v: any) => set({ recurseOutput: v })}
+                          options={[{ value: 'leaves', label: tt('Chỉ lá (NVL gốc)') }, { value: 'all', label: tt('Mọi cấp') }]} />
+                      </SettingRow>
+                    </div>
+                  ) : null}
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${token.colorBorderSecondary}` }}>
+                    <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 6 }}>{tt('Cần nối QUA NHIỀU BẢNG liên tiếp (vd đơn → combo → BOM)? Chuyển sang pipeline nhiều bước — mỗi bước nối một bảng, output bước trước là input bước sau.')}</div>
+                    <Button type="dashed" onClick={toPipeline}>⛓ {tt('Chuyển sang pipeline nhiều bước')}</Button>
+                  </div>
                 </>
               )}
             </CollapsibleSection>
+            ) : null}
 
-            <CollapsibleSection title={tt('4. Công thức tạo dòng & ghi kết quả')}>
+            {cfg.ruleSource !== 'inline' && !pipeline ? (
+              <CollapsibleSection title={tt('④ ON · Điều kiện nối (LEFT ⋈ RIGHT)')}>
+                <SettingRow layout="vertical" label={tt('Điều kiện nối cơ bản (VÀ)')} hint={tt('Cơ sở của phép nối — mọi điều kiện phải đúng (VÀ). Cột quy tắc so với giá trị bạn gõ: true / NV là hằng; parent.shipping_type hay src.product_id là khớp động theo bản ghi/dòng đang tính. Cột quy tắc đi xuyên quan hệ được.')}>
+                  <EditTable rows={cfg.ruleWhere || []} onChange={(v) => set({ ruleWhere: v })} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={ruleCondColumns()} />
+                </SettingRow>
+                <SettingRow layout="vertical" label={tt('Bậc khớp ưu tiên (tuỳ chọn)')} hint={tt('thử bậc 1 trước; có kết quả thì dùng & dừng; bậc dưới tự bỏ dòng đã khai bậc trên (chống đếm trùng). VD: bậc 1 = user == src.emp (đích danh), bậc 2 = role == src.role (theo vai trò).')}>
+                  <div>
+                    {tiers.map((tier, i) => (
+                      <div key={i} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: '8px 10px', marginBottom: 8, background: token.colorBgContainer }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <b style={{ fontSize: 12.5 }}>{tt('Bậc {{n}}', { n: i + 1 })} · <span style={{ color: token.colorPrimary }}>{tierLabel(i, tiers.length)}</span></b>
+                          <Space size={2}>
+                            <Button size="small" type="text" disabled={i === 0} onClick={() => moveTier(i, -1)}>↑</Button>
+                            <Button size="small" type="text" disabled={i === tiers.length - 1} onClick={() => moveTier(i, 1)}>↓</Button>
+                            <Button size="small" type="text" danger onClick={() => setTiers(tiers.filter((_, j) => j !== i))}>✕</Button>
+                          </Space>
+                        </div>
+                        <EditTable rows={tier} onChange={(v) => setTiers(tiers.map((t, j) => (j === i ? v : t)))} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={ruleCondColumns()} />
+                      </div>
+                    ))}
+                    <Button size="small" type="dashed" onClick={() => setTiers([...tiers, []])}>＋ {tt('Thêm bậc ưu tiên')}</Button>
+                  </div>
+                </SettingRow>
+              </CollapsibleSection>
+            ) : null}
+
+            <CollapsibleSection title={tt('⑤ → KẾT QUẢ · công thức tạo dòng & ghi vào đâu')}>
               <SettingRow label={tt('Ghi vào')} hint={tt('Bảng con của bảng nguồn nhận các dòng sinh ra. Khoá ngoại tự suy ra từ quan hệ — không phải điền.')}>
                 <Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={relOptions} value={cfg.targetPath || undefined}
                   onChange={(v) => { const rel = relOptions.find((r) => r.value === v); set({ targetPath: v, targetForeignKey: rel?.foreignKey || '' }); }}
                   placeholder={tt('Chọn bảng con (quan hệ hasMany)')} notFoundContent={cfg.sourceCollection ? tt('Bảng nguồn chưa có quan hệ bảng con') : tt('Chọn bảng nguồn trước')} />
               </SettingRow>
+              {!pipeline ? (
+              <>
               <SettingRow layout="vertical" label={tt('Biến trung gian')} hint={tt('KHÔNG bắt buộc — như alias/CTE trong SQL: dùng khi một biểu thức lặp lại ở nhiều cột. Ánh xạ giá trị config → dữ liệu bằng SWITCH/IF (như CASE WHEN). VD person = SWITCH(rule.based_on & \'|\' & rule.recipient, \'NVPT|self\', parent.responsible_staff, …, null).')}>
                 <EditTable rows={cfg.deriveVars || []} onChange={(v) => set({ deriveVars: v })} addLabel={tt('Thêm biến')} newRow={() => ({ name: '', formula: '' })}
                   columns={[
@@ -590,11 +977,23 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                   { title: tt('Công thức'), key: 'formula', render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.formula} onChange={(e) => patch({ formula: e.target.value })} onFocus={trackFocus} placeholder={tt('công thức')} /> },
                   { title: tt('Bắt buộc'), key: 'required', width: 84, align: 'center', render: (row, patch) => <Tooltip title={tt('Bắt buộc — null thì bỏ dòng')}><Checkbox checked={!!row.required} onChange={(e) => patch({ required: e.target.checked })} /></Tooltip> },
                 ]} />
+              </>
+              ) : (
+                <div style={{ fontSize: 12.5, color: token.colorTextTertiary, background: token.colorFillQuaternary, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: '8px 10px', margin: '4px 0 8px' }}>
+                  {tt('Chế độ pipeline: các cột sinh ra được khai TRONG TỪNG BƯỚC JOIN ở trên (mục ③). Kết quả cuối là output của bước cuối; phần gộp/SUM dưới đây áp cho toàn bộ.')}
+                </div>
+              )}
+              <div style={{ height: 1, background: token.colorBorderSecondary, margin: '14px 0 10px' }} />
+              <SettingRow layout="vertical" label={tt('Gộp theo cột (group by)')} hint={tt('Gộp các dòng trùng khoá này; cột số được cộng dồn. VD material_id khi nổ BOM (đệ quy: gộp các lá theo NVL → tổng nhu cầu).')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.groupBy || undefined} onChange={(v) => set({ groupBy: v })} placeholder={tt('vd material_id')} /></SettingRow>
+              <SettingRow layout="vertical" label={tt('Cột cộng dồn khi gộp')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.sumFields} onChange={(v) => set({ sumFields: v })} placeholder={tt('vd qty')} /></SettingRow>
             </CollapsibleSection>
 
-            <CollapsibleSection title={tt('5. Nâng cao — logic điền số (tuỳ chọn)')} defaultOpen={false}>
-              <SettingRow layout="vertical" label={tt('Gộp theo cột (group by)')} hint={tt('Gộp các dòng trùng khoá này; cột số được cộng dồn. VD material_id khi nổ BOM.')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.groupBy || undefined} onChange={(v) => set({ groupBy: v })} placeholder={tt('vd material_id')} /></SettingRow>
-              <SettingRow layout="vertical" label={tt('Cột cộng dồn khi gộp')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.sumFields} onChange={(v) => set({ sumFields: v })} placeholder={tt('vd qty')} /></SettingRow>
+            <CollapsibleSection title={tt('⑥ Nâng cao — làm tròn/kiểm tra (tuỳ chọn)')} defaultOpen={false}>
+              {pipeline ? (
+                <SettingRow label={tt('Giới hạn số dòng (maxRows)')} hint={tt('An toàn nổ dây chuyền: nếu tập đang xử lý vượt số này ở BẤT KỲ bước nào, cả lần chạy bị HUỶ với thông báo rõ ràng (không cắt cụt/treo). Mặc định 10000.')}>
+                  <InputNumber min={1} max={1000000} step={1000} style={{ width: 200 }} value={cfg.maxRows ?? 10000} onChange={(v) => set({ maxRows: v ?? undefined })} />
+                </SettingRow>
+              ) : null}
               <SettingRow layout="vertical" label={tt('Làm tròn cột (largest-remainder)')} hint={tt('Làm tròn số, phần dư dồn vào dòng cuối để tổng khớp. Hợp cho tiền hoa hồng chia %.')}>
                 <Space wrap>
                   <FieldMultiSelect api={api} collection={targetCollection} value={cfg.rounding?.fields} onChange={(v) => set({ rounding: { ...(cfg.rounding || { precision: 0 }), fields: v } })} placeholder={tt('cột cần làm tròn')} style={{ width: 260 }} />

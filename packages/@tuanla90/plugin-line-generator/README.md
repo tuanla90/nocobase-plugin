@@ -3,7 +3,19 @@
 > From **one parent record** → generate **N child rows** in **one transaction**, following a **rule set** you declare once.
 > The same mechanism covers **BOM explosion**, **commission splits**, and **cost / piece-rate allocation** — with cross-relation matching, dynamic recipients, group-and-sum, and rounding; run it **manually with a button** or **automatically on save**, with a **dry-run preview** + **debugger**.
 
-**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.6.12
+**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.8.0
+
+> **New in 0.8** — the single JOIN is generalised into an **ordered multi-step JOIN pipeline**. The config editor becomes a **pipeline builder**: LEFT source, then an add/remove/reorder list of **step cards** (each joins its own RIGHT side), then the final group/SUM + write target.
+> - **N-step pipeline** — each step joins a **different config table** (or follows a relation) and fans rows out; the **output of step N is the input of step N+1** (a step's formulas read the incoming row via `src.*`), so quantities **multiply naturally down the chain**. The real target case: order → order_items → **⋈ combo_config (recursive)** → **⋈ bom** → group by material + SUM.
+> - **Two step kinds** — a step's RIGHT side is either a **config table** (scan a master/norm table, matched by ON conditions) *or* an **existing relation** (follow a hasMany/o2m by its indexed FK — no table scan). The relation kind also unifies the old `sourceLinesPath` hop.
+> - **Per-step recursion + priority tiers** — the v0.7 self-join recursion and specific-over-general tiers now apply **per step**.
+> - **Fan-out safety (`maxRows`, default 10000)** — chained fan-outs can explode, so if the working set exceeds the cap at any step the whole run **aborts with a clear error** (never a silent truncate or a hang).
+>
+> A config **without** join steps keeps the v0.7 single-join layout and behaves **byte-identically** (full back-compat).
+
+> **New in 0.7** — the config editor is reshaped as a **JOIN builder** (LEFT source ⋈ RIGHT rules ON conditions → result), plus two optional matching upgrades:
+> - **Priority-tier matching** (*specific overrides general*): try the specific rule (e.g. the row for this exact employee) first; if none, fall back to the general one (e.g. the row for the role) — with automatic de-duplication so nobody is counted twice.
+> - **Recursive explosion** (*multi-level BOM in one run*): a product → sub-assembly → raw-material tree of any depth explodes in a single pass, quantities multiply down the tree, and a cyclic-BOM guard stops runaway loops. Configs without these fields behave exactly as before.
 
 ## What's new after installing?
 
@@ -85,4 +97,4 @@ Both clients open the **same generator list** and share one set of data.
 
 ### For developers
 
-A **config-driven** mechanism: each generator is one row in the `ptdl_linegen_rules` collection (the whole configuration lives in the JSON `config` column). The server exposes the `ptdlLineGen` resource with three main actions: `rulesFor` (which generators apply to a collection), `preview` (dry-run), and `generate` (transactional write: child rows + parent updates in the same transaction). Auto-run hangs off the `afterCreate/UpdateWithAssociations` hooks with an anti-reentrancy lock. The algorithm core (match / skip / group / round / hash) is pure, touches no DB, and is tested with Node — see `seed/COMMISSION-SETUP.md` and `bash test/run.sh` (30/30 assertions).
+A **config-driven** mechanism: each generator is one row in the `ptdl_linegen_rules` collection (the whole configuration lives in the JSON `config` column). The server exposes the `ptdlLineGen` resource with three main actions: `rulesFor` (which generators apply to a collection), `preview` (dry-run), and `generate` (transactional write: child rows + parent updates in the same transaction). Auto-run hangs off the `afterCreate/UpdateWithAssociations` hooks with an anti-reentrancy lock. Since 0.7 the core also does **priority-tier matching** (`matchTiers` — first non-empty tier wins, higher-tier fields auto-excluded from lower tiers) and **recursive self-join explosion** (`recurse` — multi-level BOM, qty multiplies down, leaf detection + cyclic guard, `leaves`/`all` output). The algorithm core (match / tiers / skip / recurse / group / round / hash) is pure, touches no DB, and is tested with Node — see `seed/COMMISSION-SETUP.md` and `bash test/run.sh` (88/88 assertions).

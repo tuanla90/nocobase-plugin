@@ -7,17 +7,23 @@ import * as path from 'path';
 import { renderEmail, htmlToText } from '../shared/renderEngine';
 import {
   CONFIG_COLLECTION,
+  METHODS_COLLECTION,
   TEMPLATES_COLLECTION,
   SECRET_UNCHANGED,
   DEFAULT_SMTP_PORT,
   MailerBackend,
 } from '../shared/constants';
-import type { MailerConfigView } from '../shared/types';
+import type { MailMethodView, MailMethodOption } from '../shared/types';
 
-export interface ConfigRow {
+/** The full, secret-bearing config of ONE sending method (a ptdlMailerMethods row). Shared by the
+ *  backend send functions — same field shape the v0.1.x single ConfigRow had, plus name/key/isDefault. */
+export interface MethodConfig {
   id?: number;
+  key: string;
+  name: string;
   backend: MailerBackend;
   enabled: boolean;
+  isDefault: boolean;
   fromName: string;
   appsScriptUrl: string;
   smtpHost: string;
@@ -29,28 +35,6 @@ export interface ConfigRow {
   sharedToken: string;
 }
 
-const DEFAULT_CONFIG: ConfigRow = {
-  backend: 'apps-script',
-  enabled: false,
-  fromName: '',
-  appsScriptUrl: '',
-  smtpHost: '',
-  smtpPort: DEFAULT_SMTP_PORT,
-  smtpSecure: true,
-  smtpUser: '',
-  smtpPass: '',
-  smtpFrom: '',
-  sharedToken: '',
-};
-
-/** Load the single config row, creating a default (disabled) one if none exists. */
-export async function loadConfig(app: any): Promise<any> {
-  const repo = app.db.getRepository(CONFIG_COLLECTION);
-  let row = await repo.findOne();
-  if (!row) row = await repo.create({ values: { ...DEFAULT_CONFIG } });
-  return row;
-}
-
 const str = (v: any, d = '') => (v == null ? d : String(v));
 const bool = (v: any, d = false) => (typeof v === 'boolean' ? v : v == null ? d : v === 'true' || v === 1 || v === '1');
 const int = (v: any, d = 0) => {
@@ -58,48 +42,111 @@ const int = (v: any, d = 0) => {
   return Number.isFinite(n) ? n : d;
 };
 
-/** A masked, secret-free view of the config for the client. Never leaks the Apps Script URL, SMTP
- *  password, or shared token — only whether each is set (+ a short masked tail for the URL). */
-export function configView(row: any): MailerConfigView {
+/** Generate a stable, collision-resistant method key. */
+export function genMethodKey(): string {
+  return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+/** Normalize a raw row (Model | plain) into a fully-typed MethodConfig with sane defaults. */
+export function methodFromRow(row: any): MethodConfig {
   const j = row?.toJSON ? row.toJSON() : row || {};
-  const url = str(j.appsScriptUrl);
-  let mask = '';
-  if (url) {
-    const tail = url.length > 14 ? url.slice(-14) : url;
-    mask = '…' + tail;
-  }
   return {
-    backend: (j.backend as MailerBackend) || 'apps-script',
-    enabled: bool(j.enabled),
+    id: j.id,
+    key: str(j.key) || (j.id != null ? String(j.id) : ''),
+    name: str(j.name),
+    backend: (j.backend as MailerBackend) === 'smtp' ? 'smtp' : 'apps-script',
+    enabled: bool(j.enabled, true),
+    isDefault: bool(j.isDefault),
     fromName: str(j.fromName),
-    appsScriptUrlMask: mask,
-    hasAppsScriptUrl: !!url,
+    appsScriptUrl: str(j.appsScriptUrl),
     smtpHost: str(j.smtpHost),
     smtpPort: int(j.smtpPort, DEFAULT_SMTP_PORT),
     smtpSecure: bool(j.smtpSecure, true),
     smtpUser: str(j.smtpUser),
+    smtpPass: str(j.smtpPass),
     smtpFrom: str(j.smtpFrom),
-    hasSmtpPass: !!str(j.smtpPass),
-    hasSharedToken: !!str(j.sharedToken),
+    sharedToken: str(j.sharedToken),
   };
 }
 
-/** Build the patch for a save: non-secret fields overwrite; SECRET fields (appsScriptUrl, smtpPass,
- *  sharedToken) only overwrite when the client sends a real value — a masked/sentinel/empty value keeps
- *  the stored secret so re-saving the form never wipes secrets the client never actually saw. */
-export function buildConfigPatch(current: any, values: any): Partial<ConfigRow> {
-  const cur = current?.toJSON ? current.toJSON() : current || {};
-  const v = values || {};
-  const patch: Partial<ConfigRow> = {
-    backend: v.backend === 'smtp' ? 'smtp' : 'apps-script',
-    enabled: bool(v.enabled, bool(cur.enabled)),
-    fromName: str(v.fromName, str(cur.fromName)),
-    smtpHost: str(v.smtpHost, str(cur.smtpHost)),
-    smtpPort: int(v.smtpPort, int(cur.smtpPort, DEFAULT_SMTP_PORT)),
-    smtpSecure: bool(v.smtpSecure, bool(cur.smtpSecure, true)),
-    smtpUser: str(v.smtpUser, str(cur.smtpUser)),
-    smtpFrom: str(v.smtpFrom, str(cur.smtpFrom)),
+/** Load every sending method, default first then by id. */
+export async function loadMethods(app: any): Promise<MethodConfig[]> {
+  try {
+    const rows = await app.db.getRepository(METHODS_COLLECTION).find({ sort: ['-isDefault', 'id'] });
+    return (rows || []).map(methodFromRow);
+  } catch {
+    return [];
+  }
+}
+
+/** Resolve which method to send with: an explicit key/id wins (returned even if disabled — the caller
+ *  reports "disabled"); otherwise the default enabled method, then any enabled method, then any method. */
+export function resolveMethod(methods: MethodConfig[], key?: string | number | null): MethodConfig | null {
+  const k = key == null ? '' : String(key).trim();
+  if (k) {
+    const hit = methods.find((m) => m.key === k || String(m.id) === k);
+    if (hit) return hit;
+  }
+  return (
+    methods.find((m) => m.isDefault && m.enabled !== false) ||
+    methods.find((m) => m.enabled !== false) ||
+    methods.find((m) => m.isDefault) ||
+    methods[0] ||
+    null
+  );
+}
+
+/** A masked, secret-free view of one method for the settings UI (never leaks URL/password/token). */
+export function methodView(row: any): MailMethodView {
+  const m = methodFromRow(row);
+  let mask = '';
+  if (m.appsScriptUrl) {
+    const tail = m.appsScriptUrl.length > 14 ? m.appsScriptUrl.slice(-14) : m.appsScriptUrl;
+    mask = '…' + tail;
+  }
+  return {
+    id: m.id as number,
+    key: m.key,
+    name: m.name,
+    backend: m.backend,
+    enabled: m.enabled,
+    isDefault: m.isDefault,
+    fromName: m.fromName,
+    appsScriptUrlMask: mask,
+    hasAppsScriptUrl: !!m.appsScriptUrl,
+    smtpHost: m.smtpHost,
+    smtpPort: m.smtpPort,
+    smtpSecure: m.smtpSecure,
+    smtpUser: m.smtpUser,
+    smtpFrom: m.smtpFrom,
+    hasSmtpPass: !!m.smtpPass,
+    hasSharedToken: !!m.sharedToken,
   };
+}
+
+/** Minimal, secret-free option for the loggedIn pickers (no host/user/from leaked). */
+export function methodOption(row: any): MailMethodOption {
+  const m = methodFromRow(row);
+  return { key: m.key, name: m.name, backend: m.backend, enabled: m.enabled, isDefault: m.isDefault };
+}
+
+/** Build a PARTIAL patch for a method save. Only keys the client actually sent are touched (so a
+ *  {id, enabled} toggle never resets name/backend). SECRET fields (appsScriptUrl, smtpPass, sharedToken)
+ *  only overwrite when a real value is sent — a masked/sentinel/empty value keeps the stored secret. */
+export function buildMethodPatch(current: any, values: any): Partial<MethodConfig> {
+  const v = values || {};
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(v, k);
+  const patch: Partial<MethodConfig> = {};
+  if (has('name')) patch.name = str(v.name);
+  if (has('backend')) patch.backend = v.backend === 'smtp' ? 'smtp' : 'apps-script';
+  if (has('enabled')) patch.enabled = bool(v.enabled);
+  if (has('isDefault')) patch.isDefault = bool(v.isDefault);
+  if (has('fromName')) patch.fromName = str(v.fromName);
+  if (has('smtpHost')) patch.smtpHost = str(v.smtpHost);
+  if (has('smtpPort')) patch.smtpPort = int(v.smtpPort, DEFAULT_SMTP_PORT);
+  if (has('smtpSecure')) patch.smtpSecure = bool(v.smtpSecure);
+  if (has('smtpUser')) patch.smtpUser = str(v.smtpUser);
+  if (has('smtpFrom')) patch.smtpFrom = str(v.smtpFrom);
   const secret = (incoming: any) => typeof incoming === 'string' && incoming !== '' && incoming !== SECRET_UNCHANGED;
   if (secret(v.appsScriptUrl)) patch.appsScriptUrl = String(v.appsScriptUrl).trim();
   if (secret(v.smtpPass)) patch.smtpPass = String(v.smtpPass);
@@ -109,6 +156,56 @@ export function buildConfigPatch(current: any, values: any): Partial<ConfigRow> 
   if (v.smtpPass === null) patch.smtpPass = '';
   if (v.sharedToken === null) patch.sharedToken = '';
   return patch;
+}
+
+/** Read the legacy single-row config (v0.1.x). Never creates a row — returns null if absent/empty. */
+export async function loadLegacyConfig(app: any): Promise<any | null> {
+  try {
+    return await app.db.getRepository(CONFIG_COLLECTION).findOne();
+  } catch {
+    return null;
+  }
+}
+
+/** One-time migration: if there are NO methods yet but the legacy config row carries real configuration,
+ *  seed ONE default method from it so an existing v0.1.x setup keeps sending. Idempotent + crash-safe. */
+export async function migrateLegacyConfig(app: any): Promise<void> {
+  try {
+    const methodsRepo = app.db.getRepository(METHODS_COLLECTION);
+    const count = await methodsRepo.count();
+    if (count > 0) return; // already have methods — nothing to migrate
+
+    const legacy = await loadLegacyConfig(app);
+    if (!legacy) return;
+    const c = methodFromRow(legacy);
+    // Only migrate when the legacy row holds something worth keeping (skip the empty default row a fresh
+    // install left behind, so brand-new installs simply start with an empty methods list).
+    const meaningful =
+      c.enabled || c.appsScriptUrl || c.sharedToken || c.smtpHost || c.smtpPass || c.smtpUser || c.smtpFrom || c.fromName;
+    if (!meaningful) return;
+
+    await methodsRepo.create({
+      values: {
+        key: genMethodKey(),
+        name: 'Mặc định', // "Default" — bilingual UI, but the stored name is a plain label the admin can rename
+        backend: c.backend,
+        enabled: c.enabled,
+        isDefault: true,
+        fromName: c.fromName,
+        appsScriptUrl: c.appsScriptUrl,
+        sharedToken: c.sharedToken,
+        smtpHost: c.smtpHost,
+        smtpPort: c.smtpPort,
+        smtpSecure: c.smtpSecure,
+        smtpUser: c.smtpUser,
+        smtpPass: c.smtpPass,
+        smtpFrom: c.smtpFrom,
+      },
+    });
+    app.logger?.info?.('[mailer] migrated legacy single config → one default sending method');
+  } catch (e: any) {
+    app.logger?.warn?.(`[mailer] legacy config migration failed: ${e?.message || e}`);
+  }
 }
 
 // ── attachments ───────────────────────────────────────────────────────────────────────────────────
@@ -250,7 +347,7 @@ export interface SendResult {
   error?: string;
 }
 
-async function sendViaAppsScript(cfg: ConfigRow, mail: {
+async function sendViaAppsScript(cfg: MethodConfig, mail: {
   to: string[]; cc: string[]; bcc: string[]; subject: string; html: string; text: string; attachments: GatheredAttachment[];
 }): Promise<SendResult> {
   if (!cfg.appsScriptUrl) return { ok: false, error: 'Apps Script URL is not configured' };
@@ -287,7 +384,7 @@ async function sendViaAppsScript(cfg: ConfigRow, mail: {
   }
 }
 
-async function sendViaSmtp(cfg: ConfigRow, mail: {
+async function sendViaSmtp(cfg: MethodConfig, mail: {
   to: string[]; cc: string[]; bcc: string[]; subject: string; html: string; text: string; attachments: GatheredAttachment[];
 }): Promise<SendResult> {
   if (!cfg.smtpHost) return { ok: false, error: 'SMTP host is not configured' };
@@ -328,33 +425,60 @@ export interface SendMailInput {
   cc?: any;
   bcc?: any;
   attachments?: Array<number | { id: number }>;
-  backend?: MailerBackend | 'default' | '';
+  /** Which sending method to use (its stable `key`, or numeric id). Empty/absent → the default method. */
+  methodKey?: string | number | null;
 }
 
-/** Resolve content + attachments and send via the configured (or overridden) backend. Never throws. */
+/** Resolve content + attachments and send via a specific method config. Skips the enabled check (used by
+ *  the "send test" path, which must work even for a method that is currently toggled off). Never throws. */
+async function sendWithMethod(app: any, cfg: MethodConfig, input: SendMailInput): Promise<SendResult> {
+  const to = arrify(input.to);
+  if (!to.length) return { ok: false, error: 'No "to" recipient.' };
+  const cc = arrify(input.cc);
+  const bcc = arrify(input.bcc);
+
+  const content = await resolveContent(app, input);
+  if (content.error) return { ok: false, error: content.error };
+  if (!content.subject && !content.html) return { ok: false, error: 'Nothing to send (empty subject and body).' };
+
+  const attachments = await gatherAttachments(app, input.attachments || []);
+  const text = htmlToText(content.html);
+  const mail = { to, cc, bcc, subject: content.subject, html: content.html, text, attachments };
+
+  return cfg.backend === 'smtp' ? sendViaSmtp(cfg, mail) : sendViaAppsScript(cfg, mail);
+}
+
+/** Resolve the method (by key, or the default) and send. Reports clear errors when no method exists or the
+ *  chosen method is disabled. Never throws — every path returns a { ok, error } result. */
 export async function sendMail(app: any, input: SendMailInput): Promise<SendResult> {
   try {
-    const row = await loadConfig(app);
-    const cfg = (row?.toJSON ? row.toJSON() : row) as ConfigRow;
-    if (!cfg.enabled) return { ok: false, error: 'Mailer is not enabled (Settings → Mailer → Backend → enable).' };
-
-    const backend: MailerBackend = input.backend === 'smtp' || input.backend === 'apps-script' ? input.backend : cfg.backend;
-
-    const to = arrify(input.to);
-    if (!to.length) return { ok: false, error: 'No "to" recipient.' };
-    const cc = arrify(input.cc);
-    const bcc = arrify(input.bcc);
-
-    const content = await resolveContent(app, input);
-    if (content.error) return { ok: false, error: content.error };
-    if (!content.subject && !content.html) return { ok: false, error: 'Nothing to send (empty subject and body).' };
-
-    const attachments = await gatherAttachments(app, input.attachments || []);
-    const text = htmlToText(content.html);
-    const mail = { to, cc, bcc, subject: content.subject, html: content.html, text, attachments };
-
-    return backend === 'smtp' ? sendViaSmtp(cfg, mail) : sendViaAppsScript(cfg, mail);
+    const methods = await loadMethods(app);
+    if (!methods.length) {
+      return { ok: false, error: 'No sending method configured (Settings → Mailer → Sending methods → add one).' };
+    }
+    const cfg = resolveMethod(methods, input.methodKey);
+    if (!cfg) return { ok: false, error: 'No usable sending method (all are disabled?).' };
+    if (cfg.enabled === false) {
+      return { ok: false, error: `Sending method "${cfg.name || cfg.key}" is disabled (enable it in Settings → Mailer).` };
+    }
+    return await sendWithMethod(app, cfg, input);
   } catch (e: any) {
     return { ok: false, error: `Send failed: ${e?.message || e}` };
+  }
+}
+
+/** Send a test email via a SPECIFIC method (by key/id). Works even if the method is toggled off. */
+export async function sendTestViaMethod(
+  app: any,
+  input: { methodKey?: string | number | null; to: any; subject?: string; html?: string },
+): Promise<SendResult> {
+  try {
+    const methods = await loadMethods(app);
+    if (!methods.length) return { ok: false, error: 'No sending method configured.' };
+    const cfg = resolveMethod(methods, input.methodKey);
+    if (!cfg) return { ok: false, error: 'Sending method not found.' };
+    return await sendWithMethod(app, cfg, { to: input.to, inlineSubject: input.subject, inlineHtml: input.html });
+  } catch (e: any) {
+    return { ok: false, error: `Test failed: ${e?.message || e}` };
   }
 }

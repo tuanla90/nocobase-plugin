@@ -65,6 +65,8 @@ export interface PreviewTrace {
   rules?: any[];
   pairs?: Array<{
     index?: number;
+    /** v0.8 pipeline: which join step this pair belongs to (0-based). Absent for the single-join path. */
+    step?: number;
     src?: any;
     rule?: any;
     derived?: Record<string, any>;
@@ -73,6 +75,8 @@ export interface PreviewTrace {
     reason?: string;
   }>;
   grouped?: GeneratedRow[];
+  /** v0.8 pipeline: one summary row per join step (rule table, rule count, rows out). */
+  steps?: Array<{ index: number; stepType?: string; ruleCollection?: string; relationPath?: string; ruleCount?: number; outputCount?: number }>;
   /** parentUpdates evaluated (debug only) so the preview shows what will be written back + surfaces errors. */
   parentUpdates?: Array<{ field: string; formula: string; value?: any; error?: string }>;
 }
@@ -94,6 +98,58 @@ export interface InlineScope {
   when?: GuardCond[];
   /** Rule rows — arbitrary objects shaped by ruleFields; formulas read them as `rule.*`. */
   rules: Record<string, any>[];
+}
+
+/**
+ * v0.8 — ONE join step in an ordered N-step pipeline (`LineGenConfig.joinSteps`). Each step is a
+ * self-contained join with its OWN RIGHT side + ON conditions + fan-out outputs + optional self-recursion.
+ * The OUTPUT rows of step i become the INPUT rows (`src.*`) of step i+1 — so a step's formulas read
+ * `src.*` = the current input row (carrying forward the accumulated fields from prior steps), `rule.*` =
+ * this step's matched RIGHT row, and `parent.*` = the shared parent record. Quantities multiply naturally
+ * down the chain (e.g. `qty = NUM(src.qty) * NUM(rule.qty_per_unit)`).
+ *
+ * A step has TWO source flavours:
+ *  - `stepType:'config'` (default): RIGHT = an INDEPENDENT master/config table (`ruleCollection`), matched
+ *    by the ON conditions (`ruleWhere` + optional `matchTiers`). The server queries that table.
+ *  - `stepType:'relation'`: RIGHT = a DEPENDENT association (`relationPath`) FOLLOWED from each input row to
+ *    its FK-linked child records — no table scan, only the indexed related rows. Those related records ARE
+ *    the fan-out (read as `rule.*`), and `ruleWhere`/`matchTiers` may still OPTIONALLY post-filter them.
+ *    This generalises the `sourceLinesPath` hop (order → order_items) to any step.
+ *
+ * The join fields below MIRROR the same-named `LineGenConfig` fields (so the single-join path is just the
+ * 1-step case). Reuses the SAME engine helpers per step (condListPass / selectMatchedRules / recurseExplode /
+ * lineOutputs eval) via `runJoinStep`.
+ */
+export interface JoinStep {
+  /** 'config' (default) = join a master/config table; 'relation' = follow an existing hasMany/o2m association. */
+  stepType?: 'config' | 'relation';
+  /** relation step: the association on the current input rows to follow (its child records become `rule.*`). */
+  relationPath?: string;
+  /** config step: the master/config table joined on the ON conditions (used as-is, no migration). */
+  ruleCollection?: string;
+  /** config step: appends[] loaded onto each rule row of this step (e.g. 'material'). */
+  ruleAppends?: string[];
+  /** Base ON conditions (AND). config step: the join filter. relation step: an OPTIONAL post-filter. */
+  ruleWhere?: RuleWhere[];
+  /** OPTIONAL priority-tier matching for this step (same shape/semantics as LineGenConfig.matchTiers). */
+  matchTiers?: RuleWhere[][];
+  /** Intermediate named expressions for this step (evaluated before this step's lineOutputs). */
+  deriveVars?: DerivedVar[];
+  /** Expression on {src, rule, parent, ...derived}: truthy => skip this (src,rule) pair for this step. */
+  skipIf?: string | null;
+  /** One entry per generated column produced by this step (the row that flows to the next step's `src`). */
+  lineOutputs: NamedFormula[];
+  /** OPTIONAL: collapse this step's OUTPUT rows on these keys (numeric fields SUMmed) before the next step. */
+  groupBy?: string[] | null;
+  /** OPTIONAL: numeric fields to SUM when this step groups (default: inferred numeric outputs). */
+  sumFields?: string[];
+  /** OPTIONAL self-join recursion for THIS step (same semantics as LineGenConfig.recurse et al.). */
+  recurse?: boolean;
+  recurseParentKey?: string;
+  recurseChildKey?: string;
+  recurseQtyField?: string;
+  maxDepth?: number;
+  recurseOutput?: 'leaves' | 'all';
 }
 
 export interface LineGenConfig {
@@ -122,6 +178,21 @@ export interface LineGenConfig {
   /** v0.6 UNIFIED rule filter: only rule rows where ALL of these hold are used. `value` is a typed
    *  literal or a parent./src. reference (see RuleWhere). Replaces matchMap + ruleFilter. */
   ruleWhere?: RuleWhere[];
+  /**
+   * v0.7 OPTIONAL priority-tier matching ("specific overrides general"). An ORDERED list of tiers;
+   * each tier is an array of conditions (AND within a tier), same shape/semantics as `ruleWhere`.
+   * `matchTiers` is applied AMONG the rules that already pass the BASE `ruleWhere` filter — it does
+   * NOT replace it. Tier 0 = most specific.
+   *
+   * For EACH source row, the tiers are evaluated top-down and the FIRST tier that yields ≥1 matching
+   * rule is used (STOP there — no fall-through). Auto-exclude prevents double-counting: when a lower
+   * tier i is evaluated, a candidate rule only counts if it satisfies tier i AND every field named by a
+   * HIGHER tier's condition is BLANK/null on that rule row — so a "specific" row (whose specific field is
+   * filled) is never also caught by the general fallback tier.
+   *
+   * Absent/empty ⇒ behave exactly as before (every `ruleWhere`-passing rule is used). Back-compat.
+   */
+  matchTiers?: RuleWhere[][];
   /** @deprecated legacy — read for back-compat; new configs use ruleWhere. Join field↔field. */
   matchMap?: MatchPair[];
   /** @deprecated legacy — read for back-compat; new configs use ruleWhere. Static filter object. */
@@ -145,6 +216,44 @@ export interface LineGenConfig {
   groupBy?: string[] | null;
   /** Numeric fields to SUM when grouping (default: every output whose values are all numbers). */
   sumFields?: string[];
+
+  /**
+   * v0.7 OPTIONAL recursive explosion (multi-level BOM = self-join on the RULE table). After the initial
+   * explosion (source ⋈ config → children), each generated child whose `recurseChildKey` value re-joins the
+   * SAME config (rows where `recurseParentKey` == that value) is a SUB-ASSEMBLY and is exploded again, with
+   * the SAME ruleWhere/matchTiers; a child that re-joins NOTHING is a LEAF (raw material) and is kept. qty
+   * multiplies down the tree. Absent/false ⇒ single-pass as before. Back-compat.
+   */
+  recurse?: boolean;
+  /** RIGHT/config field holding the "parent product" key of a config row (e.g. bom.product_id). The self-join key. */
+  recurseParentKey?: string;
+  /** Generated child field holding the component id that becomes the NEXT level's parent key (e.g. output material_id). */
+  recurseChildKey?: string;
+  /** Output qty field multiplied down the tree: child.qty = parent.qty × per-unit qty (e.g. 'qty'). See generateCore. */
+  recurseQtyField?: string;
+  /** Cyclic-BOM / runaway backstop — max recursion depth (default 20). */
+  maxDepth?: number;
+  /** 'leaves' (default) = keep only leaf rows (drop intermediate sub-assemblies); 'all' = keep every level
+   *  (each row stamped with `_level` + `_recurseParent`). */
+  recurseOutput?: 'leaves' | 'all';
+
+  /**
+   * v0.8 OPTIONAL ordered N-STEP JOIN PIPELINE. When present + non-empty, the engine runs the source rows
+   * through each step in order (each step joins its OWN table/relation and fans out); the OUTPUT of step i is
+   * the INPUT (`src.*`) of step i+1, so quantities multiply down the chain. After the last step, the
+   * TOP-LEVEL `groupBy`/`sumFields`/`rounding` apply and the rows are written to `targetPath`. When ABSENT,
+   * the engine runs the existing v0.7 single-join path UNCHANGED (full back-compat).
+   *
+   * The initial input is the source rows (`sourceLinesPath` hop, or the parent record itself) — exactly as
+   * the single-join path. A `stepType:'relation'` step can also replace the `sourceLinesPath` hop.
+   */
+  joinSteps?: JoinStep[];
+  /**
+   * v0.8 fan-out safety: N chained fan-outs can explode combinatorially. If the working row set exceeds this
+   * at ANY step boundary (or while a step recurses), the WHOLE run is ABORTED with a clear error (surfaced in
+   * CoreResult.aborted + to the client) — never a silent truncate or a hang. Default 10000.
+   */
+  maxRows?: number;
 
   /** hasMany assoc on the parent that receives the generated rows (e.g. 'order_commissions'). */
   targetPath: string;
@@ -191,6 +300,9 @@ export interface CoreResult {
   skipped: Array<{ rule?: any; reason: string; detail?: string }>;
   /** per-formula evaluation errors (rule/field/message) — surfaced but non-fatal. */
   errors: Array<{ rule?: any; field: string; message: string }>;
+  /** v0.8 pipeline safety: set when the run was ABORTED (e.g. maxRows exceeded). When set, `rows` is empty
+   *  and the caller MUST treat the run as failed (the server returns ok:false with this reason/detail). */
+  aborted?: { reason: string; detail?: string };
   /** populated only when generateCore is called with ctx.debug — powers the step-by-step preview. */
   trace?: PreviewTrace;
 }
