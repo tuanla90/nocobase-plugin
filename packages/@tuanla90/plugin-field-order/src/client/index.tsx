@@ -1,5 +1,8 @@
+import React from 'react';
 import { Plugin } from '@nocobase/client';
 import { initFieldOrder } from '../shared/fieldOrder';
+import { applySettingsMenuOrderFromServer } from '../shared/settingsMenuOrder';
+import { MenuOrderEditor } from '../shared/menuOrderEditor';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
@@ -20,8 +23,19 @@ export class PluginFieldOrderClient extends Plugin {
       console.warn('[field-order] i18n addResources failed', e);
     }
     const t = (s: string, opts?: Record<string, any>) => this.app.i18n.t(s, { ns: NS, ...(opts || {}) });
+    const app: any = this.app;
 
-    initFieldOrder({ apiClient: (this.app as any).apiClient, t });
+    initFieldOrder({ apiClient: app.apiClient, t });
+
+    // Classic lane now ALSO applies the Settings menu order (previously /v/-only) + hosts the editor.
+    applySettingsMenuOrderFromServer(app, app.apiClient);
+
+    const MenuOrderPage: React.FC = () => <MenuOrderEditor app={app} api={app.apiClient} t={t} />;
+    app.pluginSettingsManager?.add?.('ptdl-menu-order', {
+      title: t('Settings menu order'),
+      icon: 'MenuOutlined',
+      Component: MenuOrderPage,
+    });
   }
 }
 

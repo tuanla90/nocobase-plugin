@@ -8,5 +8,16 @@
   "Failed to update field order": "Lỗi khi cập nhật thứ tự trường",
   "Failed to load fields": "Lỗi khi tải danh sách trường",
   "No reorderable fields": "Không có trường nào để sắp xếp",
-  "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.": "Kéo để đổi thứ tự rồi bấm Lưu. Áp dụng cho màn này và block/biểu mẫu tạo MỚI; block đã tạo giữ nguyên bố cục."
+  "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.": "Kéo để đổi thứ tự rồi bấm Lưu. Áp dụng cho màn này và block/biểu mẫu tạo MỚI; block đã tạo giữ nguyên bố cục.",
+  "Settings menu order": "Thứ tự menu Cài đặt",
+  "Drag the rows (or use ↑/↓) to arrange the Settings menu. Saved for the whole app.": "Kéo các dòng (hoặc dùng ↑/↓) để sắp xếp menu Cài đặt. Lưu cho toàn bộ app.",
+  "Order applies to both the classic (/admin) and modern (/v/) Settings menus. Core entries can be moved too.": "Thứ tự áp cho cả menu Cài đặt bản cổ điển (/admin) lẫn bản mới (/v/). Có thể di chuyển cả mục hệ thống.",
+  "No settings entries were found on this page.": "Không tìm thấy mục Cài đặt nào ở trang này.",
+  "Reset to the default order?": "Đặt lại thứ tự mặc định?",
+  "Reset": "Đặt lại",
+  "Save order": "Lưu thứ tự",
+  "Saved — reloading to apply…": "Đã lưu — đang tải lại để áp dụng…",
+  "Reset to default — reloading…": "Đã đặt lại mặc định — đang tải lại…",
+  "Save failed: {{msg}}": "Lưu thất bại: {{msg}}",
+  "Fixed": "Cố định"
 }

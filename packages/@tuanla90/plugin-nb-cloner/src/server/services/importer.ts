@@ -17,10 +17,35 @@ export interface PreviewReport {
     matchFields: number;       // same name AND same key → will be updated cleanly
     newFields: number;         // name not on target → will be ADDED as a new column
     conflictFields: string[];  // name exists on target but with a DIFFERENT key → will be SKIPPED
+    dataRows: number;          // rows the bundle carries for this collection (0 = schema only)
   }>;
   newCollections: number;      // collections that don't exist on the target yet
   existingCollections: number; // collections that already exist (get merged)
   conflictFieldTotal: number;  // total same-name/different-key fields that will be skipped
+  // What the bundle actually carries — lets the import UI enable/disable each "part" toggle
+  // (you can't import a part that isn't in the file).
+  bundleContents: {
+    ui: number;         // uiSchemas + flowModels rows (0 = bundle has no UI/pages)
+    roles: number;      // exported role definitions
+    workflows: number;  // exported workflow definitions
+    categories: number; // collection categories (table groups)
+    dataRows: number;   // total business-data rows across all collections
+  };
+}
+
+/**
+ * Optional per-import selection (mirrors the export side). Absent → import EVERYTHING in the bundle
+ * (back-compat with older clients that send no selection).
+ *  - parts:       which sections to write. Any part left `true`/undefined is imported.
+ *  - collections: which BUSINESS collection names to import (schema + optionally data).
+ *                 null/undefined = all business collections in the bundle.
+ *  - data:        which of those collections also get their ROW data written.
+ *                 null/undefined = all that carry data; [] = none (schema only).
+ */
+export interface ImportSelection {
+  parts?: { schema?: boolean; ui?: boolean; roles?: boolean; workflows?: boolean };
+  collections?: string[] | null;
+  data?: string[] | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -260,11 +285,24 @@ export class Importer {
   }
 
   // ── Import chính ────────────────────────────────────────────────────────────
-  async import(bundle: BundleData): Promise<ImportResult> {
+  async import(bundle: BundleData, selection?: ImportSelection): Promise<ImportResult> {
     // Import dựa trên SQL đặc thù PostgreSQL — chặn sớm nếu chạy trên dialect khác.
     assertPostgres(this.db);
     // Validate trước khi chạm DB
     this.validateBundle(bundle);
+
+    // Normalize the (optional) selection. No selection → import EVERYTHING (default = old behaviour,
+    // so older clients keep working). Any part left true/undefined is written.
+    const parts = {
+      schema: selection?.parts?.schema !== false,
+      ui: selection?.parts?.ui !== false,
+      roles: selection?.parts?.roles !== false,
+      workflows: selection?.parts?.workflows !== false,
+    };
+    const collFilter: Set<string> | null =
+      Array.isArray(selection?.collections) ? new Set(selection!.collections) : null;
+    const dataFilter: Set<string> | null =
+      Array.isArray(selection?.data) ? new Set(selection!.data) : null;
 
     const steps: ImportResult['steps'] = [];
     const sequelize = this.db.sequelize;
@@ -279,26 +317,35 @@ export class Importer {
       // CHỈ import những collection này + fields của chúng. Tuyệt đối không đụng
       // collection hệ thống (users/roles/uiSchemas...) — nếu không db.sync sẽ ALTER
       // bảng hệ thống của target và làm hỏng auth (Bug B).
-      const businessColNames = new Set<string>(
+      let businessColNames = new Set<string>(
         (bundle.schema.collections ?? [])
           .filter((c: any) => !SYSTEM_COLLECTION_NAMES.has(c.name) && !opt(c.options).internal)
           .map((c: any) => c.name),
       );
+      // Honour the collection selection (if the client sent one) — only these get imported.
+      if (collFilter) {
+        businessColNames = new Set([...businessColNames].filter((n) => collFilter.has(n)));
+      }
 
-      // ── STEP 1: Collections schema (chỉ business) ───────────────────────
+      // ── STEP 1+2+2b: Collections schema + Fields + categories (chỉ khi chọn "schema") ──
       const businessCols = (bundle.schema.collections ?? []).filter((c: any) => businessColNames.has(c.name));
-      const colCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collections, businessCols, 'name');
-      steps.push({ step: 'schema.collections', status: 'ok', count: colCount });
+      if (parts.schema) {
+        const colCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collections, businessCols, 'name');
+        steps.push({ step: 'schema.collections', status: 'ok', count: colCount });
 
-      // ── STEP 2: Fields (chỉ của business collections) ───────────────────
-      const businessFields = (bundle.schema.fields ?? []).filter((f: any) => businessColNames.has(f.collectionName));
-      const fieldCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.fields, businessFields, 'key');
-      steps.push({ step: 'schema.fields', status: 'ok', count: fieldCount });
+        // Fields (chỉ của business collections đã chọn)
+        const businessFields = (bundle.schema.fields ?? []).filter((f: any) => businessColNames.has(f.collectionName));
+        const fieldCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.fields, businessFields, 'key');
+        steps.push({ step: 'schema.fields', status: 'ok', count: fieldCount });
 
-      // ── STEP 2b: Collection categories (nhóm bảng) ──────────────────────
-      await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategories, bundle.schema.collectionCategories ?? [], 'id');
-      // join collectionCategory không có unique → replace theo (collectionName, categoryId)
-      await replaceRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategory, bundle.schema.collectionCategory ?? [], ['collectionName', 'categoryId']);
+        // Collection categories (nhóm bảng)
+        await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategories, bundle.schema.collectionCategories ?? [], 'id');
+        // join collectionCategory không có unique → replace theo (collectionName, categoryId)
+        await replaceRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategory, bundle.schema.collectionCategory ?? [], ['collectionName', 'categoryId']);
+      } else {
+        steps.push({ step: 'schema.collections', status: 'skipped' });
+        steps.push({ step: 'schema.fields', status: 'skipped' });
+      }
 
       // ── STEP 3: reload collections + db.sync — tạo bảng vật lý ──────────
       // Chạy ngoài transaction vì DDL không thể rollback trong PostgreSQL
@@ -313,38 +360,44 @@ export class Importer {
         // với collection quan hệ phức tạp → nếu lỗi thì fallback: nạp TỪNG business
         // collection, chạy 2 vòng (vòng 1 nạp base + PK, vòng 2 resolve quan hệ chéo),
         // bỏ qua cái lỗi để không hủy cả mẻ.
-        const collRepo: any = this.app.db.getRepository('collections');
-        try {
-          await collRepo.load();
-          steps.push({ step: 'collections.reload', status: 'ok' });
-        } catch (reloadErr: any) {
-          const failedNames = new Set<string>();
-          for (let pass = 0; pass < 2; pass++) {
-            for (const name of businessColNames) {
-              try {
-                await collRepo.load({ filter: { name } });
-                failedNames.delete(name);
-              } catch {
-                failedNames.add(name);
+        // Chỉ reload + tạo bảng khi có import schema và có collection được chọn. Nếu người dùng chỉ
+        // import UI/roles/workflows (schema OFF) thì bỏ qua — bảng vật lý đã có sẵn trên app đích.
+        if (parts.schema && businessCols.length > 0) {
+          const collRepo: any = this.app.db.getRepository('collections');
+          try {
+            await collRepo.load();
+            steps.push({ step: 'collections.reload', status: 'ok' });
+          } catch (reloadErr: any) {
+            const failedNames = new Set<string>();
+            for (let pass = 0; pass < 2; pass++) {
+              for (const name of businessColNames) {
+                try {
+                  await collRepo.load({ filter: { name } });
+                  failedNames.delete(name);
+                } catch {
+                  failedNames.add(name);
+                }
               }
             }
+            const ok = businessColNames.size - failedNames.size;
+            steps.push({
+              step: 'collections.reload',
+              status: failedNames.size ? 'error' : 'ok',
+              count: ok,
+              error: failedNames.size
+                ? `${reloadErr.message} → fallback: ${ok}/${businessColNames.size} ok, failed: ${[...failedNames].join(', ')}`
+                : undefined,
+            });
           }
-          const ok = businessColNames.size - failedNames.size;
-          steps.push({
-            step: 'collections.reload',
-            status: failedNames.size ? 'error' : 'ok',
-            count: ok,
-            error: failedNames.size
-              ? `${reloadErr.message} → fallback: ${ok}/${businessColNames.size} ok, failed: ${[...failedNames].join(', ')}`
-              : undefined,
-          });
+
+          await this.app.db.sync({ alter: { drop: false } });
+          steps.push({ step: 'db.sync', status: 'ok' });
+        } else {
+          steps.push({ step: 'db.sync', status: 'skipped' });
         }
 
-        await this.app.db.sync({ alter: { drop: false } });
-        steps.push({ step: 'db.sync', status: 'ok' });
-
         // ── STEP 4: Roles & Permissions ─────────────────────────────────
-        if ((bundle.acl?.roles ?? []).length > 0) {
+        if (parts.roles && (bundle.acl?.roles ?? []).length > 0) {
           const roleCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.roles, bundle.acl.roles, 'name');
           await upsertRows(sequelize, SYSTEM_TABLE_NAMES.rolesResources, bundle.acl.rolesResources ?? [], 'id');
           await upsertRows(sequelize, SYSTEM_TABLE_NAMES.rolesResourcesActions, bundle.acl.rolesResourcesActions ?? [], 'id');
@@ -355,7 +408,7 @@ export class Importer {
         }
 
         // ── STEP 5: UI Schemas + Menu/Routes ────────────────────────────
-        if ((bundle.ui?.uiSchemas ?? []).length > 0) {
+        if (parts.ui && (bundle.ui?.uiSchemas ?? []).length > 0) {
           // PK thật của uiSchemas là "x-uid" (có gạch ngang) — trước đây để "x_uid" nên import lỗi
           const uiCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.uiSchemas, bundle.ui.uiSchemas, 'x-uid');
 
@@ -398,7 +451,7 @@ export class Importer {
         }
 
         // ── STEP 6: Workflows ───────────────────────────────────────────
-        if ((bundle.workflows?.workflows ?? []).length > 0) {
+        if (parts.workflows && (bundle.workflows?.workflows ?? []).length > 0) {
           const wfCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.workflows, bundle.workflows.workflows, 'id');
           await upsertRows(sequelize, SYSTEM_TABLE_NAMES.flowNodes, bundle.workflows.flow_nodes ?? [], 'id');
           steps.push({ step: 'workflows', status: 'ok', count: wfCount });
@@ -408,6 +461,13 @@ export class Importer {
 
         // ── STEP 7: Business Data ───────────────────────────────────────
         for (const [collectionName, rows] of Object.entries(bundle.businessData ?? {})) {
+          // Honour the selection: a collection not picked at all is skipped silently; one picked for
+          // "schema only" (not in the data set) records a skipped step so the report is explicit.
+          if (!businessColNames.has(collectionName)) continue;
+          if (dataFilter && !dataFilter.has(collectionName)) {
+            steps.push({ step: `data.${collectionName}`, status: 'skipped' });
+            continue;
+          }
           if (!rows || rows.length === 0) {
             steps.push({ step: `data.${collectionName}`, status: 'skipped' });
             continue;
@@ -476,6 +536,13 @@ export class Importer {
       newCollections: 0,
       existingCollections: 0,
       conflictFieldTotal: 0,
+      bundleContents: {
+        ui: (bundle.ui?.uiSchemas?.length ?? 0) + (bundle.ui?.flowModels?.length ?? 0),
+        roles: bundle.acl?.roles?.length ?? 0,
+        workflows: bundle.workflows?.workflows?.length ?? 0,
+        categories: bundle.schema?.collectionCategories?.length ?? 0,
+        dataRows: Object.values(bundle.businessData ?? {}).reduce((s, r) => s + (r?.length ?? 0), 0),
+      },
     };
 
     for (const c of businessCols) {
@@ -516,6 +583,7 @@ export class Importer {
         matchFields,
         newFields,
         conflictFields,
+        dataRows: (bundle.businessData?.[c.name] ?? []).length,
       });
     }
 

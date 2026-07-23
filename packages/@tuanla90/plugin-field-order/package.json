@@ -1,9 +1,10 @@
 {
   "name": "@tuanla90/plugin-field-order",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "displayName": "Field Order",
   "displayName.vi-VN": "Thứ tự trường",
-  "description": "Reorder a collection’s fields from the Collection Manager. Adds a ‘Reorder fields’ button to the Configure-fields drawer: a drag-and-drop list that saves the new order to fields.sort, driving this screen and the default field order of new blocks. Works on classic and /v/ clients.",
+  "description": "Reorder a collection’s fields from the Collection Manager. Adds a ‘Reorder fields’ button to the Configure-fields drawer: a drag-and-drop list that saves the new order to fields.sort, driving this screen and the default field order of new blocks. Also adds a ‘Settings menu order’ page with a drag-and-drop editor to arrange the Settings-center menu — app-wide, applied on both the classic (/admin) and modern (/v/) clients. Works on classic and /v/ clients.",
+  "description.vi-VN": "Sắp xếp lại thứ tự trường của một bảng ngay trong Collection Manager. Thêm nút ‘Sắp xếp trường’ vào drawer Configure fields: danh sách kéo-thả lưu thứ tự vào fields.sort, chi phối màn này và thứ tự trường mặc định của block mới. Ngoài ra thêm trang ‘Thứ tự menu Cài đặt’ với trình kéo-thả để sắp menu trung tâm Cài đặt — lưu cho toàn app, áp cho cả client cổ điển (/admin) lẫn client mới (/v/).",
   "keywords": [
     "nocobase"
   ],

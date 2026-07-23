@@ -1,6 +1,8 @@
+import React from 'react';
 import { Plugin } from '@nocobase/client-v2';
 import { initFieldOrder } from '../shared/fieldOrder';
-import { applySettingsMenuOrder } from '../shared/settingsMenuOrder';
+import { applySettingsMenuOrderFromServer } from '../shared/settingsMenuOrder';
+import { MenuOrderEditor } from '../shared/menuOrderEditor';
 import enUS from '../locale/en-US.json';
 import viVN from '../locale/vi-VN.json';
 
@@ -20,11 +22,18 @@ export class PluginFieldOrderClientV2 extends Plugin {
       console.warn('[field-order] i18n addResources failed', e);
     }
     const t = (s: string, opts?: Record<string, any>) => this.app.i18n.t(s, { ns: NS, ...(opts || {}) });
+    const app: any = this.app;
 
-    initFieldOrder({ apiClient: (this.app as any).apiClient, t });
+    initFieldOrder({ apiClient: app.apiClient, t });
 
-    // Reorder the /v/ Settings-center menu into a logical, theme-grouped order.
-    applySettingsMenuOrder(this.app);
+    // Apply the saved (or preset) Settings-center menu order for this lane.
+    applySettingsMenuOrderFromServer(app, app.apiClient);
+
+    // Register the drag-reorder editor as a Settings page (/v/ lane API).
+    const MenuOrderPage: React.FC = () => <MenuOrderEditor app={app} api={app.apiClient} t={t} />;
+    const psm: any = app.pluginSettingsManager;
+    psm?.addMenuItem?.({ key: 'ptdl-menu-order', title: t('Settings menu order'), icon: 'MenuOutlined' });
+    psm?.addPageTabItem?.({ menuKey: 'ptdl-menu-order', key: 'index', Component: MenuOrderPage });
   }
 }
 

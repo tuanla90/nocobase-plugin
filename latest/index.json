@@ -118,9 +118,9 @@
     {
       "packageName": "@tuanla90/plugin-field-order",
       "slug": "field-order",
-      "version": "0.1.5",
+      "version": "0.2.0",
       "displayName": "Field Order",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-order-0.1.5.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-order-0.2.0.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-file-vault",
@@ -230,9 +230,9 @@
     {
       "packageName": "@tuanla90/plugin-nb-cloner",
       "slug": "nb-cloner",
-      "version": "1.10.1",
+      "version": "1.11.0",
       "displayName": "App Cloner (export / import)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.10.1.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.11.0.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-perf-guard",

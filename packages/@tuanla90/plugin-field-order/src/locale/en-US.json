@@ -8,5 +8,16 @@
   "Failed to update field order": "Failed to update field order",
   "Failed to load fields": "Failed to load fields",
   "No reorderable fields": "No reorderable fields",
-  "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.": "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout."
+  "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.": "Drag rows to reorder, then Save. Applies to this screen and new blocks; existing blocks keep their layout.",
+  "Settings menu order": "Settings menu order",
+  "Drag the rows (or use ↑/↓) to arrange the Settings menu. Saved for the whole app.": "Drag the rows (or use ↑/↓) to arrange the Settings menu. Saved for the whole app.",
+  "Order applies to both the classic (/admin) and modern (/v/) Settings menus. Core entries can be moved too.": "Order applies to both the classic (/admin) and modern (/v/) Settings menus. Core entries can be moved too.",
+  "No settings entries were found on this page.": "No settings entries were found on this page.",
+  "Reset to the default order?": "Reset to the default order?",
+  "Reset": "Reset",
+  "Save order": "Save order",
+  "Saved — reloading to apply…": "Saved — reloading to apply…",
+  "Reset to default — reloading…": "Reset to default — reloading…",
+  "Save failed: {{msg}}": "Save failed: {{msg}}",
+  "Fixed": "Fixed"
 }

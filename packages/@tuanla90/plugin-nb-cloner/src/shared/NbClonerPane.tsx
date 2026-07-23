@@ -99,6 +99,9 @@ export function NbClonerPane({ api }: { api: any }) {
   // Import preview (dry-run) shown before the real import runs.
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<{ report: any; base64: string; filename: string } | null>(null);
+  // Import SELECTION (mirrors the export tab): which parts + which collections + which get their data.
+  const [importParts, setImportParts] = useState({ schema: true, ui: true, roles: true, workflows: true });
+  const [importColSel, setImportColSel] = useState<Record<string, { selected: boolean; includeData: boolean }>>({});
   // Cleanup tab (delete junk collections).
   const [cleanupSel, setCleanupSel] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState(false);
@@ -242,6 +245,20 @@ export function NbClonerPane({ api }: { api: any }) {
       });
       const report = res.data?.data ?? res.data;
       setPreview({ report, base64, filename: file.name });
+      // Default the selection to "import everything the bundle carries" (matches the old behaviour);
+      // the user can then narrow it. Parts NOT in the bundle start off (and are disabled in the UI).
+      const bc = report?.bundleContents || {};
+      setImportParts({
+        schema: true,
+        ui: (bc.ui || 0) > 0,
+        roles: (bc.roles || 0) > 0,
+        workflows: (bc.workflows || 0) > 0,
+      });
+      const cs: Record<string, { selected: boolean; includeData: boolean }> = {};
+      (report?.collections || []).forEach((c: any) => {
+        cs[c.name] = { selected: true, includeData: (c.dataRows || 0) > 0 };
+      });
+      setImportColSel(cs);
     } catch (err: any) {
       notification.error({ message: t('Could not read the bundle'), description: err.message, duration: 0 });
     } finally {
@@ -250,16 +267,25 @@ export function NbClonerPane({ api }: { api: any }) {
     return false; // stop antd auto-upload
   };
 
-  // The real import — runs only after the user confirms the preview.
-  const runImport = async (base64: string, filename: string) => {
+  // The real import — runs only after the user confirms the preview. `cols` is the preview's collection
+  // list; we translate the on-screen selection into the server's { parts, collections, data } shape.
+  const runImport = async (base64: string, filename: string, cols: any[]) => {
     setPreview(null);
     setImporting(true);
     setImportResult(null);
     try {
+      const selectedCols = (cols || []).filter((c: any) => importColSel[c.name]?.selected);
+      const selection = {
+        parts: importParts,
+        collections: selectedCols.map((c: any) => c.name),
+        data: selectedCols
+          .filter((c: any) => importColSel[c.name]?.includeData && (c.dataRows || 0) > 0)
+          .map((c: any) => c.name),
+      };
       const res = await api.request({
         url: 'nbCloner:import',
         method: 'POST',
-        data: { fileData: base64, filename },
+        data: { fileData: base64, filename, selection },
       });
       const result = res.data?.data ?? res.data;
       setImportResult(result);
@@ -422,6 +448,33 @@ export function NbClonerPane({ api }: { api: any }) {
       },
     },
   ];
+
+  // ── Import-selection derived values (used by the preview/selection modal below) ──
+  const impCols: any[] = preview?.report?.collections || [];
+  const impBundle: any = preview?.report?.bundleContents || {};
+  const impSelectedCols = impCols.filter((c) => importColSel[c.name]?.selected);
+  const impSelCount = impSelectedCols.length;
+  const impDataCount = impSelectedCols.filter((c) => importColSel[c.name]?.includeData && (c.dataRows || 0) > 0).length;
+  const impAllSel = impCols.length > 0 && impCols.every((c) => importColSel[c.name]?.selected);
+  const impSomeSel = impCols.some((c) => importColSel[c.name]?.selected);
+  // Nothing to write: no collection picked AND no whole-app part picked.
+  const impNothing = impSelCount === 0 && !importParts.ui && !importParts.roles && !importParts.workflows;
+  const toggleImpAll = (selected: boolean) =>
+    setImportColSel((prev) => {
+      const next = { ...prev };
+      impCols.forEach((c) => { next[c.name] = { ...next[c.name], selected }; });
+      return next;
+    });
+  const toggleImpData = (includeData: boolean) =>
+    setImportColSel((prev) => {
+      const next = { ...prev };
+      impCols.forEach((c) => {
+        // "All" only turns on rows for selected collections that actually carry data.
+        if (includeData) { if (next[c.name]?.selected && (c.dataRows || 0) > 0) next[c.name] = { ...next[c.name], includeData: true }; }
+        else next[c.name] = { ...next[c.name], includeData: false };
+      });
+      return next;
+    });
 
   return (
     <ConfigContainer maxWidth={1000}>
@@ -791,10 +844,10 @@ export function NbClonerPane({ api }: { api: any }) {
         ]}
       />
 
-      {/* Import preview (dry-run) — shown before the real import writes anything */}
+      {/* Import preview + SELECTION — shown before the real import writes anything */}
       <Modal
         open={!!preview}
-        width={680}
+        width={840}
         onCancel={() => setPreview(null)}
         title={<Space><WarningOutlined style={{ color: (preview?.report?.conflictFieldTotal || 0) > 0 ? '#faad14' : '#1890ff' }} />{t('Import preview')}</Space>}
         footer={[
@@ -805,9 +858,10 @@ export function NbClonerPane({ api }: { api: any }) {
             danger={(preview?.report?.conflictFieldTotal || 0) > 0}
             icon={<UploadOutlined />}
             loading={importing}
-            onClick={() => preview && runImport(preview.base64, preview.filename)}
+            disabled={impNothing}
+            onClick={() => preview && runImport(preview.base64, preview.filename, preview.report.collections || [])}
           >
-            {t('Import anyway')}
+            {t('Import selected ({{count}})', { count: String(impSelCount) })}
           </Button>,
         ]}
       >
@@ -825,12 +879,69 @@ export function NbClonerPane({ api }: { api: any }) {
                 ? t('Some columns already exist on this app under a different internal key, so the incoming version of those columns is SKIPPED (existing data is kept — nothing is deleted). New columns are still added.')
                 : t('No conflicts detected. New collections/columns are added; matching ones are updated.')}
             />
+
+            {/* Parts to import — the whole-app sections (mirrors the export toggles) */}
+            <Card size="small" title={t('Parts to import')}>
+              <Row gutter={[8, 8]}>
+                <Col span={12}>
+                  <Checkbox checked={importParts.schema} onChange={(e) => setImportParts((p) => ({ ...p, schema: e.target.checked }))}>
+                    {t('Schema (collections + fields)')} <Tag color="blue">{formatNumber(impCols.length)}</Tag>
+                  </Checkbox>
+                </Col>
+                <Col span={12}>
+                  <Checkbox checked={importParts.ui} disabled={(impBundle.ui || 0) === 0} onChange={(e) => setImportParts((p) => ({ ...p, ui: e.target.checked }))}>
+                    {t('UI / Menus / Pages')}{' '}
+                    {(impBundle.ui || 0) > 0 ? <Tag color="blue">{formatNumber(impBundle.ui)}</Tag> : <Tag>{t('not in bundle')}</Tag>}
+                  </Checkbox>
+                </Col>
+                <Col span={12}>
+                  <Checkbox checked={importParts.roles} disabled={(impBundle.roles || 0) === 0} onChange={(e) => setImportParts((p) => ({ ...p, roles: e.target.checked }))}>
+                    {t('Roles & Permissions')}{' '}
+                    {(impBundle.roles || 0) > 0 ? <Tag color="blue">{formatNumber(impBundle.roles)}</Tag> : <Tag>{t('not in bundle')}</Tag>}
+                  </Checkbox>
+                </Col>
+                <Col span={12}>
+                  <Checkbox checked={importParts.workflows} disabled={(impBundle.workflows || 0) === 0} onChange={(e) => setImportParts((p) => ({ ...p, workflows: e.target.checked }))}>
+                    {t('Workflows')}{' '}
+                    {(impBundle.workflows || 0) > 0 ? <Tag color="blue">{formatNumber(impBundle.workflows)}</Tag> : <Tag>{t('not in bundle')}</Tag>}
+                  </Checkbox>
+                </Col>
+              </Row>
+            </Card>
+
+            {!importParts.schema && (
+              <Alert
+                type="info"
+                showIcon
+                banner
+                style={{ padding: '4px 12px' }}
+                message={t('Schema is off — the table below only controls DATA imported into tables that already exist on the target.')}
+              />
+            )}
+
+            {/* Collections — pick which to import + which get their row data */}
             <Table
               dataSource={preview.report.collections}
               rowKey="name"
               size="small"
-              pagination={{ pageSize: 10, hideOnSinglePage: true }}
+              pagination={{ pageSize: 8, hideOnSinglePage: true }}
               columns={[
+                {
+                  title: (
+                    <Checkbox
+                      checked={impAllSel}
+                      indeterminate={impSomeSel && !impAllSel}
+                      onChange={(e) => toggleImpAll(e.target.checked)}
+                    />
+                  ),
+                  width: 40,
+                  render: (_: any, r: any) => (
+                    <Checkbox
+                      checked={!!importColSel[r.name]?.selected}
+                      onChange={(e) => setImportColSel((prev) => ({ ...prev, [r.name]: { ...prev[r.name], selected: e.target.checked } }))}
+                    />
+                  ),
+                },
                 {
                   title: t('Collection'), dataIndex: 'name',
                   render: (name: string, r: any) => (
@@ -840,14 +951,41 @@ export function NbClonerPane({ api }: { api: any }) {
                     </Space>
                   ),
                 },
-                { title: t('On target'), dataIndex: 'existsOnTarget', width: 90, render: (v: boolean) => v ? <Tag color="orange">{t('exists')}</Tag> : <Tag color="green">{t('new')}</Tag> },
-                { title: t('+ new cols'), dataIndex: 'newFields', width: 90, render: (v: number) => <Tag color={v > 0 ? 'blue' : 'default'}>{v}</Tag> },
+                { title: t('On target'), dataIndex: 'existsOnTarget', width: 84, render: (v: boolean) => v ? <Tag color="orange">{t('exists')}</Tag> : <Tag color="green">{t('new')}</Tag> },
+                { title: t('+ new cols'), dataIndex: 'newFields', width: 84, render: (v: number) => <Tag color={v > 0 ? 'blue' : 'default'}>{v}</Tag> },
                 {
-                  title: t('skipped cols'), dataIndex: 'conflictFields', width: 100,
+                  title: t('skipped cols'), dataIndex: 'conflictFields', width: 92,
                   render: (v: string[]) => (v && v.length ? <Tooltip title={v.join(', ')}><Tag color="red">{v.length}</Tag></Tooltip> : <Tag>0</Tag>),
+                },
+                {
+                  title: (
+                    <Space size={4}>
+                      {t('Data')}
+                      <Button size="small" type="link" style={{ padding: 0 }} onClick={() => toggleImpData(true)}>{t('All')}</Button>
+                      <Button size="small" type="link" style={{ padding: 0 }} onClick={() => toggleImpData(false)}>{t('None')}</Button>
+                    </Space>
+                  ),
+                  dataIndex: 'dataRows', width: 150,
+                  render: (rows: number, r: any) => {
+                    const sel = importColSel[r.name];
+                    if (!rows) return <Text type="secondary" style={{ fontSize: 12 }}>{t('Schema only')}</Text>;
+                    return (
+                      <Switch
+                        size="small"
+                        disabled={!sel?.selected}
+                        checked={!!sel?.includeData}
+                        onChange={(v) => setImportColSel((prev) => ({ ...prev, [r.name]: { ...prev[r.name], includeData: v } }))}
+                        checkedChildren={formatNumber(rows)}
+                        unCheckedChildren={t('off')}
+                      />
+                    );
+                  },
                 },
               ]}
             />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {t('{{count}} collections selected · {{data}} with data', { count: String(impSelCount), data: String(impDataCount) })}
+            </Text>
           </Space>
         )}
       </Modal>

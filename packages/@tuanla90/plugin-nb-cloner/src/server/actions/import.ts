@@ -34,7 +34,8 @@ export async function importAction(ctx: Context, next: Next) {
     }
 
     const importer = new Importer(ctx.db, ctx.app);
-    const result = await importer.import(bundle);
+    // Optional per-import selection (parts + collections + data). Absent → import everything.
+    const result = await importer.import(bundle, body.selection);
     ctx.body = { manifest: bundle.manifest, ...result };
   } catch (err: any) {
     ctx.status = 500;
