@@ -1,4 +1,7 @@
 import React from 'react';
+// Externalise @formily/react (host-provided): shared's settingsKit imports it; the build derives externals
+// from this plugin's client imports. Without this line rspack tries to bundle the empty stub and fails.
+import '@formily/react';
 import { Plugin, useAPIClient } from '@nocobase/client';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
 import { NbClonerPane } from '../shared/NbClonerPane';

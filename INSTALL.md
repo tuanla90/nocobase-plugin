@@ -54,7 +54,7 @@ Plugin cài lúc runtime nằm ở `storage/plugins` trên **service NocoBase** 
 | mailer | 0.2.0 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-mailer-0.2.0.tgz` |
 | menu-enhancements | 0.4.19 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-menu-enhancements-0.4.19.tgz` |
 | my-columns | 0.1.0 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-my-columns-0.1.0.tgz` |
-| nb-cloner | 1.10.0 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.10.0.tgz` |
+| nb-cloner | 1.10.1 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.10.1.tgz` |
 | perf-guard | 0.1.6 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-perf-guard-0.1.6.tgz` |
 | print-template | 0.1.5 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-print-template-0.1.5.tgz` |
 | pwa | 0.4.2 | `https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.4.2.tgz` |

@@ -47,10 +47,10 @@ function toBind(v: any): any {
  * @param conflictKey  Cột dùng làm conflict target (ON CONFLICT).
  *                     Nếu là mảng → composite unique key.
  *
- * LƯU Ý cố ý: mỗi row là một `sequelize.query` autocommit RIÊNG (không bọc transaction). Nhờ vậy
- * một dòng lỗi (bắt ở catch, chỉ warn) KHÔNG kéo các dòng khác chết theo — trên Postgres nếu bọc
- * chung transaction thì dòng lỗi đầu tiên sẽ "abort" cả transaction. Đây là đánh đổi có chủ đích:
- * best-effort theo từng dòng thay vì all-or-nothing.
+ * HIỆU NĂNG (1.10.1): chèn theo LÔ (multi-row INSERT) thay vì từng dòng — trước đây mỗi dòng 1 round-trip
+ * SQL, với app /v/ có cây flowModels/uiSchema hàng chục nghìn dòng thì chạy hàng phút → gateway 502 trước
+ * khi import xong view. Nếu 1 lô lỗi (trùng conflict key / 1 dòng hỏng abort cả câu) thì FALLBACK per-row
+ * cho đúng lô đó → vẫn giữ best-effort (dòng lỗi chỉ warn, dòng tốt vẫn vào), không bọc transaction chung.
  */
 async function upsertRows(
   sequelize: any,
@@ -65,23 +65,16 @@ async function upsertRows(
   let count = 0;
   let firstError: string | undefined;
 
-  for (const row of rows) {
+  // Resilient PER-ROW upsert (the fallback path). Best-effort: a bad row warns, others survive.
+  const insertOne = async (row: any): Promise<boolean> => {
     const keys = Object.keys(row);
-    if (keys.length === 0) continue;
-
+    if (keys.length === 0) return false;
     const values = Object.values(row).map(toBind);
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
-    // SET clause: cập nhật tất cả cột trừ conflict key(s)
     const setClauses = keys
       .filter((k) => !conflictCols.includes(k))
       .map((k) => `${pgIdent(k)} = EXCLUDED.${pgIdent(k)}`);
-
-    // Nếu tất cả cột đều là conflict key → chỉ INSERT, không UPDATE (DO NOTHING)
-    const updatePart = setClauses.length > 0
-      ? `DO UPDATE SET ${setClauses.join(', ')}`
-      : 'DO NOTHING';
-
+    const updatePart = setClauses.length > 0 ? `DO UPDATE SET ${setClauses.join(', ')}` : 'DO NOTHING';
     try {
       await sequelize.query(
         `INSERT INTO ${pgIdent(tableName)} (${keys.map(pgIdent).join(', ')})
@@ -89,10 +82,58 @@ async function upsertRows(
          ON CONFLICT (${conflictTarget}) ${updatePart}`,
         { bind: values },
       );
-      count++;
+      return true;
     } catch (err: any) {
       if (!firstError) firstError = err?.message;
-      console.warn(`[nb-cloner] Upsert warning ${tableName} (conflict on ${conflictTarget}):`, err?.message);
+      console.warn(`[nb-cloner] Upsert warning ${tableName} (row, conflict on ${conflictTarget}):`, err?.message);
+      return false;
+    }
+  };
+
+  // BATCHED upsert — the perf fix. Row-by-row was ~1 SQL round-trip PER ROW; on a /v/ app's huge
+  // flowModels/uiSchema tree (tens of thousands of rows) that ran for minutes and the gateway 502'd before
+  // the view (UI) finished importing. We now INSERT many rows per statement. Rows are grouped by their exact
+  // column set so one multi-row INSERT is valid; the Postgres bind-param cap (~65535) bounds the chunk size.
+  // If a batch fails (a duplicate conflict key → "cannot affect row a second time", or one bad row aborts the
+  // statement) we FALL BACK to per-row for just that chunk — preserving the original best-effort semantics.
+  const groups = new Map<string, { keys: string[]; rows: any[] }>();
+  for (const row of rows) {
+    const keys = Object.keys(row);
+    if (keys.length === 0) continue;
+    const sig = keys.join('');
+    let g = groups.get(sig);
+    if (!g) { g = { keys, rows: [] }; groups.set(sig, g); }
+    g.rows.push(row);
+  }
+
+  for (const { keys, rows: grp } of groups.values()) {
+    const colList = keys.map(pgIdent).join(', ');
+    const setClauses = keys
+      .filter((k) => !conflictCols.includes(k))
+      .map((k) => `${pgIdent(k)} = EXCLUDED.${pgIdent(k)}`);
+    const updatePart = setClauses.length > 0 ? `DO UPDATE SET ${setClauses.join(', ')}` : 'DO NOTHING';
+    // keep (#cols × chunk) under the ~65535 bind-parameter cap
+    const chunkSize = Math.max(1, Math.min(1000, Math.floor(60000 / Math.max(1, keys.length))));
+    for (let i = 0; i < grp.length; i += chunkSize) {
+      const chunk = grp.slice(i, i + chunkSize);
+      const binds: any[] = [];
+      const tuples = chunk.map((row) => {
+        const ph = keys.map((k) => { binds.push(toBind(row[k])); return `$${binds.length}`; });
+        return `(${ph.join(', ')})`;
+      });
+      try {
+        await sequelize.query(
+          `INSERT INTO ${pgIdent(tableName)} (${colList})
+           VALUES ${tuples.join(', ')}
+           ON CONFLICT (${conflictTarget}) ${updatePart}`,
+          { bind: binds },
+        );
+        count += chunk.length; // whole batch landed in one round-trip
+      } catch (batchErr: any) {
+        if (!firstError) firstError = batchErr?.message;
+        // the statement aborted → isolate by retrying THIS chunk row-by-row (best-effort)
+        for (const row of chunk) { if (await insertOne(row)) count++; }
+      }
     }
   }
   // Nếu CÓ dòng để chèn mà KHÔNG dòng nào thành công → lỗi thật, throw để lộ (báo rõ)

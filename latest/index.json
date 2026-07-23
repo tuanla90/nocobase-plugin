@@ -230,9 +230,9 @@
     {
       "packageName": "@tuanla90/plugin-nb-cloner",
       "slug": "nb-cloner",
-      "version": "1.10.0",
+      "version": "1.10.1",
       "displayName": "App Cloner (export / import)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.10.0.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.10.1.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-perf-guard",

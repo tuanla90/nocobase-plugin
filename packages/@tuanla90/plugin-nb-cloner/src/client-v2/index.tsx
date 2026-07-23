@@ -1,4 +1,9 @@
 import React from 'react';
+// Side-effect import so the build treats @formily/react as EXTERNAL (host-provided). @tuanla90/shared's
+// settingsKit imports @formily/react at the top level; nocobase-build derives its browser externals from the
+// packages THIS plugin's client source imports, so without this line @formily/react isn't externalised and
+// rspack fails trying to bundle the empty stub ("Can't resolve '@formily/react'"). See the shared build note.
+import '@formily/react';
 import { Plugin, useApp } from '@nocobase/client-v2';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
 import { NbClonerPane } from '../shared/NbClonerPane';

@@ -2,15 +2,42 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card, Tabs, Checkbox, Switch, Button, Table, Tag, Alert, Segmented, Tooltip, Modal,
   message, Upload, Spin, Badge, Divider, Space, Typography, Input, Row, Col,
-  notification, Result, Progress,
+  notification, Result, Progress, theme,
 } from 'antd';
 import {
   DownloadOutlined, UploadOutlined, ReloadOutlined, SaveOutlined, CopyOutlined, ClearOutlined,
   DatabaseOutlined, AppstoreOutlined, CheckCircleOutlined, CloseCircleOutlined,
   DeleteOutlined, WarningOutlined,
 } from '@ant-design/icons';
-import { ConfigContainer, formatNumber } from '@tuanla90/shared';
+import { formatNumber } from '@tuanla90/shared';
 import { t } from './nbClonerClient';
+
+// Local layout wrapper — replaces @tuanla90/shared's ConfigContainer so this plugin doesn't pull in the
+// shared settingsKit (which imports @formily/react and failed to externalize in this build; conditional-format
+// tree-shakes it away because it never touches the Formily lane). Mirrors the shared render 1:1 via antd tokens.
+const ConfigContainer: React.FC<{ maxWidth?: number; padded?: boolean; style?: React.CSSProperties; children?: React.ReactNode }> = ({
+  maxWidth = 1440,
+  padded = true,
+  style,
+  children,
+}) => {
+  const { token } = theme.useToken();
+  return (
+    <div style={{ padding: '8px 16px 16px', maxWidth, margin: '0 auto' }}>
+      <div
+        style={{
+          background: token.colorBgContainer,
+          border: `0.8px solid ${token.colorBorderSecondary}`,
+          borderRadius: 8,
+          padding: padded ? 16 : 0,
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const { Title, Text } = Typography;
 
