@@ -1,7 +1,7 @@
 {
   "source": "@tuanla90/nocobase-plugin",
   "updatedAt": null,
-  "count": 36,
+  "count": 39,
   "plugins": [
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
@@ -23,6 +23,13 @@
       "version": "0.6.33",
       "displayName": "App Builder",
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-builder-0.6.33.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-app-doctor",
+      "slug": "app-doctor",
+      "version": "0.1.0",
+      "displayName": "App Doctor",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-app-doctor-0.1.0.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-block-custom-html",
@@ -214,11 +221,25 @@
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-menu-enhancements-0.4.19.tgz"
     },
     {
+      "packageName": "@tuanla90/plugin-my-columns",
+      "slug": "my-columns",
+      "version": "0.1.0",
+      "displayName": "My Columns (per-user)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-my-columns-0.1.0.tgz"
+    },
+    {
       "packageName": "@tuanla90/plugin-nb-cloner",
       "slug": "nb-cloner",
       "version": "1.10.0",
       "displayName": "App Cloner (export / import)",
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-nb-cloner-1.10.0.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-perf-guard",
+      "slug": "perf-guard",
+      "version": "0.1.6",
+      "displayName": "Performance & Stability",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-perf-guard-0.1.6.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-print-template",
