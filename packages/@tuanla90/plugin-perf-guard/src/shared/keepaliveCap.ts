@@ -33,8 +33,8 @@
  *     the settings page or `window.__ptdlPerfGuard.disable()`. Dry-run scan (`.scan()`) reports first.
  */
 
-export const KAC_VERSION = '0.1.5';
-export const KAC_MARKER = 'ptdl-perf-guard/keepalive/v0.1.5'; // grep-able marker for bundle verification
+export const KAC_VERSION = '0.1.6';
+export const KAC_MARKER = 'ptdl-perf-guard/keepalive/v0.1.6'; // grep-able marker for bundle verification
 
 const LS_ENABLED = 'ptdl:perf-guard:enabled'; // default ON: only an explicit '0' disables
 const LS_MAX = 'ptdl:perf-guard:max-alive'; // integer ≥ 0; default DEFAULT_MAX; 0 = aggressive

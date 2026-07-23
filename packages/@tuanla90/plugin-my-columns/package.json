@@ -1,0 +1,28 @@
+{
+  "name": "@tuanla90/plugin-my-columns",
+  "displayName": "My Columns (per-user)",
+  "displayName.vi-VN": "Cột của tôi (cá nhân)",
+  "description": "Per-user column settings for modern (/v/) Table blocks. Each user can hide/show columns, reorder them, resize width and pin left/right — saved PER-USER, so one shared table looks different for each person. No effect on other users. Add the \"My columns\" action to a table's action bar once (UI editor), then every logged-in user personalises their own view.",
+  "description.vi-VN": "Cấu hình cột riêng cho từng người trên bảng (/v/). Mỗi người tự ẩn/hiện cột, đổi thứ tự, chỉnh độ rộng và ghim trái/phải — lưu THEO NGƯỜI DÙNG, nên một bảng dùng chung sẽ hiển thị khác nhau cho mỗi người. Thêm nút \"Cột của tôi\" vào thanh hành động của bảng (bật UI editor) một lần, sau đó mọi người tự cá nhân hoá.",
+  "version": "0.1.0",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "react": "18.x"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "1.x || 2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "1.x || 2.x",
+    "@nocobase/test": "1.x || 2.x"
+  },
+  "keywords": [
+    "Blocks"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://tuanla90.github.io/nocobase-plugin/#my-columns"
+}
