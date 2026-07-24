@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Drawer, Popover, Spin } from 'antd';
 import { IconByKey } from '@tuanla90/shared';
 import { ChangeLogTimeline } from './ChangeLogTimeline';
 import { ChangeLogEntry } from './types';
-import { fetchFields, fetchHistory, fetchHistoryCount, t } from './changeLogClient';
+import {
+  CHANGELOG_REFRESH_EVENT,
+  fetchFields,
+  fetchHistory,
+  fetchHistoryCount,
+  installChangeLogRefreshHook,
+  t,
+} from './changeLogClient';
 
 // Fetches a record's history and renders the timeline. Used by both the popover and the drawer.
 export const ChangeLogHistory: React.FC<{
@@ -17,22 +24,41 @@ export const ChangeLogHistory: React.FC<{
   const [entries, setEntries] = useState<ChangeLogEntry[]>([]);
   const [fields, setFields] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const hasData = useRef(false);
+
+  // Auto-refresh: install the mutation hook once and re-fetch this record's timeline whenever any
+  // record is saved — so a new change-log entry shows up without a manual F5.
+  useEffect(() => {
+    installChangeLogRefreshHook(api);
+    const onRefresh = () => setReloadKey((k) => k + 1);
+    window.addEventListener(CHANGELOG_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(CHANGELOG_REFRESH_EVENT, onRefresh);
+  }, [api]);
+
+  // A different record scrolled into scope → show the spinner again on its first load.
+  useEffect(() => {
+    hasData.current = false;
+  }, [collectionName, recordId, fieldName]);
+
   useEffect(() => {
     if (!active || recordId === undefined || recordId === null || recordId === '') return;
     let cancelled = false;
-    setLoading(true);
+    // Spinner only on the first load; a background refresh keeps the current timeline on screen.
+    if (!hasData.current) setLoading(true);
     Promise.all([fetchHistory(api, collectionName, recordId, fieldName), fetchFields(api, collectionName)])
       .then(([rows, flds]) => {
         if (cancelled) return;
         setEntries(rows);
         setFields(flds);
+        hasData.current = true;
       })
       .catch(() => !cancelled && setEntries([]))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [api, collectionName, recordId, fieldName, active]);
+  }, [api, collectionName, recordId, fieldName, active, reloadKey]);
 
   if (loading) {
     return (
@@ -65,10 +91,21 @@ export const ChangeLogTrigger: React.FC<{
 }> = ({ api, collectionName, recordId, fieldName, mode = 'drawer', showBadge, label, buttonProps }) => {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState<number>(0);
+  const [reloadKey, setReloadKey] = useState(0);
   const icon = <IconByKey type="lucide-history" />;
   const btnLabel = label ?? t('History');
 
-  // Count badge: fetch once (and refresh when the panel closes, in case a transition happened).
+  // Keep the badge live: install the mutation hook and bump on the refresh event so the count
+  // updates right after a record is saved (not just when the panel is opened/closed).
+  useEffect(() => {
+    if (!showBadge) return;
+    installChangeLogRefreshHook(api);
+    const onRefresh = () => setReloadKey((k) => k + 1);
+    window.addEventListener(CHANGELOG_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(CHANGELOG_REFRESH_EVENT, onRefresh);
+  }, [api, showBadge]);
+
+  // Count badge: refetch on record change, when the panel closes, and on any live refresh.
   useEffect(() => {
     if (!showBadge || recordId === undefined || recordId === null || recordId === '') return;
     let cancelled = false;
@@ -76,7 +113,7 @@ export const ChangeLogTrigger: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [api, collectionName, recordId, showBadge, open]);
+  }, [api, collectionName, recordId, showBadge, open, reloadKey]);
 
   const withBadge = (node: React.ReactElement) =>
     showBadge ? (

@@ -48,9 +48,9 @@
     {
       "packageName": "@tuanla90/plugin-change-log",
       "slug": "change-log",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "displayName": "Change Log",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-change-log-0.1.4.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-change-log-0.1.5.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-column-resize",

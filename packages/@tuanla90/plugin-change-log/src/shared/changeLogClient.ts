@@ -211,3 +211,55 @@ export function timeInValue(entries: ChangeLogEntry[]): Array<{ value: string; m
   }
   return Array.from(buckets.values()).sort((a, b) => b.ms - a.ms);
 }
+
+// ---------------------------------------------------------------------------
+// Live refresh — update open timelines right after a record mutation, no manual F5.
+// A change-log row is created server-side (in the update's own transaction) whenever a tracked
+// record changes, so ANY successful mutating (non-GET) API call is a signal that a timeline may
+// have a new entry. We fire one debounced window event on such calls; every mounted timeline then
+// re-fetches its own record. GET/HEAD are skipped so the timeline's own list can't self-loop.
+// ---------------------------------------------------------------------------
+export const CHANGELOG_REFRESH_EVENT = 'ptdl-changelog:refresh';
+
+export function emitChangeLogRefresh(): void {
+  try {
+    window.dispatchEvent(new CustomEvent(CHANGELOG_REFRESH_EVENT));
+  } catch (e) {
+    /* SSR / no window */
+  }
+}
+
+let _refreshTimer: any = null;
+function scheduleChangeLogRefresh(): void {
+  // Collapse the burst of requests a single form submit makes (update + block re-fetch + …) into one.
+  if (_refreshTimer) return;
+  _refreshTimer = setTimeout(() => {
+    _refreshTimer = null;
+    emitChangeLogRefresh();
+  }, 350);
+}
+
+// Install once per api client (axios instance): fire the refresh event after any successful mutating
+// request. Idempotent — safe to call from every mounted surface.
+const _refreshHooked = new WeakSet<any>();
+export function installChangeLogRefreshHook(api: any): void {
+  try {
+    const axios = api?.axios;
+    if (!axios?.interceptors?.response || _refreshHooked.has(axios)) return;
+    _refreshHooked.add(axios);
+    axios.interceptors.response.use(
+      (resp: any) => {
+        try {
+          const method = String(resp?.config?.method || '').toLowerCase();
+          if (method && method !== 'get' && method !== 'head') scheduleChangeLogRefresh();
+        } catch (e) {
+          /* ignore — never let the hook break a real response */
+        }
+        return resp;
+      },
+      (err: any) => Promise.reject(err),
+    );
+  } catch (e) {
+    /* no axios on this client → auto-refresh disabled; opening the panel still fetches fresh */
+  }
+}
