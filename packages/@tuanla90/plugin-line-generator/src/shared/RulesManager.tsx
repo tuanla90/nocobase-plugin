@@ -804,20 +804,20 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
 
             <CollapsibleSection title={tt('① Kích hoạt — bảng cha (parent), khi nào chạy')}>
               <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '0 0 10px' }}>{tt('Bảng cha = bản ghi đặt nút / lắng trigger. Trong mọi công thức, bản ghi này được gọi là parent (vd parent.shipping_type).')}</div>
-              <SettingRow label={tt('Tên')} hint={tt('Tên hiển thị trong danh sách và trên menu nút.')}><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} placeholder={tt('VD: Tính hoa hồng đơn hàng')} /></SettingRow>
+              <SettingRow label={tt('Tên')} hint={tt('Tên hiển thị trong danh sách, trong ô chọn bộ sinh của nút và trên tiêu đề hộp thoại.')}><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} placeholder={tt('VD: Tính hoa hồng đơn hàng')} /></SettingRow>
               <SettingRow label={tt('Bảng kích hoạt (cha)')} hint={tt('Nơi đặt nút / lắng trigger. Mỗi bản ghi của bảng này là một "cha" — công thức đọc nó qua parent.*')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.sourceCollection || undefined} onChange={(v) => set({ sourceCollection: v, targetPath: '', targetForeignKey: '', sourceLinesPath: null })} placeholder={tt('Chọn bảng')} /></SettingRow>
               <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng cha (preload)')} hint={tt('Quan hệ của BẢNG CHA mà công thức cần đọc (parent.*). Chọn quan hệ (xổ nhiều cấp) — nạp toàn bộ cột của các object trên đường đi.')}>
                 <RelationAppendsPicker api={api} collectionName={cfg.sourceCollection || undefined} value={cfg.preload} onChange={(v) => set({ preload: v })} />
               </SettingRow>
               <SettingRow label={tt('Bật')}><Checkbox checked={cfg.enabled} onChange={(e) => set({ enabled: e.target.checked })} /></SettingRow>
-              <SettingRow label={tt('Kích hoạt')} hint={tt('Bấm nút: người dùng chủ động chạy trên từng bản ghi. Tự động: server tự chạy ngay khi bản ghi đạt điều kiện (lưu là chạy, không cần nút — kiểu AI Column).')}>
+              <SettingRow label={tt('Tự động chạy')} hint={tt('Tự động: server tự chạy ngay khi bản ghi được lưu và đạt điều kiện bên dưới (kiểu AI Column). Thủ công: chỉ chạy khi có người bấm. NÚT BẤM không cấu hình ở đây — bộ sinh nào (kể cả auto) cũng gắn nút được: vào block → Configure actions → "Sinh dòng theo quy tắc", chọn bộ sinh trong setting của nút; show/ẩn, màu, quyền chỉnh trên chính nút như nút core.')}>
                 <SegmentedGroup
                   block
                   style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }}
                   value={cfg.trigger || 'manual'}
                   onChange={(v: any) => set({ trigger: v })}
                   options={[
-                    { value: 'manual', label: tt('Bấm nút') },
+                    { value: 'manual', label: tt('Thủ công (chỉ chạy khi bấm nút)') },
                     { value: 'auto', label: tt('Tự động khi đạt điều kiện') },
                   ]}
                 />
