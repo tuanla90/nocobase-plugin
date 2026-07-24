@@ -256,7 +256,44 @@ export function createMobileShell({
       () => (bb?.items || []).filter((it) => it && it.schemaUid).slice(0, MAX_ITEMS),
       [bb],
     );
-    const overlayVisible = inApp && !!bb?.enabled && items.length > 0 && visibleFor(bb?.showOn, width, standalone);
+    // Có modal/drawer/dialog đang mở? → ẩn bottom bar + FAB và BỎ reservation: bottom-nav không được đè nút
+    // Save/footer của overlay, và không co .ant-pro-layout-container làm lệch scroll khi overlay mở.
+    // Overlay portaled ra body → theo dõi DOM (debounce bằng rAF cho nhẹ).
+    const [overlayOpen, setOverlayOpen] = useState(false);
+    useEffect(() => {
+      if (typeof document === 'undefined') return;
+      // Dựa vào MASK/wrap ĐANG HIỂN THỊ (drawer/modal đóng vẫn nằm trong DOM → phải xét display/opacity thật,
+      // không chỉ sự tồn tại). Mask chỉ visible khi overlay thực sự mở.
+      const check = () => {
+        const els = document.querySelectorAll('.ant-modal-mask, .ant-drawer-mask, .ant-modal-wrap');
+        let open = false;
+        for (const el of Array.from(els)) {
+          const s = getComputedStyle(el as Element);
+          if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') continue;
+          const r = (el as Element).getBoundingClientRect();
+          if (r.width > 4 && r.height > 4) { open = true; break; }
+        }
+        setOverlayOpen(open);
+      };
+      check();
+      let raf = 0;
+      const schedule = () => {
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          check();
+        });
+      };
+      const mo = new MutationObserver(schedule);
+      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+      return () => {
+        mo.disconnect();
+        if (raf) cancelAnimationFrame(raf);
+      };
+    }, []);
+
+    const overlayVisible =
+      inApp && !overlayOpen && !!bb?.enabled && items.length > 0 && visibleFor(bb?.showOn, width, standalone);
     const isBar = placement === 'bottom' || placement === 'top' || placement === 'floating';
     const showBar = overlayVisible && isBar;
     const showFab = overlayVisible && placement === 'fab';
