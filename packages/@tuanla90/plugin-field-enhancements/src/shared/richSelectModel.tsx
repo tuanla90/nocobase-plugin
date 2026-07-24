@@ -87,6 +87,32 @@ function rscfgFromForm(v: any): RSCfg {
   };
 }
 
+const ASSOC_TYPES = ['belongsTo', 'hasOne', 'hasMany', 'belongsToMany', 'belongsToArray'];
+/** Association fields of the TARGET referenced by the rich config (subtitle/tag/avatar/… — incl. HTML
+ *  tokens). The list endpoint returns SCALARS ONLY, so these must be requested as `appends`, otherwise
+ *  the option records miss them and the row silently renders title-only (the "hiển thị chưa đúng" bug). */
+function cfgAssocAppends(cfg: RSCfg, targetCollection: any): string[] {
+  const first = (f?: string) => String(f || '').split('.')[0];
+  const wanted = new Set<string>(
+    [first(cfg.titleField), first(cfg.subField), first(cfg.rightField), first(cfg.avatarField), first(cfg.iconColorField)].filter(Boolean),
+  );
+  if (cfg.mode === 'html' && cfg.html) {
+    for (const m of String(cfg.html).matchAll(/\{\{?([\w.]+)\}\}?/g)) {
+      const s = first(m[1]);
+      if (s) wanted.add(s);
+    }
+  }
+  if (!wanted.size) return [];
+  const fields: any[] = typeof targetCollection?.getFields === 'function' ? targetCollection.getFields() : [];
+  const out: string[] = [];
+  for (const f of fields) {
+    const name = f?.name || f?.options?.name;
+    const type = f?.type || f?.options?.type;
+    if (name && wanted.has(name) && ASSOC_TYPES.includes(type)) out.push(name);
+  }
+  return out;
+}
+
 // hex/#rgb → rgba(...,alpha); non-hex colours fall back to the colour itself (no tint).
 function withAlpha(color: string, alpha: number): string {
   const s = String(color || '').trim();
@@ -248,6 +274,11 @@ function RichSelectInlineEditor({ model, cfg, fieldNames, isMultiple, current, o
   const hasMoreRef = React.useRef(true);
   const loadedRef = React.useRef(0);
 
+  // Relation fields the config renders must be appended (stable key so the callback identity doesn't
+  // churn every render — a fresh fetchPage identity would loop the initial-load effect).
+  const assocKey = [cfg.mode, cfg.titleField, cfg.subField, cfg.rightField, cfg.avatarField, cfg.iconColorField, cfg.html].join('|');
+  const assocAppends = React.useMemo(() => cfgAssocAppends(cfg, cf?.targetCollection), [assocKey, cf?.targetCollection]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchPage = React.useCallback(async (reset: boolean) => {
     if (!api?.request || !target) return;
     if (reset) { pageRef.current = 1; hasMoreRef.current = true; loadedRef.current = 0; }
@@ -258,7 +289,7 @@ function RichSelectInlineEditor({ model, cfg, fieldNames, isMultiple, current, o
       const filter = search ? { [titleKey]: { $includes: search } } : undefined;
       const res = await api.request({
         url: `${target}:list`, method: 'get',
-        params: { page: pageRef.current, pageSize: 40, ...(filter ? { filter } : {}) },
+        params: { page: pageRef.current, pageSize: 40, ...(assocAppends.length ? { appends: assocAppends } : {}), ...(filter ? { filter } : {}) },
         headers: dsKey ? { 'X-Data-Source': dsKey } : undefined,
       });
       const rows: any[] = res?.data?.data || [];
@@ -273,7 +304,7 @@ function RichSelectInlineEditor({ model, cfg, fieldNames, isMultiple, current, o
     } finally {
       setLoading(false);
     }
-  }, [api, target, dsKey, search, cfg.titleField, fieldNames.label]);
+  }, [api, target, dsKey, search, cfg.titleField, fieldNames.label, assocAppends]);
 
   // Load first page (and re-load on search change), debounced for search.
   React.useEffect(() => {
@@ -459,6 +490,18 @@ export function registerRichSelectModel(deps: {
       }
 
       const realOptions = resolveOptions(p.options, p.value, isMultiple);
+      // The SELECTED record came from the host block's query, which may predate the nested appends
+      // (or be an older cache) — merge in the matching fetched option (it has the appended relations)
+      // so subtitle/tag/avatar show on the chip too.
+      const enrich = (r: any) => {
+        const k = r?.[fieldNames.value];
+        if (k == null) return r;
+        const full = realOptions.find((o: any) => o?.[fieldNames.value] === k);
+        return full ? { ...r, ...full } : r;
+      };
+      const richValue = isMultiple
+        ? (Array.isArray(p.value) ? p.value.map(enrich) : p.value)
+        : (p.value ? enrich(p.value) : p.value);
       // "Quick create" (add-new) — inherited from core RecordSelectFieldModel: onMount wires
       // p.onModalAddClick / p.onDropdownAddClick (→ the openView / dropdownAdd flows) and the setting
       // sets p.quickCreate = 'modalAdd' (Pop-up) | 'quickAdd' (Dropdown). Because we override render()
@@ -484,7 +527,7 @@ export function registerRichSelectModel(deps: {
           disabled={p.disabled}
           fieldNames={fieldNames}
           options={realOptions}
-          value={toRichValue(p.value, fieldNames, isMultiple, cfg)}
+          value={toRichValue(richValue, fieldNames, isMultiple, cfg)}
           onChange={(_v: any, option: any) => p.onChange?.(option)}
           onDropdownVisibleChange={(open: boolean) => p.onDropdownVisibleChange?.(open)}
           onPopupScroll={p.onPopupScroll}
@@ -687,6 +730,21 @@ export function registerRichSelectModel(deps: {
             ctx.model.setProps(props);
             // Global: display variant renders the same RichRow (readPretty) → save under the display model.
             saveWidgetGlobal(ctx, params, 'PtdlRichSelectDisplayFieldModel', props);
+            // APPENDS — without these the configured relation fields (department tag, image avatar,
+            // relation subtitle) come back empty and the row silently degrades to title-only:
+            //  (a) the model's OWN options resource (editable dropdown; display variant has none),
+            //  (b) the HOST block's resource, nested (`<assocField>.<rel>`) — so the SELECTED value in a
+            //      form and the readPretty cells in tables/details carry the relations too.
+            try {
+              const model = ctx.model;
+              const cf = resolveCf(model);
+              const assoc = cfgAssocAppends(rscfgFromForm(p), cf?.targetCollection);
+              if (assoc.length) {
+                if (model.resource?.addAppends) model.resource.addAppends(assoc);
+                const blockRes = model.context?.blockModel?.resource;
+                if (cf?.name && blockRes?.addAppends) blockRes.addAppends(assoc.map((a: string) => `${cf.name}.${a}`));
+              }
+            } catch (_) { /* best-effort — a plain row is still rendered */ }
           },
         },
       },

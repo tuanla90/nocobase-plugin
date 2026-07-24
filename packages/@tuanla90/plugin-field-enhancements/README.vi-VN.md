@@ -4,7 +4,7 @@
 > chấm sao, nhãn màu, huy hiệu On/Off, ô nhập có icon… mà **không cần code**.
 > Kèm sẵn một **thư viện snippet RunJS** cho trường hợp bạn muốn tự script.
 
-**Nhóm:** Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.35
+**Nhóm:** Fields · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.2.37
 
 ## Sau khi cài, có gì mới?
 
