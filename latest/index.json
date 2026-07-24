@@ -146,9 +146,9 @@
     {
       "packageName": "@tuanla90/plugin-global-search",
       "slug": "global-search",
-      "version": "0.9.11",
+      "version": "0.9.12",
       "displayName": "Global Search",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.11.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.12.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-gsheet-sync",

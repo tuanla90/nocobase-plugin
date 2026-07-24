@@ -217,7 +217,7 @@ function isOverlayOpen(): boolean {
 function measureHeaderCenterX(): number | null {
   if (typeof document === 'undefined') return null;
   const actions =
-    (document.querySelector('.nb-topbar-actions-list') as HTMLElement | null) ||
+    findInlineTopbarList() ||
     (document.querySelector(
       '.ant-pro-global-header-right-content, .ant-pro-global-header-header-actions',
     ) as HTMLElement | null);
@@ -268,13 +268,26 @@ function findHeaderEllipsis(): Element | null {
   return null;
 }
 
+// The "⋮" overflow Popover renders ITS OWN copy of `.nb-topbar-actions-list` inside the popover
+// portal while open — and antd keeps that popover mounted in the DOM after the first open. Only a
+// list OUTSIDE any popover is the real inline topbar; anchoring to (or reasoning from) the popover
+// copy is what made the pill pop up "orphaned" whenever the "⋮" menu was opened.
+function findInlineTopbarList(): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  for (const el of Array.from(document.querySelectorAll('.nb-topbar-actions-list'))) {
+    if (!(el as HTMLElement).closest('.ant-popover')) return el as HTMLElement;
+  }
+  return null;
+}
+
 // True on the modern `/v/` client when the topbar has folded every action into a "⋮" overflow (its
-// `.nb-topbar-actions-list` is gone). Robust to timing: treats "no action list + (⋮ visible OR narrow
-// viewport)" as collapsed, so the decision doesn't flip-flop while the header (re)mounts.
+// inline `.nb-topbar-actions-list` is gone — the popover copy doesn't count). Robust to timing:
+// treats "no inline list + (⋮ visible OR narrow viewport)" as collapsed, so the decision doesn't
+// flip-flop while the header (re)mounts or the overflow menu opens/closes.
 function isModernCollapsed(): boolean {
   if (typeof document === 'undefined' || typeof window === 'undefined') return false;
   if (!/\/v(\/|$)/.test(location.pathname || '')) return false; // modern client only
-  if (document.querySelector('.nb-topbar-actions-list')) return false; // desktop: actions inline → not collapsed
+  if (findInlineTopbarList()) return false; // desktop: actions inline → not collapsed
   return !!findHeaderEllipsis() || (window.innerWidth || 0) <= 820;
 }
 
@@ -334,7 +347,7 @@ function useHeaderMount(align: Align): Mount {
           (override ? (document.querySelector(override) as HTMLElement | null) : null) ||
           (document.querySelector('.ant-pro-global-header, .ant-layout-header') as HTMLElement | null) ||
           resolveInjectRow() ||
-          (document.querySelector('.nb-topbar-actions-list') as HTMLElement | null);
+          findInlineTopbarList();
         const hr = header?.getBoundingClientRect();
         if (header && hr && (hr.width || hr.height)) {
           dropHost();
@@ -363,7 +376,7 @@ function useHeaderMount(align: Align): Mount {
       if (align === 'center') {
         const bar =
           (override ? (document.querySelector(override) as HTMLElement | null) : null) ||
-          (document.querySelector('.nb-topbar-actions-list') as HTMLElement | null) ||
+          findInlineTopbarList() ||
           resolveInjectRow() ||
           (document.querySelector('.ant-pro-global-header, .ant-layout-header') as HTMLElement | null);
         const r = bar?.getBoundingClientRect();
@@ -396,7 +409,7 @@ function useHeaderMount(align: Align): Mount {
       }
 
       // 1) Modern /v/ topbar → overlay just left of it (don't inject: flow render drops it).
-      const topbar = !override ? (document.querySelector('.nb-topbar-actions-list') as HTMLElement | null) : null;
+      const topbar = !override ? findInlineTopbarList() : null;
       if (topbar) {
         const r = topbar.getBoundingClientRect();
         if (r.width || r.height) {
