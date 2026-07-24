@@ -620,17 +620,23 @@ export function registerRichSelectModel(deps: {
               const fields = target?.getFields?.() || [];
               fieldOptions = fields.filter((f: any) => f?.name).map((f: any) => ({ label: f.title || f.name, value: f.name, type: f.type, iface: f.interface }));
             } catch (_) { /* ignore */ }
-            // Load 1 record thật của bảng đích để preview (không bịa data).
-            const loadSample = async () => {
+            // Fetch record(s) thật của bảng đích KÈM appends theo config (subtitle/tag/avatar nếu là quan hệ)
+            // → preview đúng dữ liệu thật (trước đây không append nên load về title-only). search = lọc theo
+            // titleField. Dùng cho cả "Load sample" lẫn ô "Chọn record" mới.
+            const fetchRecords = async (curCfg: any, search?: string) => {
               const targetName = cf?.target;
               const dsKey = cf?.dataSourceKey;
-              if (!api || !targetName) return null;
+              if (!api || !targetName) return [];
+              const appends = cfgAssocAppends(curCfg || {}, target);
+              const params: any = { pageSize: 20 };
+              if (appends.length) params.appends = appends;
+              const tf = curCfg?.titleField;
+              if (search && tf && !String(tf).includes('.')) params.filter = { [tf]: { $includes: search } };
               const res = await api.request({
-                url: `${targetName}:list`, method: 'get',
-                params: { pageSize: 1 },
+                url: `${targetName}:list`, method: 'get', params,
                 headers: dsKey ? { 'X-Data-Source': dsKey } : undefined,
               });
-              return res?.data?.data?.[0] || null;
+              return res?.data?.data || [];
             };
             return {
               ...globalToggleField(t),
@@ -638,7 +644,7 @@ export function registerRichSelectModel(deps: {
                 type: 'void', title: t('Preview'),
                 'x-decorator': 'FormItem', 'x-decorator-props': { style: { marginBottom: 8 } },
                 'x-component': 'RS_Preview',
-                'x-component-props': { fieldTitles: Object.fromEntries(fieldOptions.map((o: any) => [o.value, o.label])), loadSample },
+                'x-component-props': { fieldTitles: Object.fromEntries(fieldOptions.map((o: any) => [o.value, o.label])), fetchRecords },
               },
               clickSave: fi(t('Click to change (inline, no popup)'), 'RS_Switch', {
                 type: 'boolean',
@@ -768,7 +774,15 @@ export function registerRichSelectModel(deps: {
               const cf = resolveCf(model);
               const assoc = cfgAssocAppends(rscfgFromForm(p), cf?.targetCollection);
               if (assoc.length) {
-                if (model.resource?.addAppends) model.resource.addAppends(assoc);
+                const optRes = model.resource;
+                if (optRes?.addAppends) {
+                  const before = new Set(optRes.request?.params?.appends || []);
+                  optRes.addAppends(assoc);
+                  // Đổi cấu hình khi dropdown ĐÃ mở (options đã tải) → refetch để áp appends MỚI NGAY, khỏi reload.
+                  // Guard "grew" (chỉ khi có append mới) + "đã có data" → không refetch thừa lúc load, không loop.
+                  const grew = (optRes.request?.params?.appends || []).some((a: string) => !before.has(a));
+                  if (grew && optRes.getData?.()?.length && optRes.refresh) optRes.refresh();
+                }
                 const blockRes = model.context?.blockModel?.resource;
                 if (cf?.name && blockRes?.addAppends) blockRes.addAppends(assoc.map((a: string) => `${cf.name}.${a}`));
               }
@@ -815,6 +829,8 @@ const RichSelectPreview: any = observer((props: any) => {
   const [real, setReal] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string>('');
+  const [pickOpts, setPickOpts] = React.useState<any[]>([]);
+  const [pickLoading, setPickLoading] = React.useState(false);
   const titleKey = cfg.titleField || '__title__';
   const fieldNames: FN = { label: titleKey, value: 'id' };
 
@@ -835,17 +851,25 @@ const RichSelectPreview: any = observer((props: any) => {
       : sample;
   }
 
+  // fetchRecords(cfg, search) lấy record thật KÈM appends theo config hiện tại (đọc live từ form).
+  const doFetch = async (search?: string) => (props?.fetchRecords ? await props.fetchRecords(cfg, search) : []);
   const onLoad = async () => {
-    if (!props?.loadSample) return;
+    if (!props?.fetchRecords) return;
     setLoading(true); setErr('');
     try {
-      const r = await props.loadSample();
-      if (r) setReal(r); else setErr('No record');
+      const rows = await doFetch('');
+      if (rows && rows[0]) setReal(rows[0]); else setErr('No record');
     } catch (e: any) {
       setErr(e?.message || 'Load failed');
     } finally {
       setLoading(false);
     }
+  };
+  // Ô "Chọn record" — tìm theo titleField, mỗi option render RichRow để nhìn đúng cấu hình; chọn → preview.
+  const onPickSearch = async (q: string) => {
+    if (!props?.fetchRecords) return;
+    setPickLoading(true);
+    try { setPickOpts(await doFetch(q) || []); } catch { setPickOpts([]); } finally { setPickLoading(false); }
   };
 
   const row = <RichRow record={record} cfg={cfg} fieldNames={fieldNames} />;
@@ -855,6 +879,20 @@ const RichSelectPreview: any = observer((props: any) => {
         <span style={{ fontSize: 12, color: token.colorTextTertiary }}>{real ? 'Sample record' : 'Generic preview'}</span>
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
           {err ? <span style={{ fontSize: 12, color: token.colorError }}>{err}</span> : null}
+          <Select
+            size="small"
+            showSearch
+            filterOption={false}
+            style={{ minWidth: 170 }}
+            placeholder={'Pick a record…'}
+            loading={pickLoading}
+            value={undefined as any}
+            onFocus={() => { if (!pickOpts.length) onPickSearch(''); }}
+            onSearch={onPickSearch}
+            onChange={(_v: any, opt: any) => { const r = opt?.rec; if (r) setReal(r); }}
+            optionRender={({ data }: any) => <RichRow record={data?.rec} cfg={cfg} fieldNames={fieldNames} />}
+            options={pickOpts.map((r: any, i: number) => ({ value: r?.id ?? i, label: getFieldStr(r, cfg.titleField) || String(r?.id ?? i), rec: r }))}
+          />
           {real ? <Button size="small" type="link" onClick={() => setReal(null)}>Clear</Button> : null}
           <Button size="small" loading={loading} onClick={onLoad}>Load sample</Button>
         </span>
