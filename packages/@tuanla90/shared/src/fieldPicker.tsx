@@ -282,6 +282,75 @@ export const FieldPickerCascader: React.FC<FieldPickerCascaderProps> = ({
   );
 };
 
+export interface NestedFieldCascaderProps {
+  api?: any;
+  collectionName?: string;
+  dataSourceKey?: string;
+  /** Dot-path string ('department.name'); '' / undefined = nothing picked. */
+  value?: string;
+  onChange?: (path: string, leafOption?: any) => void;
+  placeholder?: string;
+  maxDepth?: number;
+  /** Include to-many relations (hasMany/belongsToMany, e.g. attachment images). Default true. */
+  includeToMany?: boolean;
+  allowClear?: boolean;
+  style?: React.CSSProperties;
+  size?: 'small' | 'middle' | 'large';
+}
+
+/** INPUT-style nested field picker (value = dot-path string) — the form-control sibling of the
+ *  trigger-style FieldPickerCascader. Options are PRE-BUILT eagerly (buildFieldCascaderOptions):
+ *  antd Cascader never fires loadData on hover-expand and disables it entirely under showSearch, so a
+ *  lazy tree shows expand arrows that never populate. Eager + getFields cache = hover works, search
+ *  sees every level. `changeOnSelect` lets the user stop AT a relation (renderers unwrap name/label). */
+export const NestedFieldCascader: React.FC<NestedFieldCascaderProps> = ({
+  api,
+  collectionName,
+  dataSourceKey,
+  value,
+  onChange,
+  placeholder,
+  maxDepth = 2,
+  includeToMany = true,
+  allowClear = true,
+  style,
+  size,
+}) => {
+  const [options, setOptions] = useState<any[]>([]);
+  useEffect(() => {
+    let live = true;
+    if (!api || !collectionName) { setOptions([]); return; }
+    buildFieldCascaderOptions(api, collectionName, dataSourceKey, { maxDepth, includeToMany }).then(
+      (o) => live && setOptions(o),
+    );
+    return () => { live = false; };
+  }, [api, collectionName, dataSourceKey, maxDepth, includeToMany]);
+  return (
+    <Cascader
+      style={{ width: '100%', ...style }}
+      size={size}
+      options={options}
+      value={value ? String(value).split('.') : []}
+      changeOnSelect
+      expandTrigger="hover"
+      allowClear={allowClear}
+      placeholder={placeholder}
+      optionRender={cascaderOptionRender as any}
+      showSearch={{
+        filter: (input: string, path: any[]) => {
+          const q = String(input).toLowerCase();
+          return path.some((o) => String(o.label ?? '').toLowerCase().includes(q) || String(o.value ?? '').toLowerCase().includes(q));
+        },
+      }}
+      displayRender={(labels: any[]) => (labels || []).map((l) => String(l).replace(/ →$/, '')).join(' / ') || (value || '')}
+      onChange={(vals: any, opts: any) => {
+        const p = (vals || []).join('.');
+        onChange?.(p, Array.isArray(opts) ? opts[opts.length - 1] : undefined);
+      }}
+    />
+  );
+};
+
 export interface FieldTokenTextAreaProps {
   value?: string;
   onChange?: (v: string) => void;

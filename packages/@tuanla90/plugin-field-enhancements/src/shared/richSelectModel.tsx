@@ -5,7 +5,7 @@ import { observer, useForm } from '@formily/react';
 import DOMPurify from 'dompurify';
 import { bindDisplayField } from './displayBinding';
 import { isQuickEditCell, quickInlineSave } from './inlineQuickEdit';
-import { SegmentedGroup, ColumnSelect, FieldPickerCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx, registerFlowComponentsOnce, IconByKey, ColorField, colorToString } from '@tuanla90/shared';
+import { SegmentedGroup, ColumnSelect, FieldPickerCascader, NestedFieldCascader, getCaretElement, insertAtCaret, toDisplayString, SettingsGrid, ResetButton, CollapsibleSection, SEG_PROPS, fieldItem as fi, rx, registerFlowComponentsOnce, IconByKey, ColorField, colorToString } from '@tuanla90/shared';
 import { globalToggleField, saveWidgetGlobal } from './globalWidgetToggle';
 
 /**
@@ -151,15 +151,30 @@ function renderIconAvatar(iconKey: string, color: string, style: IconStyle, sz: 
   );
 }
 
+/** Flat key first, then dot-path walk (the field pickers emit nested paths like 'department.name').
+ *  An ARRAY met mid-walk (hasMany/attachment) steps into its FIRST element — 'images.url' = first image. */
+function walkPath(record: any, name?: string): any {
+  if (!name || !record) return undefined;
+  if (record[name] !== undefined) return record[name];
+  if (!String(name).includes('.')) return undefined;
+  let cur: any = record;
+  for (const seg of String(name).split('.')) {
+    if (cur == null) return undefined;
+    if (Array.isArray(cur)) cur = cur[0];
+    if (cur == null) return undefined;
+    cur = cur[seg];
+  }
+  return cur;
+}
 function getFieldStr(record: any, name?: string): string {
   if (!name || !record) return '';
   // object/scalar → string (unwraps label/name/title/id) via shared toDisplayString — byte-equivalent.
-  return toDisplayString(record[name]);
+  return toDisplayString(walkPath(record, name));
 }
 // avatar: string url | {url} | [{url}] | attachment-like.
 function getAvatarUrl(record: any, name?: string): string {
   if (!name || !record) return '';
-  let v = record[name];
+  let v = walkPath(record, name);
   if (Array.isArray(v)) v = v[0];
   if (!v) return '';
   if (typeof v === 'string') return v;
@@ -169,7 +184,7 @@ function getAvatarUrl(record: any, name?: string): string {
 function interpolateHtml(tpl: string, record: any): string {
   // Standard token is {{field}}; the optional inner/outer brace keeps legacy {field} working too.
   return String(tpl).replace(/\{\{?([\w.]+)\}\}?/g, (_m, key) => {
-    const v = String(key).split('.').reduce((o: any, k: string) => (o == null ? o : o[k]), record);
+    const v = walkPath(record, String(key));
     return v == null ? '' : String(typeof v === 'object' ? (v.label ?? v.name ?? v.id ?? '') : v);
   });
 }
@@ -409,9 +424,22 @@ function RichSelectDisplay({ model, p }: { model: any; p: any }) {
 const RS_Seg = (props: any) => (
   <SegmentedGroup {...SEG_PROPS} value={props.value ?? props.defaultValue} onChange={(v: any) => props.onChange?.(v)} options={props.options || []} />
 );
+// Field picker: NESTED cascader (drill to-one/to-many relations, e.g. department.name / images.url)
+// when the target collection is known; flat ColumnSelect fallback otherwise (standalone editors).
 const RS_FieldSelect = (props: any) => (
-  <ColumnSelect value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)}
-    options={props.options || []} placeholder={props.placeholder || 'Field…'} />
+  props.api && props.collectionName ? (
+    <NestedFieldCascader
+      api={props.api}
+      collectionName={props.collectionName}
+      dataSourceKey={props.dataSourceKey}
+      value={props.value || undefined}
+      onChange={(p: string) => props.onChange?.(p)}
+      placeholder={props.placeholder || 'Field…'}
+    />
+  ) : (
+    <ColumnSelect value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)}
+      options={props.options || []} placeholder={props.placeholder || 'Field…'} />
+  )
 );
 const RS_Html = (props: any) => {
   const taRef = useRef<any>(null);
@@ -641,9 +669,9 @@ export function registerRichSelectModel(deps: {
                     'x-component-props': { minColWidth: 150 },
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
                     properties: {
-                      titleField: fi(t('Title field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: t('(title field)') } }),
-                      subField: fi(t('Subtitle field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
-                      rightField: fi(t('Right field (tag)'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
+                      titleField: fi(t('Title field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: t('(title field)') } }),
+                      subField: fi(t('Subtitle field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
+                      rightField: fi(t('Right field (tag)'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
                     },
                   },
                   presetRow2: {
@@ -651,7 +679,7 @@ export function registerRichSelectModel(deps: {
                     'x-component-props': { minColWidth: 160 },
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
                     properties: {
-                      avatarField: fi(t('Avatar / icon field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
+                      avatarField: fi(t('Avatar / icon field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
                       avatarMode: fi(t('Avatar type'), 'RS_Seg', {
                         componentProps: { options: [{ label: t('Image'), value: 'image' }, { label: t('Icon'), value: 'icon' }] },
                       }),
@@ -692,7 +720,7 @@ export function registerRichSelectModel(deps: {
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset' && v.avatarMode === 'icon'),
                     properties: {
                       iconColor: fi(t('Icon colour'), 'RS_Color'),
-                      iconColorField: fi(t('Colour from column'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, placeholder: '—' } }),
+                      iconColorField: fi(t('Colour from column'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
                     },
                   },
                 },

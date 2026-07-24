@@ -4,7 +4,7 @@
 > progress bars, star ratings, coloured tags, On/Off badges, inputs with icons… all **with no code**.
 > Comes with a **RunJS snippet library** for the times you'd rather script it yourself.
 
-**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.37
+**Group:** Fields · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.2.38
 
 ## What's new after installing?
 

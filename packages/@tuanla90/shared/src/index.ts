@@ -9,6 +9,7 @@ export {
   getCaretElement,
   insertAtCaret,
   FieldPickerCascader,
+  NestedFieldCascader,
   FieldTokenTextArea,
   // Column picker dropdown (title + raw name, dual-search) + spreadable props + option builder +
   // the shared two-line option renderer (used by both the flat select and the multi-level cascader).
@@ -20,7 +21,7 @@ export {
   fieldTypeIcon,
   cleanLabel,
 } from './fieldPicker';
-export type { FieldJsonMeta, TokenFormat, FieldPickerCascaderProps, FieldTokenTextAreaProps, ColumnOption, ColumnSelectProps } from './fieldPicker';
+export type { FieldJsonMeta, TokenFormat, FieldPickerCascaderProps, NestedFieldCascaderProps, FieldTokenTextAreaProps, ColumnOption, ColumnSelectProps } from './fieldPicker';
 // Standard "button group" (Segmented at medium) — house default for every @tuanla90 segmented control.
 export { SegmentedGroup } from './controls';
 export type { SegmentedGroupProps } from './controls';

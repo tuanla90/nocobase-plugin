@@ -111,9 +111,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.37",
+      "version": "0.2.38",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.37.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.38.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",
@@ -251,9 +251,9 @@
     {
       "packageName": "@tuanla90/plugin-pwa",
       "slug": "pwa",
-      "version": "0.5.2",
+      "version": "0.5.3",
       "displayName": "PWA (Installable App)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.2.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.3.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-spreadsheet-view",
