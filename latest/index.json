@@ -251,9 +251,9 @@
     {
       "packageName": "@tuanla90/plugin-pwa",
       "slug": "pwa",
-      "version": "0.5.3",
+      "version": "0.5.4",
       "displayName": "PWA (Installable App)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.3.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.4.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-spreadsheet-view",

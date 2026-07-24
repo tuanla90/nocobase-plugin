@@ -194,6 +194,16 @@ export const BottomBarPanel: React.FC<{
         ) : null}
       </div>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <Switch size="small" checked={!!cfg.topSearch} onChange={(v) => set({ topSearch: v })} />
+        <div>
+          <div style={{ fontWeight: 500, fontSize: 13 }}>{t('Search icon in the mobile top bar')}</div>
+          <div style={{ fontSize: 12, color: token.colorTextTertiary }}>
+            {t('Adds a Search button next to the “⋮” that opens Global Search (needs that plugin).')}
+          </div>
+        </div>
+      </div>
+
       <Typography.Text strong>{t('Items (max 5)')}</Typography.Text>
       <div style={{ marginTop: 8, marginBottom: 8 }}>
         {items.length === 0 ? (

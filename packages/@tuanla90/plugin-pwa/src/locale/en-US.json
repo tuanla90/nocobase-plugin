@@ -90,5 +90,7 @@
   "Tap “Install app” / “Add to Home screen”.": "Tap “Install app” / “Add to Home screen”.",
   "Click the install icon (⊕ / screen) at the right of the address bar.": "Click the install icon (⊕ / screen) at the right of the address bar.",
   "Or open the browser menu (⋮) → “Install…”.": "Or open the browser menu (⋮) → “Install…”.",
-  "Tap “Badge” on an item to show a live count (like the badge plugin).": "Tap “Badge” on an item to show a live count (like the badge plugin)."
+  "Tap “Badge” on an item to show a live count (like the badge plugin).": "Tap “Badge” on an item to show a live count (like the badge plugin).",
+  "Search icon in the mobile top bar": "Search icon in the mobile top bar",
+  "Adds a Search button next to the “⋮” that opens Global Search (needs that plugin).": "Adds a Search button next to the “⋮” that opens Global Search (needs that plugin)."
 }

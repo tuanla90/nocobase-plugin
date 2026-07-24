@@ -90,5 +90,7 @@
   "Tap “Install app” / “Add to Home screen”.": "Chọn “Cài ứng dụng” / “Thêm vào Màn hình chính”.",
   "Click the install icon (⊕ / screen) at the right of the address bar.": "Bấm biểu tượng cài (⊕ / màn hình) ở cuối thanh địa chỉ.",
   "Or open the browser menu (⋮) → “Install…”.": "Hoặc mở menu trình duyệt (⋮) → “Cài…”.",
-  "Tap “Badge” on an item to show a live count (like the badge plugin).": "Bấm “Badge” ở mỗi mục để hiện số đếm trực tiếp (giống plugin badge)."
+  "Tap “Badge” on an item to show a live count (like the badge plugin).": "Bấm “Badge” ở mỗi mục để hiện số đếm trực tiếp (giống plugin badge).",
+  "Search icon in the mobile top bar": "Icon Search trên thanh trên (mobile)",
+  "Adds a Search button next to the “⋮” that opens Global Search (needs that plugin).": "Thêm nút Search cạnh “⋮”, mở Global Search (cần bật plugin đó)."
 }

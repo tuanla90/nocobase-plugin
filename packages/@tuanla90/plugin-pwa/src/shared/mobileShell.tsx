@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { BottomBar, BottomBarConfig, BarItem, barHeight, MAX_ITEMS, MOBILE_MAX_WIDTH, ShowOn, Placement } from './bottomBar';
 import { FabMenu } from './fabMenu';
 import { InstallPrompt, InstallConfig, isStandalone } from './installPrompt';
+import { TopbarSearch } from './topbarSearch';
 import { setPwaConfig, setPwaNavigate, setBadgeCounts, useBadgeCounts } from './configStore';
 
 // ---------------------------------------------------------------------------
@@ -298,6 +299,7 @@ export function createMobileShell({
               {inApp ? (
                 <InstallPrompt config={cfg.install} icon={cfg.icon} themeColor={cfg.themeColor} bottomOffset={installOffset} />
               ) : null}
+              {inApp ? <TopbarSearch enabled={!!bb?.topSearch} /> : null}
             </>,
             document.body,
           )

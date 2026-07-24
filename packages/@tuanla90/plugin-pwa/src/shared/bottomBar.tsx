@@ -54,6 +54,7 @@ export interface BottomBarConfig {
   placement?: Placement;
   items?: BarItem[];
   style?: BarStyleConfig;
+  topSearch?: boolean; // show a Search icon next to the mobile "⋮" (opens global-search)
 }
 
 export const BOTTOM_BAR_DEFAULTS: BottomBarConfig = {
