@@ -263,8 +263,9 @@ export function createMobileShell({
     const barH = barHeight(bb?.style);
     const reserveSide: 'bottom' | 'top' | 'none' = showBar && placement === 'bottom' ? 'bottom' : showBar && placement === 'top' ? 'top' : 'none';
     const reservePx = reserveSide === 'none' ? 0 : barH;
-    // Lift the install pill/banner above whatever sits at the bottom.
-    const installOffset = showBar && placement === 'bottom' ? barH : showBar && placement === 'floating' ? barH + 24 : 0;
+    // Lift the install pill/banner/fab above whatever sits at the bottom (bottom bar, floating dock,
+    // or the nav FAB which shares the bottom-right corner).
+    const installOffset = showBar && placement === 'bottom' ? barH : showBar && placement === 'floating' ? barH + 24 : showFab ? 68 : 0;
 
     useEffect(() => {
       setReserved(reservePx, reserveSide);

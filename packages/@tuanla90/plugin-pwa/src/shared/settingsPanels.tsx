@@ -299,6 +299,9 @@ export const BottomBarPanel: React.FC<{
         <Button onClick={addItem} disabled={items.length >= MAX_ITEMS} type="dashed" size="small">
           + {t('Add item')} ({items.length}/{MAX_ITEMS})
         </Button>
+        <div style={{ fontSize: 11, color: token.colorTextTertiary, marginTop: 6 }}>
+          {t('Tap “Badge” on an item to show a live count (like the badge plugin).')}
+        </div>
       </div>
 
       <Typography.Text strong style={{ display: 'block', marginTop: 18, marginBottom: 8 }}>

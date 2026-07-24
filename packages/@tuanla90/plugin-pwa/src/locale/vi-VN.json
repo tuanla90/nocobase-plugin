@@ -85,5 +85,10 @@
   "Dismiss": "Bỏ qua",
   "Tap the Share button in Safari (the square with an up arrow).": "Bấm nút Chia sẻ trong Safari (ô vuông có mũi tên lên).",
   "Choose “Add to Home Screen”.": "Chọn “Thêm vào MH chính”.",
-  "Tap “Add” — the app icon appears on your home screen.": "Bấm “Thêm” — icon ứng dụng sẽ xuất hiện trên màn hình chính."
+  "Tap “Add” — the app icon appears on your home screen.": "Bấm “Thêm” — icon ứng dụng sẽ xuất hiện trên màn hình chính.",
+  "Open the browser menu (⋮ top-right).": "Mở menu trình duyệt (⋮ góc trên phải).",
+  "Tap “Install app” / “Add to Home screen”.": "Chọn “Cài ứng dụng” / “Thêm vào Màn hình chính”.",
+  "Click the install icon (⊕ / screen) at the right of the address bar.": "Bấm biểu tượng cài (⊕ / màn hình) ở cuối thanh địa chỉ.",
+  "Or open the browser menu (⋮) → “Install…”.": "Hoặc mở menu trình duyệt (⋮) → “Cài…”.",
+  "Tap “Badge” on an item to show a live count (like the badge plugin).": "Bấm “Badge” ở mỗi mục để hiện số đếm trực tiếp (giống plugin badge)."
 }

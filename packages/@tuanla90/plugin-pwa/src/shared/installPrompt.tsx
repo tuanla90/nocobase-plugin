@@ -5,13 +5,12 @@ import { t } from './i18n';
 
 // ---------------------------------------------------------------------------
 // PWA install ("Add to Home Screen") capture + suggestion UI. Lane-agnostic:
-// imports NO @nocobase/client* so the same code bundles into both the classic
-// `client` lane and the modern `client-v2` lane.
+// imports NO @nocobase/client* so the same code bundles into both lanes.
 // ---------------------------------------------------------------------------
 
-// The browser fires `beforeinstallprompt` ONCE, and often BEFORE React mounts. We must capture it at
-// plugin load() time (as early as possible) and stash the event so a later button click can call
-// prompt(). A module-level store + subscriber set lets the React overlay react to the late event.
+// The browser fires `beforeinstallprompt` at most once and often not at all (Chrome throttles it
+// after a reload / once shown). So we NEVER hide the suggestion just because it's missing — we stash
+// the event when it comes for a one-click install, and otherwise fall back to per-browser manual steps.
 let deferredPrompt: any = null;
 let installed = false;
 const listeners = new Set<() => void>();
@@ -26,13 +25,12 @@ function emit() {
 }
 
 let captureStarted = false;
-/** Attach the beforeinstallprompt / appinstalled listeners once, as early as possible. */
 export function initInstallCapture(): void {
   if (typeof window === 'undefined') return;
   if (captureStarted) return;
   captureStarted = true;
   window.addEventListener('beforeinstallprompt', (e: any) => {
-    e.preventDefault(); // suppress Chrome's mini-infobar; we surface our own trigger
+    e.preventDefault();
     deferredPrompt = e;
     emit();
   });
@@ -43,7 +41,6 @@ export function initInstallCapture(): void {
   });
 }
 
-/** True when the page is already running as an installed app (any platform). */
 export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   try {
@@ -64,10 +61,29 @@ function isIOS(): boolean {
   const iPadOS = navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1;
   return iDevice || iPadOS;
 }
+function isAndroid(): boolean {
+  return typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent || '');
+}
 function isIosSafari(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
   return isIOS() && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome/.test(ua);
+}
+
+/** Manual install steps for the current browser (used when no native prompt is available). */
+function helpSteps(): string[] {
+  if (isIosSafari() || isIOS()) {
+    return [
+      t('Tap the Share button in Safari (the square with an up arrow).'),
+      t('Choose “Add to Home Screen”.'),
+      t('Tap “Add” — the app icon appears on your home screen.'),
+    ];
+  }
+  if (isAndroid()) {
+    return [t('Open the browser menu (⋮ top-right).'), t('Tap “Install app” / “Add to Home screen”.')];
+  }
+  // Desktop Chrome / Edge
+  return [t('Click the install icon (⊕ / screen) at the right of the address bar.'), t('Or open the browser menu (⋮) → “Install…”.')];
 }
 
 const DISMISS_KEY = 'pwa-install-dismissed-at';
@@ -87,6 +103,14 @@ function markDismissed(): void {
     // ignore
   }
 }
+/** Clear the dismiss flag — called when the admin saves new install settings so it reappears. */
+export function clearInstallDismiss(): void {
+  try {
+    localStorage.removeItem(DISMISS_KEY);
+  } catch (e) {
+    // ignore
+  }
+}
 
 export type InstallPosition = 'pill' | 'banner' | 'bannerTop' | 'fab' | 'avatar';
 
@@ -97,16 +121,11 @@ export interface InstallConfig {
   description?: string;
 }
 
-export const INSTALL_DEFAULTS: InstallConfig = {
-  enabled: true,
-  position: 'pill',
-  title: '',
-  description: '',
-};
+export const INSTALL_DEFAULTS: InstallConfig = { enabled: true, position: 'pill', title: '', description: '' };
 
-const Z = 995; // above the bars (990/991), below antd Modal/Drawer masks (1000)
+const Z = 995;
 
-/** Whether an install suggestion can actually be actioned right now (Chromium prompt or iOS Safari). */
+/** Should the install suggestion be shown at all (not installed / standalone) + how to action it. */
 export function useInstallState() {
   const [, force] = useState(0);
   useEffect(() => {
@@ -116,13 +135,12 @@ export function useInstallState() {
       listeners.delete(fn);
     };
   }, []);
-  const ios = isIosSafari();
-  const canPrompt = !!deferredPrompt;
-  const available = !installed && !isStandalone() && (canPrompt || ios);
-  return { available, canPrompt, ios, installed };
+  const show = !installed && !isStandalone();
+  return { show, canPrompt: !!deferredPrompt, installed };
 }
 
-async function runPrompt(onNeedIosHelp: () => void) {
+/** Trigger install: native prompt when available, else surface manual per-browser steps. */
+async function runInstall(onNeedHelp: () => void) {
   if (deferredPrompt) {
     try {
       deferredPrompt.prompt();
@@ -130,36 +148,13 @@ async function runPrompt(onNeedIosHelp: () => void) {
       deferredPrompt = null;
       if (choice?.outcome === 'accepted') installed = true;
       emit();
+      return;
     } catch (e) {
-      // ignore
+      // fall through to help
     }
-  } else {
-    onNeedIosHelp();
   }
+  onNeedHelp();
 }
-
-const IosHelpModal: React.FC<{ open: boolean; onClose: () => void; icon?: string; themeColor?: string; desc: string }> = ({
-  open,
-  onClose,
-  icon,
-  themeColor,
-  desc,
-}) => {
-  const { token } = theme.useToken();
-  return (
-    <Modal open={open} onCancel={onClose} footer={null} title={t('Install app')} width={360}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
-        <IconThumb icon={icon} accent={themeColor || token.colorPrimary} letter="A" />
-        <div style={{ color: token.colorTextSecondary, fontSize: 13 }}>{desc}</div>
-      </div>
-      <ol style={{ paddingLeft: 18, margin: 0, color: token.colorText, fontSize: 14, lineHeight: 1.9 }}>
-        <li>{t('Tap the Share button in Safari (the square with an up arrow).')}</li>
-        <li>{t('Choose “Add to Home Screen”.')}</li>
-        <li>{t('Tap “Add” — the app icon appears on your home screen.')}</li>
-      </ol>
-    </Modal>
-  );
-};
 
 const IconThumb: React.FC<{ icon?: string; accent: string; letter: string; size?: number }> = ({ icon, accent, letter, size = 34 }) => (
   <div
@@ -182,38 +177,64 @@ const IconThumb: React.FC<{ icon?: string; accent: string; letter: string; size?
   </div>
 );
 
+const HelpModal: React.FC<{ open: boolean; onClose: () => void; icon?: string; accent: string; desc: string }> = ({ open, onClose, icon, accent, desc }) => {
+  const { token } = theme.useToken();
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} title={t('Install app')} width={380}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
+        <IconThumb icon={icon} accent={accent} letter="A" />
+        <div style={{ color: token.colorTextSecondary, fontSize: 13 }}>{desc}</div>
+      </div>
+      <ol style={{ paddingLeft: 18, margin: 0, color: token.colorText, fontSize: 14, lineHeight: 1.9 }}>
+        {helpSteps().map((s, i) => (
+          <li key={i}>{s}</li>
+        ))}
+      </ol>
+    </Modal>
+  );
+};
+
 /**
- * Floating "Install app" suggestion. Appears when the browser has offered an install prompt
- * (Android/desktop Chromium) or on iOS Safari (manual Share → Add to Home Screen). Hidden once
- * installed, dismissed, already standalone, or when configured to live in the avatar menu.
+ * Install suggestion overlay. Shown whenever the app isn't already installed (regardless of whether
+ * the browser has fired beforeinstallprompt — clicking then either prompts natively or shows steps).
  */
-export const InstallPrompt: React.FC<{
-  config?: InstallConfig;
-  icon?: string;
-  themeColor?: string;
-  bottomOffset?: number;
-}> = ({ config, icon, themeColor, bottomOffset = 0 }) => {
+export const InstallPrompt: React.FC<{ config?: InstallConfig; icon?: string; themeColor?: string; bottomOffset?: number }> = ({
+  config,
+  icon,
+  themeColor,
+  bottomOffset = 0,
+}) => {
   const { token } = theme.useToken();
   const [dismissed, setDismissed] = useState(isDismissed());
-  const [iosOpen, setIosOpen] = useState(false);
-  const { available } = useInstallState();
+  const [helpOpen, setHelpOpen] = useState(false);
+  const { show } = useInstallState();
+
+  // Saving new install settings should re-show the suggestion even if it was dismissed before.
+  useEffect(() => {
+    const onCfg = () => {
+      clearInstallDismiss();
+      setDismissed(false);
+    };
+    window.addEventListener('pwa:config-updated', onCfg);
+    return () => window.removeEventListener('pwa:config-updated', onCfg);
+  }, []);
 
   if (config?.enabled === false) return null;
   const position = config?.position || 'pill';
-  if (position === 'avatar') return null; // rendered inside the user-center dropdown instead
-  if (!available || dismissed) return null;
+  if (position === 'avatar') return null;
+  if (!show || dismissed) return null;
 
   const accent = themeColor || token.colorPrimary;
   const title = (config?.title && config.title.trim()) || t('Install app');
   const desc = (config?.description && config.description.trim()) || t('Add to your home screen for quick access.');
   const letter = (title.trim().charAt(0) || 'A').toUpperCase();
 
-  const doInstall = () => runPrompt(() => setIosOpen(true));
+  const doInstall = () => runInstall(() => setHelpOpen(true));
   const dismiss = () => {
     markDismissed();
     setDismissed(true);
   };
-  const iosModal = <IosHelpModal open={iosOpen} onClose={() => setIosOpen(false)} icon={icon} themeColor={themeColor} desc={desc} />;
+  const helpModal = <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} icon={icon} accent={accent} desc={desc} />;
 
   const closeBtn = (
     <button
@@ -235,7 +256,7 @@ export const InstallPrompt: React.FC<{
           title={title}
           style={{
             position: 'fixed',
-            left: 16,
+            right: 16,
             bottom: `calc(${bottomOffset + 16}px + env(safe-area-inset-bottom))`,
             zIndex: Z,
             width: 48,
@@ -253,7 +274,7 @@ export const InstallPrompt: React.FC<{
         >
           <SafeIcon type="downloadoutlined" size={20} />
         </button>
-        {iosModal}
+        {helpModal}
       </>
     );
   }
@@ -290,7 +311,7 @@ export const InstallPrompt: React.FC<{
           </Button>
           {closeBtn}
         </div>
-        {iosModal}
+        {helpModal}
       </>
     );
   }
@@ -328,15 +349,12 @@ export const InstallPrompt: React.FC<{
         </Button>
         {closeBtn}
       </div>
-      {iosModal}
+      {helpModal}
     </>
   );
 };
 
-/**
- * Compact inline install control for embedding inside a menu (e.g. the avatar dropdown). Renders
- * nothing when install isn't available. No dismiss button — it lives inside a menu the user opens.
- */
+/** Compact inline install control for embedding inside a menu (avatar dropdown). Renders nothing once installed. */
 export const InstallInline: React.FC<{ icon?: string; themeColor?: string; title?: string; description?: string; onDone?: () => void }> = ({
   icon,
   themeColor,
@@ -345,9 +363,9 @@ export const InstallInline: React.FC<{ icon?: string; themeColor?: string; title
   onDone,
 }) => {
   const { token } = theme.useToken();
-  const [iosOpen, setIosOpen] = useState(false);
-  const { available } = useInstallState();
-  if (!available) return null;
+  const [helpOpen, setHelpOpen] = useState(false);
+  const { show } = useInstallState();
+  if (!show) return null;
 
   const accent = themeColor || token.colorPrimary;
   const label = (title && title.trim()) || t('Install app');
@@ -359,22 +377,10 @@ export const InstallInline: React.FC<{ icon?: string; themeColor?: string; title
       <button
         type="button"
         onClick={() => {
-          runPrompt(() => setIosOpen(true));
+          runInstall(() => setHelpOpen(true));
           onDone?.();
         }}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          width: '100%',
-          padding: '8px 10px',
-          border: 'none',
-          borderRadius: 8,
-          background: 'transparent',
-          cursor: 'pointer',
-          textAlign: 'left',
-          color: token.colorText,
-        }}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', border: 'none', borderRadius: 8, background: 'transparent', cursor: 'pointer', textAlign: 'left', color: token.colorText }}
         onMouseEnter={(e) => (e.currentTarget.style.background = token.colorFillTertiary)}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
@@ -384,7 +390,7 @@ export const InstallInline: React.FC<{ icon?: string; themeColor?: string; title
           <span style={{ fontSize: 11, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
         </span>
       </button>
-      <IosHelpModal open={iosOpen} onClose={() => setIosOpen(false)} icon={icon} themeColor={themeColor} desc={desc} />
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} icon={icon} accent={accent} desc={desc} />
     </>
   );
 };

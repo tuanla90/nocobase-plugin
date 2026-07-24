@@ -6,7 +6,7 @@
   "description": "Turn NocoBase into an installable mobile-style app. Add to Home Screen prompt (pill / banner / floating button / avatar menu) plus a configurable navigation bar with up to 5 page shortcuts — placed as a bottom bar, top bar, floating dock, floating button, or inside the avatar menu; mobile-legacy / AppSheet / custom styles. Configure app name, short name, theme/background colors and icon. Works on the classic and modern clients.",
   "description.vi-VN": "Biến NocoBase thành ứng dụng cài đặt được kiểu mobile. Gợi ý “Thêm vào màn hình chính” (viên / dải / nút nổi / menu avatar) kèm thanh điều hướng tùy biến tối đa 5 lối tắt — đặt ở thanh dưới, thanh trên, thanh nổi, nút nổi hoặc trong menu avatar; kiểu mobile cổ điển / AppSheet / tùy chỉnh.",
   "description.zh-CN": "让 NocoBase 可作为 PWA 安装到桌面和手机（添加到主屏幕 / 安装），并提供可配置的导航栏（最多 5 个页面快捷方式，可放在底部/顶部/悬浮/头像菜单，支持数量徽标）。",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "license": "AGPL-3.0",
   "main": "./dist/server/index.js",
   "devDependencies": {

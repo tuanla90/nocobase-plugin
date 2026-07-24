@@ -85,5 +85,10 @@
   "Dismiss": "Dismiss",
   "Tap the Share button in Safari (the square with an up arrow).": "Tap the Share button in Safari (the square with an up arrow).",
   "Choose “Add to Home Screen”.": "Choose “Add to Home Screen”.",
-  "Tap “Add” — the app icon appears on your home screen.": "Tap “Add” — the app icon appears on your home screen."
+  "Tap “Add” — the app icon appears on your home screen.": "Tap “Add” — the app icon appears on your home screen.",
+  "Open the browser menu (⋮ top-right).": "Open the browser menu (⋮ top-right).",
+  "Tap “Install app” / “Add to Home screen”.": "Tap “Install app” / “Add to Home screen”.",
+  "Click the install icon (⊕ / screen) at the right of the address bar.": "Click the install icon (⊕ / screen) at the right of the address bar.",
+  "Or open the browser menu (⋮) → “Install…”.": "Or open the browser menu (⋮) → “Install…”.",
+  "Tap “Badge” on an item to show a live count (like the badge plugin).": "Tap “Badge” on an item to show a live count (like the badge plugin)."
 }
