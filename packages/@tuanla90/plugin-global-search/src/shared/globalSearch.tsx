@@ -251,6 +251,23 @@ function measureHeaderCenterX(): number | null {
   return Math.round(leftBound + gap / 2);
 }
 
+// The modern `/v/` topbar collapses every action into a "⋮" overflow on narrow screens, so
+// `.nb-topbar-actions-list` disappears. Find that header "⋮" (ignore stray table-menu ellipses) so
+// the pill can dock just left of it instead of falling back to a floating corner.
+function findHeaderEllipsis(): Element | null {
+  if (typeof document === 'undefined') return null;
+  const w = typeof window !== 'undefined' ? window.innerWidth : 0;
+  const scoped = document.querySelectorAll(
+    '.ant-layout-header .anticon-ellipsis, .ant-pro-layout-header .anticon-ellipsis, header .anticon-ellipsis',
+  );
+  const pool: Element[] = scoped.length ? Array.from(scoped) : Array.from(document.querySelectorAll('.anticon-ellipsis'));
+  for (const el of pool) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.top < 70 && r.right > w - 100) return el;
+  }
+  return null;
+}
+
 /**
  * Where to render the header trigger, recomputed on a light interval + DOM mutations.
  * - Classic `/admin` (ProLayout): INJECT a flex-item host into the action row so the browser lays
@@ -375,6 +392,30 @@ function useHeaderMount(align: Align): Mount {
               : { host: null, overlayStyle: style, variant },
           );
           return;
+        }
+      }
+
+      // 1b) Modern /v/ on narrow screens: the topbar collapsed into a "⋮" overflow (no
+      //     `.nb-topbar-actions-list`) → dock the pill just left of that "⋮" instead of floating.
+      if (!override) {
+        const ell = findHeaderEllipsis();
+        if (ell) {
+          const wrap = (ell.closest('div') as HTMLElement | null) || (ell as HTMLElement);
+          const r = wrap.getBoundingClientRect();
+          if (r.width || r.height) {
+            dropHost();
+            const vw = window.innerWidth || 0;
+            const top = Math.round(r.top + r.height / 2);
+            const right = Math.max(8, Math.round(vw - r.left + 8));
+            const style: React.CSSProperties = { position: 'fixed', top, right, transform: 'translateY(-50%)', zIndex: PILL_Z };
+            const variant: Variant = ancestorBgIsDark(ell) ? 'header-dark' : 'header-light';
+            setMount((m) =>
+              !m.host && m.overlayStyle && m.overlayStyle.top === top && m.overlayStyle.right === right && m.variant === variant
+                ? m
+                : { host: null, overlayStyle: style, variant },
+            );
+            return;
+          }
         }
       }
 

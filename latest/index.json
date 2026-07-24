@@ -1,7 +1,7 @@
 {
   "source": "@tuanla90/nocobase-plugin",
   "updatedAt": null,
-  "count": 39,
+  "count": 40,
   "plugins": [
     {
       "packageName": "@tuanla90/plugin-action-enhancements",
@@ -146,9 +146,9 @@
     {
       "packageName": "@tuanla90/plugin-global-search",
       "slug": "global-search",
-      "version": "0.9.8",
+      "version": "0.9.9",
       "displayName": "Global Search",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.8.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.9.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-gsheet-sync",
@@ -247,6 +247,13 @@
       "version": "0.1.5",
       "displayName": "Print Template",
       "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-print-template-0.1.5.tgz"
+    },
+    {
+      "packageName": "@tuanla90/plugin-pwa",
+      "slug": "pwa",
+      "version": "0.5.3",
+      "displayName": "PWA (Installable App)",
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.3.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-pwa",
