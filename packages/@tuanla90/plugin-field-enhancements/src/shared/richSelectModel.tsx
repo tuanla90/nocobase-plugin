@@ -198,6 +198,29 @@ const PlusGlyph = () => (
   </svg>
 );
 
+// The selected value can be a 2-line rich row (title + subtitle), but a single-select control clips
+// it into the default one-line height → looks cramped. Let the single-select selector grow to fit
+// its content (min-height keeps a normal box when the row is a single line). Scoped to
+// `.ant-select-single` so multiple-select (which already wraps its tags) is untouched. Injected once.
+const RS_STYLE_ID = 'ptdl-rich-select-style';
+function ensureRichSelectStyle(): void {
+  try {
+    if (typeof document === 'undefined' || document.getElementById(RS_STYLE_ID)) return;
+    const el = document.createElement('style');
+    el.id = RS_STYLE_ID;
+    const S = '.ptdl-rich-select.ant-select-single';
+    el.textContent =
+      `${S} .ant-select-selector{height:auto!important;min-height:34px;padding-top:3px;padding-bottom:3px}` +
+      `${S} .ant-select-selector .ant-select-selection-item{height:auto!important;line-height:1.25!important;display:flex;align-items:center}` +
+      `${S} .ant-select-selector .ant-select-selection-placeholder{height:auto!important;line-height:1.25!important;display:flex;align-items:center}` +
+      `${S} .ant-select-selector .ant-select-selection-search{top:0;bottom:0;display:flex;align-items:center}`;
+    document.head.appendChild(el);
+  } catch (e) {
+    /* no document / CSP → skip; the field still works, just at the default height */
+  }
+}
+ensureRichSelectStyle();
+
 // Row hiển thị 1 record — dùng chung option dropdown + tag đã chọn.
 function RichRow({ record, cfg, fieldNames }: { record: any; cfg: RSCfg; fieldNames: FN }) {
   const { token } = theme.useToken();
@@ -356,6 +379,7 @@ function RichSelectInlineEditor({ model, cfg, fieldNames, isMultiple, current, o
 
   return (
     <Select
+      className="ptdl-rich-select"
       style={{ minWidth: 180, width: '100%' }}
       autoFocus
       defaultOpen
@@ -550,6 +574,7 @@ export function registerRichSelectModel(deps: {
 
       const select = (
         <Select
+          className="ptdl-rich-select"
           style={{ width: '100%' }}
           allowClear
           showSearch
