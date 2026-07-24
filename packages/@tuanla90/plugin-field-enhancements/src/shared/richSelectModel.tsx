@@ -58,6 +58,7 @@ type RSCfg = {
   avatarMode: 'image' | 'icon'; avatarSize: number;
   iconStyle: IconStyle; iconColor: string; iconColorField: string;
   clickSave: boolean;
+  compact: boolean;
 };
 const ICON_STYLES: IconStyle[] = ['plain', 'filled', 'soft', 'outlined', 'square'];
 function rscfgFromProps(p: any): RSCfg {
@@ -71,6 +72,7 @@ function rscfgFromProps(p: any): RSCfg {
     iconStyle: ICON_STYLES.includes(p.ptdlrsIconStyle) ? p.ptdlrsIconStyle : 'plain',
     iconColor: colorToString(p.ptdlrsIconColor) || '', iconColorField: p.ptdlrsIconColorField || '',
     clickSave: p.ptdlrsClickSave === true,
+    compact: p.ptdlrsCompact === true,
   };
 }
 function rscfgFromForm(v: any): RSCfg {
@@ -84,6 +86,7 @@ function rscfgFromForm(v: any): RSCfg {
     iconStyle: ICON_STYLES.includes(v?.iconStyle) ? v.iconStyle : 'plain',
     iconColor: colorToString(v?.iconColor) || '', iconColorField: v?.iconColorField || '',
     clickSave: !!v?.clickSave,
+    compact: !!v?.compact,
   };
 }
 
@@ -238,14 +241,16 @@ function RichRow({ record, cfg, fieldNames }: { record: any; cfg: RSCfg; fieldNa
   const avatarUrl = isIcon ? '' : getAvatarUrl(record, cfg.avatarField);
   const hasImg = !!avatarUrl;
   const hasIcon = !!iconKey;
-  // Kích thước avatar: cấu hình (avatarSize) hoặc mặc định nhỏ gọn (24 khi có subtitle, 20 khi không).
-  const sz = cfg.avatarSize || (sub ? 24 : 20);
+  // "Compact" → chữ nhỏ + gap hẹp cho hàng gọn hơn (fallback khi không muốn hàng cao).
+  const compact = !!cfg.compact;
+  // Kích thước avatar: cấu hình (avatarSize) hoặc mặc định — nhỏ hơn 1 nấc khi bật Compact.
+  const sz = cfg.avatarSize || (compact ? (sub ? 20 : 18) : (sub ? 24 : 20));
   // Hiện avatar khi: có ảnh/icon, HOẶC bật "avatar mặc định" (fallback chữ cái đầu). Tắt default + rỗng → ẩn hẳn.
   const showAvatar = hasImg || hasIcon || cfg.avatarDefault;
   // Có field phải → row chiếm full bề rộng để đẩy nó ra sát mép.
   const fullRow = !!cfg.rightField;
   return (
-    <span style={{ display: fullRow ? 'flex' : 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, width: fullRow ? '100%' : undefined }}>
+    <span style={{ display: fullRow ? 'flex' : 'inline-flex', alignItems: 'center', gap: compact ? 6 : 8, minWidth: 0, width: fullRow ? '100%' : undefined }}>
       {showAvatar ? (
         hasIcon ? (
           renderIconAvatar(iconKey, iconColorFor(record, cfg), cfg.iconStyle, sz)
@@ -255,14 +260,14 @@ function RichRow({ record, cfg, fieldNames }: { record: any; cfg: RSCfg; fieldNa
           </Avatar>
         )
       ) : null}
-      <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.2, flex: fullRow ? 1 : undefined }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
-        {sub ? <span style={{ fontSize: 12, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span> : null}
+      <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 0, lineHeight: compact ? 1.15 : 1.2, flex: fullRow ? 1 : undefined }}>
+        <span style={{ fontSize: compact ? 13 : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        {sub ? <span style={{ fontSize: compact ? 11 : 12, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span> : null}
       </span>
       {right ? (
         <span style={{
           marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap',
-          fontSize: 11, lineHeight: '16px', padding: '0 7px', borderRadius: 10,
+          fontSize: compact ? 10 : 11, lineHeight: compact ? '15px' : '16px', padding: compact ? '0 6px' : '0 7px', borderRadius: 10,
           color: token.colorTextSecondary,
           background: token.colorFillSecondary,
           border: `1px solid ${token.colorBorderSecondary}`,
@@ -506,7 +511,7 @@ const RS_Slider = (props: any) => {
 };
 const RS_Color = (props: any) => <ColorField value={props.value} onChange={(v: any) => props.onChange?.(v)} size="small" />;
 
-const RS_DEFAULTS = { mode: 'preset', titleField: '', subField: '', avatarField: '', rightField: '', avatarDefault: true, html: '', avatarMode: 'image', avatarSize: 0, iconStyle: 'plain', iconColor: '', iconColorField: '', clickSave: false };
+const RS_DEFAULTS = { mode: 'preset', titleField: '', subField: '', avatarField: '', rightField: '', avatarDefault: true, html: '', avatarMode: 'image', avatarSize: 0, iconStyle: 'plain', iconColor: '', iconColorField: '', clickSave: false, compact: false };
 
 export function registerRichSelectModel(deps: {
   flowEngine: any; flowSettings?: any; Base: any; tExpr?: (s: string, o?: any) => any;
@@ -736,6 +741,7 @@ export function registerRichSelectModel(deps: {
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
                     properties: {
                       avatarSize: fi(t('Avatar size'), 'RS_Slider', { type: 'number' }),
+                      compact: fi(t('Compact (smaller text & spacing)'), 'RS_Switch', { type: 'boolean' }),
                     },
                   },
                   // Icon-only options (visible when Avatar type = Icon). Icon style gets its OWN full-width
@@ -797,6 +803,7 @@ export function registerRichSelectModel(deps: {
               ptdlrsIconColor: colorToString(p.iconColor) || '',
               ptdlrsIconColorField: p.iconColorField || '',
               ptdlrsClickSave: p.clickSave === true,
+              ptdlrsCompact: p.compact === true,
             };
             ctx.model.setProps(props);
             // Global: display variant renders the same RichRow (readPretty) → save under the display model.
