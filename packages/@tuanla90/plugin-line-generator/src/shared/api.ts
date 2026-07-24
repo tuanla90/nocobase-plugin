@@ -70,7 +70,10 @@ export async function previewInline(api: any, config: any, filterByTk: any, debu
 export function guardPasses(guard: RuleMeta['guard'] | undefined, record: any): boolean {
   if (!guard || !guard.length || !record) return true;
   for (const g of guard) {
-    const a = record[g.field];
+    let a = record[g.field];
+    if (a === undefined && typeof g.field === 'string' && g.field.includes('.')) {
+      a = g.field.split('.').reduce((cur: any, s: string) => (cur == null ? undefined : cur[s]), record);
+    }
     const eq = typeof g.value === 'boolean' ? !!a === g.value : String(a ?? '') === String(g.value ?? '');
     let ok: boolean;
     switch (g.op || 'eq') {

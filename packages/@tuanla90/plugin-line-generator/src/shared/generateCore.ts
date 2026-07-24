@@ -38,7 +38,12 @@ type JoinLike = {
  *  contains is a substring test. */
 export function condsPass(conds: GuardCond[] | undefined, record: any): { ok: boolean; detail?: string } {
   for (const g of conds || []) {
-    const a = record?.[g.field];
+    // Flat column first; a dotted field (from the relation drill-down picker) walks the loaded
+    // relations (e.g. 'status.name' — the relation must be in `preload` to be present on the record).
+    let a = record?.[g.field];
+    if (a === undefined && typeof g.field === 'string' && g.field.includes('.')) {
+      a = g.field.split('.').reduce((cur: any, s: string) => (cur == null ? undefined : cur[s]), record);
+    }
     const op = g.op || 'eq';
     // eq baseline: booleans coerce (null→false), everything else compares as strings.
     const eq = typeof g.value === 'boolean' ? !!a === g.value : String(a ?? '') === String(g.value ?? '');

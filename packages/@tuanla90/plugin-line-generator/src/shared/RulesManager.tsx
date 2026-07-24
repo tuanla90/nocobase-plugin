@@ -7,7 +7,7 @@
 //  - 5 sections instead of 7; rarely-touched knobs live under "Nâng cao" (collapsed)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, message, theme } from 'antd';
-import { CollapsibleSection, SettingRow, RelationAppendsPicker, FieldPickerCascader, getFields, SegmentedGroup } from '@tuanla90/shared';
+import { CollapsibleSection, SettingRow, RelationAppendsPicker, FieldPickerCascader, getFields, buildFieldCascaderOptions, SegmentedGroup } from '@tuanla90/shared';
 import { previewInline, RunResult } from './api';
 import { TEMPLATES } from './templates';
 import type { LineGenConfig } from './types';
@@ -196,28 +196,24 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
     return map;
   };
 
-  /** Nested field cascader: click through relations to a scalar; returns dot-path + leaf type. Displays
-   *  the raw path (so a loaded value shows even before lazy children are fetched). */
+  /** Nested field cascader: drill through to-one relations to a scalar; returns dot-path + leaf type.
+   *  Options are PRE-BUILT to a fixed depth (shared builder, getFields-cached) — antd Cascader never
+   *  fires loadData on hover-expand, and disables it entirely with showSearch, so the old lazy version
+   *  showed arrows that expanded nothing. Eager tree = hover works + search sees every level. */
   const CondFieldCascader: React.FC<{ api: any; collection?: string; value?: string; onPick: (path: string, type?: string) => void; placeholder?: string }> = ({ api, collection, value, onPick, placeholder }) => {
     const [options, setOptions] = useState<any[]>([]);
-    const toOpt = (f: any) => {
-      const isRel = ['belongsTo', 'hasOne', 'hasMany', 'belongsToMany'].includes(f.type) && f.target;
-      return { value: f.name, label: fieldLabel(f), _type: f.type, _target: f.target, isLeaf: !isRel };
-    };
-    useEffect(() => { let live = true; if (!collection) { setOptions([]); return; } getFields(api, collection).then((fs: any[]) => live && setOptions(fs.map(toOpt))); return () => { live = false; }; }, [api, collection]);
-    const loadData = async (sel: any[]) => {
-      const t = sel[sel.length - 1];
-      if (!t?._target || t.children) return;
-      const fs = await getFields(api, t._target);
-      t.children = fs.map(toOpt);
-      setOptions((o) => [...o]);
-    };
+    useEffect(() => {
+      let live = true;
+      if (!collection) { setOptions([]); return; }
+      buildFieldCascaderOptions(api, collection, undefined, { maxDepth: 2, includeToMany: false }).then((o: any[]) => live && setOptions(o));
+      return () => { live = false; };
+    }, [api, collection]);
     return (
       <Cascader style={{ width: '100%' }} size="middle" options={options} value={value ? value.split('.') : []} changeOnSelect expandTrigger="hover"
-        loadData={loadData} placeholder={placeholder} allowClear={false}
+        placeholder={placeholder} allowClear={false}
         showSearch={{ filter: (input: string, path: any[]) => path.some((o) => String(o.label).toLowerCase().includes(input.toLowerCase())) }}
         displayRender={() => value || ''}
-        onChange={(vals: any, opts: any) => { const p = (vals || []).join('.'); const leaf = opts && opts[opts.length - 1]; if (collection) typeCache.set(`${collection}|${p}`, leaf?._type); onPick(p, leaf?._type); }} />
+        onChange={(vals: any, opts: any) => { const p = (vals || []).join('.'); const leaf = opts && opts[opts.length - 1]; if (collection) typeCache.set(`${collection}|${p}`, leaf?.type); onPick(p, leaf?.type); }} />
     );
   };
 
@@ -825,7 +821,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
               {(cfg.trigger || 'manual') === 'auto' ? (
                 <SRow layout="vertical"
                   label={tt('Điều kiện kích hoạt (auto)')}
-                  hint={tt('Bản ghi được lưu mà thoả các điều kiện này là tự sinh dòng. QUAN TRỌNG: thêm "cập nhật bản ghi cha" đánh dấu đã chạy (vd is_commission_created = true) để chỉ chạy 1 lần — bỏ dấu đó đi chính là cách chạy lại. Khi chạy TAY mà chưa thoả: hộp thoại cảnh báo + hỏi xác nhận rồi mới sinh.')}>
+                  hint={tt('Bản ghi được lưu mà thoả các điều kiện này là tự sinh dòng. QUAN TRỌNG: thêm "cập nhật bản ghi cha" đánh dấu đã chạy (vd is_commission_created = true) để chỉ chạy 1 lần — bỏ dấu đó đi chính là cách chạy lại. Khi chạy TAY mà chưa thoả: hộp thoại cảnh báo + hỏi xác nhận rồi mới sinh. Điều kiện lồng qua quan hệ (vd status.name) cần thêm quan hệ đó vào preload ở mục LEFT.')}>
                   <CondList api={api} collection={cfg.sourceCollection || undefined} items={cfg.guard || []} onChange={(v) => set({ guard: v })} />
                 </SRow>
               ) : null}

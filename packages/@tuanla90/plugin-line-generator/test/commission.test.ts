@@ -1,7 +1,7 @@
 /* Node test for the pure commission algorithm — proves the hardest logic (person resolution via REL,
  * dynamic based_on/recipient paths, base×rate math, required-null skip) WITHOUT the NocoBase runtime.
  * Bundle with esbuild + run with node (see test/run.sh). */
-import { generateCore, resolveInlineRules } from '../src/shared/generateCore';
+import { condsPass, generateCore, resolveInlineRules } from '../src/shared/generateCore';
 import { GenerateManager } from '../src/server/generator';
 import type { LineGenConfig } from '../src/shared/types';
 import { COMMISSION_INLINE_TEMPLATE } from '../src/shared/templates';
@@ -621,6 +621,16 @@ console.log('\nScenario P — relation step0 replaces the sourceLinesPath hop (c
   eq(P.rows.length, 2, '3-step pipeline (relation → combo → bom) → 2 materials');
   eq(byMat['GO'], 10, 'gỗ = 10 (same as the sourceLinesPath version — relation step unifies the hop)');
   eq(byMat['DINH'], 12, 'đinh = 12');
+}
+
+// ============ Scenario Q: condsPass dot-path (the relation drill-down picker emits nested fields) ============
+console.log('\nScenario Q — condsPass nested dot-path guard:');
+{
+  const rec = { status_id: 7, status: { name: 'Đã thanh lý' }, flag: null };
+  eq(condsPass([{ field: 'status.name', value: 'Đã thanh lý' }], rec).ok, true, 'Q nested path resolves through the loaded relation');
+  eq(condsPass([{ field: 'status.name', value: 'Chờ xác nhận' }], rec).ok, false, 'Q nested mismatch still fails');
+  eq(condsPass([{ field: 'status.missing.deep', value: 'x' }], rec).ok, false, 'Q missing hop → undefined → fails (no throw)');
+  eq(condsPass([{ field: 'status_id', value: 7 }], rec).ok, true, 'Q flat field still reads flat (no regression)');
 }
 
 // ============ Scenario R: GenerateManager.run() dry-run — REGRESSION ============
