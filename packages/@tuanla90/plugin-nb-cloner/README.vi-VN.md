@@ -1,10 +1,11 @@
 # NB Cloner (Xuất / nhập ứng dụng) — Hướng dẫn sử dụng
 
 > Nhân bản toàn bộ một app NocoBase tự xây — collections, giao diện, menu, phân quyền và dữ liệu được
-> chọn — từ bản cài này sang bản cài khác bằng một file **`.nbc.gz`** duy nhất. Import là **UPSERT**
-> (không bao giờ xoá dữ liệu đang có).
+> chọn — từ bản cài này sang bản cài khác bằng một file **`.nbc.gz`** duy nhất. Import **không bao giờ
+> xoá** dữ liệu đang có; gặp bảng/cột **trùng tên** thì **bạn chọn**: chỉ thêm mới (giữ bản có sẵn)
+> hoặc ghi đè theo file.
 
-**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.10.0
+**Nhóm:** Quản trị / Di trú (Migration) · **Chạy trên:** /admin (classic) + /v/ (modern) · **CSDL:** chỉ PostgreSQL · **Phiên bản:** 1.12.0
 
 ## Sau khi cài, có gì mới?
 
@@ -66,14 +67,23 @@ Bảng kết quả liệt kê từng bước (`schema.collections`, `db.sync`, `
 > Cập nhật chính plugin thì làm theo cách thường — Plugin Manager → **Add & Update** → upload file `.tgz`
 > mới, rồi restart.
 
-### Xem trước khi nhập (dry-run)
+### Xem trước khi nhập (dry-run) + chiến lược khi trùng tên
 
-Khi bạn thả file bundle, NB Cloner **xem trước** — chưa ghi gì cả. Nó báo theo từng bảng: đã **tồn tại** ở
-app này chưa, sẽ thêm bao nhiêu **cột mới**, và bao nhiêu **cột bị bỏ qua**. Một cột bị bỏ qua khi tên cột
-đã có ở đích nhưng với `key` nội bộ khác (field khớp theo key, không theo tên) — phiên bản cột đó trong
-bundle bị bỏ, dữ liệu cũ của bạn được giữ, không xóa gì. Xem xong bấm **Vẫn nhập** hoặc Hủy. Nghĩa là NB
-Cloner **thêm** cột mới vào bảng đã có rất sạch, nhưng **không phải công cụ so-sánh-schema**: muốn đổi cột
-đã có thì bảng phải cùng "gốc" field (import vào app trắng để làm việc đó).
+Khi bạn thả file bundle, NB Cloner **xem trước** — chưa ghi gì cả. Nó báo theo từng bảng: đã **tồn tại**
+ở app này chưa, sẽ thêm bao nhiêu **cột mới**, và bao nhiêu cột **trùng tên** với cột đang có. Ngay tại
+đây bạn chọn số phận của phần trùng tên (1.12.0):
+
+- **♻️ Ghi đè theo file** (mặc định — hành vi cũ): file thắng. Bảng/cột trùng tên được cập nhật theo
+  bundle — *kể cả* cột trùng tên nhưng khác `key` nội bộ (importer remap key của bundle về key đang có
+  trên đích, nên mọi thứ đang tham chiếu cột đó không hỏng). Dòng dữ liệu import trùng khóa chính sẽ
+  thay dòng đang có.
+- **➕ Chỉ thêm mới (giữ bản có sẵn)**: app này thắng. Bảng/cột trùng tên — và dòng dữ liệu trùng khóa
+  chính — được giữ nguyên y như đang có; chỉ chèn bảng mới, cột mới, dòng mới. Hợp để kéo phần bổ sung
+  vào một app **đang chạy thật** mà không đụng thứ đã cấu hình.
+
+Cả hai chế độ đều **không xóa gì**. Chiến lược áp cho cấu trúc (bảng + cột + gán nhóm bảng) và dòng dữ
+liệu nghiệp vụ; còn trang UI, role, workflow là các object nguyên khối theo uid/tên nên luôn upsert —
+bỏ tick phần đó nếu không muốn ghi.
 
 ### Dọn dẹp (xóa bảng rác)
 
@@ -87,7 +97,8 @@ xóa của NocoBase), rồi khuyên restart. **Không thể hoàn tác.**
 - **Chỉ PostgreSQL.** Xuất/nhập dùng SQL đặc thù PostgreSQL (`ON CONFLICT` upsert, dò khóa chính qua
   `information_schema`). Trên dialect khác, plugin **báo lỗi rõ ràng và dừng ngay** thay vì làm hỏng app đích.
 - **Cùng phiên bản NocoBase** ở hai đầu (xem cảnh báo import ở trên).
-- **Import là UPSERT** — cập nhật/chèn, không xoá. Muốn kết quả sạch, import vào một app **trắng, vừa cài**.
+- **Import không bao giờ xoá** — chỉ cập nhật/chèn. Phần trùng tên xử lý theo chiến lược bạn chọn ở bước
+  xem trước (chỉ thêm mới / ghi đè). Muốn bản sao chuẩn 100%, import vào một app **trắng, vừa cài**.
 - **Bundle lớn:** nội dung flow-engine có thể vượt giới hạn request mặc định 10 MB của NocoBase. Nếu import
   lỗi trên app lớn, đặt env **`REQUEST_BODY_LIMIT=50mb`** (hoặc cao hơn) rồi restart.
 - **File đính kèm không được clone** — copy storage riêng nếu cần file.

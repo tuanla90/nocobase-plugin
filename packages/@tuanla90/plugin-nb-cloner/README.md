@@ -1,10 +1,11 @@
 # NB Cloner (App export / import) — User Guide
 
 > Clone a whole self-built NocoBase app — its collections, UI, menus, roles and hand-picked data —
-> from one install to another as a single **`.nbc.gz`** file. Import is an **UPSERT** (it never deletes
-> what's already there).
+> from one install to another as a single **`.nbc.gz`** file. Import **never deletes** what's already
+> there; when a same-name table/column exists **you choose**: append only (keep existing) or overwrite
+> with the file.
 
-**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.10.0
+**Group:** Admin / Migration · **Runs on:** /admin (classic) + /v/ (modern) · **Database:** PostgreSQL only · **Version:** 1.12.0
 
 ## What's new after installing?
 
@@ -66,15 +67,24 @@ The result table lists every step (`schema.collections`, `db.sync`, `ui.schemas`
 > Updating the plugin itself is done the normal way — Plugin Manager → **Add & Update** → upload the newer
 > `.tgz`, then restart.
 
-### Import preview (dry-run)
+### Import preview (dry-run) + conflict strategy
 
 When you drop a bundle, NB Cloner first shows a **preview** — nothing is written yet. It reports, per
 collection: whether it already **exists** on this app, how many **new columns** will be added, and how
-many **columns will be skipped**. A column is skipped when a same-named column already exists under a
-different internal `key` (fields are matched by key, not name) — the incoming version of that column is
-left out, your existing data is kept, and nothing is deleted. Review it, then **Import anyway** or Cancel.
-So NB Cloner cleanly *adds* new columns to an existing collection, but it is **not a schema-diff tool**:
-to change an existing column it must share the same field lineage (import into a blank app for that).
+many columns have the **same name** as an existing one. Right there you pick what happens to the
+same-name ones (1.12.0):
+
+- **♻️ Overwrite with the file** (default — the historical behaviour): the file wins. Same-name
+  collections and columns are updated to match the bundle — *including* columns whose internal `key`
+  differs (the importer remaps the bundle key onto the target key, so nothing referencing the existing
+  column breaks). Imported data rows that share a primary key with an existing row replace it.
+- **➕ Append only (keep existing)**: this app wins. Same-name collections/columns — and data rows with
+  the same primary key — are left exactly as they are; only new tables, new columns and new rows are
+  inserted. Ideal for pulling additions into a **live** app without touching anything already configured.
+
+Neither mode deletes anything. The strategy covers schema (collections + fields + category assignment)
+and business-data rows; UI pages, roles and workflows are whole objects keyed by uid/name and always
+upsert — untick their part checkbox if you don't want them written.
 
 ### Clean up (delete junk collections)
 
@@ -89,8 +99,9 @@ pointing to it (via NocoBase's own delete path), then recommends a restart. **It
   primary-key discovery). On any other dialect the plugin **fails fast with a clear message** rather than
   corrupting the target.
 - **Same NocoBase version** on both ends (see the import warning above).
-- **Import is an UPSERT** — it updates/inserts, it does not delete. For a clean result, import into a
-  **blank, freshly installed** app.
+- **Import never deletes** — it updates/inserts only. Same-name conflicts follow the strategy you pick
+  in the preview (append vs overwrite). For a pixel-perfect clone, import into a **blank, freshly
+  installed** app.
 - **Large bundles:** the flow-engine content can exceed NocoBase's default 10 MB request limit. If import
   fails on a big app, set the env var **`REQUEST_BODY_LIMIT=50mb`** (or higher) and restart.
 - **Attachments are not cloned** — copy your storage separately if you need the files.

@@ -14,14 +14,15 @@ export interface PreviewReport {
     name: string;
     title: string;
     existsOnTarget: boolean;   // a collection with this name already exists on the target app
-    matchFields: number;       // same name AND same key → will be updated cleanly
-    newFields: number;         // name not on target → will be ADDED as a new column
-    conflictFields: string[];  // name exists on target but with a DIFFERENT key → will be SKIPPED
+    matchFields: number;       // same name AND same key (same lineage) → overwrite updates, append keeps
+    newFields: number;         // name not on target → always ADDED as a new column (both strategies)
+    conflictFields: string[];  // same name, DIFFERENT internal key — the strategy decides:
+                               //   append → kept untouched · overwrite → overwritten via key-remap
     dataRows: number;          // rows the bundle carries for this collection (0 = schema only)
   }>;
   newCollections: number;      // collections that don't exist on the target yet
-  existingCollections: number; // collections that already exist (get merged)
-  conflictFieldTotal: number;  // total same-name/different-key fields that will be skipped
+  existingCollections: number; // collections that already exist (strategy decides merge vs overwrite)
+  conflictFieldTotal: number;  // total same-name/different-key fields (see conflictFields)
   // What the bundle actually carries — lets the import UI enable/disable each "part" toggle
   // (you can't import a part that isn't in the file).
   bundleContents: {
@@ -41,11 +42,22 @@ export interface PreviewReport {
  *                 null/undefined = all business collections in the bundle.
  *  - data:        which of those collections also get their ROW data written.
  *                 null/undefined = all that carry data; [] = none (schema only).
+ *  - conflictStrategy (1.12.0): what to do when a SAME-NAME table/column already exists on the target.
+ *      'overwrite' (default = the historical behaviour): the file wins — the collection row and
+ *        same-name fields are updated from the bundle. A field whose name matches but whose internal
+ *        `key` differs (previously skipped silently against UNIQUE(collectionName,name)) is now
+ *        overwritten too, by remapping the bundle key onto the target key so every reference
+ *        (parentKey/reverseKey) stays intact. Business-data rows with the same PK are upserted.
+ *      'append': ONLY ADD — collections/fields/data rows that already exist on the target are LEFT
+ *        UNTOUCHED (title/options included); only new tables, new columns and new rows are inserted.
+ *    Scope: schema (collections + fields + category assignment) and business-data rows. UI, roles and
+ *    workflows are uid/name-keyed whole objects and always upsert (untick their part to skip them).
  */
 export interface ImportSelection {
   parts?: { schema?: boolean; ui?: boolean; roles?: boolean; workflows?: boolean };
   collections?: string[] | null;
   data?: string[] | null;
+  conflictStrategy?: 'append' | 'overwrite';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -71,6 +83,11 @@ function toBind(v: any): any {
  * Upsert nhiều rows vào một bảng.
  * @param conflictKey  Cột dùng làm conflict target (ON CONFLICT).
  *                     Nếu là mảng → composite unique key.
+ * @param opts.ignoreExisting  Chiến lược APPEND (1.12.0): thay `DO UPDATE` bằng `ON CONFLICT DO
+ *                     NOTHING` KHÔNG có conflict target — bắt MỌI vi phạm unique (PK lẫn index phụ
+ *                     như UNIQUE(collectionName,name) của bảng fields) → dòng đã có được GIỮ NGUYÊN,
+ *                     chỉ dòng thật sự mới được chèn. Kèm `RETURNING 1` để đếm đúng số dòng đã vào
+ *                     (dòng bị conflict không trả gì).
  *
  * HIỆU NĂNG (1.10.1): chèn theo LÔ (multi-row INSERT) thay vì từng dòng — trước đây mỗi dòng 1 round-trip
  * SQL, với app /v/ có cây flowModels/uiSchema hàng chục nghìn dòng thì chạy hàng phút → gateway 502 trước
@@ -82,36 +99,55 @@ async function upsertRows(
   tableName: string,
   rows: any[],
   conflictKey: string | string[],
+  opts?: { ignoreExisting?: boolean },
 ): Promise<number> {
   if (!rows || rows.length === 0) return 0;
 
+  const ignoreExisting = !!opts?.ignoreExisting;
   const conflictCols = Array.isArray(conflictKey) ? conflictKey : [conflictKey];
   const conflictTarget = conflictCols.map(pgIdent).join(', ');
   let count = 0;
+  let errored = 0;
   let firstError: string | undefined;
 
-  // Resilient PER-ROW upsert (the fallback path). Best-effort: a bad row warns, others survive.
-  const insertOne = async (row: any): Promise<boolean> => {
-    const keys = Object.keys(row);
-    if (keys.length === 0) return false;
-    const values = Object.values(row).map(toBind);
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+  // Số dòng THẬT SỰ chèn được, đọc từ kết quả `RETURNING 1`. sequelize.query trả shape hơi khác
+  // nhau tuỳ version ([rows, meta] / [meta]) nên dò phòng thủ; không nhận diện được thì coi như cả
+  // mẻ vào (giữ cách đếm lạc quan cũ).
+  const insertedOf = (res: any, attempted: number): number =>
+    Array.isArray(res) && Array.isArray(res[0]) ? res[0].length
+      : Array.isArray(res) && typeof res[1] === 'number' ? res[1]
+      : attempted;
+
+  const conflictClause = (keys: string[]): string => {
+    if (ignoreExisting) return 'ON CONFLICT DO NOTHING';
     const setClauses = keys
       .filter((k) => !conflictCols.includes(k))
       .map((k) => `${pgIdent(k)} = EXCLUDED.${pgIdent(k)}`);
     const updatePart = setClauses.length > 0 ? `DO UPDATE SET ${setClauses.join(', ')}` : 'DO NOTHING';
+    return `ON CONFLICT (${conflictTarget}) ${updatePart}`;
+  };
+  const returning = ignoreExisting ? ' RETURNING 1' : '';
+
+  // Resilient PER-ROW upsert (the fallback path). Best-effort: a bad row warns, others survive.
+  // Trả về số dòng đã chèn (0/1) — ở mode ignoreExisting, dòng bị conflict trả 0 nhưng KHÔNG phải lỗi.
+  const insertOne = async (row: any): Promise<number> => {
+    const keys = Object.keys(row);
+    if (keys.length === 0) return 0;
+    const values = Object.values(row).map(toBind);
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
     try {
-      await sequelize.query(
+      const res = await sequelize.query(
         `INSERT INTO ${pgIdent(tableName)} (${keys.map(pgIdent).join(', ')})
          VALUES (${placeholders})
-         ON CONFLICT (${conflictTarget}) ${updatePart}`,
+         ${conflictClause(keys)}${returning}`,
         { bind: values },
       );
-      return true;
+      return ignoreExisting ? Math.min(1, insertedOf(res, 1)) : 1;
     } catch (err: any) {
+      errored++;
       if (!firstError) firstError = err?.message;
       console.warn(`[nb-cloner] Upsert warning ${tableName} (row, conflict on ${conflictTarget}):`, err?.message);
-      return false;
+      return 0;
     }
   };
 
@@ -133,10 +169,6 @@ async function upsertRows(
 
   for (const { keys, rows: grp } of groups.values()) {
     const colList = keys.map(pgIdent).join(', ');
-    const setClauses = keys
-      .filter((k) => !conflictCols.includes(k))
-      .map((k) => `${pgIdent(k)} = EXCLUDED.${pgIdent(k)}`);
-    const updatePart = setClauses.length > 0 ? `DO UPDATE SET ${setClauses.join(', ')}` : 'DO NOTHING';
     // keep (#cols × chunk) under the ~65535 bind-parameter cap
     const chunkSize = Math.max(1, Math.min(1000, Math.floor(60000 / Math.max(1, keys.length))));
     for (let i = 0; i < grp.length; i += chunkSize) {
@@ -147,23 +179,25 @@ async function upsertRows(
         return `(${ph.join(', ')})`;
       });
       try {
-        await sequelize.query(
+        const res = await sequelize.query(
           `INSERT INTO ${pgIdent(tableName)} (${colList})
            VALUES ${tuples.join(', ')}
-           ON CONFLICT (${conflictTarget}) ${updatePart}`,
+           ${conflictClause(keys)}${returning}`,
           { bind: binds },
         );
-        count += chunk.length; // whole batch landed in one round-trip
+        // whole batch landed in one round-trip (ignoreExisting: chỉ đếm dòng RETURNING trả về)
+        count += ignoreExisting ? Math.min(chunk.length, insertedOf(res, chunk.length)) : chunk.length;
       } catch (batchErr: any) {
         if (!firstError) firstError = batchErr?.message;
         // the statement aborted → isolate by retrying THIS chunk row-by-row (best-effort)
-        for (const row of chunk) { if (await insertOne(row)) count++; }
+        for (const row of chunk) count += await insertOne(row);
       }
     }
   }
   // Nếu CÓ dòng để chèn mà KHÔNG dòng nào thành công → lỗi thật, throw để lộ (báo rõ)
-  // thay vì âm thầm "ok" với 0 dòng.
-  if (count === 0 && rows.length > 0) {
+  // thay vì âm thầm "ok" với 0 dòng. Riêng mode ignoreExisting (append), 0 dòng vào mà KHÔNG có lỗi
+  // nào nghĩa là mọi thứ đã tồn tại sẵn — kết quả ĐÚNG, không throw.
+  if (count === 0 && rows.length > 0 && (!ignoreExisting || errored > 0)) {
     throw new Error(`upsert ${tableName}: 0/${rows.length} rows inserted — ${firstError ?? 'unknown error'}`);
   }
   return count;
@@ -235,6 +269,34 @@ async function getTablePkColumns(sequelize: any, tableName: string): Promise<str
   }
 }
 
+/** Tên các collection ĐANG CÓ trên app đích — đọc thẳng bảng `collections` (không dựa vào bộ nhớ
+ *  `db`, vì collection import từ lần trước có thể chưa reload nếu app chưa restart). */
+async function getTargetCollectionNames(sequelize: any): Promise<Set<string>> {
+  try {
+    const [rows] = await sequelize.query(`SELECT "name" FROM ${pgIdent(SYSTEM_TABLE_NAMES.collections)}`);
+    return new Set((rows as any[]).map((r) => r.name));
+  } catch {
+    return new Set();
+  }
+}
+
+/** Khoá tra cứu field theo (collectionName, name) — \u0000 không thể xuất hiện trong identifier. */
+const fieldNameKey = (collectionName: string, name: string) => `${collectionName}\u0000${name}`;
+
+/** Map (collectionName, name) → `key` nội bộ của TẤT CẢ field đang có trên app đích. */
+async function getTargetFieldKeys(sequelize: any): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT "collectionName", "name", "key" FROM ${pgIdent(SYSTEM_TABLE_NAMES.fields)}`,
+    );
+    for (const r of rows as any[]) map.set(fieldNameKey(r.collectionName, r.name), r.key);
+  } catch {
+    /* bảng fields chưa tồn tại → coi như app trống */
+  }
+  return map;
+}
+
 /** Chèn thẳng (không ON CONFLICT) cho bảng KHÔNG có PK/unique. Lỗi từng dòng chỉ warn. */
 async function insertRows(sequelize: any, tableName: string, rows: any[]): Promise<number> {
   if (!rows || rows.length === 0) return 0;
@@ -303,6 +365,10 @@ export class Importer {
       Array.isArray(selection?.collections) ? new Set(selection!.collections) : null;
     const dataFilter: Set<string> | null =
       Array.isArray(selection?.data) ? new Set(selection!.data) : null;
+    // Chiến lược khi TRÙNG TÊN bảng/cột (xem doc ở ImportSelection). Mặc định 'overwrite' = hành vi
+    // lịch sử (file thắng); 'append' = chỉ thêm mới, giữ nguyên mọi thứ đang có trên app đích.
+    const strategy: 'append' | 'overwrite' =
+      selection?.conflictStrategy === 'append' ? 'append' : 'overwrite';
 
     const steps: ImportResult['steps'] = [];
     const sequelize = this.db.sequelize;
@@ -330,18 +396,68 @@ export class Importer {
       // ── STEP 1+2+2b: Collections schema + Fields + categories (chỉ khi chọn "schema") ──
       const businessCols = (bundle.schema.collections ?? []).filter((c: any) => businessColNames.has(c.name));
       if (parts.schema) {
-        const colCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collections, businessCols, 'name');
-        steps.push({ step: 'schema.collections', status: 'ok', count: colCount });
+        let businessFields = (bundle.schema.fields ?? []).filter((f: any) => businessColNames.has(f.collectionName));
+        // Nhìn trước app đích để xử lý TRÙNG TÊN theo chiến lược đã chọn (1.12.0).
+        const targetColNames = await getTargetCollectionNames(sequelize);
+        const targetFieldKeys = await getTargetFieldKeys(sequelize);
+        // Tập collection mà join category được phép ghi (append: chỉ bảng MỚI — không re-gán nhóm
+        // cho bảng đang có; overwrite: mọi bảng như hành vi cũ).
+        let categoryColNames: Set<string> = businessColNames;
 
-        // Fields (chỉ của business collections đã chọn)
-        const businessFields = (bundle.schema.fields ?? []).filter((f: any) => businessColNames.has(f.collectionName));
-        const fieldCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.fields, businessFields, 'key');
-        steps.push({ step: 'schema.fields', status: 'ok', count: fieldCount });
+        if (strategy === 'append') {
+          // APPEND: giữ nguyên mọi thứ đã có — chỉ chèn collection mới + cột mới.
+          const newCols = businessCols.filter((c: any) => !targetColNames.has(c.name));
+          categoryColNames = new Set(newCols.map((c: any) => c.name));
+          const keptCols = businessCols.length - newCols.length;
+          const colCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collections, newCols, 'name', { ignoreExisting: true });
+          steps.push({ step: 'schema.collections', status: 'ok', count: colCount });
+          if (keptCols > 0) steps.push({ step: 'schema.collections.kept', status: 'skipped', count: keptCols });
 
-        // Collection categories (nhóm bảng)
-        await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategories, bundle.schema.collectionCategories ?? [], 'id');
+          const newFields = businessFields.filter((f: any) => !targetFieldKeys.has(fieldNameKey(f.collectionName, f.name)));
+          const keptFields = businessFields.length - newFields.length;
+          const fieldCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.fields, newFields, 'key', { ignoreExisting: true });
+          steps.push({ step: 'schema.fields', status: 'ok', count: fieldCount });
+          if (keptFields > 0) steps.push({ step: 'schema.fields.kept', status: 'skipped', count: keptFields });
+        } else {
+          // OVERWRITE: file thắng. Field trùng TÊN nhưng KHÁC `key` nội bộ trước đây bị bỏ qua im
+          // lặng (INSERT đụng UNIQUE(collectionName,name) → warn) → giờ REMAP key bundle về key
+          // target rồi upsert theo `key` như thường: bản ghi target được cập nhật TẠI CHỖ, mọi tham
+          // chiếu tới key cũ (parentKey/reverseKey của field khác, FK ngầm) còn nguyên. Key của
+          // bundle bị bỏ — lần re-import sau lại remap y hệt nên kết quả ổn định.
+          const remap = new Map<string, string>();
+          for (const f of businessFields) {
+            const targetKey = targetFieldKeys.get(fieldNameKey(f.collectionName, f.name));
+            if (targetKey && targetKey !== f.key) remap.set(f.key, targetKey);
+          }
+          if (remap.size > 0) {
+            businessFields = businessFields.map((f: any) => ({
+              ...f,
+              key: remap.get(f.key) ?? f.key,
+              ...(f.parentKey != null && remap.has(f.parentKey) ? { parentKey: remap.get(f.parentKey) } : {}),
+              ...(f.reverseKey != null && remap.has(f.reverseKey) ? { reverseKey: remap.get(f.reverseKey) } : {}),
+            }));
+          }
+
+          const colCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.collections, businessCols, 'name');
+          steps.push({ step: 'schema.collections', status: 'ok', count: colCount });
+          const fieldCount = await upsertRows(sequelize, SYSTEM_TABLE_NAMES.fields, businessFields, 'key');
+          steps.push({ step: 'schema.fields', status: 'ok', count: fieldCount });
+          if (remap.size > 0) steps.push({ step: 'schema.fields.overwrote-same-name', status: 'ok', count: remap.size });
+        }
+
+        // Collection categories (nhóm bảng) — append: chỉ thêm nhóm mới, không đổi tên nhóm đang có
+        await upsertRows(
+          sequelize,
+          SYSTEM_TABLE_NAMES.collectionCategories,
+          bundle.schema.collectionCategories ?? [],
+          'id',
+          strategy === 'append' ? { ignoreExisting: true } : undefined,
+        );
         // join collectionCategory không có unique → replace theo (collectionName, categoryId)
-        await replaceRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategory, bundle.schema.collectionCategory ?? [], ['collectionName', 'categoryId']);
+        const categoryJoinRows = (bundle.schema.collectionCategory ?? []).filter(
+          (r: any) => strategy !== 'append' || categoryColNames.has(r.collectionName),
+        );
+        await replaceRows(sequelize, SYSTEM_TABLE_NAMES.collectionCategory, categoryJoinRows, ['collectionName', 'categoryId']);
       } else {
         steps.push({ step: 'schema.collections', status: 'skipped' });
         steps.push({ step: 'schema.fields', status: 'skipped' });
@@ -486,9 +602,11 @@ export class Importer {
           try {
             // PK LẤY THẲNG TỪ DB (composite cho bảng join m2m). KHÔNG đoán 'id' — nhiều bảng
             // join không có cột id → ON CONFLICT ("id") vỡ.
+            // Strategy áp cả vào DATA: append = dòng trùng khóa GIỮ NGUYÊN (DO NOTHING), chỉ chèn
+            // dòng mới; overwrite = upsert như cũ (dòng trùng khóa bị ghi đè theo file).
             const pkCols = await getTablePkColumns(sequelize, tableName);
             const dataCount = pkCols.length > 0
-              ? await upsertRows(sequelize, tableName, rows, pkCols)
+              ? await upsertRows(sequelize, tableName, rows, pkCols, strategy === 'append' ? { ignoreExisting: true } : undefined)
               : await insertRows(sequelize, tableName, rows); // bảng không PK → chèn thẳng
             steps.push({ step: `data.${collectionName}`, status: 'ok', count: dataCount });
           } catch (dataErr: any) {
@@ -516,9 +634,10 @@ export class Importer {
 
   /**
    * Dry-run: compare a bundle against the target WITHOUT writing anything, so the UI can warn before
-   * importing. Fields are matched by `key` (their PK) — a bundle field whose NAME already exists on the
-   * target under a DIFFERENT key hits the UNIQUE(collectionName, name) index on import and is silently
-   * skipped; this report surfaces exactly those, plus which collections already exist / which fields are new.
+   * importing. Fields are matched by name+key. A bundle field whose NAME already exists on the target
+   * under a DIFFERENT key lands in `conflictFields` — what happens to it depends on the chosen
+   * conflictStrategy (append → kept untouched, overwrite → overwritten via key-remap); the client
+   * renders the numbers with the right narrative for the selected strategy.
    */
   async preview(bundle: BundleData): Promise<PreviewReport> {
     this.validateBundle(bundle);

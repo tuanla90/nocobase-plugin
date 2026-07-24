@@ -102,6 +102,9 @@ export function NbClonerPane({ api }: { api: any }) {
   // Import SELECTION (mirrors the export tab): which parts + which collections + which get their data.
   const [importParts, setImportParts] = useState({ schema: true, ui: true, roles: true, workflows: true });
   const [importColSel, setImportColSel] = useState<Record<string, { selected: boolean; includeData: boolean }>>({});
+  // Khi TRÙNG TÊN bảng/cột (và dòng dữ liệu trùng khóa): 'overwrite' = file thắng (hành vi cũ),
+  // 'append' = giữ nguyên cái đang có, chỉ thêm mới. Chọn trong modal preview trước khi import.
+  const [conflictStrategy, setConflictStrategy] = useState<'append' | 'overwrite'>('overwrite');
   // Cleanup tab (delete junk collections).
   const [cleanupSel, setCleanupSel] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState(false);
@@ -254,6 +257,8 @@ export function NbClonerPane({ api }: { api: any }) {
         roles: (bc.roles || 0) > 0,
         workflows: (bc.workflows || 0) > 0,
       });
+      setConflictStrategy('overwrite'); // reset về hành vi mặc định cho mỗi bundle mới
+
       const cs: Record<string, { selected: boolean; includeData: boolean }> = {};
       (report?.collections || []).forEach((c: any) => {
         cs[c.name] = { selected: true, includeData: (c.dataRows || 0) > 0 };
@@ -281,6 +286,7 @@ export function NbClonerPane({ api }: { api: any }) {
         data: selectedCols
           .filter((c: any) => importColSel[c.name]?.includeData && (c.dataRows || 0) > 0)
           .map((c: any) => c.name),
+        conflictStrategy,
       };
       const res = await api.request({
         url: 'nbCloner:import',
@@ -457,6 +463,13 @@ export function NbClonerPane({ api }: { api: any }) {
   const impDataCount = impSelectedCols.filter((c) => importColSel[c.name]?.includeData && (c.dataRows || 0) > 0).length;
   const impAllSel = impCols.length > 0 && impCols.every((c) => importColSel[c.name]?.selected);
   const impSomeSel = impCols.some((c) => importColSel[c.name]?.selected);
+  // Trùng tên: tổng số cột đã tồn tại trên đích (cùng key + khác key) — strategy quyết định số phận.
+  const impSameNameCols = impCols.reduce(
+    (s, c) => s + (c.matchFields || 0) + ((c.conflictFields || []).length), 0,
+  );
+  const impHasExisting = (preview?.report?.existingCollections || 0) > 0;
+  // Ghi đè lên bảng đang có mới là thao tác "nguy hiểm" cần tô đỏ; append thì vô hại.
+  const impDanger = impHasExisting && conflictStrategy === 'overwrite';
   // Nothing to write: no collection picked AND no whole-app part picked.
   const impNothing = impSelCount === 0 && !importParts.ui && !importParts.roles && !importParts.workflows;
   const toggleImpAll = (selected: boolean) =>
@@ -647,7 +660,7 @@ export function NbClonerPane({ api }: { api: any }) {
                   description={
                     <ul style={{ marginBottom: 0 }}>
                       <li>{t('The source and target apps MUST be the same NocoBase version (the flow-engine format changes between versions).')}</li>
-                      <li>{t('Import is an UPSERT — it does not delete existing data.')}</li>
+                      <li>{t('Import never deletes. When a table/column with the same name exists, you choose in the preview: append only (keep existing) or overwrite with the file.')}</li>
                       <li>{t('Run it on a blank (freshly installed) app for the most accurate result.')}</li>
                       <li>{t('Large app → set env REQUEST_BODY_LIMIT=50mb (default 10mb; a flow-engine bundle can exceed it).')}</li>
                       <li>{t('File attachments / uploads are NOT cloned.')}</li>
@@ -849,13 +862,13 @@ export function NbClonerPane({ api }: { api: any }) {
         open={!!preview}
         width={840}
         onCancel={() => setPreview(null)}
-        title={<Space><WarningOutlined style={{ color: (preview?.report?.conflictFieldTotal || 0) > 0 ? '#faad14' : '#1890ff' }} />{t('Import preview')}</Space>}
+        title={<Space><WarningOutlined style={{ color: impDanger ? '#faad14' : '#1890ff' }} />{t('Import preview')}</Space>}
         footer={[
           <Button key="cancel" onClick={() => setPreview(null)}>{t('Cancel')}</Button>,
           <Button
             key="go"
             type="primary"
-            danger={(preview?.report?.conflictFieldTotal || 0) > 0}
+            danger={impDanger}
             icon={<UploadOutlined />}
             loading={importing}
             disabled={impNothing}
@@ -868,17 +881,33 @@ export function NbClonerPane({ api }: { api: any }) {
         {preview && (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Alert
-              type={(preview.report.conflictFieldTotal || 0) > 0 ? 'warning' : 'info'}
+              type={!impHasExisting ? 'success' : conflictStrategy === 'overwrite' ? 'warning' : 'info'}
               showIcon
-              message={t('{{newC}} new · {{existC}} already exist · {{skip}} columns will be skipped', {
+              message={t('{{newC}} new · {{existC}} already exist · {{same}} same-name columns', {
                 newC: String(preview.report.newCollections || 0),
                 existC: String(preview.report.existingCollections || 0),
-                skip: String(preview.report.conflictFieldTotal || 0),
+                same: String(impSameNameCols),
               })}
-              description={(preview.report.conflictFieldTotal || 0) > 0
-                ? t('Some columns already exist on this app under a different internal key, so the incoming version of those columns is SKIPPED (existing data is kept — nothing is deleted). New columns are still added.')
-                : t('No conflicts detected. New collections/columns are added; matching ones are updated.')}
+              description={!impHasExisting
+                ? t('Nothing on this app clashes with the bundle — both strategies give the same result: everything is added as new.')
+                : conflictStrategy === 'overwrite'
+                  ? t('OVERWRITE: same-name collections/columns are UPDATED to match the file — including {{n}} same-name columns whose internal key differs. Imported data rows with the same primary key are replaced. Nothing is deleted.', {
+                      n: String(preview.report.conflictFieldTotal || 0),
+                    })
+                  : t('APPEND ONLY: same-name collections/columns (and data rows with the same primary key) are KEPT exactly as they are on this app. Only new tables, new columns and new rows are added.')}
             />
+
+            {/* Chiến lược khi trùng tên — quyết định số phận của bảng/cột/dòng đã tồn tại */}
+            <Card size="small" title={<span>⚖️ {t('When a table/column with the same name already exists')}</span>}>
+              <Segmented
+                value={conflictStrategy}
+                onChange={(v) => setConflictStrategy(v as any)}
+                options={[
+                  { label: `♻️ ${t('Overwrite with the file')}`, value: 'overwrite' },
+                  { label: `➕ ${t('Append only (keep existing)')}`, value: 'append' },
+                ]}
+              />
+            </Card>
 
             {/* Parts to import — the whole-app sections (mirrors the export toggles) */}
             <Card size="small" title={t('Parts to import')}>
@@ -954,8 +983,18 @@ export function NbClonerPane({ api }: { api: any }) {
                 { title: t('On target'), dataIndex: 'existsOnTarget', width: 84, render: (v: boolean) => v ? <Tag color="orange">{t('exists')}</Tag> : <Tag color="green">{t('new')}</Tag> },
                 { title: t('+ new cols'), dataIndex: 'newFields', width: 84, render: (v: number) => <Tag color={v > 0 ? 'blue' : 'default'}>{v}</Tag> },
                 {
-                  title: t('skipped cols'), dataIndex: 'conflictFields', width: 92,
-                  render: (v: string[]) => (v && v.length ? <Tooltip title={v.join(', ')}><Tag color="red">{v.length}</Tag></Tooltip> : <Tag>0</Tag>),
+                  // Cột trùng tên (cùng key + khác key) — nhãn & màu đổi theo strategy đã chọn.
+                  title: conflictStrategy === 'append' ? t('same name (kept)') : t('same name (overwritten)'),
+                  dataIndex: 'matchFields', width: 110,
+                  render: (_: any, r: any) => {
+                    const conflicts: string[] = r.conflictFields || [];
+                    const total = (r.matchFields || 0) + conflicts.length;
+                    if (!total) return <Tag>0</Tag>;
+                    const tag = <Tag color={conflictStrategy === 'append' ? 'default' : 'orange'}>{total}</Tag>;
+                    return conflicts.length
+                      ? <Tooltip title={t('Different internal key: {{names}}', { names: conflicts.join(', ') })}>{tag}</Tooltip>
+                      : tag;
+                  },
                 },
                 {
                   title: (
