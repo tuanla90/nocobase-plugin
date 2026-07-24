@@ -258,9 +258,9 @@
     {
       "packageName": "@tuanla90/plugin-spreadsheet-view",
       "slug": "spreadsheet-view",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "displayName": "Spreadsheet View",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.5.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.6.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-status-flow",

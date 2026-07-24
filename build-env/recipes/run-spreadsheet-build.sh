@@ -17,6 +17,10 @@ cp "$SRC/package.json" "$DST/package.json"
 cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
+# Gate lỗi scope (TS2304/2448/2454) trước khi build — builder chỉ transpile, không typecheck.
+# (Đã bắt được vụ `token` free-variable 0.2.5: sort arrow / group label / sticky stack nổ ReferenceError.)
+bash "$ROOT/recipes/typecheck.sh" "$DST"
+
 mkstub() {
   local name="$1"; local ver="$2"
   if [ -f "$NM/$name/package.json" ]; then echo "keep real : $name"; return; fi

@@ -222,6 +222,18 @@ const SHEET_CSS = `
 .ptdl-sheet .ptdl-drag-cell .ag-drag-handle { opacity: 0.28; color: #8c8c8c; cursor: grab; transition: opacity 0.12s; }
 .ptdl-sheet .ag-row-hover .ptdl-drag-cell .ag-drag-handle { opacity: 0.8; }
 .ptdl-sheet .ptdl-drag-cell .ag-drag-handle:active { cursor: grabbing; }
+/* VẠCH CHỈ VỊ TRÍ THẢ khi kéo dòng (unmanaged drag — AG không tự vẽ gì): line màu primary trên/dưới dòng
+   đích, khớp đúng luật thả ở onRowDragEnd (kéo XUỐNG → chèn SAU đích = vạch DƯỚI; kéo LÊN → vạch TRÊN).
+   Vẽ bằng ::after overlay (không dùng box-shadow — cell có nền conditional-format sẽ che mất line). */
+.ptdl-sheet .ag-row.ptdl-drop-above::after,
+.ptdl-sheet .ag-row.ptdl-drop-below::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 3px; z-index: 9;
+  background: var(--ptdl-primary, #1677ff); border-radius: 2px; pointer-events: none;
+}
+.ptdl-sheet .ag-row.ptdl-drop-above::after { top: -1.5px; }
+.ptdl-sheet .ag-row.ptdl-drop-below::after { bottom: -1.5px; }
+/* Dòng ĐANG kéo: mờ đi để phân biệt nguồn/đích (AG set class này khi drag). */
+.ptdl-sheet .ag-row.ag-row-dragging { opacity: 0.45; }
 `;
 let __sheetCssDone = false;
 function ensureSheetCss() {
@@ -1012,6 +1024,8 @@ function groupAggLines(model: any, coll: any, rows: any[]): string[] {
 // ---------------- Stage 2: group header per-cell (subtotal thẳng dưới cột measure) ----------------
 /** Ô nhãn nhóm (cột data đầu, colSpan qua các cột dim): toggle + tên + count + ＋ thêm dòng. */
 const PtdlGroupLabelCell = observer(function PtdlGroupLabelCell({ model, p }: any) {
+  // token TỪNG là free variable (thiếu dòng này) → ReferenceError khi render nhãn nhóm rows-mode.
+  const { token } = theme.useToken();
   // ĐỌC ptdlGroupRev (observable) → tự re-render khi toggleGroup, đồng bộ icon với data.
   // (_groupOpen là Map thường; toggleGroup bump ptdlGroupRev + rebuild rowData nhưng AG KHÔNG
   //  tự re-render ô header nhóm vì "value" ô không đổi → icon trễ 1 nhịp nếu không subscribe.)
@@ -1063,6 +1077,8 @@ const PtdlGroupLabelCell = observer(function PtdlGroupLabelCell({ model, p }: an
  *  vừa rời đi → không che dòng nào khác, không khoảng trắng, không jitter (layout bảng không đổi). */
 const PtdlStickyGroupStack = observer(function PtdlStickyGroupStack({ model, coll, getApi, chain, top, rowHeight }: any) {
   void model.props.ptdlGroupRev; // đồng bộ icon mở/đóng theo toggleGroup
+  // token TỪNG là free variable (thiếu dòng này) → ReferenceError khi sticky stack dock nhóm đầu tiên.
+  const { token } = theme.useToken();
   const boxRef = React.useRef<any>(null);
   // Vị trí các cột CÓ Summary — đo từ Ô HEADER CỘT thật (.ag-header-cell[col-id]) nên tự đúng cả khi
   // resize/pin/cuộn ngang. Sticky row nhờ đó hiện subtotal Ở ĐÚNG CỘT như dòng header thật → hết cảnh
@@ -1830,7 +1846,10 @@ function PtdlFormulaMiniForm({ model, title: initTitle, formula: initFormula, su
   const [title, setTitle] = React.useState(initTitle || '');
   const [formula, setFormula] = React.useState(initFormula || '');
   return (
-    <div style={{ width: 380 }}>
+    // width 100% — CHA (PtdlColMenu mode edit/insert) quyết định bề rộng. Trước đây fix cứng 380 trong khi
+    // wrapper cha 300 → form (và input title/công thức bên trong) TRÀN ra ngoài card popover 80px (user báo
+    // "input rộng hơn popup container").
+    <div style={{ width: '100%' }}>
       <SettingRow layout="vertical" label={t('Tiêu đề cột')}>
         <AntInput value={title} placeholder={t('ƒ Cột')} onChange={(e: any) => setTitle(e.target.value)} />
       </SettingRow>
@@ -2037,7 +2056,8 @@ const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }:
   if (mode === 'insertLeft' || mode === 'insertRight') {
     const side = mode === 'insertLeft' ? 'left' : 'right';
     return (
-      <div style={{ width: 300 }}>
+      // 380 = bề rộng form công thức (title + textarea + hàng nút Hàm/Trường/Mẫu) — MiniForm ăn 100% theo đây.
+      <div style={{ width: 380 }}>
         <PtdlColMenuBack onBack={() => setMode('menu')} title={side === 'left' ? t('Chèn cột ƒ · bên trái') : t('Chèn cột ƒ · bên phải')} />
         <PtdlFormulaMiniForm
           model={model}
@@ -2053,7 +2073,8 @@ const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }:
   }
   if (mode === 'edit' && fc) {
     return (
-      <div style={{ width: 300 }}>
+      // 380 — đồng bộ với mode insert (MiniForm width 100%, cha quyết định; 300 cũ làm input tràn card).
+      <div style={{ width: 380 }}>
         <PtdlColMenuBack onBack={() => setMode('menu')} title={t('Sửa công thức')} />
         <PtdlFormulaMiniForm
           model={model}
@@ -2124,6 +2145,8 @@ const PtdlColMenu = observer(function PtdlColMenu({ model, fieldName, onClose }:
 // component → popover ⚙ đang mở bị unmount, chính là bug "gõ 1 chữ tắt màn config").
 const PtdlColHeader = observer(function PtdlColHeader(props: any) {
   const { displayName, model, fieldName } = props;
+  // token TỪNG là free variable (thiếu dòng này) → ReferenceError ngay khi có sort direction trên cột.
+  const { token } = theme.useToken();
   const cfg = model.getColCfg(fieldName);
   const editing = !!model.flowEngine?.flowSettings?.enabled;
   // Open-state của panel để TRÊN MODEL (không phải state cục bộ) → sống sót khi AG Grid remount
@@ -3051,6 +3074,45 @@ const SheetGrid = observer(({ model }: { model: any }) => {
       console.warn('[spreadsheet-view] apply sort-field order failed', err);
     }
   }, [model, canDragSort, sortFld?.name]);
+  // ── Drop-indicator khi kéo dòng: vạch primary trên/dưới dòng đích + nhớ đích hợp lệ CUỐI CÙNG ──
+  // (thả tay ở vùng trống dưới đáy / trên dòng summary → vẫn thả vào đích cuối, khớp với vạch đang vẽ).
+  const sheetWrapRef = React.useRef<HTMLDivElement | null>(null);
+  const dropMarkRef = React.useRef<{ els: any[]; key: string } | null>(null);
+  const lastDragOverRef = React.useRef<any>(null); // rowNode đích hợp lệ cuối cùng rê qua
+  const clearDropMark = React.useCallback(() => {
+    const m = dropMarkRef.current;
+    if (m) {
+      m.els.forEach((el) => el.classList.remove('ptdl-drop-above', 'ptdl-drop-below'));
+      dropMarkRef.current = null;
+    }
+  }, []);
+  const dragRowOk = (d: any) => d && !d.__ptdlNew && !d.__ptdlSummary && !d.__ptdlGroup;
+  const markDropTarget = React.useCallback((e: any) => {
+    const src = e.node;
+    const over = e.overNode;
+    if (!src || !dragRowOk(src.data)) return;
+    // Rê ra vùng trống (không overNode): GIỮ vạch + đích cuối — thả ở đó vẫn về đích đang chỉ.
+    if (!over) return;
+    // Rê lên chính nó: thả sẽ không làm gì → xoá vạch cho khỏi gây hiểu lầm.
+    if (over === src) { clearDropMark(); return; }
+    // Đích không hợp lệ (pinned/summary/dòng nháp): giữ nguyên vạch ở đích hợp lệ trước đó.
+    if (over.rowPinned || !dragRowOk(over.data)) return;
+    lastDragOverRef.current = over;
+    const from = src.rowIndex ?? -1;
+    const to = over.rowIndex ?? -1;
+    if (from < 0 || to < 0) { clearDropMark(); return; }
+    const below = from < to; // TRÙNG luật quyết insertAfter/insertBefore ở onRowDragEnd
+    const key = `${to}:${below ? 'b' : 'a'}`;
+    if (dropMarkRef.current?.key === key) return;
+    clearDropMark();
+    const wrap = sheetWrapRef.current;
+    if (!wrap) return;
+    // 1 dòng dữ liệu = nhiều phần tử .ag-row (container pinned trái / giữa / phải) → mark hết để vạch chạy suốt.
+    const els = Array.from(wrap.querySelectorAll(`.ag-row[row-index="${to}"]`));
+    if (!els.length) return;
+    els.forEach((el) => el.classList.add(below ? 'ptdl-drop-below' : 'ptdl-drop-above'));
+    dropMarkRef.current = { els, key };
+  }, [clearDropMark]);
   // Chỉ rebuild defs khi CẤU TRÚC đổi (width/pin/order/widget/bật-tắt rules) — style/format/rule text
   // đọc live trong renderer + refreshCells, để popover ⚙ không bị unmount khi đang gõ.
   const structuralSig = React.useMemo(() => {
@@ -3683,7 +3745,7 @@ const SheetGrid = observer(({ model }: { model: any }) => {
           ) : null}
         </div>
       </div>
-      <div style={{ height, width: '100%', position: 'relative' }}>
+      <div ref={sheetWrapRef} style={{ height, width: '100%', position: 'relative' }}>
         {/* Sticky nhóm (rows mode) = STACK overlay React NỔI đọc topChain state (mảng cha→con). KHÔNG pinned
             row chừa chỗ (đổi số pinned = body nhảy N×36px = giật); overlay đè lên nội dung, nhóm mới trờ tới
             có hiệu ứng đẩy (tick ghi translateY — xem topTickRef). */}
@@ -3782,20 +3844,37 @@ const SheetGrid = observer(({ model }: { model: any }) => {
           onColumnMoved={(e: any) => e.finished && !model._suppressColCapture && model.captureColumnState(e.api)}
           onColumnPinned={(e: any) => !model._suppressColCapture && model.captureColumnState(e.api)}
           onCellValueChanged={(e: any) => model.commitCell(e)}
+          onRowDragEnter={(e: any) => {
+            // Drag mới: dọn trạng thái cũ (kể cả vạch mồ côi nếu lần trước bị ESC) rồi vẽ ngay.
+            lastDragOverRef.current = null;
+            clearDropMark();
+            markDropTarget(e);
+          }}
+          onRowDragMove={(e: any) => markDropTarget(e)}
+          onRowDragLeave={() => {
+            // Kéo RA NGOÀI grid: thả ở ngoài sẽ không move (AG không bắn rowDragEnd) → xoá vạch + đích.
+            lastDragOverRef.current = null;
+            clearDropMark();
+          }}
           onRowDragEnd={(e: any) => {
             // Unmanaged row drag: AG Grid KHÔNG tự sắp lại — mình gọi server `:move` rồi refresh (server
             // là nguồn sự thật, khớp phần còn lại của plugin). vDirection không đáng tin bằng so index nguồn/đích.
+            clearDropMark();
             const src = e.node?.data;
-            const over = e.overNode?.data;
-            if (!src || !over || e.node?.rowPinned || e.overNode?.rowPinned) return;
-            if (src.__ptdlNew || src.__ptdlSummary || src.__ptdlGroup) return;
-            if (over.__ptdlNew || over.__ptdlSummary || over.__ptdlGroup) return;
+            if (!src || e.node?.rowPinned || !dragRowOk(src)) { lastDragOverRef.current = null; return; }
+            // Đích = row đang rê; thả ở vùng trống dưới đáy / trên dòng summary → dùng đích hợp lệ CUỐI
+            // CÙNG đã rê qua (đúng chỗ vạch chỉ đang vẽ) thay vì lặng lẽ bỏ qua như trước.
+            let overNode = e.overNode;
+            if (!overNode || overNode.rowPinned || !dragRowOk(overNode.data)) overNode = lastDragOverRef.current;
+            lastDragOverRef.current = null;
+            const over = overNode?.data;
+            if (!over) return;
             const sourceId = src[tk];
             const targetId = over[tk];
             if (sourceId == null || targetId == null || String(sourceId) === String(targetId)) return;
             const from = e.node.rowIndex ?? -1;
-            const to = e.overIndex ?? -1;
-            // kéo XUỐNG (from<to) → chèn SAU đích; kéo LÊN → chèn TRƯỚC đích.
+            const to = overNode.rowIndex ?? -1;
+            // kéo XUỐNG (from<to) → chèn SAU đích; kéo LÊN → chèn TRƯỚC đích (TRÙNG luật vẽ vạch markDropTarget).
             const method = from >= 0 && to >= 0 ? (from < to ? 'insertAfter' : 'insertBefore') : 'insertAfter';
             const scopeKey = sortFld?.scopeKey;
             model.moveRow(sourceId, targetId, method, scopeKey ? over[scopeKey] : undefined);
@@ -4393,6 +4472,17 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
       if (method) params.method = method;
       if (sf.scopeKey && targetScope !== undefined) params.targetScope = targetScope;
       try {
+        // CHUẨN HOÁ cột sort về 1..N TRƯỚC khi move (action server của plugin này). Dữ liệu tạo ngoài
+        // luồng chuẩn (import cloner/gsheet-sync, INSERT SQL, workflow…) không qua hook cấp sort → cột
+        // sort bị TRÙNG/NULL. Thuật toán `:move` của NocoBase shift theo KHOẢNG GIÁ TRỊ và giả định sort
+        // duy nhất — gặp trùng là dòng nhảy lung tung + đẻ thêm giá trị trùng sau mỗi lần kéo. Bảng đã
+        // chuẩn → server no-op (1 câu SELECT). Server chưa cập nhật plugin → bỏ qua, move như cũ.
+        try {
+          await this.resource.runAction('ptdlResequenceSort', { data: { sortField: sf.name } });
+        } catch (seqErr) {
+          // eslint-disable-next-line no-console
+          console.warn('[spreadsheet-view] resequence sort skipped (old server?)', seqErr);
+        }
         await this.resource.runAction('move', { params });
         await this.resource.refresh?.();
       } catch (err: any) {
