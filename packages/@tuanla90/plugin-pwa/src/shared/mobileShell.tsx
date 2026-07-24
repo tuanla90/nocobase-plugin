@@ -28,7 +28,13 @@ function ensureStyle() {
   el.id = STYLE_ID;
   el.textContent =
     `body.pwa-reserve-bottom .ant-pro-layout-container{height:calc(100vh - var(${BAR_VAR},0px) - env(safe-area-inset-bottom,0px)) !important;}` +
-    `body.pwa-reserve-top .ant-pro-layout-container{margin-top:var(${BAR_VAR},0px) !important;height:calc(100vh - var(${BAR_VAR},0px)) !important;}`;
+    `body.pwa-reserve-top .ant-pro-layout-container{margin-top:var(${BAR_VAR},0px) !important;height:calc(100vh - var(${BAR_VAR},0px)) !important;}` +
+    // Khi CÓ modal/drawer mở (mask hiển thị) → ẩn bar+FAB và BỎ reservation, để bottom-nav không đè
+    // Save/footer overlay và không co layout. CSS `:has()` phản ứng tức thì theo mask (0 chi phí JS,
+    // thay cho MutationObserver). Mask chỉ tồn tại khi overlay đang mở (antd gỡ mask khi đóng).
+    `body:has(.ant-modal-mask,.ant-drawer-mask) .pwa-shell-el{display:none !important;}` +
+    `body.pwa-reserve-bottom:has(.ant-modal-mask,.ant-drawer-mask) .ant-pro-layout-container,` +
+    `body.pwa-reserve-top:has(.ant-modal-mask,.ant-drawer-mask) .ant-pro-layout-container{height:100vh !important;margin-top:0 !important;}`;
   document.head.appendChild(el);
 }
 function setReserved(px: number, side: 'bottom' | 'top' | 'none') {
@@ -256,44 +262,10 @@ export function createMobileShell({
       () => (bb?.items || []).filter((it) => it && it.schemaUid).slice(0, MAX_ITEMS),
       [bb],
     );
-    // Có modal/drawer/dialog đang mở? → ẩn bottom bar + FAB và BỎ reservation: bottom-nav không được đè nút
-    // Save/footer của overlay, và không co .ant-pro-layout-container làm lệch scroll khi overlay mở.
-    // Overlay portaled ra body → theo dõi DOM (debounce bằng rAF cho nhẹ).
-    const [overlayOpen, setOverlayOpen] = useState(false);
-    useEffect(() => {
-      if (typeof document === 'undefined') return;
-      // Dựa vào MASK/wrap ĐANG HIỂN THỊ (drawer/modal đóng vẫn nằm trong DOM → phải xét display/opacity thật,
-      // không chỉ sự tồn tại). Mask chỉ visible khi overlay thực sự mở.
-      const check = () => {
-        const els = document.querySelectorAll('.ant-modal-mask, .ant-drawer-mask, .ant-modal-wrap');
-        let open = false;
-        for (const el of Array.from(els)) {
-          const s = getComputedStyle(el as Element);
-          if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') continue;
-          const r = (el as Element).getBoundingClientRect();
-          if (r.width > 4 && r.height > 4) { open = true; break; }
-        }
-        setOverlayOpen(open);
-      };
-      check();
-      let raf = 0;
-      const schedule = () => {
-        if (raf) return;
-        raf = requestAnimationFrame(() => {
-          raf = 0;
-          check();
-        });
-      };
-      const mo = new MutationObserver(schedule);
-      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-      return () => {
-        mo.disconnect();
-        if (raf) cancelAnimationFrame(raf);
-      };
-    }, []);
-
-    const overlayVisible =
-      inApp && !overlayOpen && !!bb?.enabled && items.length > 0 && visibleFor(bb?.showOn, width, standalone);
+    // Ẩn bottom bar + FAB khi có modal/drawer mở = làm bằng CSS `:has()` (xem ensureStyle), KHÔNG dùng
+    // MutationObserver (bản trước theo dõi cả body subtree+attributes → rAF 80ms). CSS phản ứng tức thì
+    // theo mask của overlay, 0 chi phí JS. Bar/FAB được gắn class `.pwa-shell-el` để CSS nhắm.
+    const overlayVisible = inApp && !!bb?.enabled && items.length > 0 && visibleFor(bb?.showOn, width, standalone);
     const isBar = placement === 'bottom' || placement === 'top' || placement === 'floating';
     const showBar = overlayVisible && isBar;
     const showFab = overlayVisible && placement === 'fab';
@@ -319,20 +291,24 @@ export function createMobileShell({
       typeof document !== 'undefined'
         ? createPortal(
             <>
-              {showBar ? (
-                <BottomBar
-                  items={items}
-                  activeKey={activeKey}
-                  style={bb?.style}
-                  placement={placement}
-                  counts={counts}
-                  themeColor={cfg.themeColor}
-                  onNavigate={(it) => goToPage(it.schemaUid || '', navigate)}
-                />
-              ) : null}
-              {showFab ? (
-                <FabMenu items={items} activeKey={activeKey} counts={counts} themeColor={cfg.themeColor} onNavigate={(it) => goToPage(it.schemaUid || '', navigate)} />
-              ) : null}
+              {/* Bọc bar + FAB (đều position:fixed → wrapper không chiếm layout) bằng `.pwa-shell-el` để
+                  CSS `:has(mask)` ẩn cả cụm khi có overlay. Install prompt + top search KHÔNG bọc (ở top). */}
+              <div className="pwa-shell-el">
+                {showBar ? (
+                  <BottomBar
+                    items={items}
+                    activeKey={activeKey}
+                    style={bb?.style}
+                    placement={placement}
+                    counts={counts}
+                    themeColor={cfg.themeColor}
+                    onNavigate={(it) => goToPage(it.schemaUid || '', navigate)}
+                  />
+                ) : null}
+                {showFab ? (
+                  <FabMenu items={items} activeKey={activeKey} counts={counts} themeColor={cfg.themeColor} onNavigate={(it) => goToPage(it.schemaUid || '', navigate)} />
+                ) : null}
+              </div>
               {inApp ? (
                 <InstallPrompt config={cfg.install} icon={cfg.icon} themeColor={cfg.themeColor} bottomOffset={installOffset} />
               ) : null}
