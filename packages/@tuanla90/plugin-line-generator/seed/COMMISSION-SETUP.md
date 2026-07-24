@@ -29,6 +29,13 @@ Lần đầu: enable `@tuanla90/plugin-line-generator` (Plugin Manager UI upload
 
 ## C. Seed dòng config
 
+> **2 bản config:** [`order-commission.config.json`](order-commission.config.json) = bản DEMO nb-local
+> (schema demo: status string, matchMap, YMONTH, regen version). [`order-commission.live.json`](order-commission.live.json)
+> = **snapshot bản PRODUCTION Railway 2026-07-24** (đã review + verify preview): ruleWhere + guard theo
+> `status_id`, SWITCH remap based_on (liquidation_employee→transaction_staff, có transaction_staff),
+> markerField/hashField `_genRule`/`_genHash`, regen replace. Schema production cần thêm: 2 cột string
+> `_genRule`/`_genHash` trên `order_commissions` + o2m `order_commissions` trên `orders` (đã tạo trên live).
+
 Nội dung: [`order-commission.config.json`](order-commission.config.json). Tạo 1 bản ghi trong `ptdl_linegen_rules` với cột `config` = JSON đó (dán qua block form trên bảng `ptdl_linegen_rules`, hoặc API `POST /api/ptdl_linegen_rules:create` với `{ "config": {...} }`). Hook `beforeSave` tự điền key/enabled/sourceCollection từ JSON.
 
 ## D. Nút trên đơn hàng

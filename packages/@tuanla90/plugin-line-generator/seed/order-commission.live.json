@@ -1,0 +1,138 @@
+{
+  "key": "order-commission",
+  "title": "Tính hoa hồng đơn hàng",
+  "enabled": true,
+  "sourceCollection": "orders",
+  "sourceLinesPath": null,
+  "ruleCollection": "commission_rules",
+  "ruleWhere": [
+    {
+      "field": "commission_rule_group.shipping_type",
+      "op": "eq",
+      "value": "parent.shipping_type"
+    },
+    {
+      "field": "commission_rule_group.quotation_method",
+      "op": "eq",
+      "value": "parent.quotation_methods"
+    },
+    {
+      "field": "is_active",
+      "op": "eq",
+      "value": "true"
+    },
+    {
+      "field": "commission_rule_group.is_active",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "preload": [
+    "status",
+    "responsible_staff",
+    "responsible_staff.position",
+    "responsible_staff.department",
+    "responsible_staff.direct_manager",
+    "responsible_staff.direct_manager.position",
+    "responsible_staff.direct_manager.department",
+    "responsible_staff.indirect_manager",
+    "responsible_staff.indirect_manager.position",
+    "responsible_staff.indirect_manager.department",
+    "transaction_staff",
+    "transaction_staff.position",
+    "transaction_staff.department",
+    "transaction_staff.direct_manager",
+    "transaction_staff.direct_manager.position",
+    "transaction_staff.direct_manager.department",
+    "transaction_staff.indirect_manager",
+    "transaction_staff.indirect_manager.position",
+    "transaction_staff.indirect_manager.department"
+  ],
+  "ruleAppends": [
+    "commission_rule_group"
+  ],
+  "deriveVars": [
+    {
+      "name": "personBase",
+      "formula": "SWITCH(rule.based_on, 'responsible_staff', 'responsible_staff', 'liquidation_employee', 'transaction_staff', 'transaction_staff', 'transaction_staff', '__skip__')"
+    },
+    {
+      "name": "ppath",
+      "formula": "IF(personBase=='__skip__', '__skip__', personBase & IF(rule.recipient=='self', '', '.' & rule.recipient))"
+    }
+  ],
+  "skipIf": null,
+  "lineOutputs": [
+    {
+      "targetField": "employee_id",
+      "formula": "REL(parent, ppath & '.id')",
+      "required": true
+    },
+    {
+      "targetField": "commission_rule_name",
+      "formula": "rule.name"
+    },
+    {
+      "targetField": "base_field",
+      "formula": "rule.base_field"
+    },
+    {
+      "targetField": "base_value",
+      "formula": "NUM(parent[rule.base_field])"
+    },
+    {
+      "targetField": "rate",
+      "formula": "rule.rate"
+    },
+    {
+      "targetField": "commission_amt",
+      "formula": "NUM(parent[rule.base_field]) * rule.rate"
+    },
+    {
+      "targetField": "position",
+      "formula": "REL(parent, ppath & '.position.name')"
+    },
+    {
+      "targetField": "department",
+      "formula": "REL(parent, ppath & '.department.name')"
+    },
+    {
+      "targetField": "period_month",
+      "formula": "parent.liquidation_date"
+    },
+    {
+      "targetField": "shipping_type",
+      "formula": "parent.shipping_type"
+    },
+    {
+      "targetField": "quotation_method",
+      "formula": "parent.quotation_methods"
+    }
+  ],
+  "groupBy": null,
+  "targetPath": "order_commissions",
+  "targetForeignKey": "order_id",
+  "regenPolicy": "replace",
+  "guard": [
+    {
+      "field": "status_id",
+      "value": 362498906193920
+    },
+    {
+      "field": "is_commission_created",
+      "value": false
+    }
+  ],
+  "parentUpdates": [
+    {
+      "targetField": "is_commission_created",
+      "formula": "true"
+    },
+    {
+      "targetField": "commission_status",
+      "formula": "'COMPLETED'"
+    }
+  ],
+  "markerField": "_genRule",
+  "hashField": "_genHash"
+}
