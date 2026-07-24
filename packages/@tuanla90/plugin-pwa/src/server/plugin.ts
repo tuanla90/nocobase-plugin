@@ -11,6 +11,10 @@ export class PluginPwaServer extends Plugin {
         { type: 'string', name: 'themeColor' },
         { type: 'string', name: 'backgroundColor' },
         { type: 'json', name: 'icon' },
+        // Thanh điều hướng dưới cùng kiểu mobile app: { enabled, showOn, items[≤5], style{...} }
+        { type: 'json', name: 'bottomBar' },
+        // Gợi ý "Cài ứng dụng" (Add to Home Screen): { enabled, position, title, description }
+        { type: 'json', name: 'install' },
       ],
     });
 
@@ -35,7 +39,15 @@ export class PluginPwaServer extends Plugin {
     }
   }
 
-  async load() {}
+  async load() {
+    // Đảm bảo cột tồn tại kể cả khi plugin đã cài/bật từ trước lúc thêm các cột mới
+    // (bottomBar/install) — install()/afterEnable() không chạy lại khi chỉ update + reload in-process.
+    try {
+      await this.db.getCollection('pwaSettings')?.sync?.();
+    } catch (e) {
+      this.app.logger?.warn?.('[plugin-pwa] pwaSettings sync failed: ' + (e as any)?.message);
+    }
+  }
 }
 
 export default PluginPwaServer;

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Button, ColorPicker, Input, Spin, Typography, Upload, message, theme } from 'antd';
+import { Button, ColorPicker, Input, Spin, Tabs, Typography, Upload, message, theme } from 'antd';
 import { COLOR_PRESETS, colorToString } from '@tuanla90/shared';
 import { t } from './i18n';
+import { BottomBarPanel, InstallPanel } from './settingsPanels';
 
 // Lane-agnostic PWA logic. Imports NO @nocobase/client* so the same code bundles into both the
 // classic `client` lane and the modern `client-v2` lane. Each lane injects its own API-client hook.
@@ -233,6 +234,8 @@ const DEFAULTS: any = {
   themeColor: '#1677ff',
   backgroundColor: '#ffffff',
   icon: '',
+  bottomBar: null,
+  install: null,
 };
 
 // background/border are theme tokens applied at the usage site (see PwaSettings) — this fixed
@@ -316,6 +319,8 @@ export function createPwaSettings({ useApiClient }: { useApiClient: () => any })
           themeColor: cfg.themeColor || '#1677ff',
           backgroundColor: cfg.backgroundColor || '#ffffff',
           icon: cfg.icon || '',
+          bottomBar: cfg.bottomBar || null,
+          install: cfg.install || null,
         };
         if (cfg.id) {
           await api.request({ url: 'pwaSettings:update', method: 'post', params: { filterByTk: cfg.id }, data: values });
@@ -323,6 +328,12 @@ export function createPwaSettings({ useApiClient }: { useApiClient: () => any })
           const res = await api.request({ url: 'pwaSettings:create', method: 'post', data: values });
           const created = res && res.data && res.data.data;
           if (created && created.id) setCfg((p: any) => ({ ...p, id: created.id }));
+        }
+        // Let the live overlay (bottom bar / install prompt) refresh without a full reload.
+        try {
+          window.dispatchEvent(new Event('pwa:config-updated'));
+        } catch (e) {
+          // ignore
         }
         message.success(t('Saved. Reload (Ctrl+Shift+R) to update the installed app.'));
       } catch (e) {
@@ -349,85 +360,114 @@ export function createPwaSettings({ useApiClient }: { useApiClient: () => any })
           {t('Configure the app when installing as a PWA (desktop/mobile). Reload the page after saving to update.')}
         </Typography.Paragraph>
 
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
-          <Field label={t('App name')} grow>
-            <Input value={cfg.name} placeholder="NocoBase" onChange={(e) => setCfg({ ...cfg, name: e.target.value })} />
-          </Field>
-          <Field label={t('Short name (home screen)')} grow>
-            <Input
-              value={cfg.shortName}
-              placeholder="NocoBase"
-              onChange={(e) => setCfg({ ...cfg, shortName: e.target.value })}
-            />
-          </Field>
-        </div>
+        <Tabs
+          items={[
+            {
+              key: 'app',
+              label: t('App'),
+              children: (
+                <div>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
+                    <Field label={t('App name')} grow>
+                      <Input value={cfg.name} placeholder="NocoBase" onChange={(e) => setCfg({ ...cfg, name: e.target.value })} />
+                    </Field>
+                    <Field label={t('Short name (home screen)')} grow>
+                      <Input
+                        value={cfg.shortName}
+                        placeholder="NocoBase"
+                        onChange={(e) => setCfg({ ...cfg, shortName: e.target.value })}
+                      />
+                    </Field>
+                  </div>
 
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
-          <Field label={t('Theme color')}>
-            <ColorPicker
-              value={cfg.themeColor || '#1677ff'}
-              onChange={(c) => setCfg({ ...cfg, themeColor: colorToString(c) })}
-              presets={COLOR_PRESETS}
-              showText
-            />
-          </Field>
-          <Field label={t('Background color')}>
-            <ColorPicker
-              value={cfg.backgroundColor || '#ffffff'}
-              onChange={(c) => setCfg({ ...cfg, backgroundColor: colorToString(c) })}
-              presets={COLOR_PRESETS}
-              showText
-            />
-          </Field>
-        </div>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+                    <Field label={t('Theme color')}>
+                      <ColorPicker
+                        value={cfg.themeColor || '#1677ff'}
+                        onChange={(c) => setCfg({ ...cfg, themeColor: colorToString(c) })}
+                        presets={COLOR_PRESETS}
+                        showText
+                      />
+                    </Field>
+                    <Field label={t('Background color')}>
+                      <ColorPicker
+                        value={cfg.backgroundColor || '#ffffff'}
+                        onChange={(c) => setCfg({ ...cfg, backgroundColor: colorToString(c) })}
+                        presets={COLOR_PRESETS}
+                        showText
+                      />
+                    </Field>
+                  </div>
 
-        <div style={{ marginBottom: 24 }}>
-          <div style={fieldLabel}>{t('Icon')}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 16,
-                border: `1px dashed ${token.colorBorder}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                flex: 'none',
-                background: cfg.icon ? cfg.backgroundColor || '#fff' : token.colorFillQuaternary,
-              }}
-            >
-              {cfg.icon ? (
-                <img src={cfg.icon} alt="icon" width={72} height={72} style={{ objectFit: 'contain' }} />
-              ) : (
-                <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{t('no icon')}</span>
-              )}
-            </div>
-            <div>
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  handleFile(file as File);
-                  return false;
-                }}
-              >
-                <Button>{cfg.icon ? t('Change image') : t('Choose image')}</Button>
-              </Upload>
-              {cfg.icon ? (
-                <Button type="text" danger style={{ marginLeft: 8 }} onClick={() => setCfg({ ...cfg, icon: '' })}>
-                  {t('Remove')}
-                </Button>
-              ) : null}
-              <div style={{ color: token.colorTextTertiary, fontSize: 12, marginTop: 6, maxWidth: 320 }}>
-                {t('No image → the first letter of the app name on the theme color.')}
-              </div>
-            </div>
-          </div>
-        </div>
+                  <div>
+                    <div style={fieldLabel}>{t('Icon')}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: 16,
+                          border: `1px dashed ${token.colorBorder}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          flex: 'none',
+                          background: cfg.icon ? cfg.backgroundColor || '#fff' : token.colorFillQuaternary,
+                        }}
+                      >
+                        {cfg.icon ? (
+                          <img src={cfg.icon} alt="icon" width={72} height={72} style={{ objectFit: 'contain' }} />
+                        ) : (
+                          <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>{t('no icon')}</span>
+                        )}
+                      </div>
+                      <div>
+                        <Upload
+                          accept="image/*"
+                          showUploadList={false}
+                          beforeUpload={(file) => {
+                            handleFile(file as File);
+                            return false;
+                          }}
+                        >
+                          <Button>{cfg.icon ? t('Change image') : t('Choose image')}</Button>
+                        </Upload>
+                        {cfg.icon ? (
+                          <Button type="text" danger style={{ marginLeft: 8 }} onClick={() => setCfg({ ...cfg, icon: '' })}>
+                            {t('Remove')}
+                          </Button>
+                        ) : null}
+                        <div style={{ color: token.colorTextTertiary, fontSize: 12, marginTop: 6, maxWidth: 320 }}>
+                          {t('No image → the first letter of the app name on the theme color.')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: 'bottomBar',
+              label: t('Bottom bar'),
+              children: (
+                <BottomBarPanel
+                  value={cfg.bottomBar || {}}
+                  onChange={(v) => setCfg({ ...cfg, bottomBar: v })}
+                  api={api}
+                  themeColor={cfg.themeColor}
+                />
+              ),
+            },
+            {
+              key: 'install',
+              label: t('Install button'),
+              children: <InstallPanel value={cfg.install || {}} onChange={(v) => setCfg({ ...cfg, install: v })} />,
+            },
+          ]}
+        />
 
-        <Button type="primary" loading={saving} onClick={onSave}>
+        <Button type="primary" loading={saving} onClick={onSave} style={{ marginTop: 8 }}>
           {t('Save')}
         </Button>
       </div>
