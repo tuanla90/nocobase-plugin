@@ -139,23 +139,25 @@ export class PluginLineGeneratorServer extends Plugin {
     this.app.resourceManager.define({
       name: 'ptdlLineGen',
       actions: {
-        // Which generators apply to a collection (for the client show-if + button menu). Metadata only.
-        // AUTO-trigger rules are excluded — they run themselves; no button.
+        // Which generators exist for a collection (feeds the button's rule-picker). Metadata only.
+        // Returns ALL enabled configs INCLUDING auto — the guard is the AUTO/default condition, while a
+        // button (placed + linkage-ruled by the UI builder like any core action) may trigger any rule
+        // manually. `trigger` is included so pickers can label auto rules.
         rulesFor: async (ctx: any, next: any) => {
           const collection = ctx.action?.params?.collection || ctx.action?.params?.values?.collection;
           const rows = await db.getRepository('ptdl_linegen_rules').find({ filter: { enabled: true, sourceCollection: collection } });
           ctx.body = (rows || [])
             .map((r: any) => (r.get ? r.get('config') : r.config) || {})
-            .filter((c: any) => (c.trigger || 'manual') !== 'auto')
-            .map((c: any) => ({ key: c.key, title: c.title, sourceCollection: c.sourceCollection, targetPath: c.targetPath, guard: c.guard || [] }));
+            .map((c: any) => ({ key: c.key, title: c.title, sourceCollection: c.sourceCollection, targetPath: c.targetPath, trigger: c.trigger || 'manual', guard: c.guard || [] }));
           await next();
         },
         // Dry-run: evaluate + validate, return the rows that WOULD be written (+ skips) without writing.
+        // ignoreGuard lets the dialog ALWAYS show the would-be result (guardOk/guardDetail carry the warning).
         preview: async (ctx: any, next: any) => {
           const v = ctx.action?.params?.values || ctx.action?.params || {};
           const config = await loadConfig(v.ruleKey);
           if (!config) { ctx.body = { ok: false, error: 'rule-not-found' }; return next(); }
-          ctx.body = await this.manager.run(config, v.filterByTk, { userId: ctx.state?.currentUser?.id, dryRun: true });
+          ctx.body = await this.manager.run(config, v.filterByTk, { userId: ctx.state?.currentUser?.id, dryRun: true, ignoreGuard: v.ignoreGuard === true });
           await next();
         },
         // Dry-run an INLINE config (not yet saved) — powers live preview in the settings editor.
@@ -166,12 +168,14 @@ export class PluginLineGeneratorServer extends Plugin {
           ctx.body = await this.manager.run(config, v.filterByTk, { userId: ctx.state?.currentUser?.id, dryRun: true, ignoreGuard: v.ignoreGuard !== false, debug: v.debug !== false });
           await next();
         },
-        // Commit: write child rows + parent bookkeeping in one transaction.
+        // Commit: write child rows + parent bookkeeping in one transaction. The config guard is the
+        // AUTO/default condition; a MANUAL run may override it by sending ignoreGuard (the dialog asks
+        // for an explicit confirm first). Auto-runs never send it — hooks always enforce the guard.
         generate: async (ctx: any, next: any) => {
           const v = ctx.action?.params?.values || ctx.action?.params || {};
           const config = await loadConfig(v.ruleKey);
           if (!config) { ctx.body = { ok: false, error: 'rule-not-found' }; return next(); }
-          ctx.body = await this.manager.run(config, v.filterByTk, { userId: ctx.state?.currentUser?.id, dryRun: false });
+          ctx.body = await this.manager.run(config, v.filterByTk, { userId: ctx.state?.currentUser?.id, dryRun: false, ignoreGuard: v.ignoreGuard === true });
           await next();
         },
       },

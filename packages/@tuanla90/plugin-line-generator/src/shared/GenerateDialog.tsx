@@ -31,7 +31,9 @@ export const GenerateDialog: React.FC<{
     if (!open) return;
     setResult(null);
     setLoading(true);
-    previewGenerate(api, ruleKey, filterByTk)
+    // ignoreGuard: the button's visibility is now the creator's linkage rules, not the config guard —
+    // so ALWAYS show what would be generated; guardOk/guardDetail carry the warning when it fails.
+    previewGenerate(api, ruleKey, filterByTk, { ignoreGuard: true })
       .then(setResult)
       .catch((e) => setResult({ ok: false, error: e?.message || 'error' }))
       .finally(() => setLoading(false));
@@ -43,10 +45,28 @@ export const GenerateDialog: React.FC<{
   const cols = Array.from(rows.reduce((s, r) => { Object.keys(r).forEach((k) => !HIDDEN.has(k) && s.add(k)); return s; }, new Set<string>()));
   const columns = cols.map((c) => ({ title: c, dataIndex: c, key: c, ellipsis: true, render: (v: any) => (v === null || v === undefined ? '' : String(v)) }));
 
+  const guardFailed = !!result?.ok && result.guardOk === false;
+
   const doCommit = async () => {
+    // Guard = the config's AUTO/default condition. A manual run may override it, but only after an
+    // explicit confirm — the server rejects unless ignoreGuard is sent.
+    if (guardFailed) {
+      const yes = await new Promise<boolean>((resolve) => {
+        Modal.confirm({
+          title: t('Bản ghi chưa thỏa điều kiện của bộ sinh'),
+          content: `${result?.guardDetail || ''}`,
+          okText: t('Vẫn sinh dòng'),
+          okButtonProps: { danger: true },
+          cancelText: t('Đóng'),
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false),
+        });
+      });
+      if (!yes) return;
+    }
     setCommitting(true);
     try {
-      const r = await commitGenerate(api, ruleKey, filterByTk);
+      const r = await commitGenerate(api, ruleKey, filterByTk, { ignoreGuard: guardFailed });
       if (r.ok) {
         message.success(t('Đã tạo {{n}} dòng', { n: r.created ?? 0 }));
         onDone?.();
@@ -83,6 +103,14 @@ export const GenerateDialog: React.FC<{
         <Alert type="warning" showIcon message={errorText(result)} />
       ) : (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {guardFailed ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={t('Bản ghi chưa thỏa điều kiện của bộ sinh (điều kiện dùng cho auto)')}
+              description={result?.guardDetail || undefined}
+            />
+          ) : null}
           <Space size="small" wrap>
             <Tag color="blue">{t('{{n}} dòng sẽ tạo', { n: rows.length })}</Tag>
             {result.skipped && result.skipped.length ? <Tag color="orange">{t('{{n}} bỏ qua', { n: result.skipped.length })}</Tag> : null}

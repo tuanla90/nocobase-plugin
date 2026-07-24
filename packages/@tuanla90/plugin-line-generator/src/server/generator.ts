@@ -150,10 +150,11 @@ export class GenerateManager {
     if (!parentModel) return { ok: false, error: 'record-not-found' };
     const parent = plain(parentModel);
 
-    // ignoreGuard (dry-run only): the settings editor previews WHAT WOULD be generated even on a
-    // record that fails the condition — the result carries guardOk/guardDetail so the UI can warn.
+    // The guard is the AUTO/default run condition. ignoreGuard overrides it for MANUAL runs (settings
+    // editor preview, and the record button after an explicit user confirm) — the result still carries
+    // guardOk/guardDetail so the UI can warn. Auto-run hooks never pass ignoreGuard.
     const guard = condsPass(config.guard, parent);
-    if (!guard.ok && !(opts.dryRun && opts.ignoreGuard)) return { ok: false, error: 'guard-failed', detail: guard.detail };
+    if (!guard.ok && !opts.ignoreGuard) return { ok: false, error: 'guard-failed', detail: guard.detail };
 
     const runVersion = (config.runVersionSource ? Number(parent[config.runVersionSource]) || 0 : 0) + 1;
     const srcRows = config.sourceLinesPath ? parent[config.sourceLinesPath] || [] : [];

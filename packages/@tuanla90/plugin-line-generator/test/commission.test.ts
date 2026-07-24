@@ -682,6 +682,24 @@ console.log('\nScenario P — relation step0 replaces the sourceLinesPath hop (c
     }
   }
 
+  // R3 — the guard is the AUTO/default condition: enforced by default, overridable by ignoreGuard
+  // (the manual-run confirm path); the result still reports guardOk:false for the warning banner.
+  {
+    const parent = order({ status: 'Chờ xác nhận', responsible_staff: Alice, transaction_staff: Dan, liquidation_employee: Eve });
+    const mgr = new GenerateManager(mkDb({ commission_rules: G1_RULES }, parent));
+    try {
+      const blocked = await mgr.run(CONFIG, 'ORD1', { dryRun: true });
+      eq(blocked.ok, false, 'R3 guard enforced by default');
+      eq(blocked.error, 'guard-failed', 'R3 error = guard-failed');
+      const forced = await mgr.run(CONFIG, 'ORD1', { dryRun: true, ignoreGuard: true });
+      eq(forced.ok, true, 'R3 ignoreGuard overrides the guard (manual confirm path)');
+      eq(forced.guardOk, false, 'R3 result still reports guardOk:false');
+    } catch (e: any) {
+      failures++;
+      console.log('  ✗ FAIL: R3 threw: ' + (e?.message || e));
+    }
+  }
+
   console.log('');
   if (failures) {
     console.log(`FAILED: ${failures} assertion(s)`);

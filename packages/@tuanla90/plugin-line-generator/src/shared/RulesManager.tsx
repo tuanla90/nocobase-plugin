@@ -823,10 +823,10 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 />
               </SettingRow>
               <SettingRow layout="vertical"
-                label={(cfg.trigger || 'manual') === 'auto' ? tt('Điều kiện kích hoạt') : tt('Điều kiện (nút chỉ hiện & server chỉ chạy khi thoả)')}
+                label={tt('Điều kiện kích hoạt (auto / mặc định)')}
                 hint={(cfg.trigger || 'manual') === 'auto'
                   ? tt('Bản ghi được lưu mà thoả các điều kiện này là tự sinh dòng. QUAN TRỌNG: thêm "cập nhật bản ghi cha" đánh dấu đã chạy (vd is_commission_created = true) để chỉ chạy 1 lần — bỏ dấu đó đi chính là cách chạy lại.')
-                  : tt('Điều kiện trên bản ghi cha — vừa ẩn/hiện nút, vừa được server kiểm tra lại khi chạy (chặn bấm đôi/gọi API thẳng). VD status = Đã thanh lý VÀ is_commission_created = false.')}>
+                  : tt('Điều kiện mặc định khi chạy: chưa thoả thì hộp thoại cảnh báo và hỏi xác nhận trước khi vẫn sinh. Nút bấm KHÔNG còn tự ẩn theo điều kiện này — ẩn/hiện nút chỉnh bằng linkage rules của chính nút (như nút core). VD status = Đã thanh lý VÀ is_commission_created = false.')}>
                 <CondList api={api} collection={cfg.sourceCollection || undefined} items={cfg.guard || []} onChange={(v) => set({ guard: v })} />
               </SettingRow>
               <SettingRow layout="vertical" label={tt('Sau khi chạy thành công, cập nhật bản ghi cha (post)')} hint={tt('Chạy trong cùng transaction. Luôn CHỈ THÊM dòng mới (không xoá) — nên đánh cờ ở đây (vd is_commission_created = true) để điều kiện phía trên chặn chạy trùng; xoá dòng cũ (nếu cần) là việc của người dùng.')}>
@@ -1031,7 +1031,7 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 : <Space direction="vertical" style={{ width: '100%' }} size="small">
                     {preview.guardOk === false ? (
                       <div style={{ fontSize: 12.5, color: '#ad6800', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 6, padding: '6px 10px' }}>
-                        {tt('Bản ghi mẫu CHƯA đạt điều kiện kích hoạt')} ({preview.guardDetail}) — {tt('thực tế nút sẽ ẩn / tự động sẽ không chạy. Kết quả bên dưới là GIẢ ĐỊNH bỏ qua điều kiện, chỉ để xem công thức.')}
+                        {tt('Bản ghi mẫu CHƯA đạt điều kiện kích hoạt')} ({preview.guardDetail}) — {tt('tự động sẽ không chạy; bấm nút sẽ bị hỏi xác nhận trước khi vẫn sinh. Kết quả bên dưới là GIẢ ĐỊNH bỏ qua điều kiện, chỉ để xem công thức.')}
                       </div>
                     ) : null}
                     <Space size="small" wrap>

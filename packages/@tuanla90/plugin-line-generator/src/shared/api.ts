@@ -8,6 +8,8 @@ export interface RuleMeta {
   title: string;
   sourceCollection: string;
   targetPath: string;
+  /** 'auto' = save-hook fires it; anything else/absent = manual. Buttons may trigger BOTH kinds. */
+  trigger?: string;
   guard: Array<{ field: string; op?: string; value: any }>;
 }
 
@@ -49,12 +51,12 @@ export async function fetchRulesFor(api: any, collection: string): Promise<RuleM
   }
 }
 
-export async function previewGenerate(api: any, ruleKey: string, filterByTk: any): Promise<RunResult> {
-  return call(api, 'preview', { data: { ruleKey, filterByTk } });
+export async function previewGenerate(api: any, ruleKey: string, filterByTk: any, opts: { ignoreGuard?: boolean } = {}): Promise<RunResult> {
+  return call(api, 'preview', { data: { ruleKey, filterByTk, ignoreGuard: opts.ignoreGuard === true } });
 }
 
-export async function commitGenerate(api: any, ruleKey: string, filterByTk: any): Promise<RunResult> {
-  return call(api, 'generate', { data: { ruleKey, filterByTk } });
+export async function commitGenerate(api: any, ruleKey: string, filterByTk: any, opts: { ignoreGuard?: boolean } = {}): Promise<RunResult> {
+  return call(api, 'generate', { data: { ruleKey, filterByTk, ignoreGuard: opts.ignoreGuard === true } });
 }
 
 /** Dry-run an inline (unsaved) config against a sample record — powers the settings editor's live preview.

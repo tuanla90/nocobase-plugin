@@ -1,72 +1,61 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Dropdown, Tooltip } from 'antd';
 import { GenerateDialog } from './GenerateDialog';
-import { fetchRulesFor, guardPasses, RuleMeta } from './api';
+import { fetchRulesFor } from './api';
 import { t, te } from './i18n';
 
-// "Sinh dòng" (Generate lines) record action. Discovers which generators apply to the record's
-// collection, hides itself unless at least one applies AND its guard passes, and opens a
-// preview→commit dialog. With >1 applicable generator it offers a dropdown.
+// "Sinh dòng" (Generate lines) record action — a CORE-LIKE button (the bind-workflow pattern):
+//  - NO custom visibility/render logic: the base ActionModel button renders as-is, so every core
+//    feature applies — title/icon/color/type, tooltip, linkage rules (show/hide/disable), ACL, layout.
+//    The config guard no longer hides the button; it is the AUTO/default run condition, and the dialog
+//    warns + asks for an explicit confirm when a manual run would override it.
+//  - The button's OWN setting is exactly one thing: WHICH rule to trigger (remote Select over the
+//    collection's enabled configs — auto ones included and labelled "[auto]").
+//  - Click (base onClick → dispatchEvent('click') → our click flow) opens the preview→commit dialog.
+//
+// Implementation notes (fork-safety): record actions in tables render as per-row FORKS. We keep NO
+// custom keys in this.props (base renderButton spreads props onto the antd <Button> — they'd leak to
+// the DOM) and NO ad-hoc instance fields (ForkFlowModel forwards unknown writes to the master → the
+// last-rendered row would win). Instead: the rule key lives in stepParams (shared per button — correct),
+// and the dialog opener is a WeakMap keyed by the exact render-time model (the fork), so each row opens
+// its own dialog with its own record.
 
-const GenerateButton: React.FC<{
-  api: any;
-  collectionName: string;
-  record: any;
-  tk: any;
-  pinnedKey?: string;
-  label: React.ReactNode;
-  btnProps: any;
-  onDone?: () => void;
-}> = ({ api, collectionName, record, tk, pinnedKey, label, btnProps, onDone }) => {
-  const [rules, setRules] = useState<RuleMeta[] | null>(null);
-  const [active, setActive] = useState<RuleMeta | null>(null);
+const FLOW_KEY = 'ptdlGenerateLines';
+const STEP_KEY = 'settings';
 
+/** render-time model (fork) → open-dialog callback for THAT row. */
+const dialogOpeners = new WeakMap<object, (ruleKey: string) => void>();
+
+/** Reads the configured rule key from step params (shared across forks by design). */
+function getRuleKey(model: any): string {
+  const p = (typeof model?.getStepParams === 'function' ? model.getStepParams(FLOW_KEY, STEP_KEY) : null) ||
+    model?.stepParams?.[FLOW_KEY]?.[STEP_KEY] || {};
+  return String(p.lgRuleKey || '').trim();
+}
+
+/** Mounted next to the button; owns the dialog open-state so the model needs no reactive props. */
+const DialogHost: React.FC<{ model: any }> = ({ model }) => {
+  const [ruleKey, setRuleKey] = useState<string | null>(null);
   useEffect(() => {
-    let live = true;
-    if (!collectionName) { setRules([]); return; }
-    fetchRulesFor(api, collectionName).then((rs) => {
-      if (!live) return;
-      setRules(pinnedKey ? rs.filter((r) => r.key === pinnedKey) : rs);
-    });
-    return () => { live = false; };
-  }, [api, collectionName, pinnedKey]);
-
-  if (!rules) return null;
-  // Only show generators whose guard passes for THIS record.
-  const applicable = rules.filter((r) => guardPasses(r.guard, record));
-  if (!applicable.length || tk == null) return null;
-
-  const open = (r: RuleMeta) => setActive(r);
-  const dialog = active ? (
-    <GenerateDialog
-      open={!!active}
-      api={api}
-      ruleKey={active.key}
-      ruleTitle={active.title}
-      filterByTk={tk}
-      onClose={() => setActive(null)}
-      onDone={onDone}
-    />
-  ) : null;
-
-  if (applicable.length === 1) {
-    return (
-      <>
-        <Button {...btnProps} onClick={(e: any) => { e?.stopPropagation?.(); open(applicable[0]); }}>{label}</Button>
-        {dialog}
-      </>
-    );
-  }
+    dialogOpeners.set(model, (k: string) => setRuleKey(k));
+    return () => { dialogOpeners.delete(model); };
+  }, [model]);
+  if (!ruleKey) return null;
+  const ctx: any = model.context;
+  const collection = ctx?.collection || ctx?.blockModel?.collection;
+  const record = ctx?.record;
+  const tkField = collection?.filterTargetKey || 'id';
+  const tk = record?.[Array.isArray(tkField) ? tkField[0] : tkField];
+  const refresh = () => (ctx?.blockModel?.resource?.refresh?.() || ctx?.resource?.refresh?.());
   return (
-    <>
-      <Dropdown
-        trigger={['click']}
-        menu={{ items: applicable.map((r) => ({ key: r.key, label: r.title })), onClick: ({ key }) => open(applicable.find((r) => r.key === key)!) }}
-      >
-        <Button {...btnProps} onClick={(e: any) => e?.stopPropagation?.()}>{label}</Button>
-      </Dropdown>
-      {dialog}
-    </>
+    <GenerateDialog
+      open
+      api={ctx?.api}
+      ruleKey={ruleKey}
+      ruleTitle={typeof model.getTitle === 'function' ? model.getTitle() : undefined}
+      filterByTk={tk}
+      onClose={() => setRuleKey(null)}
+      onDone={refresh}
+    />
   );
 };
 
@@ -74,35 +63,22 @@ export function defineGenerateLinesActionModel(Base: any) {
   class GenerateLinesActionModel extends Base {
     static scene = 'record';
 
-    defaultProps: any = { title: 'Sinh dòng' };
+    defaultProps: any = { title: 'Sinh dòng', type: 'default' };
 
+    // Treated like an Update-class action for ACL-based visibility (a generate writes the record's
+    // children + parent bookkeeping) — roles without update on the collection don't get the button.
     getAclActionName() {
       return 'update';
     }
 
     render() {
-      const { lgRuleKey, tooltip, title, children, ...btnProps }: any = (this as any).props || {};
-      const ctx: any = (this as any).context;
-      const collection = ctx?.collection || ctx?.blockModel?.collection;
-      const record = ctx?.record;
-      const tkField = collection?.filterTargetKey || 'id';
-      const tk = record?.[Array.isArray(tkField) ? tkField[0] : tkField];
-      const resolved = (typeof (this as any).getTitle === 'function' ? (this as any).getTitle() : title) || 'Sinh dòng';
-      const label = children || (typeof resolved === 'string' ? t(resolved) : resolved);
-      const refresh = () => (ctx?.blockModel?.resource?.refresh?.() || ctx?.resource?.refresh?.());
-      const btn = (
-        <GenerateButton
-          api={ctx?.api}
-          collectionName={collection?.name}
-          record={record}
-          tk={tk}
-          pinnedKey={lgRuleKey || undefined}
-          label={label}
-          btnProps={btnProps}
-          onDone={refresh}
-        />
+      // Base render = the standard core button (props untouched). We only append the dialog host.
+      return (
+        <>
+          {super.render()}
+          <DialogHost model={this} />
+        </>
       );
-      return tooltip ? <Tooltip title={tooltip}>{btn}</Tooltip> : btn;
     }
   }
 
@@ -111,23 +87,79 @@ export function defineGenerateLinesActionModel(Base: any) {
     sort: 59,
   });
 
+  // Settings: ONLY "which rule". Remote Select — options are the block collection's enabled configs
+  // (auto ones labelled). uiSchema-as-function lets us fetch per-collection options with the model ctx.
   (GenerateLinesActionModel as any).registerFlow({
-    key: 'ptdlGenerateLines',
+    key: FLOW_KEY,
     title: te('Sinh dòng theo quy tắc'),
     sort: 610,
     steps: {
-      settings: {
-        title: te('Cấu hình bộ sinh'),
-        uiSchema: {
-          lgRuleKey: {
-            type: 'string',
-            title: te('Key bộ sinh (trống = tự nhận theo bảng)'),
-            'x-decorator': 'FormItem',
-            'x-component': 'Input',
-          },
+      [STEP_KEY]: {
+        title: te('Bộ sinh cần chạy'),
+        uiSchema: async (ctx: any) => {
+          const mctx = ctx?.model?.context || {};
+          const collection = mctx.collection || mctx.blockModel?.collection;
+          const api = mctx.api || ctx?.api;
+          let options: Array<{ value: string; label: string }> = [];
+          try {
+            const rules = await fetchRulesFor(api, collection?.name);
+            options = rules.map((r) => ({
+              value: r.key,
+              label: `${r.trigger === 'auto' ? '[auto] ' : ''}${r.title || r.key}`,
+            }));
+          } catch {
+            /* fall through to the bare input below */
+          }
+          if (!options.length) {
+            // No configs found (or fetch failed) → let the builder type the key by hand.
+            return {
+              lgRuleKey: {
+                type: 'string',
+                title: te('Key bộ sinh'),
+                'x-decorator': 'FormItem',
+                'x-component': 'Input',
+              },
+            };
+          }
+          return {
+            lgRuleKey: {
+              type: 'string',
+              title: te('Bộ sinh'),
+              'x-decorator': 'FormItem',
+              'x-component': 'Select',
+              'x-component-props': {
+                allowClear: true,
+                showSearch: true,
+                optionFilterProp: 'label',
+                placeholder: t('Chọn bộ sinh của bảng này'),
+              },
+              enum: options,
+            },
+          };
         },
-        handler(ctx: any, params: any) {
-          ctx.model.setProps({ lgRuleKey: params.lgRuleKey });
+        // Params persist in stepParams (read at click time) — nothing to apply to the model.
+        handler() { /* noop */ },
+      },
+    },
+  });
+
+  // Click = open the preview→commit dialog for the configured rule, on THIS row's record.
+  (GenerateLinesActionModel as any).registerFlow({
+    key: 'ptdlGenerateLinesClick',
+    on: 'click',
+    steps: {
+      open: {
+        handler(ctx: any) {
+          const m = ctx.model;
+          const key = getRuleKey(m);
+          const msg = ctx.message || m?.context?.message;
+          if (!key) {
+            msg?.warning?.(t('Nút chưa chọn bộ sinh — mở cấu hình nút → "Bộ sinh cần chạy"'));
+            return;
+          }
+          const opener = dialogOpeners.get(m);
+          if (opener) opener(key);
+          else msg?.warning?.(t('Không mở được hộp thoại — tải lại trang rồi thử lại'));
         },
       },
     },
