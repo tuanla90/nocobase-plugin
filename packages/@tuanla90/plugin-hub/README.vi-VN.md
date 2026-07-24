@@ -3,7 +3,7 @@
 > Cài **một plugin duy nhất**, rồi từ đó **cài và cập nhật mọi plugin @tuanla90 khác** — không cần upload
 > file `.tgz` qua trình duyệt, không cần vào server. Trỏ tới một **manifest URL**, bấm một nút là xong.
 
-**Nhóm:** Giao diện (UI) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.14
+**Nhóm:** Giao diện (UI) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.1.15
 
 ## Vì sao cần?
 

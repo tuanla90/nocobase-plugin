@@ -148,12 +148,13 @@ export function PluginHubPane({ api }: { api: any }) {
   // (predictable + one restart per click). Returns null on success, or an error string.
   const advancePlugin = async (it: Item, progress: (s: string) => void): Promise<string | null> => {
     if (it.status === 'not-installed') {
-      progress(t('Installing'));
-      // installEnable = download + register + enable IN-PROCESS (works where `pm add`'s pm2-restart doesn't).
-      // Awaited server-side, but the in-process reload can drop the connection → tolerate a throw, verify by poll.
-      const r = await silentReq('ptdlPluginHub:installEnable', { url: it.url, packageName: it.packageName }).catch(() => null);
+      progress(t('Downloading'));
+      // installOnly = download + link files + write a DISABLED applicationPlugins row — NO enable, so NO
+      // app reload (the slow step that times out on heavy apps). The plugin lands as 'disabled'; the user
+      // Enables it from the Plugin manager (or here) when ready. Fire-and-forget → poll until 'disabled'.
+      const r = await silentReq('ptdlPluginHub:installOnly', { url: it.url, packageName: it.packageName, version: it.availableVersion }).catch(() => null);
       if (r && r.ok === false) return r.error || t('Operation failed');
-      return (await waitForStatus(it.packageName, ['up-to-date', 'update'], t('Installing'), progress)) ? null : t('Install did not finish in time');
+      return (await waitForStatus(it.packageName, ['disabled', 'up-to-date', 'update'], t('Downloading'), progress, 90000)) ? null : t('Install did not finish in time');
     }
     if (it.status === 'disabled') {
       progress(t('Enabling'));
@@ -163,7 +164,7 @@ export function PluginHubPane({ api }: { api: any }) {
     }
     if (it.status === 'update') {
       progress(t('Updating'));
-      const r = await req('ptdlPluginHub:updatePlugin', { url: it.url });
+      const r = await req('ptdlPluginHub:updatePlugin', { url: it.url, packageName: it.packageName });
       if (!r?.ok) return r?.error || t('Operation failed');
       await waitForStatus(it.packageName, ['up-to-date'], t('Updating'), progress);
     }
@@ -185,19 +186,21 @@ export function PluginHubPane({ api }: { api: any }) {
     finally { setBusy(null); setProgress(''); }
   };
 
-  // Install = download + register + ENABLE in one in-process step (installEnable) → the plugin ends up active.
+  // Install = download + register the plugin as DISABLED (installOnly) — NO app reload. Enabling is a
+  // SEPARATE step (here or in the native Plugin manager) so a heavy app's slow reload never blocks the
+  // install / trips the poll timeout.
   const onInstall = async (it: Item) => {
     setBusy(it.packageName);
     try {
       const err = await advancePlugin(it, (s) => setProgress(`${s}: ${it.displayName}`));
       await onCheck(undefined, true);
       if (err) message.error(`${it.displayName}: ${err}`, 10);
-      else message.success(t('Installed and enabled'));
+      else message.success(t('Downloaded — now click Enable (here or in Plugin manager)'), 8);
     } catch (e) { message.error(errMsg(e)); }
     finally { setBusy(null); setProgress(''); }
   };
   const onEnable = (it: Item) => runOp(t('Enabled'), it.packageName, 'ptdlPluginHub:enable', { packageName: it.packageName });
-  const onUpdate = (it: Item) => runOp(t('Updated'), it.packageName, 'ptdlPluginHub:updatePlugin', { url: it.url });
+  const onUpdate = (it: Item) => runOp(t('Updated'), it.packageName, 'ptdlPluginHub:updatePlugin', { url: it.url, packageName: it.packageName });
   const onDisable = (it: Item) => runOp(t('Disabled'), it.packageName, 'ptdlPluginHub:disable', { packageName: it.packageName });
   const onUninstall = (it: Item) => runOp(t('Removed'), it.packageName, 'ptdlPluginHub:uninstall', { packageName: it.packageName });
 
@@ -209,7 +212,7 @@ export function PluginHubPane({ api }: { api: any }) {
       for (let i = 0; i < todo.length; i++) {
         setProgress(`${t('Updating')} ${i + 1}/${todo.length}: ${todo[i].displayName}`);
         try {
-          const res = await req('ptdlPluginHub:updatePlugin', { url: todo[i].url });
+          const res = await req('ptdlPluginHub:updatePlugin', { url: todo[i].url, packageName: todo[i].packageName });
           if (res?.ok) await waitAppReady();
         } catch { /* keep going */ }
       }

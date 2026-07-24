@@ -3,7 +3,7 @@
 > Install **one plugin**, then install & update **every other @tuanla90 plugin** from it — no browser `.tgz`
 > upload, no server shell. Point it at a **manifest URL**, click a button.
 
-**Group:** UI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.14
+**Group:** UI · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.1.15
 
 ## Why?
 

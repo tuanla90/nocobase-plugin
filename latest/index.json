@@ -160,9 +160,9 @@
     {
       "packageName": "@tuanla90/plugin-hub",
       "slug": "hub",
-      "version": "0.1.14",
+      "version": "0.1.15",
       "displayName": "Plugin Hub",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.14.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-hub-0.1.15.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-inline-field",
@@ -195,9 +195,9 @@
     {
       "packageName": "@tuanla90/plugin-line-generator",
       "slug": "line-generator",
-      "version": "0.8.1",
+      "version": "0.8.2",
       "displayName": "Line Generator",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.8.1.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.8.2.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-login-lite",

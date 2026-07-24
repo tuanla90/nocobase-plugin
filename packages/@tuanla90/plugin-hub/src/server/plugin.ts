@@ -7,11 +7,12 @@ import path from 'path';
  * The Hub fetches a MANIFEST JSON (default = the public repo's `latest/index.json`) listing
  * `{ packageName, version, url }` per plugin, compares each to what's installed (via the pm
  * repository), and drives NocoBase's own plugin manager to apply changes:
- *   - install  → `pm add <url>`      (downloads + registers; ends DISABLED)
- *   - enable   → `pm enable <pkg>`   (runs migrations + enables; app reloads)
- *   - update   → `pm update <url>`   (replaces files of an installed plugin; app reloads)
- * These fire via `app.runAsCLI(...)` exactly like NocoBase's own `pm:add` HTTP action, and are
- * fire-and-forget (the app reloads) — the client polls health then re-checks.
+ *   - install  → `pm add <url>` via runAsCLI (downloads + registers; ends DISABLED) — or the
+ *                in-process installOnly/installEnable variants (see each handler's comment)
+ *   - enable   → in-process `pm.enable(pkg)` (runs migrations + enables; app reloads)
+ *   - update   → in-process `pm.upgradeByCompressedFileUrl` + require-cache purge + reload (the CLI
+ *                `pm update` restarts via pm2, which no-ops on Docker/Railway — see updateAction)
+ * Mutations are fire-and-forget (the app reloads) — the client polls health then re-checks.
  *
  * A weekly timer re-checks and stores `updatesAvailable` — NOTIFY only, never auto-applies (installing
  * code without review is opt-out-by-design). Dangerous actions (install/enable/update/saveConfig) are
@@ -83,16 +84,17 @@ export class PluginPluginHubServer extends Plugin {
         // update action, filter or filterByTk is required"), rejecting our handler. So expose it as 'updatePlugin'.
         install: this.installAction,
         installEnable: this.installEnableAction,
+        installOnly: this.installOnlyAction, // download + register as DISABLED, NO reload (for heavy apps)
         enable: this.enableAction,
         updatePlugin: this.updateAction,
         disable: this.disableAction,
         uninstall: this.uninstallAction, // NOT 'remove' — that's a reserved association action
       },
-      only: ['getConfig', 'saveConfig', 'check', 'install', 'installEnable', 'enable', 'updatePlugin', 'disable', 'uninstall'],
+      only: ['getConfig', 'saveConfig', 'check', 'install', 'installEnable', 'installOnly', 'enable', 'updatePlugin', 'disable', 'uninstall'],
     });
     // System collection isn't covered by the admin role strategy → grant explicitly. Reads are for any
     // logged-in user; mutating actions additionally require the `root` role (checked in-handler).
-    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'installEnable', 'enable', 'updatePlugin', 'disable', 'uninstall'], 'loggedIn');
+    this.app.acl.allow('ptdlPluginHub', ['getConfig', 'check', 'saveConfig', 'install', 'installEnable', 'installOnly', 'enable', 'updatePlugin', 'disable', 'uninstall'], 'loggedIn');
 
     // Weekly NOTIFY check (never auto-applies). Start after the app is up.
     this.app.on('afterStart', () => {
@@ -257,6 +259,48 @@ export class PluginPluginHubServer extends Plugin {
     await next();
   };
 
+  // Install (files only) — download + link the plugin AND register it in `applicationPlugins` as
+  // DISABLED, but do NOT enable → NO app reload / db.sync. On a heavy app the enable-reload is the slow
+  // step that trips the install poll timeout; splitting it lets Install finish in seconds. The plugin
+  // then shows as "disabled" in BOTH Plugin Hub and the native Plugin manager, ready to Enable when the
+  // user is willing to pay the single restart (there, or here). `enable` auto-registers from the linked
+  // files (pm.enable → addOrThrow), so writing just the files + the disabled row is enough.
+  // Fire-and-forget (download can be slow); the client polls `check` until the row appears ('disabled').
+  private installOnlyAction = async (ctx: any, next: any) => {
+    this.requireRoot(ctx);
+    const v = ctx.action?.params?.values || {};
+    const url = String(v.url || '').trim();
+    const pkg = String(v.packageName || '').trim();
+    const clientVersion = String(v.version || '').trim();
+    if (!url || !pkg) { ctx.body = { ok: false, error: 'Thiếu url hoặc packageName' }; await next(); return; }
+    const pm: any = this.app.pm;
+    void (async () => {
+      try {
+        // 1) download + link the plugin files (no reload, no db.sync)
+        await pm.addByCompressedFileUrl({ compressedFileUrl: url });
+        // 2) resolve the canonical short name (the applicationPlugins PK) + version
+        // The applicationPlugins PK `name` is what enable() looks up. NocoBase's parseName keeps the FULL
+        // packageName as `name` for non-@nocobase scopes (verified live: every @tuanla90 row has
+        // name === packageName), and only shortens @nocobase/plugin-*. So parseName is authoritative; the
+        // fallback is the full packageName (NOT a shortened slug, which would mismatch enable()).
+        const PM: any = pm.constructor;
+        let name = '';
+        try { const parsed = await PM.parseName(pkg); name = parsed?.name || ''; } catch { /* fallback below */ }
+        if (!name) name = pkg;
+        let version = clientVersion;
+        if (!version) { try { const pj = await PM.getPackageJson(pkg); version = pj?.version || ''; } catch { /* best-effort */ } }
+        // 3) write the DISABLED row → the plugin shows in the manager, ready to Enable. No reload.
+        const repo = this.app.db.getRepository('applicationPlugins');
+        await repo.updateOrCreate({ values: { name, packageName: pkg, enabled: false, installed: false, version }, filterKeys: ['name'] });
+        this.app.log?.info?.('[plugin-hub] installOnly done (files + disabled row): ' + pkg + ' @ ' + version);
+      } catch (e: any) {
+        this.app.log?.error?.('[plugin-hub] installOnly failed for ' + pkg + ': ' + (e?.message || e));
+      }
+    })();
+    ctx.body = { ok: true, pending: true, op: 'install' };
+    await next();
+  };
+
   // Enable = direct, FIRE-AND-FORGET `pm.enable` — the SAME in-process path the native Plugin Manager toggle
   // / Bulk enable use (proven to work on non-pm2 deploys), NOT `runAsCLI`. pm.enable writes the
   // applicationPlugins row (enabled: true) then reloads via tryReloadOrRestart. Detached so the HTTP response
@@ -276,11 +320,53 @@ export class PluginPluginHubServer extends Plugin {
     await next();
   };
 
+  // Update = replace files IN-PROCESS, then purge the require cache and reload. The CLI path
+  // (`runAsCLI(['pm','update',url])` → pm.update) replaces the files fine but restarts via
+  // `execa('yarn',['nocobase','pm2-restart'])`, which silently no-ops on non-pm2 deploys
+  // (Docker/Railway) → new dist on disk, OLD code still serving from RAM, row version never bumped —
+  // the exact trap install already works around (installEnable). Three in-process steps instead:
+  //   1) pm.upgradeByCompressedFileUrl — the SAME download+replace step pm.update uses (also verifies
+  //      the plugin is registered; throws "<pkg> does not exist" otherwise).
+  //   2) purge require.cache entries under the package dir — upstream PluginManager.clearCache is
+  //      DISABLED (unconditional early return) and importModule is a plain require, so without this the
+  //      reload's resolvePlugin would re-serve the cached old module and the update would be a no-op.
+  //      Matched by path fragment (@scope/name normalized to the OS separator) → hits both the
+  //      node_modules link and its storage/plugins target, including the plugin's bundled deps.
+  //   3) bump the applicationPlugins row version (from the NEW package.json) so `check` reports
+  //      up-to-date, then tryReloadOrRestart — the same in-process reload pm.enable ends with (proven
+  //      on these deploys); with the cache purged it re-requires the NEW dist.
+  // Fire-and-forget like enable: the reload tears the app down; awaiting it in-request would abort it.
+  // The client polls `check` (waitForStatus/waitAppReady) for the result.
   private updateAction = async (ctx: any, next: any) => {
     this.requireRoot(ctx);
-    const url = String(ctx.action?.params?.values?.url || '').trim();
+    const v = ctx.action?.params?.values || {};
+    const url = String(v.url || '').trim();
+    const pkg = String(v.packageName || '').trim();
     if (!url) { ctx.body = { ok: false, error: 'Thiếu url' }; await next(); return; }
-    try { this.runPm(['update', url]); } catch (e: any) { ctx.body = { ok: false, error: 'pm update lỗi: ' + (e?.message || e) }; await next(); return; }
+    const pm: any = this.app.pm;
+    void (async () => {
+      try {
+        await pm.upgradeByCompressedFileUrl({ compressedFileUrl: url });
+        if (pkg) {
+          const needle = path.sep + pkg.replace('/', path.sep) + path.sep;
+          for (const key of Object.keys(require.cache)) {
+            if (key.includes(needle)) delete require.cache[key];
+          }
+          try {
+            const PM: any = pm.constructor;
+            const pj = await PM.getPackageJson(pkg); // reads the freshly replaced storage/plugins package.json
+            if (pj?.version) {
+              await this.app.db.getRepository('applicationPlugins').update({ filter: { packageName: pkg }, values: { version: pj.version } });
+            }
+          } catch { /* best-effort — status self-heals on next full restart */ }
+        } else {
+          this.app.log?.warn?.('[plugin-hub] update without packageName — require cache NOT purged; a full restart is needed to load the new code');
+        }
+        await this.app.tryReloadOrRestart();
+      } catch (e: any) {
+        this.app.log?.error?.('[plugin-hub] update failed for ' + (pkg || url) + ': ' + (e?.message || e));
+      }
+    })();
     ctx.body = { ok: true, pending: true, op: 'update' };
     await next();
   };

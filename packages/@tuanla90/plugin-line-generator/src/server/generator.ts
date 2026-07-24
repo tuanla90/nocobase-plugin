@@ -160,6 +160,9 @@ export class GenerateManager {
     const user = opts.userId != null ? { id: opts.userId } : null;
 
     let core;
+    // Function-scoped: the dry-run return below reports it for BOTH branches. (0.8.0/0.8.1 had it
+    // block-scoped inside the else → every preview threw "rules is not defined" → HTTP 500.)
+    let ruleCount = 0;
     if (config.joinSteps && config.joinSteps.length) {
       // PIPELINE: load the RIGHT side of each CONFIG step from its OWN table (each step can join a different
       // config table). A RELATION step needs no query — its fan-out is the input rows' association, already
@@ -172,6 +175,7 @@ export class GenerateManager {
         const models = await db.getRepository(step.ruleCollection).find({ filter, appends: expandAppends(step.ruleAppends) });
         stepRules.push((models || []).map(plain));
       }
+      ruleCount = stepRules.reduce((n, r) => n + r.length, 0);
       core = generateCore(config, { parent, srcRows, rules: [], stepRules, user, runVersion, debug: opts.debug });
     } else {
       // Rules: inline (embedded in this config, filtered by scope `when`) or an external collection.
@@ -184,6 +188,7 @@ export class GenerateManager {
         const ruleModels = await db.getRepository(config.ruleCollection).find({ filter, appends: expandAppends(config.ruleAppends) });
         rules = (ruleModels || []).map(plain);
       }
+      ruleCount = rules.length;
       core = generateCore(config, { parent, srcRows, rules, user, runVersion, debug: opts.debug });
     }
 
@@ -201,7 +206,7 @@ export class GenerateManager {
     }
 
     if (opts.dryRun) {
-      return { ok: true, dryRun: true, guardOk: guard.ok, guardDetail: guard.detail, lines: core.rows, skipped: core.skipped, errors: core.errors, trace: core.trace, runVersion, ruleCount: rules.length };
+      return { ok: true, dryRun: true, guardOk: guard.ok, guardDetail: guard.detail, lines: core.rows, skipped: core.skipped, errors: core.errors, trace: core.trace, runVersion, ruleCount };
     }
 
     const marker = config.markerField || '_genRule';

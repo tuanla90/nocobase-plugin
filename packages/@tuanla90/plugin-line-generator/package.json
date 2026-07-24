@@ -4,7 +4,7 @@
   "displayName.vi-VN": "Bộ sinh dòng theo quy tắc",
   "displayName.zh-CN": "行生成器",
   "description": "Turn one parent record into N child rows in one transaction — a configurable JOIN + fan-out generalised into an ordered multi-step JOIN pipeline (each step joins a different config table or follows a relation; output of step N feeds step N+1). One config covers BOM/combo explosion, commission splits, and cost allocation — with cross-relation matching, priority tiers, self-join recursion, group-and-sum, rounding, and a fan-out row cap. Run on demand or auto-run on save, with a dry-run preview + debugger.",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "main": "dist/server/index.js",
   "dependencies": {},
   "devDependencies": {

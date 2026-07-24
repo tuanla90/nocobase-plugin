@@ -1,4 +1,7 @@
 import React from 'react';
+// Externalise @formily/react (host-provided): shared's settingsKit imports it; the build derives externals
+// from this plugin's client imports, so without this line rspack tries to bundle it and fails to resolve.
+import '@formily/react';
 import { Plugin, useAPIClient } from '@nocobase/client';
 import { setSharedT, SHARED_NS, sharedEnUS } from '@tuanla90/shared';
 import { PluginHubPane } from '../shared/PluginHubPane';

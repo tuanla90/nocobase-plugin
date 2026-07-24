@@ -41,6 +41,8 @@
   "Enable selected": "Bật mục đã chọn",
   "Run selected": "Chạy mục đã chọn",
   "Installing": "Đang cài",
+  "Downloading": "Đang tải về",
+  "Downloaded — now click Enable (here or in Plugin manager)": "Đã tải về — giờ bấm Enable (ở đây hoặc trong Plugin manager)",
   "Enabling": "Đang bật",
   "Batch done": "Đã xử lý xong các mục đã chọn",
   "Group": "Nhóm",

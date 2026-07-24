@@ -2,6 +2,7 @@
  * dynamic based_on/recipient paths, base×rate math, required-null skip) WITHOUT the NocoBase runtime.
  * Bundle with esbuild + run with node (see test/run.sh). */
 import { generateCore, resolveInlineRules } from '../src/shared/generateCore';
+import { GenerateManager } from '../src/server/generator';
 import type { LineGenConfig } from '../src/shared/types';
 import { COMMISSION_INLINE_TEMPLATE } from '../src/shared/templates';
 
@@ -622,10 +623,73 @@ console.log('\nScenario P — relation step0 replaces the sourceLinesPath hop (c
   eq(byMat['DINH'], 12, 'đinh = 12');
 }
 
-console.log('');
-if (failures) {
-  console.log(`FAILED: ${failures} assertion(s)`);
+// ============ Scenario R: GenerateManager.run() dry-run — REGRESSION ============
+// v0.8.0/0.8.1 shipped a dry-run return that read a block-scoped `rules` from outside its block →
+// every preview threw "rules is not defined" (HTTP 500). The pure-core scenarios above can't catch
+// that class of bug, so drive the REAL server wrapper (fake db) through BOTH branches, dryRun:true.
+(async () => {
+  console.log('\nScenario R — GenerateManager.run() dry-run regression (rules out-of-scope → 500):');
+  const mkDb = (tables: Record<string, any[]>, parentRow: any) => ({
+    getRepository: (name: string) => ({
+      findOne: async (_q: any) => parentRow,
+      find: async (_q: any) => tables[name] || [],
+    }),
+    sequelize: { transaction: async (_fn: any) => { throw new Error('dry-run must not open a transaction'); } },
+  });
+
+  // R1 — legacy single-join branch (external ruleCollection), same inputs as Scenario A.
+  {
+    const parent = order({ responsible_staff: Alice, transaction_staff: Dan, liquidation_employee: Eve });
+    const direct = generateCore(CONFIG, { parent, srcRows: [], rules: G1_RULES, runVersion: 1 });
+    const mgr = new GenerateManager(mkDb({ commission_rules: G1_RULES }, parent));
+    try {
+      const res = await mgr.run(CONFIG, 'ORD1', { dryRun: true });
+      eq(res.ok, true, 'R1 legacy dry-run ok (no ReferenceError)');
+      eq(res.ruleCount, G1_RULES.length, `R1 ruleCount = ${G1_RULES.length}`);
+      eq((res.lines || []).length, direct.rows.length, 'R1 preview lines = direct core rows');
+    } catch (e: any) {
+      failures++;
+      console.log('  ✗ FAIL: R1 legacy dry-run threw: ' + (e?.message || e));
+    }
+  }
+
+  // R2 — joinSteps pipeline branch (config step loaded from its own table).
+  {
+    const cfg: LineGenConfig = {
+      key: 'r2-bom', title: 'BOM (pipeline dry-run)', enabled: true,
+      sourceCollection: 'orders', sourceLinesPath: 'order_items',
+      joinSteps: [
+        { stepType: 'config', ruleCollection: 'bom', ruleWhere: [{ field: 'product_id', op: 'eq', value: 'src.product_id' }],
+          lineOutputs: [
+            { targetField: 'material_id', formula: 'rule.material_id', required: true },
+            { targetField: 'qty', formula: 'NUM(src.qty) * NUM(rule.qty_per)', required: true },
+          ] },
+      ],
+      targetPath: 'material_requirements', targetForeignKey: 'order_id', regenPolicy: 'append',
+    } as any;
+    const parent = { id: 1, order_items: [{ product_id: 'GHE', qty: 2 }] };
+    const BOM_TBL = [{ product_id: 'GHE', material_id: 'GO', qty_per: 2 }];
+    const mgr = new GenerateManager(mkDb({ bom: BOM_TBL }, parent));
+    try {
+      const res = await mgr.run(cfg, 1, { dryRun: true });
+      eq(res.ok, true, 'R2 pipeline dry-run ok (no ReferenceError)');
+      eq(res.ruleCount, 1, 'R2 ruleCount = 1 (config-step rules)');
+      eq((res.lines || []).length, 1, 'R2 one line generated');
+      eq((res.lines || [])[0]?.qty, 4, 'R2 qty = 2 × 2');
+    } catch (e: any) {
+      failures++;
+      console.log('  ✗ FAIL: R2 pipeline dry-run threw: ' + (e?.message || e));
+    }
+  }
+
+  console.log('');
+  if (failures) {
+    console.log(`FAILED: ${failures} assertion(s)`);
+    process.exit(1);
+  } else {
+    console.log('ALL PASSED');
+  }
+})().catch((e) => {
+  console.log('✗ FAIL: unhandled — ' + (e?.message || e));
   process.exit(1);
-} else {
-  console.log('ALL PASSED');
-}
+});
