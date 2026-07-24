@@ -3,7 +3,7 @@
 > From **one parent record** → generate **N child rows** in **one transaction**, following a **rule set** you declare once.
 > The same mechanism covers **BOM explosion**, **commission splits**, and **cost / piece-rate allocation** — with cross-relation matching, dynamic recipients, group-and-sum, and rounding; run it **manually with a button** or **automatically on save**, with a **dry-run preview** + **debugger**.
 
-**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.8.5
+**Group:** Data model tools · **Runs on:** /admin (classic) + /v/ (modern) · **Version:** 0.8.6
 
 > **New in 0.8** — the single JOIN is generalised into an **ordered multi-step JOIN pipeline**. The config editor becomes a **pipeline builder**: LEFT source, then an add/remove/reorder list of **step cards** (each joins its own RIGHT side), then the final group/SUM + write target.
 > - **N-step pipeline** — each step joins a **different config table** (or follows a relation) and fans rows out; the **output of step N is the input of step N+1** (a step's formulas read the incoming row via `src.*`), so quantities **multiply naturally down the chain**. The real target case: order → order_items → **⋈ combo_config (recursive)** → **⋈ bom** → group by material + SUM.

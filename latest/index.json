@@ -195,9 +195,9 @@
     {
       "packageName": "@tuanla90/plugin-line-generator",
       "slug": "line-generator",
-      "version": "0.8.5",
+      "version": "0.8.6",
       "displayName": "Line Generator",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.8.5.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-line-generator-0.8.6.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-login-lite",

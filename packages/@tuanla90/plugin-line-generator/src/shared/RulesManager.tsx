@@ -13,6 +13,10 @@ import { TEMPLATES } from './templates';
 import type { LineGenConfig } from './types';
 import { t as tt } from './i18n';
 
+// SettingRow with a label column wide enough for this editor's long labels — the shared default (96px)
+// wraps them onto 3-4 lines while the input side has plenty of room. Callers may still override.
+const SRow: React.FC<React.ComponentProps<typeof SettingRow>> = (props) => <SettingRow labelWidth={190} {...props} />;
+
 const RULES_COLLECTION = 'ptdl_linegen_rules';
 
 // New generators are COLLECTION-mode only (rules live in a data table) — inline scopes remain
@@ -372,32 +376,32 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
           </Space>
         </div>
 
-        <SettingRow label={tt('Nguồn nối (RIGHT)')} hint={tt('Bảng config = quét bảng chuẩn/định mức, khớp theo điều kiện. Quan hệ có sẵn = đi theo hasMany/o2m sẵn có của dòng hiện tại (nhanh, chỉ dòng liên kết theo khoá ngoại).')}>
+        <SRow label={tt('Nguồn nối (RIGHT)')} hint={tt('Bảng config = quét bảng chuẩn/định mức, khớp theo điều kiện. Quan hệ có sẵn = đi theo hasMany/o2m sẵn có của dòng hiện tại (nhanh, chỉ dòng liên kết theo khoá ngoại).')}>
           <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }} value={step.stepType || 'config'} onChange={(v: any) => onChange({ stepType: v })}
             options={[{ value: 'config', label: tt('Bảng config (khớp điều kiện)') }, { value: 'relation', label: tt('Quan hệ có sẵn (theo key)') }]} />
-        </SettingRow>
+        </SRow>
 
         {isRel ? (
           <>
-            <SettingRow label={tt('Quan hệ để đi theo (relationPath)')} hint={tt('Quan hệ hasMany/o2m trên dòng đầu vào của bước này — các bản ghi liên kết trở thành rule.* để nổ ra. Bước đầu đọc quan hệ của bảng nguồn/cha.')}>
+            <SRow label={tt('Quan hệ để đi theo (relationPath)')} hint={tt('Quan hệ hasMany/o2m trên dòng đầu vào của bước này — các bản ghi liên kết trở thành rule.* để nổ ra. Bước đầu đọc quan hệ của bảng nguồn/cha.')}>
               <AutoComplete size="middle" style={{ width: '100%' }} options={relOptions} value={step.relationPath} onChange={(v) => onChange({ relationPath: v as string })} placeholder={tt('vd order_items')} filterOption={(input, o) => String(o?.label || '').toLowerCase().includes(input.toLowerCase())} />
-            </SettingRow>
-            <SettingRow layout="vertical" label={tt('Lọc thêm dòng quan hệ (tuỳ chọn)')} hint={tt('Không bắt buộc — lọc bớt các bản ghi liên kết đã lấy về. rule.* = bản ghi liên kết.')}>
+            </SRow>
+            <SRow layout="vertical" label={tt('Lọc thêm dòng quan hệ (tuỳ chọn)')} hint={tt('Không bắt buộc — lọc bớt các bản ghi liên kết đã lấy về. rule.* = bản ghi liên kết.')}>
               <EditTable rows={step.ruleWhere || []} onChange={(v) => onChange({ ruleWhere: v })} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={condCols()} />
-            </SettingRow>
+            </SRow>
           </>
         ) : (
           <>
-            <SettingRow label={tt('Bảng config (RIGHT)')} hint={tt('Bảng chuẩn/định mức của bước này (vd combo_config, bom). Khớp với dòng đầu vào theo điều kiện nối bên dưới.')}>
+            <SRow label={tt('Bảng config (RIGHT)')} hint={tt('Bảng chuẩn/định mức của bước này (vd combo_config, bom). Khớp với dòng đầu vào theo điều kiện nối bên dưới.')}>
               <Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={step.ruleCollection || undefined} onChange={(v) => onChange({ ruleCollection: v })} placeholder={tt('Chọn bảng')} />
-            </SettingRow>
-            <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của config (appends)')} hint={tt('Quan hệ của bảng config mà điều kiện/công thức cần đọc (vd material của bom).')}>
+            </SRow>
+            <SRow layout="vertical" label={tt('Nạp kèm quan hệ của config (appends)')} hint={tt('Quan hệ của bảng config mà điều kiện/công thức cần đọc (vd material của bom).')}>
               <RelationAppendsPicker api={api} collectionName={step.ruleCollection || undefined} value={step.ruleAppends} onChange={(v) => onChange({ ruleAppends: v })} />
-            </SettingRow>
-            <SettingRow layout="vertical" label={tt('Điều kiện nối (ON) — VÀ')} hint={tt('Cột config so với giá trị bạn gõ: true / NV là hằng; src.product_id là khớp động theo dòng đầu vào của bước này (= output bước trước).')}>
+            </SRow>
+            <SRow layout="vertical" label={tt('Điều kiện nối (ON) — VÀ')} hint={tt('Cột config so với giá trị bạn gõ: true / NV là hằng; src.product_id là khớp động theo dòng đầu vào của bước này (= output bước trước).')}>
               <EditTable rows={step.ruleWhere || []} onChange={(v) => onChange({ ruleWhere: v })} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={condCols()} />
-            </SettingRow>
-            <SettingRow layout="vertical" label={tt('Bậc khớp ưu tiên (tuỳ chọn)')} hint={tt('thử bậc 1 trước; có kết quả thì dùng & dừng; bậc dưới tự bỏ dòng đã khai bậc trên (chống đếm trùng).')}>
+            </SRow>
+            <SRow layout="vertical" label={tt('Bậc khớp ưu tiên (tuỳ chọn)')} hint={tt('thử bậc 1 trước; có kết quả thì dùng & dừng; bậc dưới tự bỏ dòng đã khai bậc trên (chống đếm trùng).')}>
               <div>
                 {tiers.map((tier: any, i: number) => (
                   <div key={i} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: '8px 10px', marginBottom: 8, background: token.colorFillQuaternary }}>
@@ -414,46 +418,46 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 ))}
                 <Button size="small" type="dashed" onClick={() => setTiers([...tiers, []])}>＋ {tt('Thêm bậc ưu tiên')}</Button>
               </div>
-            </SettingRow>
-            <SettingRow label={tt('Nổ đệ quy (self-join)')} hint={tt('BOM/combo nhiều cấp trong bước này: mỗi dòng con lại tra tiếp bảng config. Tắt = 1 cấp.')}>
+            </SRow>
+            <SRow label={tt('Nổ đệ quy (self-join)')} hint={tt('BOM/combo nhiều cấp trong bước này: mỗi dòng con lại tra tiếp bảng config. Tắt = 1 cấp.')}>
               <Checkbox checked={!!step.recurse} onChange={(e) => onChange({ recurse: e.target.checked })} />
-            </SettingRow>
+            </SRow>
             {step.recurse ? (
               <div style={{ border: `1px solid ${token.colorPrimaryBorder || token.colorBorder}`, borderRadius: 8, padding: '10px 12px', margin: '2px 0 6px', background: token.colorFillQuaternary }}>
-                <SettingRow label={tt('Khoá cha (trên bảng config)')} hint={tt('Cột trên bảng config đóng vai "cha" của một dòng — khoá self-join. VD combo_id.')}>
+                <SRow label={tt('Khoá cha (trên bảng config)')} hint={tt('Cột trên bảng config đóng vai "cha" của một dòng — khoá self-join. VD combo_id.')}>
                   <FieldSelect api={api} collection={step.ruleCollection || undefined} value={step.recurseParentKey || ''} onChange={(v) => onChange({ recurseParentKey: v })} placeholder={tt('vd combo_id')} size="middle" style={{ width: '100%' }} />
-                </SettingRow>
-                <SettingRow label={tt('Component (cột sinh ra → khoá cha cấp sau)')} hint={tt('Cột SINH RA chứa id linh kiện; giá trị của nó thành "khoá cha" cấp sau. VD product_id.')}>
+                </SRow>
+                <SRow label={tt('Component (cột sinh ra → khoá cha cấp sau)')} hint={tt('Cột SINH RA chứa id linh kiện; giá trị của nó thành "khoá cha" cấp sau. VD product_id.')}>
                   <FieldSelect api={api} collection={outputCollection} value={step.recurseChildKey || ''} onChange={(v) => onChange({ recurseChildKey: v })} placeholder={tt('vd product_id')} size="middle" style={{ width: '100%' }} />
-                </SettingRow>
-                <SettingRow label={tt('Cột số lượng (nhân dồn xuống)')} hint={tt('Cột SINH RA chứa số lượng, nhân dồn theo cây. Công thức nên đọc src.<cột này>. VD qty.')}>
+                </SRow>
+                <SRow label={tt('Cột số lượng (nhân dồn xuống)')} hint={tt('Cột SINH RA chứa số lượng, nhân dồn theo cây. Công thức nên đọc src.<cột này>. VD qty.')}>
                   <FieldSelect api={api} collection={outputCollection} value={step.recurseQtyField || ''} onChange={(v) => onChange({ recurseQtyField: v })} placeholder={tt('vd qty')} size="middle" style={{ width: '100%' }} />
-                </SettingRow>
-                <SettingRow label={tt('Độ sâu tối đa')}><InputNumber min={1} max={100} value={step.maxDepth ?? 20} onChange={(v) => onChange({ maxDepth: v ?? 20 })} /></SettingRow>
-                <SettingRow label={tt('Xuất ra')}>
+                </SRow>
+                <SRow label={tt('Độ sâu tối đa')}><InputNumber min={1} max={100} value={step.maxDepth ?? 20} onChange={(v) => onChange({ maxDepth: v ?? 20 })} /></SRow>
+                <SRow label={tt('Xuất ra')}>
                   <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }} value={step.recurseOutput || 'leaves'} onChange={(v: any) => onChange({ recurseOutput: v })}
                     options={[{ value: 'leaves', label: tt('Chỉ lá (NVL gốc)') }, { value: 'all', label: tt('Mọi cấp') }]} />
-                </SettingRow>
+                </SRow>
               </div>
             ) : null}
           </>
         )}
 
         <div style={{ height: 1, background: token.colorBorderSecondary, margin: '10px 0 8px' }} />
-        <SettingRow layout="vertical" label={tt('Cột sinh ra của bước này')} hint={tt('Mỗi dòng = 1 cột trên dòng output của bước. Output bước này = input bước sau (đọc qua src.*). Đọc parent / src (dòng vào) / rule (dòng phải) + REL / NUM / YMONTH.')}>
+        <SRow layout="vertical" label={tt('Cột sinh ra của bước này')} hint={tt('Mỗi dòng = 1 cột trên dòng output của bước. Output bước này = input bước sau (đọc qua src.*). Đọc parent / src (dòng vào) / rule (dòng phải) + REL / NUM / YMONTH.')}>
           <EditTable rows={step.lineOutputs || []} onChange={(v) => onChange({ lineOutputs: v })} addLabel={tt('Thêm cột')} newRow={() => ({ targetField: '', formula: '', required: false })}
             columns={[
               { title: tt('Cột đích'), key: 'targetField', width: 220, render: (row, patch) => <FieldSelect api={api} collection={outputCollection} value={row.targetField} onChange={(v) => patch({ targetField: v })} placeholder={tt('cột đích')} size="middle" style={{ width: '100%' }} /> },
               { title: tt('Công thức'), key: 'formula', render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.formula} onChange={(e) => patch({ formula: e.target.value })} onFocus={trackFocus} placeholder={tt('công thức')} /> },
               { title: tt('Bắt buộc'), key: 'required', width: 84, align: 'center', render: (row, patch) => <Tooltip title={tt('Bắt buộc — null thì bỏ dòng')}><Checkbox checked={!!row.required} onChange={(e) => patch({ required: e.target.checked })} /></Tooltip> },
             ]} />
-        </SettingRow>
-        <SettingRow label={tt('Gộp theo bước (tuỳ chọn)')} hint={tt('Gộp output của bước này trước khi sang bước sau (cột số cộng dồn). Thường chỉ cần gộp ở KẾT QUẢ cuối.')}>
+        </SRow>
+        <SRow label={tt('Gộp theo bước (tuỳ chọn)')} hint={tt('Gộp output của bước này trước khi sang bước sau (cột số cộng dồn). Thường chỉ cần gộp ở KẾT QUẢ cuối.')}>
           <Space wrap>
             <FieldMultiSelect api={api} collection={outputCollection} value={step.groupBy || undefined} onChange={(v) => onChange({ groupBy: v })} placeholder={tt('vd material_id')} style={{ width: 200 }} />
             <FieldMultiSelect api={api} collection={outputCollection} value={step.sumFields} onChange={(v) => onChange({ sumFields: v })} placeholder={tt('cột cộng dồn')} style={{ width: 200 }} />
           </Space>
-        </SettingRow>
+        </SRow>
       </div>
     );
   };
@@ -804,38 +808,38 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
 
             <CollapsibleSection title={tt('① Kích hoạt — bảng cha (parent), khi nào chạy')}>
               <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '0 0 10px' }}>{tt('Bảng cha = bản ghi đặt nút / lắng trigger. Trong mọi công thức, bản ghi này được gọi là parent (vd parent.shipping_type).')}</div>
-              <SettingRow label={tt('Tên')} hint={tt('Tên hiển thị trong danh sách, trong ô chọn bộ sinh của nút và trên tiêu đề hộp thoại.')}><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} placeholder={tt('VD: Tính hoa hồng đơn hàng')} /></SettingRow>
-              <SettingRow label={tt('Bảng kích hoạt (cha)')} hint={tt('Nơi đặt nút / lắng trigger. Mỗi bản ghi của bảng này là một "cha" — công thức đọc nó qua parent.*')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.sourceCollection || undefined} onChange={(v) => set({ sourceCollection: v, targetPath: '', targetForeignKey: '', sourceLinesPath: null })} placeholder={tt('Chọn bảng')} /></SettingRow>
-              <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng cha (preload)')} hint={tt('Quan hệ của BẢNG CHA mà công thức cần đọc (parent.*). Chọn quan hệ (xổ nhiều cấp) — nạp toàn bộ cột của các object trên đường đi.')}>
+              <SRow label={tt('Tên')} hint={tt('Tên hiển thị trong danh sách, trong ô chọn bộ sinh của nút và trên tiêu đề hộp thoại.')}><Input value={cfg.title} onChange={(e) => set({ title: e.target.value })} placeholder={tt('VD: Tính hoa hồng đơn hàng')} /></SRow>
+              <SRow label={tt('Bảng kích hoạt (cha)')} hint={tt('Nơi đặt nút / lắng trigger. Mỗi bản ghi của bảng này là một "cha" — công thức đọc nó qua parent.*')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.sourceCollection || undefined} onChange={(v) => set({ sourceCollection: v, targetPath: '', targetForeignKey: '', sourceLinesPath: null })} placeholder={tt('Chọn bảng')} /></SRow>
+              <SRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng cha (preload)')} hint={tt('Quan hệ của BẢNG CHA mà công thức cần đọc (parent.*). Chọn quan hệ (xổ nhiều cấp) — nạp toàn bộ cột của các object trên đường đi.')}>
                 <RelationAppendsPicker api={api} collectionName={cfg.sourceCollection || undefined} value={cfg.preload} onChange={(v) => set({ preload: v })} />
-              </SettingRow>
-              <SettingRow label={tt('Bật')}><Checkbox checked={cfg.enabled} onChange={(e) => set({ enabled: e.target.checked })} /></SettingRow>
-              <SettingRow label={tt('Tự động chạy')} hint={tt('BẬT: server tự chạy ngay khi bản ghi được lưu và đạt điều kiện bên dưới (kiểu AI Column). TẮT: chỉ chạy khi có người bấm nút. Chạy tay thì bộ sinh nào cũng làm được (kể cả khi đang bật auto) — gắn nút qua Configure actions → "Sinh dòng theo quy tắc" trên block, chọn bộ sinh trong setting của nút.')}>
+              </SRow>
+              <SRow label={tt('Bật')}><Checkbox checked={cfg.enabled} onChange={(e) => set({ enabled: e.target.checked })} /></SRow>
+              <SRow label={tt('Tự động chạy')} hint={tt('BẬT: server tự chạy ngay khi bản ghi được lưu và đạt điều kiện bên dưới (kiểu AI Column). TẮT: chỉ chạy khi có người bấm nút. Chạy tay thì bộ sinh nào cũng làm được (kể cả khi đang bật auto) — gắn nút qua Configure actions → "Sinh dòng theo quy tắc" trên block, chọn bộ sinh trong setting của nút.')}>
                 <Switch
                   checked={(cfg.trigger || 'manual') === 'auto'}
                   onChange={(on: boolean) => set({ trigger: on ? 'auto' : 'manual' })}
                   checkedChildren={tt('Auto')}
                   unCheckedChildren={tt('Tắt')}
                 />
-              </SettingRow>
-              <SettingRow layout="vertical"
-                label={tt('Điều kiện kích hoạt (auto / mặc định)')}
-                hint={(cfg.trigger || 'manual') === 'auto'
-                  ? tt('Bản ghi được lưu mà thoả các điều kiện này là tự sinh dòng. QUAN TRỌNG: thêm "cập nhật bản ghi cha" đánh dấu đã chạy (vd is_commission_created = true) để chỉ chạy 1 lần — bỏ dấu đó đi chính là cách chạy lại.')
-                  : tt('Điều kiện mặc định khi chạy: chưa thoả thì hộp thoại cảnh báo và hỏi xác nhận trước khi vẫn sinh. Nút bấm KHÔNG còn tự ẩn theo điều kiện này — ẩn/hiện nút chỉnh bằng linkage rules của chính nút (như nút core). VD status = Đã thanh lý VÀ is_commission_created = false.')}>
-                <CondList api={api} collection={cfg.sourceCollection || undefined} items={cfg.guard || []} onChange={(v) => set({ guard: v })} />
-              </SettingRow>
-              <SettingRow layout="vertical" label={tt('Sau khi chạy thành công, cập nhật bản ghi cha (post)')} hint={tt('Chạy trong cùng transaction. Luôn CHỈ THÊM dòng mới (không xoá) — nên đánh cờ ở đây (vd is_commission_created = true) để điều kiện phía trên chặn chạy trùng; xoá dòng cũ (nếu cần) là việc của người dùng.')}>
+              </SRow>
+              {(cfg.trigger || 'manual') === 'auto' ? (
+                <SRow layout="vertical"
+                  label={tt('Điều kiện kích hoạt (auto)')}
+                  hint={tt('Bản ghi được lưu mà thoả các điều kiện này là tự sinh dòng. QUAN TRỌNG: thêm "cập nhật bản ghi cha" đánh dấu đã chạy (vd is_commission_created = true) để chỉ chạy 1 lần — bỏ dấu đó đi chính là cách chạy lại. Khi chạy TAY mà chưa thoả: hộp thoại cảnh báo + hỏi xác nhận rồi mới sinh.')}>
+                  <CondList api={api} collection={cfg.sourceCollection || undefined} items={cfg.guard || []} onChange={(v) => set({ guard: v })} />
+                </SRow>
+              ) : null}
+              <SRow layout="vertical" label={tt('Sau khi chạy thành công, cập nhật bản ghi cha (post)')} hint={tt('Chạy trong cùng transaction. Luôn CHỈ THÊM dòng mới (không xoá) — nên đánh cờ ở đây (vd is_commission_created = true) để điều kiện phía trên chặn chạy trùng; xoá dòng cũ (nếu cần) là việc của người dùng.')}>
                 <EditTable rows={cfg.parentUpdates || []} onChange={(v) => set({ parentUpdates: v })} addLabel={tt('Thêm cập nhật')} newRow={() => ({ targetField: '', formula: '' })}
                   columns={[
                     { title: tt('Cột trên cha'), key: 'targetField', width: 240, render: (row, patch) => <FieldSelect api={api} collection={cfg.sourceCollection || undefined} value={row.targetField} onChange={(v) => patch({ targetField: v })} placeholder={tt('cột trên cha')} size="middle" style={{ width: '100%' }} /> },
                     { title: tt('Công thức'), key: 'formula', render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.formula} onChange={(e) => patch({ formula: e.target.value })} onFocus={trackFocus} placeholder={tt('công thức, vd true')} /> },
                   ]} />
-              </SettingRow>
+              </SRow>
             </CollapsibleSection>
 
             <CollapsibleSection title={tt('② LEFT · Nguồn — nhân theo dòng nào (src)')}>
-              <SettingRow label={tt('Lấy dòng nguồn từ')} hint={tt('LEFT của phép JOIN: cái đem NHÂN với bảng định mức. "Chính bản ghi này" = 1 dòng (hoa hồng: 15 quy tắc → 15 dòng). "Đi theo quan hệ" = nhân theo TỪNG DÒNG bảng con (BOM: mỗi dòng sản phẩm × định mức của nó); công thức đọc dòng qua src.*, và src.* tự về parent.* khi chọn chính bản ghi.')}>
+              <SRow label={tt('Lấy dòng nguồn từ')} hint={tt('LEFT của phép JOIN: cái đem NHÂN với bảng định mức. "Chính bản ghi này" = 1 dòng (hoa hồng: 15 quy tắc → 15 dòng). "Đi theo quan hệ" = nhân theo TỪNG DÒNG bảng con (BOM: mỗi dòng sản phẩm × định mức của nó); công thức đọc dòng qua src.*, và src.* tự về parent.* khi chọn chính bản ghi.')}>
                 <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }}
                   value={srcMode}
                   onChange={(v: any) => { setSrcMode(v); if (v === 'self') set({ sourceLinesPath: null, srcAppends: [] }); }}
@@ -843,21 +847,21 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                     { value: 'self', label: tt('Chính bản ghi này') },
                     { value: 'relation', label: tt('Đi theo quan hệ →') },
                   ]} />
-              </SettingRow>
+              </SRow>
               {srcMode === 'relation' ? (
-                <SettingRow label={tt('Quan hệ bảng con (src)')} hint={tt('Quan hệ hasMany trên bảng cha — mỗi dòng của nó là một src. VD order_lines.')}>
+                <SRow label={tt('Quan hệ bảng con (src)')} hint={tt('Quan hệ hasMany trên bảng cha — mỗi dòng của nó là một src. VD order_lines.')}>
                   <Select style={{ width: '100%' }} allowClear options={relOptions} value={cfg.sourceLinesPath || undefined}
                     onChange={(v) => set({ sourceLinesPath: v || null, srcAppends: v ? cfg.srcAppends : [] })}
                     placeholder={tt('Chọn quan hệ bảng con (hasMany)')}
                     notFoundContent={cfg.sourceCollection ? tt('Bảng nguồn chưa có quan hệ bảng con') : tt('Chọn bảng nguồn trước')} />
-                </SettingRow>
+                </SRow>
               ) : null}
               {cfg.sourceLinesPath ? (
-                <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng dòng nguồn (src)')} hint={tt('Quan hệ của BẢNG DÒNG NGUỒN mà công thức cần đọc (src.*), vd product của order_lines. Nạp toàn bộ cột của object trên đường đi.')}>
+                <SRow layout="vertical" label={tt('Nạp kèm quan hệ của bảng dòng nguồn (src)')} hint={tt('Quan hệ của BẢNG DÒNG NGUỒN mà công thức cần đọc (src.*), vd product của order_lines. Nạp toàn bộ cột của object trên đường đi.')}>
                   <RelationAppendsPicker api={api} collectionName={srcLinesCollection} value={cfg.srcAppends} onChange={(v) => set({ srcAppends: v })} />
-                </SettingRow>
+                </SRow>
               ) : null}
-              <SettingRow label={tt('Bỏ qua dòng khi')} hint={tt('Điều kiện lọc bớt đầu vào: biểu thức true = bỏ, không tính. Xem được src / parent / rule. VD src.quantity == 0, hay parent.is_internal == true.')}><Input style={mono} value={cfg.skipIf || ''} onChange={(e) => set({ skipIf: e.target.value })} onFocus={trackFocus} placeholder={tt('(tuỳ chọn)')} /></SettingRow>
+              <SRow label={tt('Bỏ qua dòng khi')} hint={tt('Điều kiện lọc bớt đầu vào: biểu thức true = bỏ, không tính. Xem được src / parent / rule. VD src.quantity == 0, hay parent.is_internal == true.')}><Input style={mono} value={cfg.skipIf || ''} onChange={(e) => set({ skipIf: e.target.value })} onFocus={trackFocus} placeholder={tt('(tuỳ chọn)')} /></SRow>
             </CollapsibleSection>
 
             {/* v0.8 PIPELINE — the ordered join-step list (replaces ③ RIGHT + ④ ON when pipeline mode is on). */}
@@ -888,32 +892,32 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 </div>
               ) : (
                 <>
-                  <SettingRow label={tt('Bảng quy tắc')} hint={tt('RIGHT của phép JOIN: bảng dữ liệu chứa các dòng định mức/quy tắc (vd BOM) — hợp khi quy tắc nhiều, import Excel, do nghiệp vụ tự quản.')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.ruleCollection || undefined} onChange={(v) => set({ ruleCollection: v })} placeholder={tt('Chọn bảng')} /></SettingRow>
-                  <SettingRow layout="vertical" label={tt('Nạp kèm quan hệ của quy tắc (appends)')} hint={tt('Quan hệ của bảng quy tắc mà điều kiện/công thức cần đọc (vd nhóm của rule). Chọn là nạp toàn bộ cột.')}>
+                  <SRow label={tt('Bảng quy tắc')} hint={tt('RIGHT của phép JOIN: bảng dữ liệu chứa các dòng định mức/quy tắc (vd BOM) — hợp khi quy tắc nhiều, import Excel, do nghiệp vụ tự quản.')}><Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={collections} value={cfg.ruleCollection || undefined} onChange={(v) => set({ ruleCollection: v })} placeholder={tt('Chọn bảng')} /></SRow>
+                  <SRow layout="vertical" label={tt('Nạp kèm quan hệ của quy tắc (appends)')} hint={tt('Quan hệ của bảng quy tắc mà điều kiện/công thức cần đọc (vd nhóm của rule). Chọn là nạp toàn bộ cột.')}>
                     <RelationAppendsPicker api={api} collectionName={cfg.ruleCollection || undefined} value={cfg.ruleAppends} onChange={(v) => set({ ruleAppends: v })} />
-                  </SettingRow>
-                  <SettingRow label={tt('Nổ đệ quy (self-join nhiều cấp)')} hint={tt('BOM nhiều cấp trong 1 lần chạy: mỗi dòng con lại tra tiếp bảng định mức. Tắt = 1 cấp như cũ.')}>
+                  </SRow>
+                  <SRow label={tt('Nổ đệ quy (self-join nhiều cấp)')} hint={tt('BOM nhiều cấp trong 1 lần chạy: mỗi dòng con lại tra tiếp bảng định mức. Tắt = 1 cấp như cũ.')}>
                     <Checkbox checked={!!cfg.recurse} onChange={(e) => set({ recurse: e.target.checked })} />
-                  </SettingRow>
+                  </SRow>
                   {cfg.recurse ? (
                     <div style={{ border: `1px solid ${token.colorPrimaryBorder || token.colorBorder}`, borderRadius: 8, padding: '10px 12px', margin: '2px 0 6px', background: token.colorFillQuaternary }}>
                       <div style={{ fontSize: 11.5, color: token.colorTextTertiary, marginBottom: 8 }}>↻ {tt('khi đệ quy, khoá cha của cấp sau = component của cấp trước')}</div>
-                      <SettingRow label={tt('Khoá cha (trên bảng định mức)')} hint={tt('Cột trên bảng định mức đóng vai "sản phẩm cha" của một dòng — khoá self-join. VD bom.product_id.')}>
+                      <SRow label={tt('Khoá cha (trên bảng định mức)')} hint={tt('Cột trên bảng định mức đóng vai "sản phẩm cha" của một dòng — khoá self-join. VD bom.product_id.')}>
                         <FieldSelect api={api} collection={cfg.ruleCollection || undefined} value={cfg.recurseParentKey || ''} onChange={(v) => set({ recurseParentKey: v })} placeholder={tt('vd product_id')} size="middle" style={{ width: '100%' }} />
-                      </SettingRow>
-                      <SettingRow label={tt('Component (cột sinh ra → khoá cha cấp sau)')} hint={tt('Cột SINH RA chứa id linh kiện; giá trị của nó trở thành "khoá cha" khi tra cấp tiếp theo. VD material_id.')}>
+                      </SRow>
+                      <SRow label={tt('Component (cột sinh ra → khoá cha cấp sau)')} hint={tt('Cột SINH RA chứa id linh kiện; giá trị của nó trở thành "khoá cha" khi tra cấp tiếp theo. VD material_id.')}>
                         <FieldSelect api={api} collection={targetCollection} value={cfg.recurseChildKey || ''} onChange={(v) => set({ recurseChildKey: v })} placeholder={tt('vd material_id')} size="middle" style={{ width: '100%' }} />
-                      </SettingRow>
-                      <SettingRow label={tt('Cột số lượng (nhân dồn xuống)')} hint={tt('Cột SINH RA chứa số lượng; nhân dồn theo cây: sl(cấp sau) = sl(cấp trước) × định mức/đơn vị. Công thức số lượng nên đọc src.<cột này> để nối cấp. VD qty.')}>
+                      </SRow>
+                      <SRow label={tt('Cột số lượng (nhân dồn xuống)')} hint={tt('Cột SINH RA chứa số lượng; nhân dồn theo cây: sl(cấp sau) = sl(cấp trước) × định mức/đơn vị. Công thức số lượng nên đọc src.<cột này> để nối cấp. VD qty.')}>
                         <FieldSelect api={api} collection={targetCollection} value={cfg.recurseQtyField || ''} onChange={(v) => set({ recurseQtyField: v })} placeholder={tt('vd qty')} size="middle" style={{ width: '100%' }} />
-                      </SettingRow>
-                      <SettingRow label={tt('Độ sâu tối đa')} hint={tt('Chặn BOM vòng lặp / chạy vô hạn. Mặc định 20.')}>
+                      </SRow>
+                      <SRow label={tt('Độ sâu tối đa')} hint={tt('Chặn BOM vòng lặp / chạy vô hạn. Mặc định 20.')}>
                         <InputNumber min={1} max={100} value={cfg.maxDepth ?? 20} onChange={(v) => set({ maxDepth: v ?? 20 })} />
-                      </SettingRow>
-                      <SettingRow label={tt('Xuất ra')} hint={tt('Chỉ lá = chỉ giữ NVL gốc (bỏ cụm trung gian). Mọi cấp = giữ tất cả, đánh dấu cấp + cha.')}>
+                      </SRow>
+                      <SRow label={tt('Xuất ra')} hint={tt('Chỉ lá = chỉ giữ NVL gốc (bỏ cụm trung gian). Mọi cấp = giữ tất cả, đánh dấu cấp + cha.')}>
                         <SegmentedGroup block style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }} value={cfg.recurseOutput || 'leaves'} onChange={(v: any) => set({ recurseOutput: v })}
                           options={[{ value: 'leaves', label: tt('Chỉ lá (NVL gốc)') }, { value: 'all', label: tt('Mọi cấp') }]} />
-                      </SettingRow>
+                      </SRow>
                     </div>
                   ) : null}
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${token.colorBorderSecondary}` }}>
@@ -927,10 +931,10 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
 
             {cfg.ruleSource !== 'inline' && !pipeline ? (
               <CollapsibleSection title={tt('④ ON · Điều kiện nối (LEFT ⋈ RIGHT)')}>
-                <SettingRow layout="vertical" label={tt('Điều kiện nối cơ bản (VÀ)')} hint={tt('Cơ sở của phép nối — mọi điều kiện phải đúng (VÀ). Cột quy tắc so với giá trị bạn gõ: true / NV là hằng; parent.shipping_type hay src.product_id là khớp động theo bản ghi/dòng đang tính. Cột quy tắc đi xuyên quan hệ được.')}>
+                <SRow layout="vertical" label={tt('Điều kiện nối cơ bản (VÀ)')} hint={tt('Cơ sở của phép nối — mọi điều kiện phải đúng (VÀ). Cột quy tắc so với giá trị bạn gõ: true / NV là hằng; parent.shipping_type hay src.product_id là khớp động theo bản ghi/dòng đang tính. Cột quy tắc đi xuyên quan hệ được.')}>
                   <EditTable rows={cfg.ruleWhere || []} onChange={(v) => set({ ruleWhere: v })} newRow={() => ({ field: '', op: 'eq', value: '' })} addLabel={tt('Thêm điều kiện')} columns={ruleCondColumns()} />
-                </SettingRow>
-                <SettingRow layout="vertical" label={tt('Bậc khớp ưu tiên (tuỳ chọn)')} hint={tt('thử bậc 1 trước; có kết quả thì dùng & dừng; bậc dưới tự bỏ dòng đã khai bậc trên (chống đếm trùng). VD: bậc 1 = user == src.emp (đích danh), bậc 2 = role == src.role (theo vai trò).')}>
+                </SRow>
+                <SRow layout="vertical" label={tt('Bậc khớp ưu tiên (tuỳ chọn)')} hint={tt('thử bậc 1 trước; có kết quả thì dùng & dừng; bậc dưới tự bỏ dòng đã khai bậc trên (chống đếm trùng). VD: bậc 1 = user == src.emp (đích danh), bậc 2 = role == src.role (theo vai trò).')}>
                   <div>
                     {tiers.map((tier, i) => (
                       <div key={i} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: '8px 10px', marginBottom: 8, background: token.colorBgContainer }}>
@@ -947,25 +951,25 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                     ))}
                     <Button size="small" type="dashed" onClick={() => setTiers([...tiers, []])}>＋ {tt('Thêm bậc ưu tiên')}</Button>
                   </div>
-                </SettingRow>
+                </SRow>
               </CollapsibleSection>
             ) : null}
 
             <CollapsibleSection title={tt('⑤ → KẾT QUẢ · công thức tạo dòng & ghi vào đâu')}>
-              <SettingRow label={tt('Ghi vào')} hint={tt('Bảng con của bảng nguồn nhận các dòng sinh ra. Khoá ngoại tự suy ra từ quan hệ — không phải điền.')}>
+              <SRow label={tt('Ghi vào')} hint={tt('Bảng con của bảng nguồn nhận các dòng sinh ra. Khoá ngoại tự suy ra từ quan hệ — không phải điền.')}>
                 <Select style={{ width: '100%' }} showSearch optionFilterProp="label" options={relOptions} value={cfg.targetPath || undefined}
                   onChange={(v) => { const rel = relOptions.find((r) => r.value === v); set({ targetPath: v, targetForeignKey: rel?.foreignKey || '' }); }}
                   placeholder={tt('Chọn bảng con (quan hệ hasMany)')} notFoundContent={cfg.sourceCollection ? tt('Bảng nguồn chưa có quan hệ bảng con') : tt('Chọn bảng nguồn trước')} />
-              </SettingRow>
+              </SRow>
               {!pipeline ? (
               <>
-              <SettingRow layout="vertical" label={tt('Biến trung gian')} hint={tt('KHÔNG bắt buộc — như alias/CTE trong SQL: dùng khi một biểu thức lặp lại ở nhiều cột. Ánh xạ giá trị config → dữ liệu bằng SWITCH/IF (như CASE WHEN). VD person = SWITCH(rule.based_on & \'|\' & rule.recipient, \'NVPT|self\', parent.responsible_staff, …, null).')}>
+              <SRow layout="vertical" label={tt('Biến trung gian')} hint={tt('KHÔNG bắt buộc — như alias/CTE trong SQL: dùng khi một biểu thức lặp lại ở nhiều cột. Ánh xạ giá trị config → dữ liệu bằng SWITCH/IF (như CASE WHEN). VD person = SWITCH(rule.based_on & \'|\' & rule.recipient, \'NVPT|self\', parent.responsible_staff, …, null).')}>
                 <EditTable rows={cfg.deriveVars || []} onChange={(v) => set({ deriveVars: v })} addLabel={tt('Thêm biến')} newRow={() => ({ name: '', formula: '' })}
                   columns={[
                     { title: tt('Tên biến'), key: 'name', width: 240, render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.name} onChange={(e) => patch({ name: e.target.value })} placeholder={tt('tên biến')} /> },
                     { title: tt('Công thức'), key: 'formula', render: (row, patch) => <Input size="middle" style={{ ...mono, width: '100%' }} value={row.formula} onChange={(e) => patch({ formula: e.target.value })} onFocus={trackFocus} placeholder={tt('công thức')} /> },
                   ]} />
-              </SettingRow>
+              </SRow>
               <div style={{ fontSize: 12, color: token.colorTextTertiary, margin: '4px 0 8px' }}>{tt('Mỗi dòng = 1 cột trên bảng con. Viết điều kiện như CASE WHEN trong SQL: IF(đk, a, b) · IFS(đk1, kq1, đk2, kq2, …) · SWITCH(giá_trị, khớp1, kq1, …, mặc_định). Biến: parent / src / rule + biến trung gian + REL / NUM / YMONTH. "Bắt buộc" = null thì bỏ cả dòng.')}</div>
               <EditTable rows={cfg.lineOutputs} onChange={(v) => set({ lineOutputs: v })} addLabel={tt('Thêm cột')} newRow={() => ({ targetField: '', formula: '', required: false })}
                 columns={[
@@ -980,36 +984,36 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 </div>
               )}
               <div style={{ height: 1, background: token.colorBorderSecondary, margin: '14px 0 10px' }} />
-              <SettingRow layout="vertical" label={tt('Gộp theo cột (group by)')} hint={tt('Gộp các dòng trùng khoá này; cột số được cộng dồn. VD material_id khi nổ BOM (đệ quy: gộp các lá theo NVL → tổng nhu cầu).')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.groupBy || undefined} onChange={(v) => set({ groupBy: v })} placeholder={tt('vd material_id')} /></SettingRow>
-              <SettingRow layout="vertical" label={tt('Cột cộng dồn khi gộp')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.sumFields} onChange={(v) => set({ sumFields: v })} placeholder={tt('vd qty')} /></SettingRow>
+              <SRow layout="vertical" label={tt('Gộp theo cột (group by)')} hint={tt('Gộp các dòng trùng khoá này; cột số được cộng dồn. VD material_id khi nổ BOM (đệ quy: gộp các lá theo NVL → tổng nhu cầu).')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.groupBy || undefined} onChange={(v) => set({ groupBy: v })} placeholder={tt('vd material_id')} /></SRow>
+              <SRow layout="vertical" label={tt('Cột cộng dồn khi gộp')}><FieldMultiSelect api={api} collection={targetCollection} value={cfg.sumFields} onChange={(v) => set({ sumFields: v })} placeholder={tt('vd qty')} /></SRow>
             </CollapsibleSection>
 
             <CollapsibleSection title={tt('⑥ Nâng cao — làm tròn/kiểm tra (tuỳ chọn)')} defaultOpen={false}>
               {pipeline ? (
-                <SettingRow label={tt('Giới hạn số dòng (maxRows)')} hint={tt('An toàn nổ dây chuyền: nếu tập đang xử lý vượt số này ở BẤT KỲ bước nào, cả lần chạy bị HUỶ với thông báo rõ ràng (không cắt cụt/treo). Mặc định 10000.')}>
+                <SRow label={tt('Giới hạn số dòng (maxRows)')} hint={tt('An toàn nổ dây chuyền: nếu tập đang xử lý vượt số này ở BẤT KỲ bước nào, cả lần chạy bị HUỶ với thông báo rõ ràng (không cắt cụt/treo). Mặc định 10000.')}>
                   <InputNumber min={1} max={1000000} step={1000} style={{ width: 200 }} value={cfg.maxRows ?? 10000} onChange={(v) => set({ maxRows: v ?? undefined })} />
-                </SettingRow>
+                </SRow>
               ) : null}
-              <SettingRow layout="vertical" label={tt('Làm tròn cột (largest-remainder)')} hint={tt('Làm tròn số, phần dư dồn vào dòng cuối để tổng khớp. Hợp cho tiền hoa hồng chia %.')}>
+              <SRow layout="vertical" label={tt('Làm tròn cột (largest-remainder)')} hint={tt('Làm tròn số, phần dư dồn vào dòng cuối để tổng khớp. Hợp cho tiền hoa hồng chia %.')}>
                 <Space wrap>
                   <FieldMultiSelect api={api} collection={targetCollection} value={cfg.rounding?.fields} onChange={(v) => set({ rounding: { ...(cfg.rounding || { precision: 0 }), fields: v } })} placeholder={tt('cột cần làm tròn')} style={{ width: 260 }} />
                   <InputNumber style={{ width: 120 }} addonBefore={tt('số lẻ')} min={0} max={6} value={cfg.rounding?.precision ?? 0} onChange={(v) => set({ rounding: { ...(cfg.rounding || { fields: [] }), precision: v ?? 0 } })} />
                   <Checkbox checked={cfg.rounding?.remainderToLast ?? true} onChange={(e) => set({ rounding: { ...(cfg.rounding || { fields: [], precision: 0 }), remainderToLast: e.target.checked } })}>{tt('dồn dư dòng cuối')}</Checkbox>
                 </Space>
-              </SettingRow>
-              <SettingRow label={tt('Cột đếm lần chạy')} hint={tt('Cột trên bản ghi cha giữ số lần đã chạy; biến runVersion trong công thức = giá trị + 1 — dùng phân biệt các đợt sinh khi chạy lại (append).')}>
+              </SRow>
+              <SRow label={tt('Cột đếm lần chạy')} hint={tt('Cột trên bản ghi cha giữ số lần đã chạy; biến runVersion trong công thức = giá trị + 1 — dùng phân biệt các đợt sinh khi chạy lại (append).')}>
                 <FieldSelect api={api} collection={cfg.sourceCollection || undefined} value={cfg.runVersionSource || ''} onChange={(v) => set({ runVersionSource: v })} placeholder={tt('(tuỳ chọn) vd rerun_count')} size="middle" style={{ width: '100%' }} />
-              </SettingRow>
-              <SettingRow label={tt('Cột ghi nhận diện bộ sinh')} hint={tt('Tuỳ chọn: chọn 1 cột trên BẢNG ĐÍCH để plugin đóng dấu key của bộ sinh vào từng dòng — biết dòng nào do bộ nào tạo, tiện lọc/xoá tay. Bỏ trống = bảng đích không cần cột đặc biệt nào.')}>
+              </SRow>
+              <SRow label={tt('Cột ghi nhận diện bộ sinh')} hint={tt('Tuỳ chọn: chọn 1 cột trên BẢNG ĐÍCH để plugin đóng dấu key của bộ sinh vào từng dòng — biết dòng nào do bộ nào tạo, tiện lọc/xoá tay. Bỏ trống = bảng đích không cần cột đặc biệt nào.')}>
                 <FieldSelect api={api} collection={targetCollection} value={cfg.markerField || ''} onChange={(v) => set({ markerField: v })} placeholder={tt('(tuỳ chọn)')} size="middle" style={{ width: '100%' }} />
-              </SettingRow>
-              <SettingRow label={tt('Kiểm tra tổng')} hint={tt('Tổng cột này qua các dòng phải = giá trị (vd tổng % = 1). Trống = bỏ qua.')}>
+              </SRow>
+              <SRow label={tt('Kiểm tra tổng')} hint={tt('Tổng cột này qua các dòng phải = giá trị (vd tổng % = 1). Trống = bỏ qua.')}>
                 <Space.Compact>
                   <FieldSelect api={api} collection={targetCollection} value={cfg.validations?.sumField || ''} onChange={(v) => set({ validations: { ...(cfg.validations || {}), sumField: v } })} placeholder={tt('cột')} size="middle" style={{ width: 160 }} />
                   <Input style={{ width: 40, textAlign: 'center' }} value="=" disabled />
                   <InputNumber style={{ width: 110 }} value={cfg.validations?.sumEquals} onChange={(v) => set({ validations: { ...(cfg.validations || {}), sumEquals: v ?? undefined } })} placeholder="1" />
                 </Space.Compact>
-              </SettingRow>
+              </SRow>
             </CollapsibleSection>
           </div>
 

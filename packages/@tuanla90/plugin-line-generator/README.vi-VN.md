@@ -4,7 +4,7 @@
 > Cùng một cơ chế lo được: **nổ định mức BOM**, **chia hoa hồng**, **phân bổ chi phí/lương khoán** — có khớp qua quan hệ,
 > người nhận động, gộp-và-tổng, làm tròn; chạy **thủ công bằng nút** hoặc **tự động khi lưu**, kèm **xem thử (dry-run)** + **trình gỡ lỗi**.
 
-**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.8.5
+**Nhóm:** Công cụ mô hình dữ liệu (Data model tools) · **Chạy trên:** /admin (classic) + /v/ (modern) · **Phiên bản:** 0.8.6
 
 > **Mới ở 0.8** — phép JOIN đơn được tổng quát thành một **pipeline JOIN nhiều bước có thứ tự**. Trình cấu hình trở thành **trình dựng pipeline**: LEFT nguồn ở trên, ở giữa là danh sách **thẻ bước** (thêm/xoá/đổi thứ tự — mỗi thẻ nối một bảng RIGHT riêng), dưới cùng là gộp/SUM + nơi ghi kết quả.
 > - **Pipeline N bước** — mỗi bước nối một **bảng config khác nhau** (hoặc đi theo quan hệ) và nổ dòng ra; **output bước N là input bước N+1** (công thức bước sau đọc dòng vào qua `src.*`), nên **số lượng nhân dồn tự nhiên** theo dây chuyền. Ca đích thực tế: đơn → order_items → **⋈ combo_config (đệ quy)** → **⋈ bom** → gộp theo NVL + SUM.
