@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, ColorPicker, Input, InputNumber, Segmented, Select, Space, Switch, Typography, theme } from 'antd';
 import { COLOR_PRESETS, colorToString, RegistryIconPicker } from '@tuanla90/shared';
 import { t } from './i18n';
-import { BottomBar, BottomBarConfig, BarItem, BarStyleConfig, MAX_ITEMS, resolveBarStyle } from './bottomBar';
+import { BottomBar, BottomBarConfig, BarItem, BarStyleConfig, MAX_ITEMS, resolveBarStyle, Placement, SafeIcon } from './bottomBar';
+import { FabMenu } from './fabMenu';
 import { InstallConfig } from './installPrompt';
 
 // Settings panels for the Bottom bar + Install tabs. Kept out of pwa.tsx to keep that file focused
@@ -69,6 +70,7 @@ export const BottomBarPanel: React.FC<{
   const cfg = value || {};
   const items: BarItem[] = cfg.items || [];
   const style: BarStyleConfig = cfg.style || { preset: 'mobile' };
+  const placement: Placement = cfg.placement || 'bottom';
   const resolved = resolveBarStyle(style, token, themeColor);
 
   const set = (patch: Partial<BottomBarConfig>) => onChange({ ...cfg, ...patch });
@@ -120,11 +122,26 @@ export const BottomBarPanel: React.FC<{
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <Switch checked={cfg.enabled !== false && !!cfg.enabled} onChange={(v) => set({ enabled: v })} />
         <div>
-          <div style={{ fontWeight: 600 }}>{t('Show a bottom navigation bar')}</div>
+          <div style={{ fontWeight: 600 }}>{t('Show a navigation bar')}</div>
           <div style={{ fontSize: 12, color: token.colorTextTertiary }}>
-            {t('A phone-style tab bar with up to 5 shortcuts to your pages.')}
+            {t('Up to 5 shortcuts to your pages, shown as a bar / button / avatar-menu.')}
           </div>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={label}>{t('Placement')}</div>
+        <Segmented
+          value={placement}
+          onChange={(v) => set({ placement: v as Placement })}
+          options={[
+            { label: t('Bottom bar'), value: 'bottom' },
+            { label: t('Top bar'), value: 'top' },
+            { label: t('Floating dock'), value: 'floating' },
+            { label: t('Floating button'), value: 'fab' },
+            { label: t('Avatar menu'), value: 'avatar' },
+          ]}
+        />
       </div>
 
       <div style={{ marginBottom: 18 }}>
@@ -139,6 +156,11 @@ export const BottomBarPanel: React.FC<{
             { label: t('Always'), value: 'always' },
           ]}
         />
+        {placement === 'avatar' ? (
+          <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 6 }}>
+            {t('Avatar-menu shortcuts always show in the account menu (this rule is ignored).')}
+          </div>
+        ) : null}
       </div>
 
       <Typography.Text strong>{t('Items (max 5)')}</Typography.Text>
@@ -302,20 +324,39 @@ export const BottomBarPanel: React.FC<{
 
       <div>
         <div style={label}>{t('Preview')}</div>
-        <div
-          style={{
-            maxWidth: 380,
-            border: `1px solid ${token.colorBorder}`,
-            borderRadius: 12,
-            overflow: 'hidden',
-            background: token.colorBgLayout,
-          }}
-        >
-          <div style={{ height: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', color: token.colorTextQuaternary, fontSize: 12 }}>
-            {t('Page content')}
+        {placement === 'fab' ? (
+          <div style={{ position: 'relative', height: 240, maxWidth: 380, border: `1px solid ${token.colorBorder}`, borderRadius: 12, overflow: 'hidden', background: token.colorBgLayout }}>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: token.colorTextQuaternary, fontSize: 12 }}>
+              {t('Page content')}
+            </div>
+            <FabMenu items={previewItems} activeKey={previewItems[0]?.key} themeColor={themeColor} preview />
           </div>
-          <BottomBar items={previewItems} activeKey={previewItems[0]?.key} style={style} themeColor={themeColor} preview />
-        </div>
+        ) : placement === 'avatar' ? (
+          <div style={{ maxWidth: 380, border: `1px solid ${token.colorBorder}`, borderRadius: 12, padding: 12, background: token.colorBgLayout, display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ width: 220, background: token.colorBgElevated, borderRadius: 10, boxShadow: token.boxShadowSecondary, padding: 6 }}>
+              {previewItems.map((it) => (
+                <div key={it.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, color: token.colorText, fontSize: 13 }}>
+                  <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center', color: token.colorTextSecondary }}>
+                    <SafeIcon type={it.icon} size={16} />
+                  </span>
+                  <span>{it.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ maxWidth: 380, border: `1px solid ${token.colorBorder}`, borderRadius: 12, overflow: 'hidden', background: token.colorBgLayout, display: 'flex', flexDirection: 'column' }}>
+            {placement === 'top' ? (
+              <BottomBar items={previewItems} activeKey={previewItems[0]?.key} style={style} placement="top" themeColor={themeColor} preview />
+            ) : null}
+            <div style={{ height: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', color: token.colorTextQuaternary, fontSize: 12 }}>
+              {t('Page content')}
+            </div>
+            {placement !== 'top' ? (
+              <BottomBar items={previewItems} activeKey={previewItems[0]?.key} style={style} placement={placement} themeColor={themeColor} preview />
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -349,6 +390,9 @@ export const InstallPanel: React.FC<{ value: InstallConfig; onChange: (v: Instal
           options={[
             { label: t('Floating pill'), value: 'pill' },
             { label: t('Bottom banner'), value: 'banner' },
+            { label: t('Top banner'), value: 'bannerTop' },
+            { label: t('Floating button'), value: 'fab' },
+            { label: t('Avatar menu'), value: 'avatar' },
           ]}
         />
       </div>

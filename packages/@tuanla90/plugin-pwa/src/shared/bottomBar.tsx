@@ -3,10 +3,11 @@ import { theme } from 'antd';
 import { IconByKey } from '@tuanla90/shared';
 
 // ---------------------------------------------------------------------------
-// Bottom navigation bar (mobile-app style tab bar). Lane-agnostic: imports NO
+// Navigation bar (mobile-app style tab bar). Lane-agnostic: imports NO
 // @nocobase/client* (icons come through the @tuanla90/shared registry, fed once
 // per lane via setIconRegistry). Pure presentation — the provider decides
-// visibility, current page, and how to navigate.
+// visibility, current page, and how to navigate. Handles the bar placements
+// (bottom / top / floating); the FAB + avatar-menu placements live elsewhere.
 // ---------------------------------------------------------------------------
 
 export interface BarItem {
@@ -17,6 +18,7 @@ export interface BarItem {
 }
 
 export type ShowOn = 'mobileOrStandalone' | 'standalone' | 'mobile' | 'always';
+export type Placement = 'bottom' | 'top' | 'floating' | 'fab' | 'avatar';
 export type BarPreset = 'mobile' | 'appsheet' | 'custom';
 export type ShowLabels = 'always' | 'active' | 'never';
 export type Indicator = 'none' | 'line' | 'pill' | 'dot';
@@ -38,6 +40,7 @@ export interface BarStyleConfig {
 export interface BottomBarConfig {
   enabled?: boolean;
   showOn?: ShowOn;
+  placement?: Placement;
   items?: BarItem[];
   style?: BarStyleConfig;
 }
@@ -45,12 +48,15 @@ export interface BottomBarConfig {
 export const BOTTOM_BAR_DEFAULTS: BottomBarConfig = {
   enabled: false,
   showOn: 'mobileOrStandalone',
+  placement: 'bottom',
   items: [],
   style: { preset: 'mobile' },
 };
 
 export const MAX_ITEMS = 5;
 export const MOBILE_MAX_WIDTH = 820; // px — at/below this the bar counts as "mobile"
+const FAB_SIZE = 46;
+const FLOAT_MARGIN = 12;
 
 // Per-preset baseline for the knobs a preset controls. `custom` inherits `mobile` then the user
 // overrides individual knobs. Colors left '' resolve to theme tokens / the PWA theme color.
@@ -99,69 +105,120 @@ export function barHeight(style: BarStyleConfig | undefined): number {
   return style?.height ?? (PRESET_BASE[preset] || PRESET_BASE.mobile).height;
 }
 
-const SafeIcon: React.FC<{ type?: string; size: number }> = ({ type, size }) => (
+export function hexAlpha(color: string, alpha: number): string {
+  const c = (color || '').trim();
+  const m = /^#([0-9a-f]{6})$/i.exec(c);
+  if (m) {
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+  const m3 = /^#([0-9a-f]{3})$/i.exec(c);
+  if (m3) {
+    const r = parseInt(m3[1][0] + m3[1][0], 16);
+    const g = parseInt(m3[1][1] + m3[1][1], 16);
+    const b = parseInt(m3[1][2] + m3[1][2], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return c || 'transparent';
+}
+
+export const SafeIcon: React.FC<{ type?: string; size: number }> = ({ type, size }) => (
   <span style={{ fontSize: size, lineHeight: 1, display: 'inline-flex' }}>
     <IconByKey type={type} />
   </span>
 );
 
 /**
- * The bottom bar. When `preview` is set it renders in-flow (position: relative) for the settings
- * preview; otherwise it is fixed to the viewport bottom.
+ * The navigation bar for the bottom / top / floating placements. When `preview` is set it renders
+ * in-flow for the settings preview; otherwise it is fixed to the viewport edge.
  */
 export const BottomBar: React.FC<{
   items: BarItem[];
   activeKey?: string;
   style?: BarStyleConfig;
   themeColor?: string;
+  placement?: Placement;
   onNavigate?: (item: BarItem) => void;
   preview?: boolean;
-}> = ({ items, activeKey, style, themeColor, onNavigate, preview }) => {
+}> = ({ items, activeKey, style, themeColor, placement = 'bottom', onNavigate, preview }) => {
   const { token } = theme.useToken();
   const s = resolveBarStyle(style, token, themeColor);
   const list = (items || []).slice(0, MAX_ITEMS);
   if (!list.length) return null;
 
-  const midIndex = s.centerFab && list.length % 2 === 1 ? Math.floor(list.length / 2) : -1;
+  const floating = placement === 'floating';
+  const atTop = placement === 'top';
+  // A raised centre button only makes sense pointing up out of a bottom/floating bar.
+  const fabEnabled = s.centerFab && !atTop && list.length % 2 === 1;
+  const midIndex = fabEnabled ? Math.floor(list.length / 2) : -1;
+  const rounded = floating ? true : s.rounded;
+  const shadow = floating ? true : s.shadow;
 
-  const container: React.CSSProperties = preview
-    ? {
-        position: 'relative',
-        width: '100%',
-        display: 'flex',
-        alignItems: 'stretch',
-        height: s.height,
-        background: s.background,
-        borderTop: `1px solid ${token.colorBorderSecondary}`,
-        borderRadius: s.rounded ? '16px 16px 0 0' : 0,
-        boxShadow: s.shadow ? '0 -2px 12px rgba(0,0,0,0.10)' : 'none',
-        overflow: 'hidden',
-      }
-    : {
-        position: 'fixed',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 990,
-        display: 'flex',
-        alignItems: 'stretch',
-        height: s.height,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        background: s.background,
-        borderTop: `1px solid ${token.colorBorderSecondary}`,
-        borderRadius: s.rounded ? '16px 16px 0 0' : 0,
-        boxShadow: s.shadow ? '0 -2px 14px rgba(0,0,0,0.12)' : 'none',
-      };
+  const base: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'stretch',
+    height: s.height,
+    background: s.background,
+    boxShadow: shadow ? (atTop ? '0 2px 14px rgba(0,0,0,0.12)' : '0 -2px 14px rgba(0,0,0,0.12)') : 'none',
+    overflow: 'visible',
+  };
+
+  let container: React.CSSProperties;
+  if (preview) {
+    container = {
+      ...base,
+      position: 'relative',
+      width: floating ? `calc(100% - ${FLOAT_MARGIN * 2}px)` : '100%',
+      margin: floating ? `0 ${FLOAT_MARGIN}px ${FLOAT_MARGIN}px` : 0,
+      borderRadius: rounded ? (floating ? 18 : '16px 16px 0 0') : 0,
+      border: floating ? `1px solid ${token.colorBorderSecondary}` : 'none',
+      borderTop: floating || atTop ? undefined : `1px solid ${token.colorBorderSecondary}`,
+    };
+  } else if (floating) {
+    container = {
+      ...base,
+      position: 'fixed',
+      left: FLOAT_MARGIN,
+      right: FLOAT_MARGIN,
+      bottom: `calc(${FLOAT_MARGIN}px + env(safe-area-inset-bottom))`,
+      zIndex: 990,
+      borderRadius: 18,
+      border: `1px solid ${token.colorBorderSecondary}`,
+    };
+  } else if (atTop) {
+    container = {
+      ...base,
+      position: 'fixed',
+      left: 0,
+      right: 0,
+      top: 0,
+      zIndex: 990,
+      borderBottom: `1px solid ${token.colorBorderSecondary}`,
+      borderRadius: rounded ? '0 0 16px 16px' : 0,
+    };
+  } else {
+    // bottom
+    container = {
+      ...base,
+      position: 'fixed',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 990,
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      borderTop: `1px solid ${token.colorBorderSecondary}`,
+      borderRadius: rounded ? '16px 16px 0 0' : 0,
+    };
+  }
 
   return (
-    <nav style={container} aria-label="app-bottom-bar">
+    <nav style={container} aria-label="app-nav-bar">
       {list.map((item, i) => {
         const active = activeKey ? item.key === activeKey : false;
         const color = active ? s.activeColor : s.inactiveColor;
         const showLabel = s.showLabels === 'always' || (s.showLabels === 'active' && active);
-        const isFab = i === midIndex;
 
-        if (isFab) {
+        if (i === midIndex) {
           return (
             <button
               key={item.key}
@@ -170,41 +227,52 @@ export const BottomBar: React.FC<{
               onClick={() => onNavigate?.(item)}
               style={{
                 flex: 1,
+                minWidth: 0,
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: 3,
                 position: 'relative',
+                overflow: 'visible',
               }}
             >
               <span
                 style={{
                   position: 'absolute',
-                  top: -18,
-                  width: 48,
-                  height: 48,
+                  left: '50%',
+                  top: -(FAB_SIZE / 2),
+                  transform: 'translateX(-50%)',
+                  width: FAB_SIZE,
+                  height: FAB_SIZE,
                   borderRadius: '50%',
                   background: s.activeColor,
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.22)',
+                  boxShadow: '0 6px 16px rgba(0,0,0,0.28)',
                 }}
               >
                 <SafeIcon type={item.icon} size={s.iconSize + 2} />
               </span>
               {showLabel ? (
-                <span style={{ fontSize: 11, color, marginTop: 26, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 6,
+                    textAlign: 'center',
+                    fontSize: 11,
+                    color,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    padding: '0 4px',
+                  }}
+                >
                   {item.label}
                 </span>
-              ) : (
-                <span style={{ height: 26 }} />
-              )}
+              ) : null}
             </button>
           );
         }
@@ -232,7 +300,7 @@ export const BottomBar: React.FC<{
             }}
           >
             {active && s.indicator === 'line' ? (
-              <span style={{ position: 'absolute', top: 0, width: 28, height: 3, borderRadius: 3, background: s.activeColor }} />
+              <span style={{ position: 'absolute', top: atTop ? undefined : 0, bottom: atTop ? 0 : undefined, width: 28, height: 3, borderRadius: 3, background: s.activeColor }} />
             ) : null}
             <span
               style={{
@@ -262,21 +330,3 @@ export const BottomBar: React.FC<{
     </nav>
   );
 };
-
-// Small helper: turn a #rrggbb (or any CSS color that yields rgb) into an rgba() with the given alpha.
-function hexAlpha(color: string, alpha: number): string {
-  const c = (color || '').trim();
-  const m = /^#([0-9a-f]{6})$/i.exec(c);
-  if (m) {
-    const n = parseInt(m[1], 16);
-    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-  }
-  const m3 = /^#([0-9a-f]{3})$/i.exec(c);
-  if (m3) {
-    const r = parseInt(m3[1][0] + m3[1][0], 16);
-    const g = parseInt(m3[1][1] + m3[1][1], 16);
-    const b = parseInt(m3[1][2] + m3[1][2], 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  return c || 'transparent';
-}

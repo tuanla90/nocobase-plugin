@@ -1,37 +1,41 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BottomBar, BottomBarConfig, BarItem, barHeight, MAX_ITEMS, MOBILE_MAX_WIDTH, ShowOn } from './bottomBar';
+import { BottomBar, BottomBarConfig, BarItem, barHeight, MAX_ITEMS, MOBILE_MAX_WIDTH, ShowOn, Placement } from './bottomBar';
+import { FabMenu } from './fabMenu';
 import { InstallPrompt, InstallConfig, isStandalone } from './installPrompt';
+import { setPwaConfig, setPwaNavigate } from './configStore';
 
 // ---------------------------------------------------------------------------
 // App-wide mobile shell provider. Injected via app.addProvider on both lanes; it
-// sits ABOVE the router, fetches the PWA config once, and portals the bottom bar
-// + install suggestion onto document.body. Lane-agnostic (no @nocobase/client*):
-// each lane injects its own api-client hook.
+// sits above the router, fetches the PWA config once, and portals the nav bar /
+// FAB + install suggestion onto document.body. Lane-agnostic (no @nocobase/client*):
+// each lane injects its own api-client hook. The avatar-menu placement is handled
+// in the v2 lane (a UserCenter model reads the shared config store).
 // ---------------------------------------------------------------------------
 
 const CONFIG_EVENT = 'pwa:config-updated'; // settings Save dispatches this for live refresh
 const LOC_EVENT = 'pwa:locationchange';
-const STYLE_ID = 'pwa-bottom-bar-reserve';
+const STYLE_ID = 'pwa-bar-reserve';
 const BAR_VAR = '--pwa-bar-h';
 
-// Reserve space for the fixed bar by shrinking the ProLayout container (both lanes use ProLayout;
-// its inner content/scrollers cascade from this height — verified on the live modern client). The
-// class is stable across desktop and mobile widths.
+// Reserve space for a fixed bar by resizing the ProLayout container (both lanes use ProLayout; its
+// inner content/scrollers cascade from this height — verified on the live modern client).
 function ensureStyle() {
   if (typeof document === 'undefined') return;
   if (document.getElementById(STYLE_ID)) return;
   const el = document.createElement('style');
   el.id = STYLE_ID;
   el.textContent =
-    `body.pwa-has-bottom-bar .ant-pro-layout-container{height:calc(100vh - var(${BAR_VAR},0px) - env(safe-area-inset-bottom,0px)) !important;}`;
+    `body.pwa-reserve-bottom .ant-pro-layout-container{height:calc(100vh - var(${BAR_VAR},0px) - env(safe-area-inset-bottom,0px)) !important;}` +
+    `body.pwa-reserve-top .ant-pro-layout-container{margin-top:var(${BAR_VAR},0px) !important;height:calc(100vh - var(${BAR_VAR},0px)) !important;}`;
   document.head.appendChild(el);
 }
-function setReserved(px: number) {
+function setReserved(px: number, side: 'bottom' | 'top' | 'none') {
   if (typeof document === 'undefined') return;
   ensureStyle();
   document.documentElement.style.setProperty(BAR_VAR, `${px}px`);
-  document.body.classList.toggle('pwa-has-bottom-bar', px > 0);
+  document.body.classList.toggle('pwa-reserve-bottom', px > 0 && side === 'bottom');
+  document.body.classList.toggle('pwa-reserve-top', px > 0 && side === 'top');
 }
 
 // Current desktop-route schemaUid from the URL: `/admin/<uid>` or `/v/admin/<uid>[/...]`.
@@ -43,7 +47,7 @@ function currentSchemaUid(): string {
 
 // Fallback SPA navigation — verified on the live /v/ client: pushState then a synthetic popstate
 // makes react-router re-read the location without a full reload. Used when the lane didn't inject the
-// framework navigate (app.router.navigate). location.assign is the last-resort safety net.
+// framework navigate. location.assign is the last-resort safety net.
 function pushStateNavigate(schemaUid: string) {
   const prefix = location.pathname.startsWith('/v/') || location.pathname === '/v' ? '/v' : '';
   const url = `${prefix}/admin/${schemaUid}`;
@@ -60,9 +64,8 @@ function pushStateNavigate(schemaUid: string) {
   }
 }
 
-// Navigate to a page. Prefers the framework navigate (basename-relative `/admin/<uid>`; react-router
-// re-adds the `/v` prefix); falls back to the raw history hack when the lane provided none.
-function goToPage(schemaUid: string, navigate?: (path: string) => void) {
+/** Navigate to a page. Prefers the framework navigate (`/admin/<uid>`; basename re-added); else the raw history hack. */
+export function goToPage(schemaUid: string, navigate?: (path: string) => void) {
   if (!schemaUid) return;
   if (navigate) {
     try {
@@ -75,8 +78,7 @@ function goToPage(schemaUid: string, navigate?: (path: string) => void) {
   pushStateNavigate(schemaUid);
 }
 
-// Patch pushState/replaceState once so the active tab stays in sync no matter how the app navigates
-// (sider menu, tabs, our bar). Emits LOC_EVENT alongside the native popstate.
+// Patch pushState/replaceState once so the active tab stays in sync no matter how the app navigates.
 let historyPatched = false;
 function patchHistory() {
   if (historyPatched || typeof history === 'undefined') return;
@@ -133,6 +135,11 @@ export function createMobileShell({
     const [activeUid, setActiveUid] = useState(pathRef.current);
     const [inApp, setInApp] = useState(typeof location !== 'undefined' ? /\/admin(\/|$)/.test(location.pathname) : false);
 
+    // expose the navigate fn to consumers outside this tree (avatar item / fab in the dropdown)
+    useEffect(() => {
+      setPwaNavigate((uid: string) => goToPage(uid, navigate));
+    }, [navigate]);
+
     // --- config fetch (once + on Save event) ---
     useEffect(() => {
       let alive = true;
@@ -143,12 +150,14 @@ export function createMobileShell({
           .then((res: any) => {
             const row = res?.data?.data?.[0];
             if (alive && row) {
-              setCfg({
+              const next: ShellConfig = {
                 bottomBar: row.bottomBar || undefined,
                 install: row.install || undefined,
                 themeColor: row.themeColor || undefined,
                 icon: typeof row.icon === 'string' ? row.icon : undefined,
-              });
+              };
+              setCfg(next);
+              setPwaConfig(next);
             }
           })
           .catch(() => {});
@@ -188,7 +197,7 @@ export function createMobileShell({
       };
       window.addEventListener('popstate', onLoc);
       window.addEventListener(LOC_EVENT, onLoc);
-      const iv = window.setInterval(onLoc, 1200); // belt-and-suspenders for exotic nav paths
+      const iv = window.setInterval(onLoc, 1200);
       return () => {
         window.removeEventListener('popstate', onLoc);
         window.removeEventListener(LOC_EVENT, onLoc);
@@ -198,18 +207,26 @@ export function createMobileShell({
 
     const bb = cfg.bottomBar;
     const standalone = isStandalone();
+    const placement: Placement = bb?.placement || 'bottom';
     const items: BarItem[] = useMemo(
       () => (bb?.items || []).filter((it) => it && it.schemaUid).slice(0, MAX_ITEMS),
       [bb],
     );
-    const showBar = inApp && !!bb?.enabled && items.length > 0 && visibleFor(bb?.showOn, width, standalone);
-    const bh = showBar ? barHeight(bb?.style) : 0;
+    const overlayVisible = inApp && !!bb?.enabled && items.length > 0 && visibleFor(bb?.showOn, width, standalone);
+    const isBar = placement === 'bottom' || placement === 'top' || placement === 'floating';
+    const showBar = overlayVisible && isBar;
+    const showFab = overlayVisible && placement === 'fab';
 
-    // reserve content space when the bar is shown
+    const barH = barHeight(bb?.style);
+    const reserveSide: 'bottom' | 'top' | 'none' = showBar && placement === 'bottom' ? 'bottom' : showBar && placement === 'top' ? 'top' : 'none';
+    const reservePx = reserveSide === 'none' ? 0 : barH;
+    // Lift the install pill/banner above whatever sits at the bottom.
+    const installOffset = showBar && placement === 'bottom' ? barH : showBar && placement === 'floating' ? barH + 24 : 0;
+
     useEffect(() => {
-      setReserved(bh);
-      return () => setReserved(0);
-    }, [bh]);
+      setReserved(reservePx, reserveSide);
+      return () => setReserved(0, 'none');
+    }, [reservePx, reserveSide]);
 
     const activeKey = useMemo(() => {
       const hit = items.find((it) => it.schemaUid === activeUid);
@@ -225,12 +242,16 @@ export function createMobileShell({
                   items={items}
                   activeKey={activeKey}
                   style={bb?.style}
+                  placement={placement}
                   themeColor={cfg.themeColor}
                   onNavigate={(it) => goToPage(it.schemaUid || '', navigate)}
                 />
               ) : null}
+              {showFab ? (
+                <FabMenu items={items} activeKey={activeKey} themeColor={cfg.themeColor} onNavigate={(it) => goToPage(it.schemaUid || '', navigate)} />
+              ) : null}
               {inApp ? (
-                <InstallPrompt config={cfg.install} icon={cfg.icon} themeColor={cfg.themeColor} bottomOffset={bh} />
+                <InstallPrompt config={cfg.install} icon={cfg.icon} themeColor={cfg.themeColor} bottomOffset={installOffset} />
               ) : null}
             </>,
             document.body,

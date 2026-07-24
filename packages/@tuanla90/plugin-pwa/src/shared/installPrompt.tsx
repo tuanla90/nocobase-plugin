@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Modal, theme } from 'antd';
+import { SafeIcon } from './bottomBar';
 import { t } from './i18n';
 
 // ---------------------------------------------------------------------------
@@ -60,7 +61,6 @@ function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
   const iDevice = /iPad|iPhone|iPod/.test(ua);
-  // iPadOS 13+ masquerades as Mac — detect a touch-capable "Mac" too.
   const iPadOS = navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1;
   return iDevice || iPadOS;
 }
@@ -88,9 +88,11 @@ function markDismissed(): void {
   }
 }
 
+export type InstallPosition = 'pill' | 'banner' | 'bannerTop' | 'fab' | 'avatar';
+
 export interface InstallConfig {
   enabled?: boolean;
-  position?: 'pill' | 'banner';
+  position?: InstallPosition;
   title?: string;
   description?: string;
 }
@@ -102,24 +104,11 @@ export const INSTALL_DEFAULTS: InstallConfig = {
   description: '',
 };
 
-const Z = 995; // above the bottom bar (990), below antd Modal/Drawer masks (1000)
+const Z = 995; // above the bars (990/991), below antd Modal/Drawer masks (1000)
 
-/**
- * Floating "Install app" suggestion. Appears when the browser has offered an install prompt
- * (Android/desktop Chromium) or on iOS Safari (which never fires beforeinstallprompt → manual
- * Share → Add to Home Screen instructions). Hidden once installed, dismissed, or already standalone.
- */
-export const InstallPrompt: React.FC<{
-  config?: InstallConfig;
-  icon?: string;
-  themeColor?: string;
-  bottomOffset?: number;
-}> = ({ config, icon, themeColor, bottomOffset = 0 }) => {
-  const { token } = theme.useToken();
+/** Whether an install suggestion can actually be actioned right now (Chromium prompt or iOS Safari). */
+export function useInstallState() {
   const [, force] = useState(0);
-  const [dismissed, setDismissed] = useState(isDismissed());
-  const [iosOpen, setIosOpen] = useState(false);
-
   useEffect(() => {
     const fn = () => force((n) => n + 1);
     listeners.add(fn);
@@ -127,94 +116,40 @@ export const InstallPrompt: React.FC<{
       listeners.delete(fn);
     };
   }, []);
-
-  if (config?.enabled === false) return null;
-  if (installed || isStandalone() || dismissed) return null;
-
-  const canPrompt = !!deferredPrompt;
   const ios = isIosSafari();
-  // Nothing actionable unless Chromium captured a prompt OR we can show iOS instructions.
-  if (!canPrompt && !ios) return null;
+  const canPrompt = !!deferredPrompt;
+  const available = !installed && !isStandalone() && (canPrompt || ios);
+  return { available, canPrompt, ios, installed };
+}
 
-  const accent = themeColor || token.colorPrimary;
-  const title = (config?.title && config.title.trim()) || t('Install app');
-  const desc = (config?.description && config.description.trim()) || t('Add to your home screen for quick access.');
-
-  const doInstall = async () => {
-    if (canPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        if (choice?.outcome === 'accepted') installed = true;
-        emit();
-      } catch (e) {
-        // ignore
-      }
-    } else if (ios) {
-      setIosOpen(true);
+async function runPrompt(onNeedIosHelp: () => void) {
+  if (deferredPrompt) {
+    try {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (choice?.outcome === 'accepted') installed = true;
+      emit();
+    } catch (e) {
+      // ignore
     }
-  };
-  const dismiss = () => {
-    markDismissed();
-    setDismissed(true);
-  };
+  } else {
+    onNeedIosHelp();
+  }
+}
 
-  const IconThumb = (
-    <div
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 9,
-        flex: 'none',
-        overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: icon ? '#fff' : accent,
-        color: '#fff',
-        fontWeight: 700,
-        fontSize: 17,
-      }}
-    >
-      {icon ? (
-        <img src={icon} alt="" width={34} height={34} style={{ objectFit: 'contain' }} />
-      ) : (
-        (title.trim().charAt(0) || 'A').toUpperCase()
-      )}
-    </div>
-  );
-
-  const closeBtn = (
-    <button
-      type="button"
-      onClick={dismiss}
-      title={t('Dismiss')}
-      style={{
-        border: 'none',
-        background: 'transparent',
-        cursor: 'pointer',
-        color: token.colorTextTertiary,
-        fontSize: 18,
-        lineHeight: 1,
-        padding: '2px 4px',
-        flex: 'none',
-      }}
-    >
-      ×
-    </button>
-  );
-
-  const iosModal = (
-    <Modal
-      open={iosOpen}
-      onCancel={() => setIosOpen(false)}
-      footer={null}
-      title={t('Install app')}
-      width={360}
-    >
+const IosHelpModal: React.FC<{ open: boolean; onClose: () => void; icon?: string; themeColor?: string; desc: string }> = ({
+  open,
+  onClose,
+  icon,
+  themeColor,
+  desc,
+}) => {
+  const { token } = theme.useToken();
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} title={t('Install app')} width={360}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
-        {IconThumb}
+        <IconThumb icon={icon} accent={themeColor || token.colorPrimary} letter="A" />
         <div style={{ color: token.colorTextSecondary, fontSize: 13 }}>{desc}</div>
       </div>
       <ol style={{ paddingLeft: 18, margin: 0, color: token.colorText, fontSize: 14, lineHeight: 1.9 }}>
@@ -224,8 +159,107 @@ export const InstallPrompt: React.FC<{
       </ol>
     </Modal>
   );
+};
 
-  if (config?.position === 'banner') {
+const IconThumb: React.FC<{ icon?: string; accent: string; letter: string; size?: number }> = ({ icon, accent, letter, size = 34 }) => (
+  <div
+    style={{
+      width: size,
+      height: size,
+      borderRadius: Math.round(size * 0.26),
+      flex: 'none',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: icon ? '#fff' : accent,
+      color: '#fff',
+      fontWeight: 700,
+      fontSize: Math.round(size * 0.5),
+    }}
+  >
+    {icon ? <img src={icon} alt="" width={size} height={size} style={{ objectFit: 'contain' }} /> : letter}
+  </div>
+);
+
+/**
+ * Floating "Install app" suggestion. Appears when the browser has offered an install prompt
+ * (Android/desktop Chromium) or on iOS Safari (manual Share → Add to Home Screen). Hidden once
+ * installed, dismissed, already standalone, or when configured to live in the avatar menu.
+ */
+export const InstallPrompt: React.FC<{
+  config?: InstallConfig;
+  icon?: string;
+  themeColor?: string;
+  bottomOffset?: number;
+}> = ({ config, icon, themeColor, bottomOffset = 0 }) => {
+  const { token } = theme.useToken();
+  const [dismissed, setDismissed] = useState(isDismissed());
+  const [iosOpen, setIosOpen] = useState(false);
+  const { available } = useInstallState();
+
+  if (config?.enabled === false) return null;
+  const position = config?.position || 'pill';
+  if (position === 'avatar') return null; // rendered inside the user-center dropdown instead
+  if (!available || dismissed) return null;
+
+  const accent = themeColor || token.colorPrimary;
+  const title = (config?.title && config.title.trim()) || t('Install app');
+  const desc = (config?.description && config.description.trim()) || t('Add to your home screen for quick access.');
+  const letter = (title.trim().charAt(0) || 'A').toUpperCase();
+
+  const doInstall = () => runPrompt(() => setIosOpen(true));
+  const dismiss = () => {
+    markDismissed();
+    setDismissed(true);
+  };
+  const iosModal = <IosHelpModal open={iosOpen} onClose={() => setIosOpen(false)} icon={icon} themeColor={themeColor} desc={desc} />;
+
+  const closeBtn = (
+    <button
+      type="button"
+      onClick={dismiss}
+      title={t('Dismiss')}
+      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: token.colorTextTertiary, fontSize: 18, lineHeight: 1, padding: '2px 4px', flex: 'none' }}
+    >
+      ×
+    </button>
+  );
+
+  if (position === 'fab') {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={doInstall}
+          title={title}
+          style={{
+            position: 'fixed',
+            left: 16,
+            bottom: `calc(${bottomOffset + 16}px + env(safe-area-inset-bottom))`,
+            zIndex: Z,
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            border: 'none',
+            background: accent,
+            color: '#fff',
+            cursor: 'pointer',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.28)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <SafeIcon type="downloadoutlined" size={20} />
+        </button>
+        {iosModal}
+      </>
+    );
+  }
+
+  if (position === 'banner' || position === 'bannerTop') {
+    const top = position === 'bannerTop';
     return (
       <>
         <div
@@ -233,31 +267,23 @@ export const InstallPrompt: React.FC<{
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: bottomOffset,
+            top: top ? 0 : undefined,
+            bottom: top ? undefined : bottomOffset,
             zIndex: Z,
             display: 'flex',
             alignItems: 'center',
             gap: 12,
             padding: '10px 14px',
             background: token.colorBgElevated,
-            borderTop: `1px solid ${token.colorBorderSecondary}`,
-            boxShadow: '0 -4px 16px rgba(0,0,0,0.08)',
+            borderTop: top ? undefined : `1px solid ${token.colorBorderSecondary}`,
+            borderBottom: top ? `1px solid ${token.colorBorderSecondary}` : undefined,
+            boxShadow: top ? '0 4px 16px rgba(0,0,0,0.08)' : '0 -4px 16px rgba(0,0,0,0.08)',
           }}
         >
-          {IconThumb}
+          <IconThumb icon={icon} accent={accent} letter={letter} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: token.colorText }}>{title}</div>
-            <div
-              style={{
-                fontSize: 12,
-                color: token.colorTextTertiary,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {desc}
-            </div>
+            <div style={{ fontSize: 12, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
           </div>
           <Button type="primary" size="small" onClick={doInstall} style={{ background: accent, borderColor: accent }}>
             {t('Install')}
@@ -290,35 +316,75 @@ export const InstallPrompt: React.FC<{
           boxShadow: '0 6px 24px rgba(0,0,0,0.16)',
         }}
       >
-        {IconThumb}
+        <IconThumb icon={icon} accent={accent} letter={letter} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.15, color: token.colorText }}>{title}</div>
-          <div
-            style={{
-              fontSize: 11,
-              color: token.colorTextTertiary,
-              lineHeight: 1.2,
-              maxWidth: 190,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <div style={{ fontSize: 11, color: token.colorTextTertiary, lineHeight: 1.2, maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {desc}
           </div>
         </div>
-        <Button
-          type="primary"
-          size="small"
-          shape="round"
-          onClick={doInstall}
-          style={{ background: accent, borderColor: accent, flex: 'none' }}
-        >
+        <Button type="primary" size="small" shape="round" onClick={doInstall} style={{ background: accent, borderColor: accent, flex: 'none' }}>
           {t('Install')}
         </Button>
         {closeBtn}
       </div>
       {iosModal}
+    </>
+  );
+};
+
+/**
+ * Compact inline install control for embedding inside a menu (e.g. the avatar dropdown). Renders
+ * nothing when install isn't available. No dismiss button — it lives inside a menu the user opens.
+ */
+export const InstallInline: React.FC<{ icon?: string; themeColor?: string; title?: string; description?: string; onDone?: () => void }> = ({
+  icon,
+  themeColor,
+  title,
+  description,
+  onDone,
+}) => {
+  const { token } = theme.useToken();
+  const [iosOpen, setIosOpen] = useState(false);
+  const { available } = useInstallState();
+  if (!available) return null;
+
+  const accent = themeColor || token.colorPrimary;
+  const label = (title && title.trim()) || t('Install app');
+  const desc = (description && description.trim()) || t('Add to your home screen for quick access.');
+  const letter = (label.trim().charAt(0) || 'A').toUpperCase();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          runPrompt(() => setIosOpen(true));
+          onDone?.();
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          width: '100%',
+          padding: '8px 10px',
+          border: 'none',
+          borderRadius: 8,
+          background: 'transparent',
+          cursor: 'pointer',
+          textAlign: 'left',
+          color: token.colorText,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = token.colorFillTertiary)}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      >
+        <IconThumb icon={icon} accent={accent} letter={letter} size={28} />
+        <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
+          <span style={{ fontSize: 11, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
+        </span>
+      </button>
+      <IosHelpModal open={iosOpen} onClose={() => setIosOpen(false)} icon={icon} themeColor={themeColor} desc={desc} />
     </>
   );
 };
