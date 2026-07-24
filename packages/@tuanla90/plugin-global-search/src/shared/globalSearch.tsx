@@ -268,6 +268,16 @@ function findHeaderEllipsis(): Element | null {
   return null;
 }
 
+// True on the modern `/v/` client when the topbar has folded every action into a "⋮" overflow (its
+// `.nb-topbar-actions-list` is gone). Robust to timing: treats "no action list + (⋮ visible OR narrow
+// viewport)" as collapsed, so the decision doesn't flip-flop while the header (re)mounts.
+function isModernCollapsed(): boolean {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+  if (!/\/v(\/|$)/.test(location.pathname || '')) return false; // modern client only
+  if (document.querySelector('.nb-topbar-actions-list')) return false; // desktop: actions inline → not collapsed
+  return !!findHeaderEllipsis() || (window.innerWidth || 0) <= 820;
+}
+
 /**
  * Where to render the header trigger, recomputed on a light interval + DOM mutations.
  * - Classic `/admin` (ProLayout): INJECT a flex-item host into the action row so the browser lays
@@ -305,6 +315,16 @@ function useHeaderMount(align: Align): Mount {
         return;
       }
       const override = (window as any).__PTDL_SEARCH_HEADER_SELECTOR__;
+
+      // Modern /v/ folded into a "⋮" overflow → HIDE the header pill here (no room), taking
+      // precedence over the alignment branches so it stays hidden consistently regardless of Position.
+      // A launcher docked by the "⋮" (e.g. @tuanla90/plugin-pwa's mobile Search icon) opens the palette;
+      // ⌘/Ctrl+K still works everywhere.
+      if (!override && isModernCollapsed()) {
+        dropHost();
+        hide();
+        return;
+      }
 
       // 0) Explicit alignment → a measured fixed overlay over the header.
       //    Left   → anchored just past the logo (best with the top menu hidden so it has room).
@@ -393,16 +413,6 @@ function useHeaderMount(align: Align): Mount {
           );
           return;
         }
-      }
-
-      // 1b) Modern /v/ on narrow screens: the topbar collapsed into a "⋮" overflow (no
-      //     `.nb-topbar-actions-list`), leaving no room for the header pill — HIDE it here. A compact
-      //     launcher that docks by the "⋮" (e.g. @tuanla90/plugin-pwa's mobile Search icon) opens the
-      //     palette instead; ⌘/Ctrl+K still works everywhere.
-      if (!override && findHeaderEllipsis()) {
-        dropHost();
-        hide();
-        return;
       }
 
       // 2) Classic ProLayout toolbar (or override) → inject a flex item.
