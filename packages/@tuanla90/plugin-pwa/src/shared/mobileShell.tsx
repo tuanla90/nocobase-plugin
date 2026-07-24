@@ -299,7 +299,7 @@ export function createMobileShell({
               {inApp ? (
                 <InstallPrompt config={cfg.install} icon={cfg.icon} themeColor={cfg.themeColor} bottomOffset={installOffset} />
               ) : null}
-              {inApp ? <TopbarSearch enabled={!!bb?.topSearch} /> : null}
+              {inApp ? <TopbarSearch enabled={!!bb?.topSearch} themeColor={cfg.themeColor} /> : null}
             </>,
             document.body,
           )

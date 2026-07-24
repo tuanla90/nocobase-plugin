@@ -146,9 +146,9 @@
     {
       "packageName": "@tuanla90/plugin-global-search",
       "slug": "global-search",
-      "version": "0.9.9",
+      "version": "0.9.10",
       "displayName": "Global Search",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.9.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-global-search-0.9.10.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-gsheet-sync",
@@ -258,9 +258,9 @@
     {
       "packageName": "@tuanla90/plugin-pwa",
       "slug": "pwa",
-      "version": "0.5.4",
+      "version": "0.5.5",
       "displayName": "PWA (Installable App)",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.4.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-pwa-0.5.5.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-spreadsheet-view",

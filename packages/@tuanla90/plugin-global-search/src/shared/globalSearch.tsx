@@ -396,27 +396,13 @@ function useHeaderMount(align: Align): Mount {
       }
 
       // 1b) Modern /v/ on narrow screens: the topbar collapsed into a "⋮" overflow (no
-      //     `.nb-topbar-actions-list`) → dock the pill just left of that "⋮" instead of floating.
-      if (!override) {
-        const ell = findHeaderEllipsis();
-        if (ell) {
-          const wrap = (ell.closest('div') as HTMLElement | null) || (ell as HTMLElement);
-          const r = wrap.getBoundingClientRect();
-          if (r.width || r.height) {
-            dropHost();
-            const vw = window.innerWidth || 0;
-            const top = Math.round(r.top + r.height / 2);
-            const right = Math.max(8, Math.round(vw - r.left + 8));
-            const style: React.CSSProperties = { position: 'fixed', top, right, transform: 'translateY(-50%)', zIndex: PILL_Z };
-            const variant: Variant = ancestorBgIsDark(ell) ? 'header-dark' : 'header-light';
-            setMount((m) =>
-              !m.host && m.overlayStyle && m.overlayStyle.top === top && m.overlayStyle.right === right && m.variant === variant
-                ? m
-                : { host: null, overlayStyle: style, variant },
-            );
-            return;
-          }
-        }
+      //     `.nb-topbar-actions-list`), leaving no room for the header pill — HIDE it here. A compact
+      //     launcher that docks by the "⋮" (e.g. @tuanla90/plugin-pwa's mobile Search icon) opens the
+      //     palette instead; ⌘/Ctrl+K still works everywhere.
+      if (!override && findHeaderEllipsis()) {
+        dropHost();
+        hide();
+        return;
       }
 
       // 2) Classic ProLayout toolbar (or override) → inject a flex item.

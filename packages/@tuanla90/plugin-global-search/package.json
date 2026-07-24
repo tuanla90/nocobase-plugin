@@ -1,6 +1,6 @@
 {
   "name": "@tuanla90/plugin-global-search",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "displayName": "Global Search",
   "displayName.vi-VN": "Tìm kiếm toàn cục",
   "description": "A header search box plus a Cmd/Ctrl+K command palette that searches across collections and jumps to records — grouped live results, a per-collection open behavior (page, detail view, or preview drawer), and a settings page to pick fields and style the pill. Classic and modern clients.",
