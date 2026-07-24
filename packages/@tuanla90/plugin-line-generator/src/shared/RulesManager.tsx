@@ -6,7 +6,7 @@
 //  - key auto-slugs from the title; runVersionSource only shows for the 'version' policy
 //  - 5 sections instead of 7; rarely-touched knobs live under "Nâng cao" (collapsed)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip, message, theme } from 'antd';
+import { AutoComplete, Button, Cascader, Checkbox, Collapse, Drawer, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, message, theme } from 'antd';
 import { CollapsibleSection, SettingRow, RelationAppendsPicker, FieldPickerCascader, getFields, SegmentedGroup } from '@tuanla90/shared';
 import { previewInline, RunResult } from './api';
 import { TEMPLATES } from './templates';
@@ -810,16 +810,12 @@ export function createRulesManager(deps: { useApiClient: () => any }): React.FC 
                 <RelationAppendsPicker api={api} collectionName={cfg.sourceCollection || undefined} value={cfg.preload} onChange={(v) => set({ preload: v })} />
               </SettingRow>
               <SettingRow label={tt('Bật')}><Checkbox checked={cfg.enabled} onChange={(e) => set({ enabled: e.target.checked })} /></SettingRow>
-              <SettingRow label={tt('Tự động chạy')} hint={tt('Tự động: server tự chạy ngay khi bản ghi được lưu và đạt điều kiện bên dưới (kiểu AI Column). Thủ công: chỉ chạy khi có người bấm. NÚT BẤM không cấu hình ở đây — bộ sinh nào (kể cả auto) cũng gắn nút được: vào block → Configure actions → "Sinh dòng theo quy tắc", chọn bộ sinh trong setting của nút; show/ẩn, màu, quyền chỉnh trên chính nút như nút core.')}>
-                <SegmentedGroup
-                  block
-                  style={{ border: `1px solid ${token.colorBorder}`, width: '100%' }}
-                  value={cfg.trigger || 'manual'}
-                  onChange={(v: any) => set({ trigger: v })}
-                  options={[
-                    { value: 'manual', label: tt('Thủ công (chỉ chạy khi bấm nút)') },
-                    { value: 'auto', label: tt('Tự động khi đạt điều kiện') },
-                  ]}
+              <SettingRow label={tt('Tự động chạy')} hint={tt('BẬT: server tự chạy ngay khi bản ghi được lưu và đạt điều kiện bên dưới (kiểu AI Column). TẮT: chỉ chạy khi có người bấm nút. Chạy tay thì bộ sinh nào cũng làm được (kể cả khi đang bật auto) — gắn nút qua Configure actions → "Sinh dòng theo quy tắc" trên block, chọn bộ sinh trong setting của nút.')}>
+                <Switch
+                  checked={(cfg.trigger || 'manual') === 'auto'}
+                  onChange={(on: boolean) => set({ trigger: on ? 'auto' : 'manual' })}
+                  checkedChildren={tt('Auto')}
+                  unCheckedChildren={tt('Tắt')}
                 />
               </SettingRow>
               <SettingRow layout="vertical"
