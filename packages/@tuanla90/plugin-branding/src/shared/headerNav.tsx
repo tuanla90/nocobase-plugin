@@ -232,26 +232,59 @@ function ensureBrandingTimer(active: boolean): void {
 }
 
 // ---- Favicon (browser-tab icon) -------------------------------------------------------------------
-// Core NocoBase renders a `<link rel="shortcut icon">` (default `/favicon/favicon.ico`) but has NO
-// admin setting for it — we point that link at a custom URL. Clearing restores the core default.
-// React-safe: core re-asserts the default `href` on later re-renders (route change / settings refetch),
-// so — exactly like the logo — a light interval re-applies. `href` is compared before any write.
+// Core NocoBase has NO favicon setting and sets the tab icon at RUNTIME (there is no <link> in the
+// served HTML): it injects a `<link rel="shortcut icon" href="/favicon/favicon.ico">` LATE — after
+// app-info resolves (~1s in). The old code created its OWN link early and only re-asserted that one;
+// when core later added a SECOND (default) link, the browser used core's and our poll was a no-op on
+// our own already-custom link → the icon flashed custom then stuck on the default.
+//
+// Fix: (1) set the href on EVERY favicon link so whichever one the browser picks shows the custom
+// icon, and (2) watch <head> with a MutationObserver so we re-apply the instant core inserts/changes
+// a link — no visible flash and no dependence on the 1.2s poll. `href` is compared before any write,
+// so the observer settles in one pass (our own writes don't ping-pong).
 let _faviconApplied = false;
+const FAVICON_SELECTOR = 'link[rel~="icon" i]'; // matches rel="icon" AND rel="shortcut icon"
+const DEFAULT_FAVICON = '/favicon/favicon.ico';
+
+function faviconLinks(): HTMLLinkElement[] {
+  return Array.from(document.querySelectorAll(FAVICON_SELECTOR)) as HTMLLinkElement[];
+}
+
 function applyFavicon(): void {
   if (typeof document === 'undefined') return;
   const url = _favicon;
-  let link = document.querySelector('link[rel="shortcut icon"], link[rel="icon"]') as HTMLLinkElement | null;
+  const links = faviconLinks();
   if (url) {
-    if (!link) {
-      link = document.createElement('link');
+    if (!links.length) {
+      const link = document.createElement('link');
       link.setAttribute('rel', 'shortcut icon');
+      link.setAttribute('data-ptdl-favicon', '1');
+      link.setAttribute('href', url);
       document.head.appendChild(link);
+    } else {
+      // Point every existing favicon link at our URL — core may keep more than one and the browser
+      // picks the last/standard one, so covering them all is the only reliable way to win.
+      links.forEach((l) => { if (l.getAttribute('href') !== url) l.setAttribute('href', url); });
     }
-    if (link.getAttribute('href') !== url) link.setAttribute('href', url);
     _faviconApplied = true;
-  } else if (_faviconApplied && link) {
-    link.setAttribute('href', '/favicon/favicon.ico');
+  } else if (_faviconApplied) {
+    links.forEach((l) => { if (l.getAttribute('href') !== DEFAULT_FAVICON) l.setAttribute('href', DEFAULT_FAVICON); });
     _faviconApplied = false;
+  }
+}
+
+// Instant re-apply: catch core injecting/replacing a favicon <link> the moment it happens, instead of
+// waiting up to 1.2s for the poll (which is what made the icon visibly flash back to default).
+let _headObserver: MutationObserver | null = null;
+function ensureFaviconObserver(active: boolean): void {
+  if (typeof MutationObserver === 'undefined' || typeof document === 'undefined') return;
+  if (active && !_headObserver) {
+    _headObserver = new MutationObserver(() => { if (_favicon) applyFavicon(); });
+    // childList: core adding a new <link>; attributes(href): core repointing an existing one.
+    _headObserver.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'rel'] });
+  } else if (!active && _headObserver) {
+    _headObserver.disconnect();
+    _headObserver = null;
   }
 }
 
@@ -289,6 +322,7 @@ export function applyNav(cfg: NavCfg): void {
   _favicon = c.favicon || '';
   reapplyBranding();
   ensureBrandingTimer(!!(_logoLight || _logoDark || _favicon));
+  ensureFaviconObserver(!!_favicon); // instant re-apply when core injects its own favicon link
 }
 
 /** Every client calls this at startup to apply the saved nav config. */
