@@ -16,6 +16,9 @@ cp "$SRC/README.md" "$DST/README.md" 2>/dev/null || true
 cp "$SRC/client.js" "$SRC/client-v2.js" "$SRC/server.js" "$DST/"
 cp "$SRC/client.d.ts" "$SRC/client-v2.d.ts" "$SRC/server.d.ts" "$DST/"
 
+# GATE: chặn lỗi scope (lớp lỗi "rules is not defined" của line-generator 0.8.0/0.8.1) — recipes/typecheck.sh
+bash "$ROOT/recipes/typecheck.sh" "$DST"
+
 # Stub EXTERNAL framework deps at nb-local (2.1.19) versions. @tuanla90/shared is BUNDLED (must be a real
 # resolvable package in node_modules — refreshed by run-shared-build.sh), same as ip-guard/change-log.
 mkstub() {

@@ -23,6 +23,9 @@ fi
 VER=$(grep '"version"' "$SRC/package.json" | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
 echo "node: $(node -v)  version: $VER"
 
+# GATE: chặn lỗi scope (vụ "rules is not defined" 0.8.0/0.8.1) trước khi build — xem recipes/typecheck.sh
+bash "$ROOT/recipes/typecheck.sh" "$DST"
+
 # Vendored @formulajs/formulajs is a self-contained browser bundle imported RELATIVELY → it gets
 # bundled, needs NO stub and NO real install. Only framework libs are external (versions = nb-local host).
 mkstub() {
