@@ -20,7 +20,7 @@ import 'react-dom';
 import { tagColorToHex, SettingRow, SettingCard, AiCodegenButton, registerSettingsKit, rx, SegmentedGroup, ColumnSelect, aggSum, aggAvg } from '@tuanla90/shared';
 import {
   ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight,
-  Copy, Download, ExternalLink, Eye, EyeOff, Flag, Pencil, Pin, Play, Plus, Send, SlidersHorizontal,
+  Copy, Download, ExternalLink, Eye, EyeOff, Flag, GripVertical, Pencil, Pin, Play, Plus, Send, SlidersHorizontal,
   Star, Trash2, X,
 } from 'lucide-react';
 
@@ -31,7 +31,7 @@ const ACTION_ICONS: Record<string, any> = {
 };
 // Màu button → hex (theo antd token, fallback hex).
 const ACTION_COLORS: Record<string, string> = {
-  default: 'var(--colorPrimary, #1677ff)',
+  default: 'var(--ptdl-primary, #1677ff)',
   success: 'var(--colorSuccess, #52c41a)',
   warning: 'var(--colorWarning, #faad14)',
   danger: 'var(--colorError, #ff4d4f)',
@@ -75,6 +75,10 @@ import {
 } from '@ant-design/icons';
 import { AgGridReact } from 'ag-grid-react';
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community';
+// FormTab của Formily: chia dialog settings thành tab (void wrapper → field paths PHẲNG, params cũ bind
+// nguyên). Import trực tiếp → nocobase-build externalize @formily/antd-v5 (host cấp runtime). Pattern
+// đã dùng ở @tuanla90/plugin-ai-column.
+import { FormTab } from '@formily/antd-v5';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -102,15 +106,30 @@ export const setRuntimeT = (fn: (s: string, opts?: any) => string) => {
 export const t = (s: string, opts?: any): string => _t(s, opts);
 
 // Theme gần Lark Base: viền mảnh, header xám nhạt, accent màu primary antd.
-const SHEET_THEME = themeQuartz.withParams({
-  accentColor: '#1677ff',
-  borderColor: '#f0f0f0',
-  headerBackgroundColor: '#fafafa',
+// Tham số MẬT ĐỘ (không màu) — cố định.
+const SHEET_THEME_BASE = {
   fontSize: 13,
   headerFontWeight: 600,
   spacing: 5, // mật độ gọn hơn mặc định (8)
   cellHorizontalPadding: 6, // chữ/nút ↔ mép ô (mật độ Lark ~6px)
-});
+};
+// Theme AG Grid LẤY MÀU TỪ antd token (theme.useToken) → tự khớp light/dark của app. Trước đây hardcode
+// màu sáng nên lưới luôn trắng dù app dark mode. Fallback = màu sáng khi token thiếu.
+const buildSheetTheme = (token: any) =>
+  themeQuartz.withParams({
+    ...SHEET_THEME_BASE,
+    accentColor: token?.colorPrimary || '#1677ff',
+    backgroundColor: token?.colorBgContainer || '#fff',
+    foregroundColor: token?.colorText || 'rgba(0,0,0,0.88)',
+    borderColor: token?.colorBorderSecondary || '#f0f0f0',
+    headerBackgroundColor: token?.colorFillQuaternary || '#fafafa',
+    headerTextColor: token?.colorTextHeading || token?.colorText || 'rgba(0,0,0,0.88)',
+    chromeBackgroundColor: token?.colorFillQuaternary || '#fafafa',
+    oddRowBackgroundColor: token?.colorBgContainer || '#fff',
+    rowHoverColor: token?.controlItemBgHover || 'rgba(0,0,0,0.04)',
+    selectedRowBackgroundColor: token?.controlItemBgActive || 'rgba(22,119,255,0.1)',
+    inputBackgroundColor: token?.colorBgContainer || '#fff',
+  });
 
 // PHẢI ổn định reference — KHÔNG inline vào <AgGridReact defaultColDef={{…}}>. AgGridReact re-apply
 // defaultColDef mỗi khi prop đổi ref; object inline tạo mới MỖI render → AG re-sync width MỌI cột về
@@ -125,9 +144,9 @@ const SHEET_DEFAULT_COLDEF = { resizable: true, sortable: false };
 const SHEET_CSS = `
 .ptdl-sheet .ag-cell-inline-editing {
   box-shadow: none !important;
-  border: 1px solid #1677ff !important;
+  border: 1px solid var(--ptdl-primary, #1677ff) !important;
   border-radius: 0 !important;
-  background: var(--colorBgElevated, #fff) !important;
+  background: var(--ptdl-elevated, #fff) !important;
 }
 .ptdl-sheet .ag-cell-inline-editing .ptdl-sheet-editor { height: 100%; }
 .ptdl-sheet .ag-cell-inline-editing .ant-input,
@@ -149,7 +168,7 @@ const SHEET_CSS = `
   padding: 0 !important;
 }
 .ptdl-sheet .ag-row-pinned {
-  background: #fafcff !important;
+  background: var(--ptdl-pinned-bg, #fafcff) !important;
   font-style: italic;
 }
 .ptdl-sheet .ptdl-expand { opacity: 0; transition: opacity 0.12s; }
@@ -158,7 +177,7 @@ const SHEET_CSS = `
 .ptdl-sheet .ag-header-cell:hover .ptdl-colgear { opacity: 0.7; }
 .ptdl-sheet .ptdl-range { background-color: rgba(22, 119, 255, 0.10) !important; }
 .ptdl-sheet .ptdl-dirty { box-shadow: inset 3px 0 0 #faad14; }
-.ptdl-sheet .ptdl-gadd { opacity: 0.3; cursor: pointer; color: #1677ff; font-weight: 600; padding: 0 4px; transition: opacity 0.12s; }
+.ptdl-sheet .ptdl-gadd { opacity: 0.3; cursor: pointer; color: var(--ptdl-primary, #1677ff); font-weight: 600; padding: 0 4px; transition: opacity 0.12s; }
 .ptdl-sheet .ptdl-gadd:hover { opacity: 1; }
 /* Merge mode (cell spanning): giá trị ô gộp "dính" mép trên khi scroll trong span dài.
    position:sticky KHÔNG dùng được — AG Grid transform:translateY container chứa spanned cells
@@ -197,7 +216,12 @@ const SHEET_CSS = `
   width: 2px; transform: translateX(-50%); border-radius: 1px;
   background: transparent; transition: background 0.12s; pointer-events: none;
 }
-.ptdl-sheet .ag-header-cell-resize:hover::after { background: var(--colorPrimary, #1677ff); }
+.ptdl-sheet .ag-header-cell-resize:hover::after { background: var(--ptdl-primary, #1677ff); }
+/* Cột tay cầm KÉO-THẢ đổi vị trí dòng: mờ mặc định, hover dòng mới rõ (giống ⤢/số dòng); con trỏ grab. */
+.ptdl-sheet .ptdl-drag-cell { justify-content: center; }
+.ptdl-sheet .ptdl-drag-cell .ag-drag-handle { opacity: 0.28; color: #8c8c8c; cursor: grab; transition: opacity 0.12s; }
+.ptdl-sheet .ag-row-hover .ptdl-drag-cell .ag-drag-handle { opacity: 0.8; }
+.ptdl-sheet .ptdl-drag-cell .ag-drag-handle:active { cursor: grabbing; }
 `;
 let __sheetCssDone = false;
 function ensureSheetCss() {
@@ -239,6 +263,16 @@ const SHEET_DISPLAY_WIDGETS: Record<string, { use: string; label: string; flow: 
     label: 'Nút chọn',
     flow: 'ptdlSelectButtonsDisplay',
     ifaces: ['select', 'multipleSelect'],
+  },
+  // Rich select (field-enhancements): render quan hệ thành RichRow (avatar/title/subtitle) — DISPLAY biến thể
+  // PtdlRichSelectDisplayFieldModel (readPretty). Vào "Hiển thị" của cột quan hệ → có cả nút ⚙ cấu hình
+  // (chọn field title/avatar/subtitle qua flow ptdlRichSelectDisplay). Thay cho việc chỉ set editorUse (chỉ
+  // hiện lúc sửa). createdBy/updatedBy cũng là belongsTo(users) nên cho luôn.
+  richSel: {
+    use: 'PtdlRichSelectDisplayFieldModel',
+    label: 'Rich select',
+    flow: 'ptdlRichSelectDisplay',
+    ifaces: ['m2o', 'o2o', 'oho', 'obo', 'createdBy', 'updatedBy'],
   },
 };
 const displayWidgetsForIface = (iface: string) =>
@@ -448,6 +482,20 @@ function parsePastedValue(cf: any, raw: string): any {
 const tkOf = (coll: any): string => {
   const tk = coll?.filterTargetKey || 'id';
   return Array.isArray(tk) ? tk[0] || 'id' : tk;
+};
+
+// Cột SORT của collection (field type/interface 'sort') — có thì mới cho kéo-thả đổi vị trí DÒNG
+// (server action `<coll>:move` cần sortField). scopeKey (nếu có) = sort theo phạm vi (mỗi nhóm 1 dãy thứ tự).
+const sortFieldOf = (coll: any): { name: string; scopeKey?: string } | null => {
+  for (const f of coll?.getFields?.() || []) {
+    if (f?.type === 'sort' || f?.interface === 'sort') {
+      const scopeKey = f?.options?.scopeKey || (f as any)?.scopeKey || undefined;
+      return { name: f.name, scopeKey };
+    }
+  }
+  // sortable ở cấp collection → NocoBase tự thêm field 'sort'
+  if (coll?.options?.sortable || coll?.sortable) return { name: 'sort' };
+  return null;
 };
 
 // ---------------- custom choice editors (enum select — KHÔNG dùng antd Select) ----------------
@@ -1269,7 +1317,7 @@ function PtdlRulesEditor({ model, fieldName, cfg, upd }: any) {
   );
 }
 
-function PtdlColStylePanel({ model, fieldName }: any) {
+function PtdlColStylePanel({ model, fieldName, inDialog }: any) {
   const [cfg, setCfg] = React.useState<any>(() => ({ ...model.getColCfg(fieldName) }));
   const upd = (patch: any) => {
     const next = { ...cfg, ...patch };
@@ -1286,10 +1334,11 @@ function PtdlColStylePanel({ model, fieldName }: any) {
     if (fc?.key) numCols.push({ value: `__f_${fc.key}`, label: `ƒ ${fc.title || fc.key}` });
   // Dùng house style SettingRow (label trái cố định + control) thay hàng tự chế.
   const Row = (p: any) => <SettingRow labelWidth={96} style={{ marginBottom: 10 }} {...p} />;
-  // Dropdown/picker portal MẶC ĐỊNH ra <body> → click = "ngoài Popover" → đóng cả panel.
-  // getPopupContainer trỏ vào chính panel để popup nằm TRONG → không đóng.
+  // Trong POPOVER ⚙ (header): portal dropdown VÀO panel để click không rơi "ngoài Popover" → không đóng panel.
+  // Trong DIALOG settings (tab Cột, inDialog): panel nằm trong Modal — portal vào panel 264px bị chật/kẹt dưới,
+  // để MẶC ĐỊNH (body) cho dropdown/colorpicker nổi ĐÚNG trên Modal (antd tự xếp z-index cao hơn).
   const rootRef = React.useRef<any>(null);
-  const pop = () => rootRef.current || document.body;
+  const pop = inDialog ? undefined : () => rootRef.current || document.body;
   const Color = ({ k }: { k: string }) => (
     <PtdlNBColorPicker value={cfg[k] || null} onChange={(hex: string | null) => upd({ [k]: hex || undefined })} getPopupContainer={pop} />
   );
@@ -1801,6 +1850,138 @@ function PtdlFormulaMiniForm({ model, title: initTitle, formula: initFormula, su
 }
 
 /**
+ * Tab "Cột": DANH SÁCH cột (kiểu core NocoBase) — kéo ⋮⋮ sắp thứ tự, tick ẩn/hiện (thêm/bớt), nút "Sửa"
+ * mở panel cấu hình cột đó (định dạng + CÁCH HIỂN THỊ: Trình sửa/editorUse + Hiển thị/Widget = tương đương
+ * "Field component"). Ghi thẳng qua model (reorderColumns / setColCfg) → áp NGAY, như ⚙ trên header.
+ */
+const PtdlColumnsTab = observer(function PtdlColumnsTab({ model }: any) {
+  const { token } = theme.useToken();
+  const coll = model?.context?.collection;
+  // đọc để re-render khi order/hidden/formulas đổi (observer)
+  const colState = model?.props?.ptdlColState;
+  const formulas = model?.props?.ptdlFormulas;
+  const items = React.useMemo(() => {
+    const base: Array<{ id: string; label: string; iface?: string }> = [];
+    for (const f of coll?.getFields?.() || []) {
+      if (f?.name && f?.interface && !HIDE_IFACES.has(f.interface))
+        base.push({ id: f.name, label: typeof f.title === 'string' && f.title ? f.title : f.name, iface: f.interface });
+    }
+    for (const fc of formulas || []) if (fc?.key) base.push({ id: `__f_${fc.key}`, label: `ƒ ${fc.title || fc.key}` });
+    const order: string[] = model.getColState()?.order || [];
+    const rank = new Map(order.map((id: string, i: number) => [id, i]));
+    base.sort((a, b) => (rank.has(a.id) ? (rank.get(a.id) as number) : 9999) - (rank.has(b.id) ? (rank.get(b.id) as number) : 9999));
+    return base;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coll, colState, formulas]);
+
+  const [editing, setEditing] = React.useState<string | null>(null);
+  const [dragId, setDragId] = React.useState<string | null>(null);
+  const [overId, setOverId] = React.useState<string | null>(null);
+
+  if (!items.length) return <div style={{ color: token.colorTextTertiary, padding: 8 }}>{t('Không có cột nào để cấu hình')}</div>;
+
+  // Trang SỬA: panel cấu hình đầy đủ của 1 cột (giống ⚙ header) — có "Trình sửa" (editor) + "Hiển thị"/"Widget".
+  if (editing) {
+    const it = items.find((i) => i.id === editing);
+    return (
+      <div>
+        <div
+          onClick={() => setEditing(null)}
+          style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 10, color: token.colorPrimary, fontWeight: 500 }}
+        >
+          <ChevronLeft size={16} /> {t('Danh sách cột')}
+        </div>
+        <div style={{ marginBottom: 8, fontWeight: 600, color: token.colorText }}>{it?.label || editing}</div>
+        {/* key={editing} → remount khi đổi cột (PtdlColStylePanel init local-state từ getColCfg 1 lần/mount).
+            inDialog → dropdown/colorpicker portal ra body, nổi đúng trên Modal (không kẹt dưới popup cha). */}
+        <PtdlColStylePanel key={editing} model={model} fieldName={editing} inDialog />
+      </div>
+    );
+  }
+
+  const move = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const ids = items.map((i) => i.id);
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from < 0 || to < 0) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    model.reorderColumns(ids);
+  };
+  const isVisible = (id: string) => !model.getColCfg(id).hidden;
+  const toggle = (id: string) => model.setColCfg(id, { hidden: isVisible(id) ? true : undefined });
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8 }}>
+        {t('Kéo ⋮⋮ để sắp thứ tự · tick để hiện/ẩn cột · Sửa để đổi cách hiển thị & định dạng')}
+      </div>
+      <div style={{ maxHeight: 340, overflowY: 'auto', paddingRight: 2 }}>
+        {items.map((it) => {
+          const vis = isVisible(it.id);
+          const isOver = overId === it.id && dragId && dragId !== it.id;
+          return (
+            <div
+              key={it.id}
+              onDragOver={(e: any) => {
+                e.preventDefault();
+                if (overId !== it.id) setOverId(it.id);
+              }}
+              onDrop={(e: any) => {
+                e.preventDefault();
+                if (dragId) move(dragId, it.id);
+                setDragId(null);
+                setOverId(null);
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', marginBottom: 6, borderRadius: 6,
+                border: `1px solid ${isOver ? token.colorPrimary : token.colorBorderSecondary}`,
+                background: dragId === it.id ? token.colorFillTertiary : token.colorFillQuaternary,
+                opacity: dragId === it.id ? 0.55 : 1,
+              }}
+            >
+              <span
+                draggable
+                onDragStart={(e: any) => {
+                  // Firefox BẮT BUỘC có dataTransfer mới khởi động drag.
+                  try {
+                    e.dataTransfer?.setData?.('text/plain', it.id);
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                  } catch {
+                    /* noop */
+                  }
+                  setDragId(it.id);
+                }}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setOverId(null);
+                }}
+                title={t('Kéo để sắp thứ tự')}
+                style={{ cursor: 'grab', color: token.colorTextTertiary, display: 'inline-flex', flex: 'none' }}
+              >
+                <GripVertical size={15} />
+              </span>
+              <AntCheckbox checked={vis} onChange={() => toggle(it.id)} />
+              <span
+                style={{
+                  flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  color: vis ? token.colorText : token.colorTextTertiary,
+                }}
+              >
+                {it.label}
+              </span>
+              <Button size="small" type="text" icon={<Pencil size={14} />} onClick={() => setEditing(it.id)}>
+                {t('Sửa')}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+/**
  * Menu header cột kiểu Lark/Airtable (Popover mini-router). Chỉ hiện khi bật UI editor.
  * Trang: menu → { settings (bọc PtdlColStylePanel) | insertLeft | insertRight | edit }.
  */
@@ -2042,7 +2223,7 @@ function numberFormatter(cf: any, cfg: any) {
 }
 
 // ---------------- grid component ----------------
-function buildColDefs(model: any, coll: any, visibleFields?: string[]) {
+function buildColDefs(model: any, coll: any, visibleFields?: string[], canDrag?: boolean) {
   if (!coll) return [];
   const pick = Array.isArray(visibleFields) && visibleFields.length ? new Set(visibleFields) : null;
   // group display = merge → các cột group gộp ô liền kề (AG Grid cell spanning, Community v33+).
@@ -2050,6 +2231,28 @@ function buildColDefs(model: any, coll: any, visibleFields?: string[]) {
   // "Hà Nội/Done" merge dính vào "Đà Nẵng/Done".
   const mergeFields: string[] = model.props.ptdlGroupDisplay === 'merge' ? groupFieldsOf(model) : [];
   const out: any[] = [];
+  // Cột tay cầm KÉO-THẢ đổi vị trí dòng (chỉ khi collection có cột sort + không nhóm + không sort cột khác).
+  // Dùng renderer mặc định của AG Grid (rowDrag=true tự vẽ tay cầm ⠿); rowDrag là HÀM để chỉ hiện tay cầm
+  // ở dòng data thật (bỏ dòng nháp/summary/nhóm/ghim). Ghim trái, đứng TRƯỚC cột số dòng.
+  if (canDrag) {
+    out.push({
+      colId: '__ptdlDrag',
+      headerName: '',
+      width: 28,
+      minWidth: 28,
+      maxWidth: 28,
+      pinned: 'left',
+      editable: false,
+      sortable: false,
+      resizable: false,
+      suppressMovable: true,
+      suppressNavigable: true,
+      rowDrag: (p: any) =>
+        !p.node?.rowPinned && !p.data?.__ptdlNew && !p.data?.__ptdlSummary && !p.data?.__ptdlGroup,
+      cellClass: 'ptdl-drag-cell',
+      cellStyle: { padding: 0, textAlign: 'center' },
+    });
+  }
   // Cột số dòng + chọn dòng (kiểu NocoBase: số ↔ checkbox khi hover). Thay cho rowNumbers + selection
   // column mặc định của AG Grid (2 cột riêng, và selection column bị spanning container đè khi merge).
   const allowSelect = model.props.ptdlAllowDelete !== false;
@@ -2089,7 +2292,7 @@ function buildColDefs(model: any, coll: any, visibleFields?: string[]) {
             e.stopPropagation();
             model.openRecordDrawer(p.data);
           }}
-          style={{ cursor: 'pointer', color: '#1677ff', fontSize: 13 }}
+          style={{ cursor: 'pointer', color: 'var(--ptdl-primary, #1677ff)', fontSize: 13 }}
         >
           <ExpandAltOutlined />
         </span>
@@ -2102,7 +2305,10 @@ function buildColDefs(model: any, coll: any, visibleFields?: string[]) {
     if (pick && !pick.has(name)) continue;
     if (model.getColCfg(name).hidden) continue;
     const rawTitle = cf.title || cf?.options?.uiSchema?.title || name;
-    const editable = EDITABLE_IFACES.has(iface);
+    // createdBy/updatedBy là belongsTo(users) nhưng KHÔNG mặc định editable (field hệ thống). Chỉ mở editable
+    // khi user CHỦ ĐỘNG gán Trình sửa (editorUse) — opt-in, tránh lỡ tay sửa field hệ thống.
+    const editable =
+      EDITABLE_IFACES.has(iface) || (['createdBy', 'updatedBy'].includes(iface) && !!model.getColCfg(name).editorUse);
     const cfg = model.getColCfg(name);
     // Số & ngày tháng mặc định căn phải (kiểu bảng tính) — cfg.align của user vẫn ưu tiên hơn.
     const defaultAlign =
@@ -2364,7 +2570,7 @@ function buildColDefs(model: any, coll: any, visibleFields?: string[]) {
   const order: string[] = model.getColState()?.order || [];
   if (order.length) {
     const rank = new Map(order.map((id: string, i: number) => [id, i]));
-    const HEAD_IDS = new Set(['__ptdlSel', '__ptdlExpand']);
+    const HEAD_IDS = new Set(['__ptdlDrag', '__ptdlSel', '__ptdlExpand']);
     const head = out.filter((d) => HEAD_IDS.has(d.colId));
     const rest = out.filter((d) => !HEAD_IDS.has(d.colId));
     rest.sort((a, b) => {
@@ -2392,7 +2598,7 @@ function buildColDefs(model: any, coll: any, visibleFields?: string[]) {
   // giống Excel, và để các span nằm cạnh nhau thay vì rải rác giữa bảng. Ưu tiên hơn order đã lưu.
   if (mergeFields.length) {
     const mrank = new Map(mergeFields.map((f, i) => [f, i]));
-    const HEAD_IDS = new Set(['__ptdlSel', '__ptdlExpand']);
+    const HEAD_IDS = new Set(['__ptdlDrag', '__ptdlSel', '__ptdlExpand']);
     const head = out.filter((d) => HEAD_IDS.has(d.colId));
     const groups = out
       .filter((d) => mrank.has(d.field))
@@ -2684,6 +2890,22 @@ const PtdlToolDivider = () => (
 const SheetGrid = observer(({ model }: { model: any }) => {
   const { token } = theme.useToken();
   const coll = model.context.collection;
+  // Theme AG Grid theo antd token → khớp dark/light của app. Memo theo các màu thực dùng (đổi theme app
+  // mới rebuild, không rebuild mỗi render). Đổi ref theme lúc runtime = AG re-apply CSS, không mất state.
+  const gridTheme = React.useMemo(
+    () => buildSheetTheme(token),
+    [
+      token.colorPrimary,
+      token.colorBgContainer,
+      token.colorText,
+      token.colorBorderSecondary,
+      token.colorFillQuaternary,
+      token.colorTextHeading,
+      token.controlItemBgHover,
+      token.controlItemBgActive,
+      token.colorBgElevated,
+    ],
+  );
   const raw = model.resource?.getData?.();
   const dirtyRev = model.props.ptdlDirtyRev || 0;
   const tkForOverlay = tkOf(coll);
@@ -2803,6 +3025,32 @@ const SheetGrid = observer(({ model }: { model: any }) => {
   const visibleFields = model.props.ptdlFields;
   const colState = model.props.ptdlColState;
   const formulas = model.props.ptdlFormulas;
+  // Kéo-thả đổi vị trí DÒNG: chỉ bật khi (1) collection có cột sort, (2) KHÔNG ở chế độ nhóm, và
+  // (3) KHÔNG đang sort theo cột nào (sort cột khác → thứ tự hiển thị không theo cột sort → kéo xong
+  // không thấy đổi = rối). Persist qua server action `<coll>:move`.
+  const sortFld = React.useMemo(() => sortFieldOf(coll), [coll]);
+  const userSort = model.props.ptdlSort;
+  const canDragSort = !!sortFld && !grouping && !(userSort && userSort.col);
+  // Khi bật kéo-thả dòng: BẮT BUỘC order theo cột sort. Server mặc định order theo khóa chính (id), KHÔNG
+  // theo cột sort → kéo xong refresh sẽ không thấy đổi vị trí. Giống table block NocoBase (drag-sort luôn
+  // hiển thị theo sortField). Chỉ set khi khác để tránh refresh thừa; user bấm sort cột khác thì canDragSort
+  // = false, không đụng vào (toggleSort tự quản sort lúc đó).
+  React.useEffect(() => {
+    const res = model.resource;
+    if (!res || !canDragSort || !sortFld?.name) return;
+    try {
+      const cur = res.getSort?.() || [];
+      const want = sortFld.name;
+      if (!(cur.length === 1 && cur[0] === want)) {
+        res.setSort?.([want]);
+        res.setPage?.(1);
+        res.refresh?.();
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[spreadsheet-view] apply sort-field order failed', err);
+    }
+  }, [model, canDragSort, sortFld?.name]);
   // Chỉ rebuild defs khi CẤU TRÚC đổi (width/pin/order/widget/bật-tắt rules) — style/format/rule text
   // đọc live trong renderer + refreshCells, để popover ⚙ không bị unmount khi đang gõ.
   const structuralSig = React.useMemo(() => {
@@ -2833,11 +3081,12 @@ const SheetGrid = observer(({ model }: { model: any }) => {
     }
   })();
   const colDefs = React.useMemo(
-    () => buildColDefs(model, coll, visibleFields),
+    () => buildColDefs(model, coll, visibleFields, canDragSort),
     [
       model,
       coll,
       JSON.stringify(visibleFields || []),
+      canDragSort,
       structuralSig,
       JSON.stringify(formulas || []),
       JSON.stringify(rowActions || []),
@@ -3271,7 +3520,21 @@ const SheetGrid = observer(({ model }: { model: any }) => {
     if (prev && prev !== k && model._dirty.has(prev)) model.flushRow(prev);
   };
   return (
-    <div ref={rootRef} className="ptdl-sheet" style={{ width: '100%' }} onPaste={onPaste} onKeyDown={onKeyDown}>
+    <div
+      ref={rootRef}
+      className="ptdl-sheet"
+      style={
+        {
+          width: '100%',
+          // CSS var theo token → rule trong SHEET_CSS (editor bg, pinned row, accent) tự khớp dark/light + primary.
+          '--ptdl-elevated': token.colorBgElevated,
+          '--ptdl-pinned-bg': token.colorFillQuaternary,
+          '--ptdl-primary': token.colorPrimary,
+        } as React.CSSProperties
+      }
+      onPaste={onPaste}
+      onKeyDown={onKeyDown}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         {/* SEARCH — bên trái (đồng bộ core). LIVE: gõ là lọc luôn (debounce 300ms) — không cần Enter. */}
         <AntInput.Search
@@ -3435,7 +3698,7 @@ const SheetGrid = observer(({ model }: { model: any }) => {
           />
         ) : null}
         <AgGridReact
-          theme={SHEET_THEME}
+          theme={gridTheme}
           rowData={rowData}
           columnDefs={colDefs}
           pinnedBottomRowData={pinnedBottomRowData}
@@ -3519,6 +3782,24 @@ const SheetGrid = observer(({ model }: { model: any }) => {
           onColumnMoved={(e: any) => e.finished && !model._suppressColCapture && model.captureColumnState(e.api)}
           onColumnPinned={(e: any) => !model._suppressColCapture && model.captureColumnState(e.api)}
           onCellValueChanged={(e: any) => model.commitCell(e)}
+          onRowDragEnd={(e: any) => {
+            // Unmanaged row drag: AG Grid KHÔNG tự sắp lại — mình gọi server `:move` rồi refresh (server
+            // là nguồn sự thật, khớp phần còn lại của plugin). vDirection không đáng tin bằng so index nguồn/đích.
+            const src = e.node?.data;
+            const over = e.overNode?.data;
+            if (!src || !over || e.node?.rowPinned || e.overNode?.rowPinned) return;
+            if (src.__ptdlNew || src.__ptdlSummary || src.__ptdlGroup) return;
+            if (over.__ptdlNew || over.__ptdlSummary || over.__ptdlGroup) return;
+            const sourceId = src[tk];
+            const targetId = over[tk];
+            if (sourceId == null || targetId == null || String(sourceId) === String(targetId)) return;
+            const from = e.node.rowIndex ?? -1;
+            const to = e.overIndex ?? -1;
+            // kéo XUỐNG (from<to) → chèn SAU đích; kéo LÊN → chèn TRƯỚC đích.
+            const method = from >= 0 && to >= 0 ? (from < to ? 'insertAfter' : 'insertBefore') : 'insertAfter';
+            const scopeKey = sortFld?.scopeKey;
+            model.moveRow(sourceId, targetId, method, scopeKey ? over[scopeKey] : undefined);
+          }}
         />
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 6 }}>
@@ -3589,7 +3870,11 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
   }
   // House style dialog cấu hình: SettingsGrid + CollapsibleSection của @tuanla90/shared (idempotent — các
   // plugin khác cũng đăng ký; tự đăng ký để không phụ thuộc plugin nào được bật).
-  registerSettingsKit(flowEngine?.flowSettings);
+  registerSettingsKit(flowEngine?.flowSettings, {
+    FormTab,
+    'FormTab.TabPane': (FormTab as any).TabPane,
+    // PtdlColumnsTab dùng qua component-reference (ColumnsTabComp closure), không cần đăng ký string.
+  });
 
   // --- cell host: bản rút gọn của QuickEditFormModel (không popover, không antd Form) ---
   class PtdlSheetCellModel extends FlowModel {
@@ -3980,7 +4265,8 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
     }
     isAssocField(fieldName: string) {
       const cf = this.context.collection?.getField?.(fieldName);
-      return ['m2o', 'o2o', 'oho', 'obo'].includes(cf?.interface);
+      // createdBy/updatedBy = belongsTo(users) → cũng là quan hệ, cho phép Trình sửa (RichSelect).
+      return ['m2o', 'o2o', 'oho', 'obo', 'createdBy', 'updatedBy'].includes(cf?.interface);
     }
     /** Bắt kéo-thả của AG Grid (resize/move/pin) → lưu width/pin/order vào state. */
     captureColumnState(api: any) {
@@ -3990,7 +4276,7 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
       const order: string[] = [];
       for (const c of st) {
         const id = c?.colId;
-        if (!id || id === '__ptdlExpand' || id === '__ptdlSpacer' || String(id).startsWith('ag-Grid')) continue;
+        if (!id || id === '__ptdlDrag' || id === '__ptdlExpand' || id === '__ptdlSpacer' || String(id).startsWith('ag-Grid')) continue;
         order.push(id);
         const cur: any = { ...(cols[id] || {}) };
         if (c.width) cur.width = c.width;
@@ -4095,6 +4381,25 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
         const msg = err?.response?.data?.errors?.[0]?.message || err?.message || t('Lưu thất bại');
         this.context.message?.error?.(msg);
         return false;
+      }
+    }
+
+    /** Kéo-thả đổi vị trí dòng → server action `<coll>:move` (đổi giá trị cột sort) rồi refresh. */
+    async moveRow(sourceId: any, targetId: any, method?: string, targetScope?: any): Promise<void> {
+      const coll = this.context.collection;
+      const sf = sortFieldOf(coll);
+      if (!sf?.name || sourceId == null || targetId == null) return;
+      const params: any = { sourceId, targetId, sortField: sf.name };
+      if (method) params.method = method;
+      if (sf.scopeKey && targetScope !== undefined) params.targetScope = targetScope;
+      try {
+        await this.resource.runAction('move', { params });
+        await this.resource.refresh?.();
+      } catch (err: any) {
+        // eslint-disable-next-line no-console
+        console.error('[spreadsheet-view] move row failed', err);
+        const msg = err?.response?.data?.errors?.[0]?.message || err?.message || t('Đổi vị trí dòng thất bại');
+        this.context.message?.error?.(msg);
       }
     }
 
@@ -4859,6 +5164,10 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
     unhideColumn(colId: string) {
       this.setColCfg(colId, { hidden: undefined });
     }
+    /** Sắp lại thứ tự cột (từ tab "Cột" kéo-thả) — ghi thẳng state.order, buildColDefs áp ngay. */
+    reorderColumns(orderedIds: string[]) {
+      this._saveColState({ ...this.getColState(), order: Array.isArray(orderedIds) ? orderedIds : [] });
+    }
     hiddenColumns(): Array<{ colId: string; title: string }> {
       const coll = this.context.collection;
       const cols = this.getColState().columns || {};
@@ -5210,13 +5519,22 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
             'x-component-props': { minColWidth: 190 },
             properties,
           });
-          const section = (title: string, properties: any, first = false) => ({
+          // Mỗi mục = 1 TAB. FormTab.TabPane là void wrapper → field paths vẫn PHẲNG (params cũ bind nguyên).
+          const section = (title: string, properties: any, _first = false) => ({
             type: 'void',
-            'x-component': 'CollapsibleSection',
-            'x-component-props': { title, ...(first ? { style: { borderTop: 'none' } } : {}) },
+            'x-component': 'FormTab.TabPane',
+            'x-component-props': { tab: title },
             properties,
           });
+          // Tab "Cột": component THAM CHIẾU (không string) đóng gói model qua CLOSURE. TUYỆT ĐỐI không để
+          // model vào x-component-props: Formily compile-schema deep-traverse props → model (object lớn +
+          // vòng tham chiếu) bị mangle ⇒ tab TRỐNG + mỗi lần chuyển tab CHẬM 2-3s (traverse lại cả model).
+          const ColumnsTabComp = () => React.createElement(PtdlColumnsTab, { model: ctx.model });
           return {
+            tabs: {
+              type: 'void',
+              'x-component': 'FormTab',
+              properties: {
             secDisplay: section(t('Hiển thị'), {
               fields: {
                 type: 'array',
@@ -5237,6 +5555,14 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
                 rowNumbers: { type: 'boolean', title: te('Hiện số thứ tự dòng'), ...dec(), 'x-component': 'Switch' },
               }),
             }, true),
+            secCols: section(t('Cột'), {
+              colcfg: {
+                type: 'void',
+                // Panel cấu hình cột (chọn cột → định dạng + cách hiển thị). Ghi thẳng model.setColCfg
+                // (áp ngay, như ⚙ header). Model đi qua closure ColumnsTabComp, KHÔNG qua x-component-props.
+                'x-component': ColumnsTabComp,
+              },
+            }),
             secGroup: section(t('Nhóm dòng'), {
               groupBy: {
                 type: 'string',
@@ -5332,6 +5658,8 @@ export function registerSpreadsheet({ flowEngine }: { flowEngine: any }) {
                 'x-component': 'Select',
               },
             }),
+              },
+            },
           };
         },
         defaultParams: {

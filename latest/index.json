@@ -111,9 +111,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.41",
+      "version": "0.2.42",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.41.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.42.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",
@@ -258,9 +258,9 @@
     {
       "packageName": "@tuanla90/plugin-spreadsheet-view",
       "slug": "spreadsheet-view",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "displayName": "Spreadsheet View",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.4.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-spreadsheet-view-0.2.5.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-status-flow",

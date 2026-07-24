@@ -811,6 +811,9 @@ export function registerRichSelectModel(deps: {
   }
 
   const RS_INTERFACES = ['m2o', 'o2o', 'oho', 'obo', 'o2m', 'm2m'];
+  // createdBy/updatedBy cũng là belongsTo(users) nhưng server tự gán — chỉ bind bản DISPLAY
+  // (table/detail/list); không bind editor để form không mở sửa người tạo/người cập nhật.
+  const RS_DISPLAY_INTERFACES = [...RS_INTERFACES, 'createdBy', 'updatedBy'];
   try {
     (EditableItemModel as any)?.bindModelToInterface('PtdlRichSelectFieldModel', RS_INTERFACES, { isDefault: false });
     // eslint-disable-next-line no-console
@@ -824,7 +827,7 @@ export function registerRichSelectModel(deps: {
   // "clickSave" setting OR the column's core "Enable quick edit"), clicking the cell opens the SAME rich
   // Select popup to pick + save inline; otherwise stays a read-only RichRow exactly as before.
   bindDisplayField({
-    flowEngine, Base, name: 'PtdlRichSelectDisplayFieldModel', interfaces: RS_INTERFACES,
+    flowEngine, Base, name: 'PtdlRichSelectDisplayFieldModel', interfaces: RS_DISPLAY_INTERFACES,
     label: t('Rich select'), flow: { ...richFlow, key: 'ptdlRichSelectDisplay' },
     render: (p: any, model: any) => <RichSelectDisplay model={model} p={p} />,
   });

@@ -36,6 +36,9 @@ mkdir -p "$NM/@formily/react"
 printf '{"name":"@formily/react","version":"2.3.7","main":"index.js","sideEffects":false}\n' > "$NM/@formily/react/package.json"
 printf 'module.exports = {};\n' > "$NM/@formily/react/index.js"
 echo "stub+idx  : @formily/react"
+# @formily/antd-v5: FormTab được IMPORT TRỰC TIẾP trong source (spreadsheet.tsx) → nocobase-build
+# externalize (không bundle) vì nằm trong allowlist. Chỉ cần package.json để resolve lúc scan.
+mkstub "@formily/antd-v5" 2.3.7
 mkstub "@nocobase/client" 2.1.19
 mkstub "@nocobase/client-v2" 2.1.19
 mkstub "@nocobase/flow-engine" 2.1.19
