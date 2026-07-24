@@ -133,6 +133,37 @@ function isDarkBg(color: string): boolean {
   return 0.299 * r + 0.587 * g + 0.114 * b < 140;
 }
 
+// Luminance test for any CSS colour the appearance config may hold — hex (#rgb / #rrggbb) or
+// rgb()/rgba(). Used to pick readable pill text when a custom background is set but no explicit
+// text colour is, so the same configured pill reads identically in both client lanes.
+function colorIsDark(c: string): boolean {
+  if (!c) return false;
+  const s = c.trim();
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (s[0] === '#') {
+    let hex = s.slice(1);
+    if (hex.length === 3)
+      hex = hex
+        .split('')
+        .map((x) => x + x)
+        .join('');
+    if (hex.length < 6) return false;
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else {
+    const m = s.match(/rgba?\(([^)]+)\)/);
+    if (!m) return false;
+    const p = m[1].split(',').map((x) => parseFloat(x.trim()));
+    if (p[3] === 0) return false; // fully transparent → treat as light
+    [r, g, b] = p as [number, number, number];
+  }
+  if ([r, g, b].some((n) => Number.isNaN(n))) return false;
+  return 0.299 * r + 0.587 * g + 0.114 * b < 140;
+}
+
 // Walk up from `el` to the first ancestor with a non-transparent background and judge its darkness.
 // The admin header/topbar is usually dark; a light theme yields a light bar. Defaults to dark.
 function ancestorBgIsDark(el: Element | null): boolean {
@@ -522,9 +553,21 @@ function pillStyle(variant: 'header-dark' | 'header-light' | 'floating', appeara
       : variant === 'header-light'
         ? { ...base, color: 'rgba(0,0,0,0.75)', background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.15)' }
         : { ...base, color: 'rgba(255,255,255,0.92)', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.28)' };
-  // Custom color overrides (empty string = keep the theme-derived value). The text colour also
-  // drives the border so a custom fg reads as one coherent accent.
-  if (appearance.bg) style.background = appearance.bg;
+  // Custom background: the SAME value in both lanes, but the variant-derived text colour differs by
+  // lane (dark text on the light classic `/admin` header, light text on the dark `/v/` header). So a
+  // configured pill would read black-on-bg in `/admin` and white-on-bg in `/v/`. When no explicit fg
+  // is set, derive text + border from the custom bg's own luminance instead, so it looks identical
+  // everywhere (e.g. a blue bg gets white text in both lanes).
+  if (appearance.bg) {
+    style.background = appearance.bg;
+    if (!appearance.fg) {
+      const onDark = colorIsDark(appearance.bg);
+      style.color = onDark ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)';
+      style.border = `1px solid ${onDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.15)'}`;
+    }
+  }
+  // Explicit fg overrides everything (empty string = keep the value derived above / the theme
+  // default). The text colour also drives the border so a custom fg reads as one coherent accent.
   if (appearance.fg) {
     style.color = appearance.fg;
     style.border = `1px solid ${appearance.fg}`;
