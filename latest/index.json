@@ -111,9 +111,9 @@
     {
       "packageName": "@tuanla90/plugin-field-enhancements",
       "slug": "field-enhancements",
-      "version": "0.2.40",
+      "version": "0.2.41",
       "displayName": "Field Enhancements",
-      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.40.tgz"
+      "url": "https://raw.githubusercontent.com/tuanla90/nocobase-plugin/main/latest/@tuanla90/plugin-field-enhancements-0.2.41.tgz"
     },
     {
       "packageName": "@tuanla90/plugin-field-order",

@@ -426,10 +426,17 @@ const RS_Seg = (props: any) => (
 );
 // Field picker: NESTED cascader (drill to-one/to-many relations, e.g. department.name / images.url)
 // when the target collection is known; flat ColumnSelect fallback otherwise (standalone editors).
-const RS_FieldSelect = (props: any) => (
-  props.api && props.collectionName ? (
+// api CLIENT KHÔNG được truyền qua x-component-props: renderStepForm serialize/clone schema → api (vòng
+// tham chiếu auth↔api) bị biến thành plain-object MẤT .request (method prototype) → getFields trả rỗng →
+// cascader hiện "__EMPTY__" + log "Converting circular structure to JSON". Giữ api ở MODULE-REF (set trong
+// uiSchema lúc dialog mở), component đọc trực tiếp — không đi qua serialize.
+let __rsApi: any = null;
+const rsApi = (propApi: any) => (propApi && typeof propApi.request === 'function' ? propApi : __rsApi);
+const RS_FieldSelect = (props: any) => {
+  const api = rsApi(props.api);
+  return api && props.collectionName ? (
     <NestedFieldCascader
-      api={props.api}
+      api={api}
       collectionName={props.collectionName}
       dataSourceKey={props.dataSourceKey}
       value={props.value || undefined}
@@ -439,8 +446,8 @@ const RS_FieldSelect = (props: any) => (
   ) : (
     <ColumnSelect value={props.value || undefined} onChange={(v: any) => props.onChange?.(v)}
       options={props.options || []} placeholder={props.placeholder || 'Field…'} />
-  )
-);
+  );
+};
 const RS_Html = (props: any) => {
   const taRef = useRef<any>(null);
   const insert = (path: string[]) => {
@@ -451,7 +458,7 @@ const RS_Html = (props: any) => {
       <div style={{ marginBottom: 4 }}>
         {/* Lazy nested picker: drills the target collection's to-one relations on demand. */}
         <FieldPickerCascader
-          api={props.api}
+          api={rsApi(props.api)}
           collectionName={props.collectionName}
           dataSourceKey={props.dataSourceKey}
           onPick={insert}
@@ -614,7 +621,13 @@ export function registerRichSelectModel(deps: {
           uiSchema: (ctx: any) => {
             const cf = resolveCf(ctx?.model);
             const target = cf?.targetCollection;
-            const api = ctx?.app?.apiClient || ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api;
+            // Ưu tiên nguồn api CÓ .request (một số nguồn là wrapper thiếu method) → tránh field-picker rỗng.
+            const api =
+              [ctx?.app?.apiClient, ctx?.model?.context?.api, ctx?.model?.flowEngine?.context?.api].find(
+                (a: any) => a && typeof a.request === 'function',
+              ) || ctx?.app?.apiClient || ctx?.model?.context?.api || ctx?.model?.flowEngine?.context?.api;
+            // module-ref cho RS_FieldSelect/RS_Html (KHÔNG truyền api qua x-component-props — sẽ bị serialize hỏng).
+            __rsApi = api;
             let fieldOptions: any[] = [];
             try {
               const fields = target?.getFields?.() || [];
@@ -675,9 +688,9 @@ export function registerRichSelectModel(deps: {
                     'x-component-props': { minColWidth: 150 },
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
                     properties: {
-                      titleField: fi(t('Title field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: t('(title field)') } }),
-                      subField: fi(t('Subtitle field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
-                      rightField: fi(t('Right field (tag)'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
+                      titleField: fi(t('Title field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: t('(title field)') } }),
+                      subField: fi(t('Subtitle field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
+                      rightField: fi(t('Right field (tag)'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
                     },
                   },
                   presetRow2: {
@@ -685,7 +698,7 @@ export function registerRichSelectModel(deps: {
                     'x-component-props': { minColWidth: 160 },
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset'),
                     properties: {
-                      avatarField: fi(t('Avatar / icon field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
+                      avatarField: fi(t('Avatar / icon field'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
                       avatarMode: fi(t('Avatar type'), 'RS_Seg', {
                         componentProps: { options: [{ label: t('Image'), value: 'image' }, { label: t('Icon'), value: 'icon' }] },
                       }),
@@ -726,7 +739,7 @@ export function registerRichSelectModel(deps: {
                     'x-reactions': rx((v: any) => (v.mode || 'preset') === 'preset' && v.avatarMode === 'icon'),
                     properties: {
                       iconColor: fi(t('Icon colour'), 'RS_Color'),
-                      iconColorField: fi(t('Colour from column'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, api, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
+                      iconColorField: fi(t('Colour from column'), 'RS_FieldSelect', { componentProps: { options: fieldOptions, collectionName: cf?.target, dataSourceKey: cf?.dataSourceKey, placeholder: '—' } }),
                     },
                   },
                 },
@@ -735,7 +748,6 @@ export function registerRichSelectModel(deps: {
               html: fi(t('HTML template ({{field}} = column of target record)'), 'RS_Html', {
                 componentProps: {
                   placeholder: '<b>{{name}}</b> — <span style="color:#888">{{position}}</span>',
-                  api,
                   collectionName: cf?.target,
                   dataSourceKey: cf?.dataSourceKey,
                 },
