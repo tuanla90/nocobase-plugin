@@ -15,6 +15,9 @@ export function get(obj: any, path: string): any {
 /** Object/scalar → display string (unwraps common relation shapes label/name/title/id). */
 export function toDisplayString(v: any): string {
   if (v === undefined || v === null) return '';
+  // Mảng (multi-select / quan hệ m2m / field nhiều giá trị): map từng phần tử rồi nối — trước đây rơi vào
+  // nhánh object → không có .label/.name → trả '' (vd right-tag main_occupation:["..."] mất chữ).
+  if (Array.isArray(v)) return v.map(toDisplayString).filter((s) => s !== '').join(', ');
   return String(typeof v === 'object' ? (v.label ?? v.name ?? v.title ?? v.id ?? '') : v);
 }
 

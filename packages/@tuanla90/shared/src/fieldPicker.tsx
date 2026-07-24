@@ -73,7 +73,9 @@ export async function getFields(api: any, collection?: string, dataSourceKey?: s
     const headers = dataSourceKey && dataSourceKey !== 'main' ? { 'X-Data-Source': dataSourceKey } : undefined;
     const res = await api.request({ url: 'collections:get', params: { filterByTk: collection, appends: ['fields'] }, headers });
     const fields = res?.data?.data?.fields || [];
-    fieldsCache.set(ck, fields);
+    // KHÔNG cache kết quả RỖNG: 1 lần gọi sớm (collection/api chưa sẵn) trả [] mà cache lại sẽ poison
+    // → mọi field-picker của session đó rỗng vĩnh viễn (phải reload). Chỉ cache khi có field.
+    if (fields.length) fieldsCache.set(ck, fields);
     return fields;
   } catch {
     return [];
