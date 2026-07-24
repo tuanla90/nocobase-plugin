@@ -18,7 +18,9 @@ export interface PwaRuntimeConfig {
 
 let current: PwaRuntimeConfig = {};
 let navFn: ((schemaUid: string) => void) | null = null;
+let counts: Record<string, number> = {};
 const subs = new Set<() => void>();
+const countSubs = new Set<() => void>();
 
 export function setPwaConfig(c: PwaRuntimeConfig): void {
   current = c || {};
@@ -32,6 +34,31 @@ export function setPwaConfig(c: PwaRuntimeConfig): void {
 }
 export function getPwaConfig(): PwaRuntimeConfig {
   return current;
+}
+
+export function setBadgeCounts(m: Record<string, number>): void {
+  counts = m || {};
+  countSubs.forEach((f) => {
+    try {
+      f();
+    } catch (e) {
+      // ignore
+    }
+  });
+}
+export function getBadgeCounts(): Record<string, number> {
+  return counts;
+}
+export function useBadgeCounts(): Record<string, number> {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const fn = () => force((n) => n + 1);
+    countSubs.add(fn);
+    return () => {
+      countSubs.delete(fn);
+    };
+  }, []);
+  return counts;
 }
 export function setPwaNavigate(fn: (schemaUid: string) => void): void {
   navFn = fn;

@@ -55,6 +55,26 @@ function usePages(api: any): { pages: PageOpt[]; byUid: Record<string, PageOpt>;
   return { pages, byUid, loading };
 }
 
+/** Fetch collections (name + title) for the badge "count from collection" picker. */
+function useCollections(api: any): { name: string; title: string }[] {
+  const [cols, setCols] = useState<{ name: string; title: string }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    if (!api) return;
+    api
+      .request({ url: 'collections:list', params: { paginate: false, fields: ['name', 'title'] } })
+      .then((res: any) => {
+        const rows: any[] = res?.data?.data || [];
+        if (alive) setCols(rows.map((r) => ({ name: r.name, title: r.title || r.name })).sort((a, b) => a.title.localeCompare(b.title)));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [api]);
+  return cols;
+}
+
 // ---------------------------------------------------------------------------
 // Bottom bar panel
 // ---------------------------------------------------------------------------
@@ -67,6 +87,8 @@ export const BottomBarPanel: React.FC<{
 }> = ({ value, onChange, api, themeColor }) => {
   const { token } = theme.useToken();
   const { pages, byUid } = usePages(api);
+  const collections = useCollections(api);
+  const [badgeOpen, setBadgeOpen] = useState<Record<string, boolean>>({});
   const cfg = value || {};
   const items: BarItem[] = cfg.items || [];
   const style: BarStyleConfig = cfg.style || { preset: 'mobile' };
@@ -84,6 +106,11 @@ export const BottomBarPanel: React.FC<{
   const patchItem = (i: number, patch: Partial<BarItem>) => {
     const next = items.slice();
     next[i] = { ...next[i], ...patch };
+    setItems(next);
+  };
+  const patchBadge = (i: number, patch: Record<string, any>) => {
+    const next = items.slice();
+    next[i] = { ...next[i], badge: { ...(next[i].badge || {}), ...patch } };
     setItems(next);
   };
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
@@ -160,6 +187,10 @@ export const BottomBarPanel: React.FC<{
           <div style={{ fontSize: 12, color: token.colorTextTertiary, marginTop: 6 }}>
             {t('Avatar-menu shortcuts always show in the account menu (this rule is ignored).')}
           </div>
+        ) : (cfg.showOn || 'mobileOrStandalone') !== 'always' ? (
+          <div style={{ fontSize: 12, color: token.colorTextWarning || token.colorTextTertiary, marginTop: 6 }}>
+            {t('Note: hidden on wide desktop screens. Resize the window below 820px, open on a phone / installed app, or choose “Always” to see it.')}
+          </div>
         ) : null}
       </div>
 
@@ -174,9 +205,6 @@ export const BottomBarPanel: React.FC<{
           <div
             key={it.key || i}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
               padding: 8,
               marginBottom: 8,
               border: `1px solid ${token.colorBorderSecondary}`,
@@ -184,36 +212,88 @@ export const BottomBarPanel: React.FC<{
               background: token.colorFillQuaternary,
             }}
           >
-            <span style={{ color: token.colorTextQuaternary, width: 18, textAlign: 'center', fontSize: 12 }}>{i + 1}</span>
-            <Select
-              showSearch
-              placeholder={t('Choose a page')}
-              value={it.schemaUid || undefined}
-              onChange={(v) => pickPage(i, v)}
-              options={pages.map((p) => ({ label: p.label, value: p.schemaUid }))}
-              optionFilterProp="label"
-              style={{ flex: 1, minWidth: 180 }}
-            />
-            <Input
-              placeholder={t('Label')}
-              value={it.label || ''}
-              onChange={(e) => patchItem(i, { label: e.target.value })}
-              style={{ width: 130 }}
-            />
-            <RegistryIconPicker
-              value={it.icon}
-              onChange={(v: string) => patchItem(i, { icon: v })}
-              placeholder={t('Icon')}
-            />
-            <Button type="text" size="small" disabled={i === 0} onClick={() => moveItem(i, -1)} title={t('Move up')}>
-              ↑
-            </Button>
-            <Button type="text" size="small" disabled={i === items.length - 1} onClick={() => moveItem(i, 1)} title={t('Move down')}>
-              ↓
-            </Button>
-            <Button type="text" size="small" danger onClick={() => removeItem(i)} title={t('Remove')}>
-              ✕
-            </Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: token.colorTextQuaternary, width: 18, textAlign: 'center', fontSize: 12 }}>{i + 1}</span>
+              <Select
+                showSearch
+                placeholder={t('Choose a page')}
+                value={it.schemaUid || undefined}
+                onChange={(v) => pickPage(i, v)}
+                options={pages.map((p) => ({ label: p.label, value: p.schemaUid }))}
+                optionFilterProp="label"
+                style={{ flex: 1, minWidth: 160 }}
+              />
+              <Input placeholder={t('Label')} value={it.label || ''} onChange={(e) => patchItem(i, { label: e.target.value })} style={{ width: 120 }} />
+              <RegistryIconPicker value={it.icon} onChange={(v: string) => patchItem(i, { icon: v })} placeholder={t('Icon')} />
+              <Button
+                size="small"
+                type={it.badge?.enabled ? 'primary' : 'default'}
+                onClick={() => setBadgeOpen((o) => ({ ...o, [it.key]: !o[it.key] }))}
+                title={t('Badge')}
+                style={{ flex: 'none' }}
+              >
+                {t('Badge')}
+              </Button>
+              <Button type="text" size="small" disabled={i === 0} onClick={() => moveItem(i, -1)} title={t('Move up')}>
+                ↑
+              </Button>
+              <Button type="text" size="small" disabled={i === items.length - 1} onClick={() => moveItem(i, 1)} title={t('Move down')}>
+                ↓
+              </Button>
+              <Button type="text" size="small" danger onClick={() => removeItem(i)} title={t('Remove')}>
+                ✕
+              </Button>
+            </div>
+
+            {badgeOpen[it.key] ? (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${token.colorBorderSecondary}` }}>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div>
+                    <div style={label}>{t('Show badge')}</div>
+                    <Switch size="small" checked={!!it.badge?.enabled} onChange={(v) => patchBadge(i, { enabled: v })} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={label}>{t('Count from collection')}</div>
+                    <Select
+                      showSearch
+                      allowClear
+                      placeholder={t('Choose a collection')}
+                      value={it.badge?.collection || undefined}
+                      onChange={(v) => patchBadge(i, { collection: v })}
+                      options={collections.map((c) => ({ label: `${c.title} (${c.name})`, value: c.name }))}
+                      optionFilterProp="label"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={label}>{t('Color')}</div>
+                    <ColorPicker
+                      allowClear
+                      value={it.badge?.color || undefined}
+                      onChange={(c) => patchBadge(i, { color: c ? colorToString(c) : '' })}
+                      presets={COLOR_PRESETS}
+                    />
+                  </div>
+                  <div>
+                    <div style={label}>{t('Dot only')}</div>
+                    <Switch size="small" checked={!!it.badge?.dot} onChange={(v) => patchBadge(i, { dot: v })} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <div style={label}>{t('Filter (optional, JSON)')}</div>
+                  <Input.TextArea
+                    rows={2}
+                    placeholder='{"status":"pending"}'
+                    value={typeof it.badge?.filter === 'string' ? it.badge?.filter : it.badge?.filter ? JSON.stringify(it.badge.filter) : ''}
+                    onChange={(e) => patchBadge(i, { filter: e.target.value })}
+                    style={{ fontFamily: 'monospace', fontSize: 12 }}
+                  />
+                  <div style={{ fontSize: 11, color: token.colorTextTertiary, marginTop: 4 }}>
+                    {t('Leave empty to count all rows. Otherwise a NocoBase filter object.')}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         ))}
         <Button onClick={addItem} disabled={items.length >= MAX_ITEMS} type="dashed" size="small">

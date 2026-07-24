@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { BottomBar, BottomBarConfig, BarItem, barHeight, MAX_ITEMS, MOBILE_MAX_WIDTH, ShowOn, Placement } from './bottomBar';
 import { FabMenu } from './fabMenu';
 import { InstallPrompt, InstallConfig, isStandalone } from './installPrompt';
-import { setPwaConfig, setPwaNavigate } from './configStore';
+import { setPwaConfig, setPwaNavigate, setBadgeCounts, useBadgeCounts } from './configStore';
 
 // ---------------------------------------------------------------------------
 // App-wide mobile shell provider. Injected via app.addProvider on both lanes; it
@@ -206,6 +206,49 @@ export function createMobileShell({
     }, []);
 
     const bb = cfg.bottomBar;
+    const counts = useBadgeCounts();
+
+    // --- badge counts (poll + refetch on focus) ---
+    useEffect(() => {
+      const badged = (bb?.items || []).filter((it) => it && it.badge?.enabled && it.badge?.collection);
+      if (!api || !badged.length) {
+        setBadgeCounts({});
+        return;
+      }
+      let alive = true;
+      const fetchAll = async () => {
+        const entries = await Promise.all(
+          badged.map(async (it) => {
+            try {
+              const b = it.badge!;
+              const headers = b.dataSource && b.dataSource !== 'main' ? { 'X-Data-Source': b.dataSource } : undefined;
+              let filter: any;
+              try {
+                filter = b.filter ? (typeof b.filter === 'string' ? (b.filter.trim() ? JSON.parse(b.filter) : undefined) : b.filter) : undefined;
+              } catch (e) {
+                filter = undefined;
+              }
+              const res = await api.request({ url: `${b.collection}:list`, params: { pageSize: 1, filter }, headers });
+              const c = res?.data?.meta?.count;
+              return [it.key, typeof c === 'number' ? c : 0] as [string, number];
+            } catch (e) {
+              return [it.key, 0] as [string, number];
+            }
+          }),
+        );
+        if (alive) setBadgeCounts(Object.fromEntries(entries));
+      };
+      fetchAll();
+      const iv = window.setInterval(fetchAll, 30000);
+      const onFocus = () => fetchAll();
+      window.addEventListener('focus', onFocus);
+      return () => {
+        alive = false;
+        window.clearInterval(iv);
+        window.removeEventListener('focus', onFocus);
+      };
+    }, [api, bb]);
+
     const standalone = isStandalone();
     const placement: Placement = bb?.placement || 'bottom';
     const items: BarItem[] = useMemo(
@@ -243,12 +286,13 @@ export function createMobileShell({
                   activeKey={activeKey}
                   style={bb?.style}
                   placement={placement}
+                  counts={counts}
                   themeColor={cfg.themeColor}
                   onNavigate={(it) => goToPage(it.schemaUid || '', navigate)}
                 />
               ) : null}
               {showFab ? (
-                <FabMenu items={items} activeKey={activeKey} themeColor={cfg.themeColor} onNavigate={(it) => goToPage(it.schemaUid || '', navigate)} />
+                <FabMenu items={items} activeKey={activeKey} counts={counts} themeColor={cfg.themeColor} onNavigate={(it) => goToPage(it.schemaUid || '', navigate)} />
               ) : null}
               {inApp ? (
                 <InstallPrompt config={cfg.install} icon={cfg.icon} themeColor={cfg.themeColor} bottomOffset={installOffset} />

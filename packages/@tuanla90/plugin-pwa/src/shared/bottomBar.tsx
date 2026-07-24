@@ -10,11 +10,22 @@ import { IconByKey } from '@tuanla90/shared';
 // (bottom / top / floating); the FAB + avatar-menu placements live elsewhere.
 // ---------------------------------------------------------------------------
 
+export interface BarBadge {
+  enabled?: boolean;
+  collection?: string;
+  dataSource?: string;
+  filter?: any; // NocoBase filter object
+  color?: string; // badge background
+  dot?: boolean; // show a dot instead of a count
+  max?: number; // cap the displayed number (default 99 → "99+")
+}
+
 export interface BarItem {
   key: string;
   label?: string;
   icon?: string; // icon registry key, e.g. "homeoutlined"
   schemaUid?: string; // desktopRoutes page schemaUid to open
+  badge?: BarBadge;
 }
 
 export type ShowOn = 'mobileOrStandalone' | 'standalone' | 'mobile' | 'always';
@@ -55,7 +66,7 @@ export const BOTTOM_BAR_DEFAULTS: BottomBarConfig = {
 
 export const MAX_ITEMS = 5;
 export const MOBILE_MAX_WIDTH = 820; // px — at/below this the bar counts as "mobile"
-const FAB_SIZE = 46;
+const FAB_SIZE = 56;
 const FLOAT_MARGIN = 12;
 
 // Per-preset baseline for the knobs a preset controls. `custom` inherits `mobile` then the user
@@ -128,6 +139,41 @@ export const SafeIcon: React.FC<{ type?: string; size: number }> = ({ type, size
   </span>
 );
 
+/** Count/dot badge overlaid on an item icon. Positioned absolute — its parent must be positioned. */
+export const ItemBadge: React.FC<{ badge?: BarBadge; count?: number }> = ({ badge, count }) => {
+  if (!badge?.enabled) return null;
+  const n = count || 0;
+  if (n <= 0) return null;
+  const bg = (badge.color && badge.color.trim()) || '#ff4d4f';
+  if (badge.dot) {
+    return <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: bg, boxShadow: '0 0 0 1.5px #fff' }} />;
+  }
+  const max = badge.max || 99;
+  const text = n > max ? `${max}+` : String(n);
+  return (
+    <span
+      style={{
+        position: 'absolute',
+        top: -6,
+        right: -9,
+        minWidth: 15,
+        height: 15,
+        padding: '0 4px',
+        borderRadius: 999,
+        background: bg,
+        color: '#fff',
+        fontSize: 10,
+        lineHeight: '15px',
+        textAlign: 'center',
+        fontWeight: 600,
+        boxShadow: '0 0 0 1.5px #fff',
+      }}
+    >
+      {text}
+    </span>
+  );
+};
+
 /**
  * The navigation bar for the bottom / top / floating placements. When `preview` is set it renders
  * in-flow for the settings preview; otherwise it is fixed to the viewport edge.
@@ -138,9 +184,10 @@ export const BottomBar: React.FC<{
   style?: BarStyleConfig;
   themeColor?: string;
   placement?: Placement;
+  counts?: Record<string, number>;
   onNavigate?: (item: BarItem) => void;
   preview?: boolean;
-}> = ({ items, activeKey, style, themeColor, placement = 'bottom', onNavigate, preview }) => {
+}> = ({ items, activeKey, style, themeColor, placement = 'bottom', counts, onNavigate, preview }) => {
   const { token } = theme.useToken();
   const s = resolveBarStyle(style, token, themeColor);
   const list = (items || []).slice(0, MAX_ITEMS);
@@ -239,20 +286,23 @@ export const BottomBar: React.FC<{
                 style={{
                   position: 'absolute',
                   left: '50%',
-                  top: -(FAB_SIZE / 2),
+                  top: -(FAB_SIZE / 2) - 4,
                   transform: 'translateX(-50%)',
                   width: FAB_SIZE,
                   height: FAB_SIZE,
                   borderRadius: '50%',
-                  background: s.activeColor,
+                  background: `linear-gradient(160deg, ${s.activeColor}, ${hexAlpha(s.activeColor, 0.82)})`,
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 6px 16px rgba(0,0,0,0.28)',
+                  // ring in the bar colour "notches" the button into the bar for a lifted FAB look
+                  border: `4px solid ${s.background}`,
+                  boxShadow: `0 10px 22px ${hexAlpha(s.activeColor, 0.5)}, 0 3px 8px rgba(0,0,0,0.22)`,
                 }}
               >
-                <SafeIcon type={item.icon} size={s.iconSize + 2} />
+                <SafeIcon type={item.icon} size={s.iconSize + 4} />
+                <ItemBadge badge={item.badge} count={counts?.[item.key]} />
               </span>
               {showLabel ? (
                 <span
@@ -304,6 +354,7 @@ export const BottomBar: React.FC<{
             ) : null}
             <span
               style={{
+                position: 'relative',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -315,6 +366,7 @@ export const BottomBar: React.FC<{
               }}
             >
               <SafeIcon type={item.icon} size={s.iconSize} />
+              <ItemBadge badge={item.badge} count={counts?.[item.key]} />
             </span>
             {showLabel ? (
               <span style={{ fontSize: 11, lineHeight: 1.1, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
